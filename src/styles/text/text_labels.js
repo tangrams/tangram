@@ -135,7 +135,7 @@ export const TextLabels = {
                 let text_settings_key = q.text_settings_key;
                 let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
                 text_info.align = text_info.align || {};
-                text_info.align[q.align] = {};
+                text_info.align[q.label.align] = {};
             });
 
             // second call to main thread, for rasterizing the set of texts
@@ -283,6 +283,8 @@ export const TextLabels = {
 
         // Max number of subdivisions to try
         layout.subdiv = tile.overzoom2;
+
+        layout.align = draw.align;
 
         return layout;
     }

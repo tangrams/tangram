@@ -1,19 +1,21 @@
 import Vector from '../vector';
 import Label from './label';
 import OBB from '../utils/obb';
+import PointAnchor from '../styles/points/point_anchor';
 
 export default class LabelLine extends Label {
 
-    constructor (size, lines, options) {
-        super(size, options);
+    constructor (size, lines, layout) {
+        super(size, layout);
 
         this.lines = lines;
-        this.offset = [this.options.offset[0], this.options.offset[1]];
+        this.offset = [this.layout.offset[0], this.layout.offset[1]];
+        this.anchor = this.layout.anchor;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
-        this.segment_index = options.segment_start || 0;
-        this.segment_max = options.segment_end || this.lines.length;
+        this.segment_index = layout.segment_start || 0;
+        this.segment_max = layout.segment_end || this.lines.length;
         this.update();
     }
 
@@ -21,6 +23,7 @@ export default class LabelLine extends Label {
         let segment = this.currentSegment();
         this.angle = this.computeAngle();
         this.position = [(segment[0][0] + segment[1][0]) / 2, (segment[0][1] + segment[1][1]) / 2];
+        this.align = this.layout.align || PointAnchor.alignForAnchor(this.anchor); // TODO: move to parent Label class
         this.updateBBoxes();
     }
 
@@ -57,12 +60,12 @@ export default class LabelLine extends Label {
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let length = Vector.length(p0p1);
 
-        let label_length = this.size[0] * this.options.units_per_pixel;
+        let label_length = this.size[0] * this.layout.units_per_pixel;
 
         if (label_length > length) {
             // an exceed heurestic of 100% would let the label fit in any cases
             let exceed = (1 - (length / label_length)) * 100;
-            return exceed < this.options.line_exceed;
+            return exceed < this.layout.line_exceed;
         }
 
         return label_length <= length;
@@ -76,9 +79,9 @@ export default class LabelLine extends Label {
     }
 
     updateBBoxes () {
-        let upp = this.options.units_per_pixel;
-        let width = (this.size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
-        let height = (this.size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
+        let upp = this.layout.units_per_pixel;
+        let width = (this.size[0] + this.layout.buffer[0] * 2) * upp * Label.epsilon;
+        let height = (this.size[1] + this.layout.buffer[1] * 2) * upp * Label.epsilon;
 
         // apply offset, x positive, y pointing down
         let offset = Vector.rot(this.offset, this.angle);

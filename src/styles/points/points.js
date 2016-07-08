@@ -239,7 +239,6 @@ Object.assign(Points, {
                     draw: q.draw,
                     context: q.context,
                     style,
-                    layout: style,
                     label
                 };
                 point_objs.push(point_obj);
@@ -294,7 +293,7 @@ Object.assign(Points, {
                         style.size = text_info.size.logical_size;
                         style.angle = q.label.angle || 0;
                         style.sampler = 1; // non-0 = labels
-                        style.texcoords = text_info.align[q.align].texcoords;
+                        style.texcoords = text_info.align[q.label.align].texcoords;
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
@@ -391,22 +390,23 @@ Object.assign(Points, {
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
 
             if (Array.isArray(fq.layout.anchor)) {
-                let candidates = [];
-                let anchors = fq.layout.anchor;
-                for (let a=0; a < anchors.length; a++) {
-                    fq.layout.anchor = anchors[a];
-                    let align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
-                    let label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-                    candidates.push({ label, align, layout: fq.layout });
-                }
-                fq.layout.anchor = anchors; // restore anchors
-                fq.candidates = candidates;
+                // let candidates = [];
+                // let anchors = fq.layout.anchor;
+                // for (let a=0; a < anchors.length; a++) {
+                //     fq.layout.anchor = anchors[a];
+                //     let align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
+                //     let label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
+                //     candidates.push({ label, align, layout: fq.layout });
+                // }
+                // fq.layout.anchor = anchors; // restore anchors
+                // fq.candidates = candidates;
+                fq.layout.anchor = fq.layout.anchor[0];
             }
-            else {
+            // else {
                 // Single-anchor label
-                fq.align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
+                // fq.align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
                 fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-            }
+            // }
 
             labels.push(fq);
         }

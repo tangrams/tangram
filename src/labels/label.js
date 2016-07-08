@@ -5,9 +5,9 @@ import OBB from '../utils/obb';
 
 export default class Label {
 
-    constructor (size, options = {}) {
+    constructor (size, layout = {}) {
         this.size = size;
-        this.options = options;
+        this.layout = layout;
         this.position = null;
         this.placed = null;
         this.aabb = null;
@@ -23,7 +23,7 @@ export default class Label {
         // Broad phase
         if (aabbs.length > 0) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
-                // log('trace', 'collision: broad phase collide', this.options.id, this, this.aabb, aabbs[j]);
+                // log('trace', 'collision: broad phase collide', this.layout.id, this, this.aabb, aabbs[j]);
 
                 // Skip if colliding with excluded label
                 if (exclude && aabbs[j] === exclude.aabb) {
@@ -33,14 +33,14 @@ export default class Label {
 
                 // Skip narrow phase collision if no rotation
                 if (this.obb.angle === 0 && obbs[j].angle === 0) {
-                    // log('trace', 'collision: skip narrow phase collide because neither is rotated', this.options.id, this, this.obb, obbs[j]);
+                    // log('trace', 'collision: skip narrow phase collide because neither is rotated', this.layout.id, this, this.obb, obbs[j]);
                     intersect = true;
                     return true;
                 }
 
                 // Narrow phase
                 if (OBB.intersect(this.obb, obbs[j])) {
-                    // log('trace', 'collision: narrow phase collide', this.options.id, this, this.obb, obbs[j]);
+                    // log('trace', 'collision: narrow phase collide', this.layout.id, this, this.obb, obbs[j]);
                     intersect = true;
                     return true;
                 }
@@ -74,11 +74,11 @@ export default class Label {
     // (e.g. useful for linked objects that shouldn't affect each other's placement)
     discard (bboxes, exclude = null) {
         // Should the label be culled if it can't fit inside the tile bounds?
-        if (this.options.cull_from_tile) {
+        if (this.layout.cull_from_tile) {
             let in_tile = this.inTileBounds();
 
             // If it doesn't fit, should we try to move it into the tile bounds?
-            if (!in_tile && this.options.move_into_tile) {
+            if (!in_tile && this.layout.move_into_tile) {
                 // Can we fit the label into the tile?
                 if (!this.moveIntoTile()) {
                     return true; // can't fit in tile, discard

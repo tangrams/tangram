@@ -51,7 +51,7 @@ export default Collision = {
         let tile_objects = state.objects;
         for (let i=0; i < objects.length; i++) {
             let obj = objects[i];
-            let priority = obj.layout.priority;
+            let priority = obj.label.layout.priority;
             tile_objects[priority] = tile_objects[priority] || {};
             tile_objects[priority][style] = tile_objects[priority][style] || [];
             tile_objects[priority][style].push(obj);
@@ -116,7 +116,7 @@ export default Collision = {
     // Run collision and repeat check to see if label can currently be placed
     canBePlaced (object, tile, exclude = null) {
         let label = object.label;
-        let layout = object.layout;
+        let layout = object.label.layout;
         let candidates = object.candidates;
 
         // Determine if any of the placement candidates options can be assigned as the label
@@ -125,7 +125,6 @@ export default Collision = {
                 for (let p=0; p < candidates.length; p++) {
                     if (this.canBePlaced(candidates[p], tile, exclude)) {
                         object.label = candidates[p].label; // assign placed label
-                        object.align = candidates[p].align;
                         object.candidates = null; // don't check candidates again
                         return true;
                     }
@@ -164,14 +163,14 @@ export default Collision = {
     },
 
     // Place label
-    place ({ label, layout }, tile) {
+    place ({ label }, tile) {
         // Skip if already processed (e.g. by parent object)
         if (label.placed != null) {
             return;
         }
 
         // Register as placed for future collision and repeat culling
-        RepeatGroup.add(label, layout, tile);
+        RepeatGroup.add(label, label.layout, tile);
         label.add(this.tiles[tile].bboxes);
     }
 

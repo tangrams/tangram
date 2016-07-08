@@ -6,16 +6,17 @@ import {StyleParser} from '../styles/style_parser';
 
 export default class LabelPoint extends Label {
 
-    constructor (position, size, options) {
-        super(size, options);
+    constructor (position, size, layout) {
+        super(size, layout);
         this.position = [position[0], position[1]];
-        this.offset = [this.options.offset[0], this.options.offset[1]];
-        this.anchor = this.options.anchor;
-        this.parent = this.options.parent;
+        this.offset = [this.layout.offset[0], this.layout.offset[1]];
+        this.anchor = this.layout.anchor;
+        this.parent = this.layout.parent;
         this.update();
     }
 
     update() {
+        this.align = this.layout.align || PointAnchor.alignForAnchor(this.anchor); // TODO: move to parent Label class
         this.computeOffset();
         this.updateBBoxes();
     }
@@ -42,12 +43,12 @@ export default class LabelPoint extends Label {
     }
 
     updateBBoxes () {
-        let width = (this.size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel * Label.epsilon;
-        let height = (this.size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel * Label.epsilon;
+        let width = (this.size[0] + this.layout.buffer[0] * 2) * this.layout.units_per_pixel * Label.epsilon;
+        let height = (this.size[1] + this.layout.buffer[1] * 2) * this.layout.units_per_pixel * Label.epsilon;
 
         let p = [
-            this.position[0] + (this.offset[0] * this.options.units_per_pixel),
-            this.position[1] - (this.offset[1] * this.options.units_per_pixel)
+            this.position[0] + (this.offset[0] * this.layout.units_per_pixel),
+            this.position[1] - (this.offset[1] * this.layout.units_per_pixel)
         ];
 
         this.obb = new OBB(p[0], p[1], 0, width, height);
