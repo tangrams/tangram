@@ -16,8 +16,6 @@ export default class LabelLine extends Label {
         this.lines = lines;
         this.offset = this.options.offset;
 
-        // debugger
-
         this.segment_size = options.segment_size;
 
         this.placement = (options.placement === undefined) ? PLACEMENT.MID_POINT : options.placement;
@@ -235,10 +233,16 @@ export default class LabelLine extends Label {
                 var orientation1 = getOrientationFromSegment(segment[0], segment[1]);
                 var orientation2 = getOrientationFromSegment(segment[1], segment[2]);
 
-                var theta = Math.PI - Math.abs(this.angle[1] - this.angle[0]);
-                if (Math.abs(this.angle[1] - this.angle[0]) > Math.PI) {
-                    theta *= - 1;
-                }
+                var angle0 = this.angle[0];
+                if (angle0 < 0) angle0 += 2 * Math.PI;
+
+                var angle1 = this.angle[1];
+                if (angle1 < 0) angle1 += 2 * Math.PI;
+
+                var theta = Math.PI - Math.abs(angle1 - angle0);
+
+                // right turn
+                if (theta < 0) theta *= -1;
 
                 var dx = 0.5 * this.options.collision_size[1] / Math.tan(0.5 * theta);
 
@@ -246,10 +250,10 @@ export default class LabelLine extends Label {
                     var size = this.collapsed_size[i];
                     var angle = this.angle[i];
 
-                    let width = size * upp * Label.epsilon + dx;
+                    let width = size * upp * Label.epsilon;
 
                     var direction = (i == 0) ? -1 : 1;
-                    var offset = Vector.rot([direction * 0.5 * width, 0], -angle);
+                    var offset = Vector.rot([direction * 0.5 * (width + dx), 0], -angle);
                     var position = Vector.add(this.position, offset);
 
                     var obb = getOBB(position, width, height, angle, this.offset, upp);
