@@ -16,8 +16,9 @@ export default class LabelLine extends Label {
         this.lines = lines;
         this.offset = this.options.offset;
 
+        // debugger
+
         this.segment_size = options.segment_size;
-        this.segment_texture_size = options.segment_texture_size;
 
         this.placement = (options.placement === undefined) ? PLACEMENT.MID_POINT : options.placement;
 
@@ -156,7 +157,7 @@ export default class LabelLine extends Label {
 
         if (does_fit && this.kink_index > 0) {
             var width1 = 0;
-            var width2 = this.size[0] + 16;
+            var width2 = this.size[0];
             for (var i = 0; i < this.kink_index; i++) {
                 var segment_width = this.segment_size[i];
                 width1 += segment_width;
@@ -243,23 +244,7 @@ export default class LabelLine extends Label {
                     theta *= - 1;
                 }
 
-                // var s0 = this.lines[this.segment_index - 1];
-                // var s1 = this.lines[this.segment_index];
-                // var s2 = this.lines[this.segment_index + 1];
-
-                // var diff0 = [s1[0] - s0[0], s1[1] - s0[1]];
-                // var diff1 = [s2[0] - s1[0], s2[1] - s1[1]];
-
-                // var theta = Math.PI - Math.abs(Vector.angleBetween(
-                //     Vector.normalize(diff0),
-                //     Vector.normalize(diff1)
-                // ));
-
-                // if (Math.abs(theta2 - theta) > .001) console.log('different: ', theta2, theta, this.angle)
-                // else console.log('same: ', this.angle)
-
-                // factor to push apart labels so their corner's (defined by their height) touch
-                var dx = (this.size[1]) / Math.tan(0.5 * theta);
+                var dx = (this.options.collision_height) / Math.tan(0.5 * theta);
 
                 for (var i = 0; i < this.collapsed_size.length; i++){
                     var size = this.collapsed_size[i];
@@ -356,22 +341,4 @@ function getAngleFromSegment(pt1, pt2) {
 
 function getOrientationFromSegment(pt1, pt2) {
     return pt1[0] >= pt2[0];
-}
-
-function nudge() {
-    if (this.angle[1] === undefined) return;
-
-    var height = this.size[1] / 2;
-    var angle_delta = Math.abs(this.angle[1] - this.angle[0]) % 2*Math.PI;
-    var dx = height * Math.sin(0.5 * angle_delta);
-
-    if (this.pre_offset[0][0] < 0)
-        this.pre_offset[0][0] -= dx;
-    else
-        this.pre_offset[0][0] += dx;
-
-    if (this.pre_offset[1][0] < 0)
-        this.pre_offset[1][0] -= dx;
-    else
-        this.pre_offset[1][0] += dx;
 }

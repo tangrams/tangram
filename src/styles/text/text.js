@@ -81,17 +81,17 @@ Object.assign(TextStyle, {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
 
+            // debugger
             fq.layout.segment_size = text_info.size.segment_size;
-            fq.layout.segment_texture_size = text_info.size.segment_texture_size;
-            let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
+            fq.layout.collision_height = text_info.size.collision_size[1];
+
+            let feature_labels = this.buildLabels(text_info.size.logical_size, fq.feature.geometry, fq.layout);
             for (let i = 0; i < feature_labels.length; i++) {
-                // TODO: why are we copying object?
                 let fql = Object.create(fq);
                 fql.label = feature_labels[i];
                 labels.push(fql);
             }
         }
-        // debugger
         return labels;
     },
 
@@ -119,10 +119,6 @@ Object.assign(TextStyle, {
                     style.angle = q.label.angle || 0;
                     style.texcoords = text_info.texcoords;
                     style.multi_texcoords = text_info.multi_texcoords;
-
-                    // debugger
-                    style.segment_size = text_info.size.segment_size;
-
                     Style.addFeature.call(this, q.feature, q.draw, q.context);
                 });
             }
