@@ -1,7 +1,7 @@
-import Utils from './utils';
+import Utils from './utils/utils';
 import JSZip from 'jszip';
 
-export class ResourceBundle {
+export class SceneBundle {
 
     constructor(url, path) {
         this.url = url;
@@ -18,7 +18,7 @@ export class ResourceBundle {
 
 }
 
-export class ZipBundle extends ResourceBundle {
+export class ZipSceneBundle extends SceneBundle {
 
     constructor(url, path) {
         super(url, path);
@@ -83,9 +83,9 @@ export class ZipBundle extends ResourceBundle {
 
 }
 
-export function createResourceBundle(url, path) {
+export function createSceneBundle(url, path) {
     if (typeof url === 'string' && Utils.extensionForURL(url) === 'zip') {
-        return new ZipBundle(url, path);
+        return new ZipSceneBundle(url, path);
     }
-    return new ResourceBundle(url, path);
+    return new SceneBundle(url, path);
 }

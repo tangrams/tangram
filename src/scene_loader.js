@@ -3,7 +3,7 @@ import Utils from './utils/utils';
 import GLSL from './gl/glsl';
 import mergeObjects from './utils/merge';
 import subscribeMixin from './utils/subscribe';
-import {createResourceBundle} from './utils/resource_bundle';
+import {createSceneBundle} from './scene_bundle';
 
 var SceneLoader;
 
@@ -40,7 +40,7 @@ export default SceneLoader = {
             return Promise.resolve({});
         }
 
-        let bundle = createResourceBundle(url, path);
+        let bundle = createSceneBundle(url, path);
 
         return bundle.load().then(config => {
             // accept single-string or array
