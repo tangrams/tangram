@@ -521,6 +521,7 @@ Object.assign(Points, {
                 this.buildLabel(label, style, vertex_data);
         }
     },
+
     buildLabel(label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle ? label.angle[0] : style.angle[0];
@@ -537,22 +538,25 @@ Object.assign(Points, {
             vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
+
     buildArticulatedLabel(label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         var size = style.size.slice();
 
-        var a = style.multi_texcoords[0].slice();
-        a[2] = style.multi_texcoords[label.kink_index - 1][2];
-
-        var b = style.multi_texcoords[label.kink_index].slice();
-        b[2] = style.multi_texcoords[style.multi_texcoords.length - 1][2];
-        var tex_coords = [a, b];
-
         for (var i = 0; i < 2; i++){
-            var texcoords = tex_coords[i];
             var angle = label.angle[i];
             size[0] = label.collapsed_size[i];
             var pre_offset = label.pre_offset[i];
+
+            var texcoord;
+            if (i == 0) {
+                texcoord = style.multi_texcoords[0].slice();
+                texcoord[2] = style.multi_texcoords[label.kink_index - 1][2];
+            }
+            else {
+                texcoord = style.multi_texcoords[label.kink_index].slice();
+                texcoord[2] = style.multi_texcoords[style.multi_texcoords.length - 1][2];
+            }
 
             this.buildQuad(
                 [label.position],               // position
@@ -561,7 +565,7 @@ Object.assign(Points, {
                 style.sampler,                  // texture sampler to use
                 label.offset,                   // offset from center in pixels
                 pre_offset,
-                texcoords,                // texture UVs
+                texcoord,                       // texture UVs
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }

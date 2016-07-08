@@ -110,10 +110,8 @@ export const TextLabels = {
             this.texts[tile.key] = texts;
 
             let labels = this.createLabels(tile.key, queue);
-            // debugger
 
             return Collision.collide(labels, collision_group, tile.key).then(labels => {
-                // debugger
                 if (tile.canceled) {
                     log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
                     return {};

@@ -35,7 +35,6 @@ export default class CanvasText {
     }
 
     textSizes (texts) {
-        // debugger
         for (let style in texts) {
             let text_infos = texts[style];
             let first = true;
@@ -230,10 +229,13 @@ export default class CanvasText {
             // this.context.lineWidth = 0;
         }
 
-        var lineWidth = 1;
+        var lineWidth = 2;
         this.context.strokeStyle = '#000';
         this.context.lineWidth = lineWidth;
-        this.context.strokeRect(x + 16, y + 16, 2*collision_size[0], 2*collision_size[1]);
+        this.context.strokeRect(x + 16, y + 16, 2 * collision_size[0], 2 * collision_size[1]);
+
+        this.context.strokeStyle = '#555';
+        this.context.strokeRect(x, y, texture_size[0], texture_size[1]);
     }
 
     rasterize (texts, texture_size) {
@@ -256,8 +258,6 @@ export default class CanvasText {
                     transform: text_settings.transform,
                     align: text_settings.align
                 });
-
-                // debugger
 
                 info.texcoords = Texture.getTexcoordsForSprite(
                     info.position,
