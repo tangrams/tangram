@@ -391,16 +391,16 @@ Object.assign(Points, {
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
 
             if (Array.isArray(fq.layout.anchor)) {
-                let alternates = [];
+                let candidates = [];
                 let anchors = fq.layout.anchor;
                 for (let a=0; a < anchors.length; a++) {
                     fq.layout.anchor = anchors[a];
                     let align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
                     let label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-                    alternates.push({ label, align, layout: fq.layout });
+                    candidates.push({ label, align, layout: fq.layout });
                 }
                 fq.layout.anchor = anchors; // restore anchors
-                fq.placements = alternates;
+                fq.candidates = candidates;
             }
             else {
                 // Single-anchor label

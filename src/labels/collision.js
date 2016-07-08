@@ -117,20 +117,20 @@ export default Collision = {
     canBePlaced (object, tile, exclude = null) {
         let label = object.label;
         let layout = object.layout;
-        let placements = object.placements;
+        let candidates = object.candidates;
 
-        // Determine if any of the placement options can be assigned as the label
+        // Determine if any of the placement candidates options can be assigned as the label
         if (!label) {
-            if (Array.isArray(placements)) {
-                for (let p=0; p < placements.length; p++) {
-                    if (this.canBePlaced(placements[p], tile, exclude)) {
-                        object.label = placements[p].label; // assign placed label
-                        object.align = placements[p].align;
-                        object.placements = null; // don't check placements again
+            if (Array.isArray(candidates)) {
+                for (let p=0; p < candidates.length; p++) {
+                    if (this.canBePlaced(candidates[p], tile, exclude)) {
+                        object.label = candidates[p].label; // assign placed label
+                        object.align = candidates[p].align;
+                        object.candidates = null; // don't check candidates again
                         return true;
                     }
                 }
-                object.placements = null; // don't check placements again
+                object.candidates = null; // don't check candidates again
             }
 
             if (!object.label) {
