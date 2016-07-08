@@ -330,18 +330,20 @@ export default class CanvasText {
         }
 
         let options = { family };
+        let inject = Promise.resolve();
 
         if (typeof face === 'object') {
             Object.assign(options, face);
 
             // If URL is defined, inject font into document
             if (typeof face.url === 'string') {
-                this.injectFontFace(options);
+                inject = this.injectFontFace(options);
             }
         }
 
         // Wait for font to load
-        return (new FontFaceObserver(family, options)).load().then(
+        let observer = new FontFaceObserver(family, options);
+        return inject.then(() => observer.load()).then(
             () => {
                 // Promise resolves, font is available
                 log('debug', `Font face '${family}' is available`, options);
@@ -356,20 +358,37 @@ export default class CanvasText {
     // Loads a font face via CSS injection
     // TODO: consider support for multiple format URLs per face, unicode ranges
     static injectFontFace ({ family, url, weight, style }) {
-        let css = `
-            @font-face {
-                font-family: '${family}';
-                font-weight: ${weight || 'normal'};
-                font-style: ${style || 'normal'};
-                src: url(${encodeURI(url)});
-            }
-        `;
+        // Convert blob URLs to data URLs, to avoid local resource restrictions when loading from .zip bundles
+        // ('Not allowed to load local resource: blob:...' console errors in Chrome)
+        let preprocess = Promise.resolve(url);
+        if (url.slice(0, 5) === 'blob:') {
+            preprocess = Utils.io(url, 60000, 'arraybuffer').then(data => {
+                let bytes = new Uint8Array(data);
+                let str = '';
 
-        let style_el = document.createElement('style');
-        style_el.appendChild(document.createTextNode(""));
-        document.head.appendChild(style_el);
-        style_el.sheet.insertRule(css, 0);
-        log('trace', 'Injecting CSS font face:', css);
+                for (let i = 0; i < bytes.length; i++) {
+                    str += String.fromCharCode(bytes[i]);
+                }
+                return 'data:font/opentype;base64,' + btoa(str); // TODO: Set the correct font format.
+            });
+        }
+
+        return preprocess.then(url => {
+            let css = `
+                @font-face {
+                    font-family: '${family}';
+                    font-weight: ${weight || 'normal'};
+                    font-style: ${style || 'normal'};
+                    src: url(${encodeURI(url)});
+                }
+            `;
+
+            let style_el = document.createElement('style');
+            style_el.appendChild(document.createTextNode(""));
+            document.head.appendChild(style_el);
+            style_el.sheet.insertRule(css, 0);
+            log('trace', 'Injecting CSS font face:', css);
+        });
     }
 
 }
