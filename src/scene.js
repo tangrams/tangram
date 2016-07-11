@@ -72,8 +72,8 @@ export default class Scene {
 
         this.createListeners();
         this.updating = 0;
-        this.generation = 0; // an id that is incremented each time the scene config is invalidated
-        this.last_complete_generation = 0; // last generation id with a complete view
+        this.generation = Scene.generation; // an id that is incremented each time the scene config is invalidated
+        this.last_complete_generation = Scene.generation; // last generation id with a complete view
         this.setupDebug();
 
         this.log_level = options.logLevel || 'warn';
@@ -960,7 +960,7 @@ export default class Scene {
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
     updateConfig({ rebuild = true, serialize_funcs } = {}) {
-        this.generation++;
+        this.generation = ++Scene.generation;
         this.updating++;
         this.config.scene = this.config.scene || {};
 
@@ -1177,3 +1177,5 @@ export default class Scene {
     }
 
 }
+
+Scene.generation = 0; // global unique generation id across all scenes
