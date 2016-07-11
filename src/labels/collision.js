@@ -117,25 +117,6 @@ export default Collision = {
     canBePlaced (object, tile, exclude = null) {
         let label = object.label;
         let layout = object.label.layout;
-        let candidates = object.candidates;
-
-        // Determine if any of the placement candidates options can be assigned as the label
-        if (!label) {
-            if (Array.isArray(candidates)) {
-                for (let p=0; p < candidates.length; p++) {
-                    if (this.canBePlaced(candidates[p], tile, exclude)) {
-                        object.label = candidates[p].label; // assign placed label
-                        object.candidates = null; // don't check candidates again
-                        return true;
-                    }
-                }
-                object.candidates = null; // don't check candidates again
-            }
-
-            if (!object.label) {
-                return false;
-            }
-        }
 
         // Skip if already processed (e.g. by parent object)
         if (label.placed != null) {
