@@ -331,12 +331,15 @@ Object.assign(Points, {
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
         if (draw.text) {
             draw.text.key = draw.key; // copy layer key for use as label repeat group
-            draw.text.anchor = draw.text.anchor || 'bottom'; // Default text anchor to bottom
+            draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
         }
 
         return draw;
     },
+
+    // Default to trying all anchor placements
+    default_anchor: ['bottom', 'top', 'right', 'left', 'bottom-right', 'bottom-left', 'top-right', 'top-left'],
 
     // Compute label layout-related properties
     computeLayout (target, feature, draw, context, tile) {
