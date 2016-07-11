@@ -61,11 +61,13 @@ The *scene file* is where you specify data sources and layers, filter the data, 
 
 The scene file is written in YAML, which is a data-serialization format like JSON, but with less punctuation. Instead, data structures are specified with whitespace, like Python. One neat side benefit is that the format is super friendly to strings, which means you can write inline JavaScript and GLSL code straight into the scene file, without needing to wrap it in quotes or concatenate anything.
 
-## Documentation
+## Support
 
-👉 [Tangram Documentation](https://mapzen.com/documentation/tangram) 👈
+For technical reference and concept overviews, see the [Tangram Documentation](https://mapzen.com/documentation/tangram).
 
 For questions, comments, suggestions, or to report a bug, please open a [new issue](https://github.com/tangrams/tangram/issues).
+
+You can also find us in the Tangram-chat gitter room: https://gitter.im/tangrams/tangram-chat
 
 ## Contributions Welcome
 
