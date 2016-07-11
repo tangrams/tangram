@@ -1,9 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
-// import chaiAsPromised from 'chai-as-promised';
-// chai.use(chaiAsPromised);
 
-import {Styles, StyleManager} from '../src/styles/style_manager';
+import {StyleManager} from '../src/styles/style_manager';
 import {Style} from '../src/styles/style';
 import Context from '../src/gl/context';
 import Camera from '../src/camera';
@@ -15,6 +13,12 @@ var canvas, gl;
 
 describe('Styles:', () => {
 
+    let style_manager;
+
+    beforeEach(() => {
+        style_manager = new StyleManager();
+    });
+
     describe('StyleManager:', () => {
 
         beforeEach(() => {
@@ -24,58 +28,60 @@ describe('Styles:', () => {
 
             canvas = document.createElement('canvas');
             gl = Context.getContext(canvas, { alpha: false });
-            StyleManager.init();
+
+            style_manager.init();
         });
 
         afterEach(() => {
-            StyleManager.destroy();
+            style_manager.destroy();
             canvas = null;
             gl = null;
         });
 
         it('initializes built-in styles', () => {
-            assert.equal(Styles.polygons.constructor, Style.constructor);
-            assert.equal(Styles.points.constructor, Style.constructor);
-            assert.equal(Styles.text.constructor, Style.constructor);
+            assert.equal(style_manager.styles.polygons.constructor, Style.constructor);
+            assert.equal(style_manager.styles.points.constructor, Style.constructor);
+            assert.equal(style_manager.styles.text.constructor, Style.constructor);
         });
 
         it('creates a custom style', () => {
-            StyleManager.create('rainbow', sampleScene.styles.rainbow);
-            assert.equal(Styles.rainbow.constructor, Style.constructor);
-            assert.equal(Styles.rainbow.base, 'polygons');
+            style_manager.create('rainbow', sampleScene.styles.rainbow);
+            assert.equal(style_manager.styles.rainbow.constructor, Style.constructor);
+            assert.equal(style_manager.styles.rainbow.base, 'polygons');
         });
 
         describe('builds custom styles w/dependencies from stylesheet', () => {
 
             beforeEach(() => {
-                StyleManager.build(sampleScene.styles);
+                style_manager.build(sampleScene.styles);
+                style_manager.initStyles();
             });
 
             it('compiles parent custom style', () => {
-                Styles.rainbow.setGL(gl);
-                Styles.rainbow.compile();
-                assert.equal(Styles.rainbow.constructor, Style.constructor);
-                assert.equal(Styles.rainbow.base, 'polygons');
-                assert.ok(Styles.rainbow.compiled);
-                assert.ok(Styles.rainbow.program.compiled);
+                style_manager.styles.rainbow.setGL(gl);
+                style_manager.styles.rainbow.compile();
+                assert.equal(style_manager.styles.rainbow.constructor, Style.constructor);
+                assert.equal(style_manager.styles.rainbow.base, 'polygons');
+                assert.ok(style_manager.styles.rainbow.compiled);
+                assert.ok(style_manager.styles.rainbow.program.compiled);
             });
 
             it('compiles child style dependent on another custom style', () => {
-                Styles.rainbow_child.setGL(gl);
-                Styles.rainbow_child.compile();
-                assert.equal(Styles.rainbow_child.constructor, Style.constructor);
-                assert.equal(Styles.rainbow_child.base, 'polygons');
-                assert.ok(Styles.rainbow_child.compiled);
-                assert.ok(Styles.rainbow_child.program.compiled);
+                style_manager.styles.rainbow_child.setGL(gl);
+                style_manager.styles.rainbow_child.compile();
+                assert.equal(style_manager.styles.rainbow_child.constructor, Style.constructor);
+                assert.equal(style_manager.styles.rainbow_child.base, 'polygons');
+                assert.ok(style_manager.styles.rainbow_child.compiled);
+                assert.ok(style_manager.styles.rainbow_child.program.compiled);
             });
 
             it('compiles a style with the same style mixed by multiple ancestors', () => {
-                Styles.descendant.setGL(gl);
-                Styles.descendant.compile();
-                assert.equal(Styles.descendant.constructor, Style.constructor);
-                assert.equal(Styles.descendant.base, 'polygons');
-                assert.ok(Styles.descendant.compiled);
-                assert.ok(Styles.descendant.program.compiled);
+                style_manager.styles.descendant.setGL(gl);
+                style_manager.styles.descendant.compile();
+                assert.equal(style_manager.styles.descendant.constructor, Style.constructor);
+                assert.equal(style_manager.styles.descendant.base, 'polygons');
+                assert.ok(style_manager.styles.descendant.compiled);
+                assert.ok(style_manager.styles.descendant.program.compiled);
             });
 
         });
@@ -87,29 +93,29 @@ describe('Styles:', () => {
         beforeEach(() => {
             canvas = document.createElement('canvas');
             gl = Context.getContext(canvas, { alpha: false });
-            StyleManager.init();
+            style_manager.init();
         });
 
         afterEach(() => {
-            StyleManager.destroy();
+            style_manager.destroy();
             canvas = null;
             gl = null;
         });
 
         it('compiles a program', () => {
-            Styles.polygons.init();
-            Styles.polygons.setGL(gl);
-            Styles.polygons.compile();
-            assert.ok(Styles.polygons.compiled);
+            style_manager.styles.polygons.init();
+            style_manager.styles.polygons.setGL(gl);
+            style_manager.styles.polygons.compile();
+            assert.ok(style_manager.styles.polygons.compiled);
         });
 
         it('injects a dependent uniform in a custom style', () => {
-            StyleManager.create('scale', sampleScene.styles.scale);
-            Styles.scale.init();
-            Styles.scale.setGL(gl);
-            Styles.scale.compile();
-            assert.ok(Styles.scale.compiled);
-            assert.ok(Styles.scale.program.compiled);
+            style_manager.create('scale', sampleScene.styles.scale);
+            style_manager.styles.scale.init();
+            style_manager.styles.scale.setGL(gl);
+            style_manager.styles.scale.compile();
+            assert.ok(style_manager.styles.scale.compiled);
+            assert.ok(style_manager.styles.scale.program.compiled);
         });
 
     });

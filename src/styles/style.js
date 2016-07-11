@@ -19,12 +19,13 @@ const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.gl
 // Base class
 
 export var Style = {
-    init ({ generation, sources = {}, introspection } = {}) {
+    init ({ generation, styles, sources = {}, introspection } = {}) {
         if (!this.isBuiltIn()) {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
 
         this.generation = generation;               // scene generation id this style was created for
+        this.styles = styles;                       // styles for scene
         this.sources = sources;                     // data sources for scene
         this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
         this.shaders = (this.hasOwnProperty('shaders') && this.shaders) || {}; // shader customization (uniforms, defines, blocks, etc.)
@@ -39,7 +40,7 @@ export var Style = {
         this.tile_data = {};
 
         // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = 'Style-' + this.name;
+        this.main_thread_target = ['Style', this.name, this.generation].join('/');
         if (Thread.is_main) {
             WorkerBroker.addTarget(this.main_thread_target, this);
         }

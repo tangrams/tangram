@@ -38,6 +38,7 @@ Object.assign(self, {
         log.setLevel(log_level);
         Utils.device_pixel_ratio = device_pixel_ratio;
         FeatureSelection.setPrefix(self._worker_id);
+        self.style_manager = new StyleManager();
         return worker_id;
     },
 
@@ -104,8 +105,10 @@ Object.assign(self, {
 
         // Expand styles
         config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
-        self.styles = StyleManager.build(config.styles, {
+        self.styles = self.style_manager.build(config.styles);
+        self.style_manager.initStyles({
             generation: self.generation,
+            styles: self.styles,
             sources: self.sources.tiles,
             introspection: self.introspection
         });

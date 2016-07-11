@@ -5,8 +5,8 @@ import subscribeMixin from './utils/subscribe';
 import Context from './gl/context';
 import Texture from './gl/texture';
 import VertexArrayObject from './gl/vao';
-import {Style} from './styles/style';
 import {StyleManager} from './styles/style_manager';
+import {Style} from './styles/style';
 import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
 import View from './view';
@@ -16,19 +16,6 @@ import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
 import CanvasText from './styles/text/canvas_text';
-
-import {Polygons} from './styles/polygons/polygons';
-import {Lines} from './styles/lines/lines';
-import {Points} from './styles/points/points';
-import {TextStyle} from './styles/text/text';
-import {RasterStyle} from './styles/raster/raster';
-
-// Add built-in rendering styles
-StyleManager.register(Polygons);
-StyleManager.register(Lines);
-StyleManager.register(Points);
-StyleManager.register(TextStyle);
-StyleManager.register(RasterStyle);
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
@@ -59,6 +46,7 @@ export default class Scene {
 
         this.styles = null;
         this.active_styles = {};
+        this.style_manager = new StyleManager();
 
         this.building = null;                           // tracks current scene building state (tiles being built, etc.)
         this.dirty = true;                              // request a redraw
@@ -184,7 +172,7 @@ export default class Scene {
 
         if (this.gl) {
             Texture.destroy(this.gl);
-            StyleManager.destroy(this.gl);
+            this.style_manager.destroy(this.gl);
             this.styles = {};
 
             // Force context loss
@@ -697,7 +685,7 @@ export default class Scene {
             // Update config (in case JS objects were manipulated directly)
             if (sync) {
                 this.syncConfigToWorker({ serialize_funcs });
-                StyleManager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
+                this.style_manager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
             }
             this.resetFeatureSelection();
             this.resetTime();
@@ -857,7 +845,8 @@ export default class Scene {
         }
 
         // (Re)build styles from config
-        this.styles = StyleManager.build(this.config.styles, this);
+        this.styles = this.style_manager.build(this.config.styles);
+        this.style_manager.initStyles(this);
 
         // Optionally set GL context (used when initializing or re-initializing GL resources)
         for (var style of Utils.values(this.styles)) {
@@ -866,7 +855,7 @@ export default class Scene {
 
         // Find & compile active styles
         this.updateActiveStyles();
-        StyleManager.compile(Object.keys(this.active_styles), this);
+        this.style_manager.compile(Object.keys(this.active_styles), this);
 
         this.dirty = true;
     }
@@ -975,7 +964,7 @@ export default class Scene {
         this.updating++;
         this.config.scene = this.config.scene || {};
 
-        StyleManager.init();
+        this.style_manager.init();
         this.view.reset();
         this.createLights();
         this.createDataSources();

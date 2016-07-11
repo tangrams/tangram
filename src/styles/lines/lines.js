@@ -2,7 +2,6 @@
 
 import {Style} from '../style';
 import {StyleParser} from '../style_parser';
-import {StyleManager} from '../style_manager';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import Texture from '../../gl/texture';
 import VertexLayout from '../../gl/vertex_layout';
@@ -292,7 +291,7 @@ Object.assign(Lines, {
         // Outline (build first so that blended geometry without a depth test is drawn first/under the inner line)
         this.feature_style = this.outline_feature_style; // swap in outline-specific style holder
         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
-            var outline_style = StyleManager.styles[style.outline.style];
+            var outline_style = this.styles[style.outline.style];
             if (outline_style) {
                 outline_style.addFeature(context.feature, style.outline, context);
             }

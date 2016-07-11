@@ -266,7 +266,7 @@ export default class Tile {
         tile.debug.rendering = +new Date() - tile.debug.rendering;
 
         // Finalize array buffer for each render style
-        let tile_styles = StyleManager.stylesForTile(tile.key);
+        let tile_styles = StyleManager.stylesForTile(tile.key, styles);
         tile.mesh_data = {};
         let queue = [];
         for (let s=0; s < tile_styles.length; s++) {
