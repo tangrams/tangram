@@ -517,7 +517,6 @@ layers:
             draw:
                 icons:
                     text:
-                        anchor: [bottom, right, left, top]
                         text_source: global.language_text_source
                         font:
                             family: Montserrat
