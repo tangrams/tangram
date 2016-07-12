@@ -9,6 +9,7 @@ export default class Label {
         this.size = size;
         this.options = options;
         this.position = null;
+        this.offset = options.offset;
         this.aabb = null;
         this.obb = null;
     }

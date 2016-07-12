@@ -16,7 +16,6 @@ export default class LabelLine extends Label {
         super(size, options);
 
         this.lines = lines;
-        this.offset = this.options.offset;
 
         this.segment_size = options.segment_size;
 
@@ -62,6 +61,7 @@ export default class LabelLine extends Label {
                 this.placement = PLACEMENT.MID_POINT;
                 this.kink_index = 0;
                 this.pre_offset = [[0, 0], [0, 0]];
+                this.collapsed_size = [];
                 break;
             case PLACEMENT.MID_POINT:
                 if (this.segment_index >= this.lines.length - 2) return false;

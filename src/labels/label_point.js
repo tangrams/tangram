@@ -8,7 +8,6 @@ export default class LabelPoint extends Label {
     constructor (position, size, options) {
         super(size, options);
         this.position = [position[0], position[1]];
-        this.offset = [this.options.offset[0], this.options.offset[1]];
         this.update();
 
         if (!this.inTileBounds()) {
