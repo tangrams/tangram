@@ -469,7 +469,7 @@ export default class Scene {
             this.render_count_changed = true;
 
             this.getFeatureSelectionMapSize().then(size => {
-                // log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
+                log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
             }, () => {}); // no op when promise rejects (only print last response)
         }
         this.last_render_count = this.render_count;
@@ -716,7 +716,7 @@ export default class Scene {
     // TODO move to tile manager
     tileManagerBuildDone() {
         if (this.building) {
-            // log('info', `Scene: build geometry finished`);
+            log('info', `Scene: build geometry finished`);
             if (this.building.resolve) {
                 this.building.resolve(true);
             }

@@ -178,7 +178,7 @@ Object.assign(TextStyle, {
             // Create multiple labels for line, with each allotted a range of segments
             // in which it will attempt to place
             let seg_per_div = (line.length - 1) / subdiv;
-            for (let i=0; i < subdiv; i++) {
+            for (let i = 0; i < subdiv; i++) {
                 options.segment_start = Math.floor(i * seg_per_div);
                 options.segment_end = Math.floor((i + 1) * seg_per_div);
 
@@ -195,19 +195,19 @@ Object.assign(TextStyle, {
             if (label.throw_away) return;
 
             // push only first label
-            // labels.push(label);
+            labels.push(label);
 
             // push all labels
-            while (label) {
-                labels.push(label);
-                label = label.nextLabelLine();
-            }
+            // while (label) {
+            //     labels.push(label);
+            //     label = label.nextLabelLine();
+            // }
 
             // push group label
             // var labelsForGroup = [];
             // while (label){
             //     labelsForGroup.push(label);
-            //     label = label.next();
+            //     label = label.nextLabelLine();
             // }
 
             // if (labelsForGroup.length > 0) {

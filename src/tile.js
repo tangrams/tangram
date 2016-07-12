@@ -486,7 +486,7 @@ export default class Tile {
     }
 
     printDebug () {
-        // log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
+        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
     }
 
 }
