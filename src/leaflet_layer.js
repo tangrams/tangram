@@ -145,6 +145,7 @@ function extendLeaflet(options) {
 
                 // Add GL canvas to layer container
                 this.scene.container = this.getContainer();
+                this.updateSize();
 
                 // Initial view
                 this.updateView();

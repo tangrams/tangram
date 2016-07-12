@@ -95,14 +95,11 @@ export default class Scene {
         this.initialized = false;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
+        this.createCanvas();
         this.initializing = this.loadScene(config_source, config_path)
             .then(() => this.createWorkers())
             .then(() => {
-                this.createCanvas();
                 this.resetFeatureSelection();
-
-                // Only retain visible tiles for rebuilding
-                this.tile_manager.pruneToVisibleTiles();
 
                 // Scene loaded from a JS object may contain functions which need to be serialized,
                 // while one loaded from a URL does not
@@ -223,10 +220,6 @@ export default class Scene {
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
         this.render_states = new RenderStateManager(this.gl);
-
-        // Let VertexElements know if 32 bit indices for element arrays are available
-        var Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
-        WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', Uint32_flag);
     }
 
     // Get the URL to load the web worker from
@@ -300,7 +293,13 @@ export default class Scene {
         }
 
         this.next_worker = 0;
-        return Promise.all(queue).then(() => log.setWorkers(this.workers));
+        return Promise.all(queue).then(() => {
+            log.setWorkers(this.workers);
+
+            // Let VertexElements know if 32 bit indices for element arrays are available
+            let Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
+            WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', Uint32_flag);
+        });
     }
 
     destroyWorkers() {
@@ -339,6 +338,10 @@ export default class Scene {
     }
 
     resizeMap(width, height) {
+        if (width === 0 && height === 0) {
+            return;
+        }
+
         this.dirty = true;
         this.view.setViewportSize(width, height);
         if (this.gl) {

@@ -167,7 +167,10 @@ export default class View {
 
     ready () {
         // TODO: better concept of "readiness" state?
-        if (this.size.css == null || this.center == null || this.zoom == null) {
+        if (typeof this.size.css.width !== 'number' ||
+            typeof this.size.css.height !== 'number' ||
+            this.center == null ||
+            typeof this.zoom !== 'number') {
              return false;
         }
         return true;
