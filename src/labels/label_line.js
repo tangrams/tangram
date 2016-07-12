@@ -27,7 +27,7 @@ export default class LabelLine extends Label {
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
-        this.segment_index = options.segment_index || 0;
+        this.segment_index = options.segment_index || options.segment_start || 0;
         this.segment_max = options.segment_end || this.lines.length;
 
         this.throw_away = false;
@@ -58,12 +58,13 @@ export default class LabelLine extends Label {
         switch (this.placement) {
             case PLACEMENT.CORNER:
                 this.placement = PLACEMENT.MID_POINT;
+                this.kink_index = 0;
+                this.pre_offset = [[0, 0], [0, 0]];
                 break;
             case PLACEMENT.MID_POINT:
                 if (this.segment_index >= this.lines.length - 2) return false;
                 if (this.segment_size.length > 1) {
                     this.placement = PLACEMENT.CORNER;
-                    this.kink_index = 0;
                 }
                 this.segment_index++;
                 break;
@@ -241,19 +242,17 @@ export default class LabelLine extends Label {
 
                 var theta = Math.PI - Math.abs(angle1 - angle0);
 
-                // right turn
-                if (theta < 0) theta *= -1;
-
-                var dx = 0.5 * this.options.collision_size[1] / Math.tan(0.5 * theta);
+                var dx = Math.abs(0.5 * this.options.collision_size[1] / Math.tan(0.5 * theta));
 
                 for (var i = 0; i < 2; i++){
-                    var size = this.collapsed_size[i];
+                    var width_px = this.collapsed_size[i];
                     var angle = this.angle[i];
 
-                    let width = size * upp * Label.epsilon;
+                    let width = width_px * upp * Label.epsilon;
 
                     var direction = (i == 0) ? -1 : 1;
-                    var offset = Vector.rot([direction * 0.5 * (width + dx), 0], -angle);
+                    var nudge = direction * (width/2 + dx);
+                    var offset = Vector.rot([nudge, 0], -angle);
                     var position = Vector.add(this.position, offset);
 
                     var obb = getOBB(position, width, height, angle, this.offset, upp);
@@ -261,10 +260,9 @@ export default class LabelLine extends Label {
 
                     this.obbs.push(obb);
                     this.aabbs.push(aabb);
-                }
 
-                this.pre_offset[0][0] = -0.5 * (this.collapsed_size[0] + dx);
-                this.pre_offset[1][0] = 0.5 * (this.collapsed_size[1] + dx);
+                    this.pre_offset[i][0] = direction * (this.collapsed_size[i]/2 + dx);
+                }
                 break;
             case PLACEMENT.MID_POINT:
                 let width = (this.options.collision_size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
@@ -290,7 +288,7 @@ export default class LabelLine extends Label {
     }
 
     add(bboxes) {
-        for (var i = 0; i < this.aabbs.length; i++){
+        for (var i = 0; i < this.aabbs.length; i++) {
             var aabb = this.aabbs[i];
             var obb = this.obbs[i];
             var obj = { aabb, obb };
@@ -303,6 +301,7 @@ export default class LabelLine extends Label {
             var aabb = this.aabbs[i];
             var obb = this.obbs[i];
             var obj = { aabb, obb };
+
             var shouldDiscard = super.occluded.call(obj, bboxes);
             if (shouldDiscard) return true;
         }
@@ -311,10 +310,17 @@ export default class LabelLine extends Label {
 }
 
 function getOBB(position, width, height, angle, offset, upp) {
+    let p0, p1;
     // apply offset, x positive, y pointing down
-    offset = Vector.rot(offset, angle);
-    let p0 = position[0] + (offset[0] * upp);
-    let p1 = position[1] - (offset[1] * upp);
+    if (offset[0] !== 0 || offset[1] !== 0) {
+        offset = Vector.rot(offset, angle);
+        p0 = position[0] + (offset[0] * upp);
+        p1 = position[1] - (offset[1] * upp);
+    }
+    else {
+        p0 = position[0];
+        p1 = position[1];
+    }
 
     // the angle of the obb is negative since it's the tile system y axis is pointing down
     return new OBB(p0, p1, -angle, width, height);
