@@ -25,6 +25,7 @@ export default class LabelLine extends Label {
         this.pre_offset = [[0,0], [0,0]];
         this.collapsed_size = [];
         this.kink_index = 0;
+        this.angle = [];
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
@@ -62,6 +63,7 @@ export default class LabelLine extends Label {
                 this.kink_index = 0;
                 this.pre_offset = [[0, 0], [0, 0]];
                 this.collapsed_size = [];
+                this.angle = [];
                 break;
             case PLACEMENT.MID_POINT:
                 if (this.segment_index >= this.lines.length - 2) return false;
