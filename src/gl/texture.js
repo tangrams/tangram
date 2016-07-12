@@ -91,11 +91,12 @@ export default class Texture {
             if (Texture.activeUnit !== unit) {
                 this.gl.activeTexture(this.gl.TEXTURE0 + unit);
                 Texture.activeUnit = unit;
+                Texture.boundTexture = null; // texture must be re-bound when unit changes
             }
         }
-        if (Texture.activeTexture !== this.texture) {
+        if (Texture.boundTexture !== this.texture) {
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-            Texture.activeTexture = this.texture;
+            Texture.boundTexture = this.texture;
         }
     }
 
@@ -477,8 +478,8 @@ Texture.getMaxTextureSize = function (gl) {
 // Global set of textures, by name
 Texture.textures = {};
 Texture.texture_configs = {};
-Texture.boundTexture = -1;
-Texture.activeUnit = -1;
+Texture.boundTexture = null;
+Texture.activeUnit = null;
 
 Texture.base_url = null; // optional base URL to add to textures
 
