@@ -355,39 +355,71 @@ export default class CanvasText {
         );
     }
 
-    // Loads a font face via CSS injection
+    // Loads a font face via either the native FontFace API, or CSS injection
     // TODO: consider support for multiple format URLs per face, unicode ranges
     static injectFontFace ({ family, url, weight, style }) {
-        // Convert blob URLs to data URLs, to avoid local resource restrictions when loading from .zip bundles
-        // ('Not allowed to load local resource: blob:...' console errors in Chrome)
+        if (CanvasText.supports_native_font_loading === undefined) {
+            CanvasText.supports_native_font_loading = (window.FontFace !== undefined);
+        }
+
+        // Convert blob URLs, depending on whether the native FontFace API will be used or not.
+        //
+        // When the FontFace API *is* supported, the blob URL is read into a raw data array.
+        // NB: it's inefficient to be converting blob URLs into typed arrays here, since they originated
+        // as raw data *before* they were converted into blob URLs. However, this process should be fast since
+        // these are native browser functions and all data is local (no network request), and it keeps the
+        // logic streamlined by allowing us to continue to use a URL-based interface for all scene resources.
+        //
+        // When the FontFace API is *not* supported, the blob URL data is converted to a base64 data URL.
+        // This avoids security restricions in some browsers.
+        // Also see https://github.com/bramstein/fontloader/blob/598e9399117bdc946ff786fa2c5007a6bd7d3b9e/src/fontface.js#L145-L153
         let preprocess = Promise.resolve(url);
         if (url.slice(0, 5) === 'blob:') {
             preprocess = Utils.io(url, 60000, 'arraybuffer').then(data => {
                 let bytes = new Uint8Array(data);
-                let str = '';
-
-                for (let i = 0; i < bytes.length; i++) {
-                    str += String.fromCharCode(bytes[i]);
+                if (CanvasText.supports_native_font_loading) {
+                    return bytes; // use raw binary data
                 }
-                return 'data:font/opentype;base64,' + btoa(str); // TODO: Set the correct font format.
+                else {
+                    let str = '';
+                    for (let i = 0; i < bytes.length; i++) {
+                        str += String.fromCharCode(bytes[i]);
+                    }
+                    return 'data:font/opentype;base64,' + btoa(str); // base64 encode as data URL
+                }
             });
         }
 
-        return preprocess.then(url => {
-            let css = `
-                @font-face {
-                    font-family: '${family}';
-                    font-weight: ${weight || 'normal'};
-                    font-style: ${style || 'normal'};
-                    src: url(${encodeURI(url)});
+        return preprocess.then(data => {
+            if (CanvasText.supports_native_font_loading) {
+                // Use native FontFace API
+                let face;
+                if (typeof data === 'string') { // add as URL
+                    face = new FontFace(family, `url(${encodeURI(data)})`, { weight, style });
                 }
-            `;
+                else if (data instanceof Uint8Array) { // add as binary data
+                    face = new FontFace(family, data, { weight, style });
+                }
+                document.fonts.add(face);
+                log('trace', 'Adding FontFace to document.fonts:', face);
+            }
+            else {
+                // Use CSS injection
+                let css = `
+                    @font-face {
+                        font-family: '${family}';
+                        font-weight: ${weight || 'normal'};
+                        font-style: ${style || 'normal'};
+                        src: url(${encodeURI(data)});
+                    }
+                `;
 
-            let style_el = document.createElement('style');
-            style_el.appendChild(document.createTextNode(""));
-            document.head.appendChild(style_el);
-            style_el.sheet.insertRule(css, 0);
-            log('trace', 'Injecting CSS font face:', css);
+                let style_el = document.createElement('style');
+                style_el.appendChild(document.createTextNode(""));
+                document.head.appendChild(style_el);
+                style_el.sheet.insertRule(css, 0);
+                log('trace', 'Injecting CSS font face:', css);
+            }
         });
     }
 
