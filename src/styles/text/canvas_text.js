@@ -1,3 +1,4 @@
+/* global FontFace */
 import log from '../../utils/log';
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
