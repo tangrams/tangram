@@ -44,14 +44,14 @@ export default Collision = {
         let state = this.tiles[tile];
         if (!state) {
             log('trace', 'Collision.collide() called with null tile', tile, this.tiles, style, objects);
-            return Promise.reject(Error('Collision.collide() called with null tile', tile, this.tiles, style, objects));
+            return Promise.resolve([]);
         }
 
         // Group by priority and style
         let tile_objects = state.objects;
         for (let i=0; i < objects.length; i++) {
             let obj = objects[i];
-            let priority = obj.layout.priority;
+            let priority = obj.label.layout.priority;
             tile_objects[priority] = tile_objects[priority] || {};
             tile_objects[priority][style] = tile_objects[priority][style] || [];
             tile_objects[priority][style].push(obj);
@@ -114,7 +114,10 @@ export default Collision = {
     },
 
     // Run collision and repeat check to see if label can currently be placed
-    canBePlaced ({ label, layout }, tile, exclude = null) {
+    canBePlaced (object, tile, exclude = null) {
+        let label = object.label;
+        let layout = object.label.layout;
+
         // Skip if already processed (e.g. by parent object)
         if (label.placed != null) {
             return label.placed;
@@ -141,14 +144,14 @@ export default Collision = {
     },
 
     // Place label
-    place ({ label, layout }, tile) {
+    place ({ label }, tile) {
         // Skip if already processed (e.g. by parent object)
         if (label.placed != null) {
             return;
         }
 
         // Register as placed for future collision and repeat culling
-        RepeatGroup.add(label, layout, tile);
+        RepeatGroup.add(label, label.layout, tile);
         label.add(this.tiles[tile].bboxes);
     }
 

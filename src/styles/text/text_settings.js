@@ -1,7 +1,6 @@
 import Utils from '../../utils/utils';
 import Geo from '../../geo';
 import {StyleParser} from '../style_parser';
-import PointAnchor from '../points/point_anchor';
 
 var TextSettings;
 
@@ -19,7 +18,6 @@ export default TextSettings = {
             settings.stroke_width,
             settings.transform,
             settings.text_wrap,
-            settings.align,
             Utils.device_pixel_ratio
         ].join('/');
     },
@@ -92,18 +90,6 @@ export default TextSettings = {
             text_wrap = this.defaults.text_wrap;
         }
         style.text_wrap = text_wrap;
-
-        // default alignment to match anchor
-        if (!draw.align && draw.anchor && draw.anchor !== 'center') {
-            if (PointAnchor.isLeftAnchor(draw.anchor)) {
-                draw.align = 'right';
-            }
-            else if (PointAnchor.isRightAnchor(draw.anchor)) {
-                draw.align = 'left';
-            }
-        }
-
-        style.align = draw.align || this.defaults.align;
 
         return style;
     },

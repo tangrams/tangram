@@ -12,7 +12,6 @@ import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import {TextLabels} from '../text/text_labels';
-import PointAnchor from './point_anchor';
 
 let fs = require('fs');
 const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
@@ -179,23 +178,11 @@ Object.assign(Points, {
             this.parseTextFeature(feature, draw.text, context, tile);
 
         if (tf) {
+            tf.layout.parent = style; // parent point will apply additional anchor/offset to text
+
             // Text labels have a default priority of 0.5 below their parent point (+0.5, priority is lower-is-better)
             // This can be overriden, as long as it is less than or equal to the default
             tf.layout.priority = draw.text.priority ? Math.max(tf.layout.priority, style.priority + 0.5) : (style.priority + 0.5);
-
-            // Additional anchor/offset for point:
-            // point's own anchor, text anchor applied to point, additional point offset
-            tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, draw.anchor);
-            tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, draw.text.anchor);
-            if (style.offset !== StyleParser.zeroPair) {        // point has an offset
-                if (tf.layout.offset === StyleParser.zeroPair) { // no text offset, use point's
-                    tf.layout.offset = style.offset;
-                }
-                else {                                          // text has offset, add point's
-                    tf.layout.offset[0] += style.offset[0];
-                    tf.layout.offset[1] += style.offset[1];
-                }
-            }
 
             // Text labels attached to points should not be moved into tile
             // (they should stay fixed relative to the point)
@@ -251,7 +238,6 @@ Object.assign(Points, {
                     draw: q.draw,
                     context: q.context,
                     style,
-                    layout: style,
                     label
                 };
                 point_objs.push(point_obj);
@@ -306,7 +292,7 @@ Object.assign(Points, {
                         style.size = text_info.size.logical_size;
                         style.angle = q.label.angle || 0;
                         style.sampler = 1; // non-0 = labels
-                        style.texcoords = text_info.texcoords;
+                        style.texcoords = text_info.align[q.label.align].texcoords;
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
@@ -345,12 +331,15 @@ Object.assign(Points, {
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
         if (draw.text) {
             draw.text.key = draw.key; // copy layer key for use as label repeat group
-            draw.text.anchor = draw.text.anchor || 'bottom'; // Default text anchor to bottom
+            draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
         }
 
         return draw;
     },
+
+    // Default to trying all anchor placements
+    default_anchor: ['bottom', 'top', 'right', 'left', 'bottom-right', 'bottom-left', 'top-right', 'top-left'],
 
     // Compute label layout-related properties
     computeLayout (target, feature, draw, context, tile) {

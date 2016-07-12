@@ -487,7 +487,6 @@ layers:
                     size: 24px
                     cull_from_tile: true
                     text:
-                        required: true
                         anchor: center
                         text_source: |
                             function() {
@@ -502,14 +501,9 @@ layers:
                             size: 11px
 
     pois:
-        # visible: false
         data: { source: mapzen }
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
-            points:
-                visible: false # turn on for debug
-                color: red
-                size: 8px
             icons:
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
@@ -523,7 +517,6 @@ layers:
             draw:
                 icons:
                     text:
-                        required: true
                         text_source: global.language_text_source
                         font:
                             family: Montserrat
@@ -551,7 +544,7 @@ layers:
                 draw: { icons: { sprite: museum } }
             station:
                 filter: { kind: [station] }
-                draw: { icons: { sprite: train, priority: 2 } }
+                draw: { icons: { sprite: train, priority: 2, required: false } }
             hospital:
                 filter: { kind: [hospital, pharmacy] }
                 draw: { icons: { sprite: hospital } }

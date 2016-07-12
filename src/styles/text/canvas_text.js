@@ -204,17 +204,20 @@ export default class CanvasText {
                     first = false;
                 }
 
-                this.drawText(lines, info.position, info.size, {
-                    stroke: text_settings.stroke,
-                    transform: text_settings.transform,
-                    align: text_settings.align
-                });
+                // each alignment needs to be rendered separately
+                for (let align in info.align) {
+                    this.drawText(lines, info.align[align].texture_position, info.size, {
+                        stroke: text_settings.stroke,
+                        transform: text_settings.transform,
+                        align: align
+                    });
 
-                info.texcoords = Texture.getTexcoordsForSprite(
-                    info.position,
-                    info.size.texture_size,
-                    texture_size
-                );
+                    info.align[align].texcoords = Texture.getTexcoordsForSprite(
+                        info.align[align].texture_position,
+                        info.size.texture_size,
+                        texture_size
+                    );
+                }
             }
         }
     }
@@ -238,20 +241,26 @@ export default class CanvasText {
         let height = 0;     // overall atlas height
         for (let style in texts) {
             let text_infos = texts[style];
+
             for (let text in text_infos) {
                 let text_info = text_infos[text];
+                // rendered size is same for all alignments
                 let size = text_info.size.texture_size;
-                if (cy + size[1] < max_texture_size) {
-                    text_info.position = [cx, cy]; // add label to current column
-                    cy += size[1];
-                    if (cy > height) {
-                        height = cy;
+
+                // but each alignment needs to be rendered separately
+                for (let align in text_info.align) {
+                    if (cy + size[1] < max_texture_size) {
+                        text_info.align[align].texture_position = [cx, cy]; // add label to current column
+                        cy += size[1];
+                        if (cy > height) {
+                            height = cy;
+                        }
                     }
-                }
-                else { // start new column if taller than texture
-                    cx += widest;
-                    cy = 0;
-                    text_info.position = [cx, cy];
+                    else { // start new column if taller than texture
+                        cx += widest;
+                        cy = 0;
+                        text_info.align[align].texture_position = [cx, cy];
+                    }
                 }
             }
         }
