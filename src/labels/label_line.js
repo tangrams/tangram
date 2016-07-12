@@ -8,6 +8,8 @@ const PLACEMENT = {
     CORNER: 1
 };
 
+const MAX_ANGLE = Math.PI / 2;
+
 export default class LabelLine extends Label {
 
     constructor (size, lines, options) {
@@ -98,7 +100,7 @@ export default class LabelLine extends Label {
 
         if (this.doesSegmentFit(segment)) {
             this.update();
-            if (this.inTileBounds())
+            if (this.inTileBounds() && this.inAngleBounds())
                 return segment;
         }
 
@@ -219,6 +221,25 @@ export default class LabelLine extends Label {
         }
 
         return position;
+    }
+
+    inAngleBounds() {
+        switch (this.placement) {
+            case PLACEMENT.CORNER:
+                var angle0 = this.angle[0];
+                if (angle0 < 0) angle0 += 2 * Math.PI;
+
+                var angle1 = this.angle[1];
+                if (angle1 < 0) angle1 += 2 * Math.PI;
+
+                var theta = Math.abs(angle1 - angle0);
+
+                theta = Math.min(2 * Math.PI - theta, theta);
+
+                return theta <= MAX_ANGLE;
+            case PLACEMENT.MID_POINT:
+                return true;
+        }
     }
 
     updateBBoxes() {
