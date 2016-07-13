@@ -483,7 +483,7 @@ export var Style = {
         // Load textures on main thread and return when done
         // We want to block the building of a raster tile mesh until its texture is loaded,
         // to avoid flickering while loading (texture will render as black)
-        return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
+        return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', [configs])
             .then(textures => {
                 if (!textures || textures.length < 1) {
                     // TODO: warning

@@ -281,7 +281,7 @@ export default class Scene {
 
             log('debug', `Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', [this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio]).then(
                 (id) => {
                     log('debug', `Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -299,7 +299,7 @@ export default class Scene {
 
             // Let VertexElements know if 32 bit indices for element arrays are available
             let Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
-            WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', Uint32_flag);
+            WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', [Uint32_flag]);
         });
     }
 
@@ -332,7 +332,7 @@ export default class Scene {
     // Resize the map when device pixel ratio changes, e.g. when switching between displays
     updateDevicePixelRatio () {
         if (Utils.updateDevicePixelRatio()) {
-            WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', Utils.device_pixel_ratio)
+            WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', [Utils.device_pixel_ratio])
                 .then(() => this.rebuild())
                 .then(() => this.resizeMap(this.view.size.css.width, this.view.size.css.height));
         }
@@ -997,11 +997,11 @@ export default class Scene {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
         this.config_serialized =
             serialize_funcs ? Utils.serializeWithFunctions(this.config) : JSON.stringify(this.config);
-        return WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
+        return WorkerBroker.postMessage(this.workers, 'self.updateConfig', [{
             config: this.config_serialized,
             generation: this.generation,
             introspection: this.introspection
-        });
+        }]);
     }
 
     // Listen to related objects
@@ -1119,12 +1119,12 @@ export default class Scene {
     // Profile helpers, issues a profile on main thread & all workers
     _profile(name) {
         console.profile(`main thread: ${name}`);
-        WorkerBroker.postMessage(this.workers, 'self.profile', name);
+        WorkerBroker.postMessage(this.workers, 'self.profile', [name]);
     }
 
     _profileEnd(name) {
         console.profileEnd(`main thread: ${name}`);
-        WorkerBroker.postMessage(this.workers, 'self.profileEnd', name);
+        WorkerBroker.postMessage(this.workers, 'self.profileEnd', [name]);
     }
 
     // Debug config and functions
