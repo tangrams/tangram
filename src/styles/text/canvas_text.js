@@ -171,7 +171,6 @@ export default class CanvasText {
 
         let logical_size = texture_size.map(v => v / Utils.device_pixel_ratio);
 
-        // debugger
         var segments = lines[0].segments;
         var segment_size = [];
         var segment_texture_size = [];
@@ -226,16 +225,7 @@ export default class CanvasText {
                 this.context.strokeText(str, tx, ty);
             }
             this.context.fillText(str, tx, ty);
-            // this.context.lineWidth = 0;
         }
-
-        var lineWidth = 2;
-        this.context.strokeStyle = '#000';
-        this.context.lineWidth = lineWidth;
-        this.context.strokeRect(x + 16, y + 16, 2 * collision_size[0], 2 * collision_size[1]);
-
-        this.context.strokeStyle = '#555';
-        this.context.strokeRect(x, y, texture_size[0], texture_size[1]);
     }
 
     rasterize (texts, texture_size) {
@@ -270,8 +260,6 @@ export default class CanvasText {
                 var text_texture_size = info.size.texture_size.slice();
                 var x = text_position[0];
                 var y = text_position[1];
-
-                // debugger
 
                 for (var i = 0; i < info.size.segment_texture_size.length; i++){
                     var w = info.size.segment_texture_size[i];
@@ -414,10 +402,3 @@ function reorderWordsLTR(words) {
 
     return words_LTR;
 }
-
-try {
-    if (window.document !== undefined) {
-        window.isRTL = isRTL;
-    }
-}
-catch (e) {}
