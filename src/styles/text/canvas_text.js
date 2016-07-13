@@ -99,11 +99,39 @@ export default class CanvasText {
         // add current line buffer to completed lines, optionally start new line
         function addLine (new_line) {
             line.text = line.text.trim();
-            if (line.text.length > 0) {
-                line.width = ctx.measureText(line.text).width;
-                max_width = Math.max(max_width, Math.ceil(line.width));
-                lines.push(line);
+            if (line.text.length === 0) {
+                return;
             }
+
+            var text = line.text;
+            let line_width = 0;
+
+            if (!new_line) {
+                var words = text.split(' ');
+
+                var words_LTR = reorderWordsLTR(words);
+
+                let widths = [];
+                for (var i = 0; i < words_LTR.length; i++){
+                    var str = words_LTR[i];
+                    if (i < words_LTR.length - 1) str += ' ';
+                    let width = ctx.measureText(str).width;
+                    widths.push(width);
+                    line_width += width;
+                }
+
+                line.segments = widths;
+            }
+            else {
+                line_width = ctx.measureText(text).width;
+                line.segments = [line_width];
+            }
+
+            line.width = line_width;
+            lines.push(line);
+
+            max_width = Math.max(max_width, Math.ceil(line_width));
+
             if (new_line) {
                 line = Object.assign({}, new_line_template);
             }
@@ -148,10 +176,24 @@ export default class CanvasText {
 
         let logical_size = texture_size.map(v => v / Utils.device_pixel_ratio);
 
+        var segments = lines[0].segments;
+        var segment_size = [];
+        var segment_texture_size = [];
+        for (var i = 0; i < segments.length; i++){
+            if (i == 0 || i == segments.length - 1){
+                segment_size[i] = (segments[i] + buffer) / Utils.device_pixel_ratio;
+                segment_texture_size[i] = (segments[i] + buffer);
+            }
+            else{
+                segment_size[i] = segments[i] / Utils.device_pixel_ratio;
+                segment_texture_size[i] = segments[i];
+            }
+        }
+
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
             lines,
-            size: { collision_size, texture_size, logical_size, line_height }
+            size: { collision_size, texture_size, logical_size, line_height, segment_size, segment_texture_size}
         };
     }
 
@@ -159,12 +201,14 @@ export default class CanvasText {
     drawText (lines, [x, y], size, { stroke, transform, align }) {
         align = align || 'center';
 
+        let buffer = this.text_buffer * Utils.device_pixel_ratio;
+        let texture_size = size.texture_size;
+        let collision_size = size.collision_size;
+        let line_height = size.line_height;
+
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
             let str = this.applyTextTransform(line.text, transform);
-            let buffer = this.text_buffer * Utils.device_pixel_ratio;
-            let texture_size = size.texture_size;
-            let line_height = size.line_height;
 
             // Text alignment
             let tx;
@@ -204,19 +248,38 @@ export default class CanvasText {
                     first = false;
                 }
 
-                // each alignment needs to be rendered separately
-                for (let align in info.align) {
-                    this.drawText(lines, info.align[align].texture_position, info.size, {
-                        stroke: text_settings.stroke,
-                        transform: text_settings.transform,
-                        align: align
-                    });
+                this.drawText(lines, info.position, info.size, {
+                    stroke: text_settings.stroke,
+                    transform: text_settings.transform,
+                    align: text_settings.align
+                });
 
-                    info.align[align].texcoords = Texture.getTexcoordsForSprite(
-                        info.align[align].texture_position,
-                        info.size.texture_size,
+                info.texcoords = Texture.getTexcoordsForSprite(
+                    info.position,
+                    info.size.texture_size,
+                    texture_size
+                );
+
+                info.multi_texcoords = [];
+                var text_position = info.position.slice();
+                var text_texture_size = info.size.texture_size.slice();
+                var x = text_position[0];
+                var y = text_position[1];
+
+                for (var i = 0; i < info.size.segment_texture_size.length; i++){
+                    var w = info.size.segment_texture_size[i];
+                    text_texture_size[0] = w;
+                    text_position[0] = x;
+
+                    var texcoord = Texture.getTexcoordsForSprite(
+                        text_position,
+                        text_texture_size,
                         texture_size
                     );
+
+                    info.multi_texcoords.push(texcoord);
+
+                    x += w;
                 }
             }
         }
@@ -392,3 +455,37 @@ CanvasText.cache_stats = { hits: 0, misses: 0 };
 
 // Font detection
 CanvasText.fonts_loaded = Promise.resolve(); // resolves when all requested fonts have been detected
+
+function isRTL(s){
+    var weakChars       = '\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF',
+        rtlChars        = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC',
+        rtlDirCheck     = new RegExp('^['+weakChars+']*['+rtlChars+']');
+
+    return rtlDirCheck.test(s);
+};
+
+function reorderWordsLTR(words) {
+    var words_LTR = [];
+    var words_RTL = [];
+
+    // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
+    for (var i = 0; i < words.length; i++){
+        var str = words[i];
+        var rtl = isRTL(str);
+        if (rtl){
+            words_RTL.push(str);
+        }
+        else {
+            while (words_RTL.length > 0){
+                words_LTR.push(words_RTL.pop());
+            }
+            words_LTR.push(str);
+        }
+    }
+
+    while (words_RTL.length > 0){
+        words_LTR.push(words_RTL.pop());
+    }
+
+    return words_LTR;
+}

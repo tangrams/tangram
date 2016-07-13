@@ -11,6 +11,10 @@ export default class LabelPoint extends Label {
         this.position = [position[0], position[1]];
         this.parent = this.layout.parent;
         this.update();
+
+        if (!this.inTileBounds()) {
+            this.moveIntoTile();
+        }
     }
 
     update() {
@@ -84,7 +88,7 @@ export default class LabelPoint extends Label {
             this.updateBBoxes();
         }
 
-        return this.inTileBounds();
+        return updated;
     }
 
     discard (bboxes, exclude = null) {

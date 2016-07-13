@@ -40,6 +40,7 @@ Object.assign(Points, {
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+            { name: 'a_pre_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -473,6 +474,7 @@ Object.assign(Points, {
 
         // offsets
         this.fillVertexTemplate('a_offset', 0, { size: 2 });
+        this.fillVertexTemplate('a_pre_offset', 0, { size: 2 });
 
         // color
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
@@ -485,7 +487,15 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad (points, size, angle, sampler, offset, texcoord_scale, vertex_data, vertex_template) {
+    // Override (style-specific rendering behavior)
+    render (mesh) {
+        // ensure a value is always bound to label texture
+        // avoids 'no texture bound to unit' warnings in Chrome 50+
+        ShaderProgram.current.uniform('1i', 'u_label_texture', 0);
+        Style.render.call(this, mesh);
+    },
+
+    buildQuad(points, size, angle, sampler, offset, pre_offset, texcoord_scale, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -494,12 +504,14 @@ Object.assign(Points, {
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 position_index: this.vertex_layout.index.a_position,
                 shape_index: this.vertex_layout.index.a_shape,
-                offset_index: this.vertex_layout.index.a_offset
+                offset_index: this.vertex_layout.index.a_offset,
+                pre_offset_index: this.vertex_layout.index.a_pre_offset
             },
             {
                 quad: size,
                 quad_normalize: 256,    // values have an 8-bit fraction
                 offset,
+                pre_offset,
                 angle: angle * 4096,    // values have a 12-bit fraction
                 shape_w: sampler,
                 texcoord_scale,
@@ -510,30 +522,74 @@ Object.assign(Points, {
 
     // Build quad for point sprite
     build (style, vertex_data) {
-        let vertex_template = this.makeVertexTemplate(style);
         let label = style.label;
+        if (label.isArticulated) {
+            this.buildArticulatedLabel(label, style, vertex_data);
+        }
+        else {
+            this.buildLabel(label, style, vertex_data);
+        }
+    },
+
+    buildLabel (label, style, vertex_data) {
+        let vertex_template = this.makeVertexTemplate(style);
+        var angle = label.angle ? label.angle[0] : style.angle[0];
+        var pre_offset = label.pre_offset ? label.pre_offset[0] : [0,0];
 
         this.buildQuad(
             [label.position],               // position
             style.size,                     // size in pixels
-            style.angle,                    // angle in degrees
+            angle,                          // angle in degrees
             style.sampler,                  // texture sampler to use
-            label.offset,                   // offset from center in pixels
+            label.offset,                   // offset (from center in px) to apply after rotation
+            pre_offset,                     // offset (from center in px) to apply before rotation
             style.texcoords,                // texture UVs
             vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
 
+    buildArticulatedLabel (label, style, vertex_data) {
+        let vertex_template = this.makeVertexTemplate(style);
+        var size = style.size.slice();
+
+        for (var i = 0; i < 2; i++){
+            var angle = label.angle[i];
+            size[0] = label.collapsed_size[i];
+            var pre_offset = label.pre_offset[i];
+
+            var texcoord;
+            if (i == 0) {
+                texcoord = style.multi_texcoords[0].slice();
+                texcoord[2] = style.multi_texcoords[label.kink_index - 1][2];
+            }
+            else {
+                texcoord = style.multi_texcoords[label.kink_index].slice();
+                texcoord[2] = style.multi_texcoords[style.multi_texcoords.length - 1][2];
+            }
+
+            this.buildQuad(
+                [label.position],               // position
+                size,                           // size in pixels
+                angle,                          // angle in degrees
+                style.sampler,                  // texture sampler to use
+                label.offset,                   // offset (from center in px) to apply after rotation
+                pre_offset,                     // offset (from center in px) to apply before rotation
+                texcoord,                       // texture UVs
+                vertex_data, vertex_template    // VBO and data for current vertex
+            );
+        }
+    },
+
     // Override to pass-through to generic point builder
-    buildLines (lines, style, vertex_data) {
+    buildLines (lines, style, vertex_data, context) {
         this.build(style, vertex_data);
     },
 
-    buildPoints (points, style, vertex_data) {
+    buildPoints (points, style, vertex_data, context) {
         this.build(style, vertex_data);
     },
 
-    buildPolygons (points, style, vertex_data) {
+    buildPolygons (points, style, vertex_data, context) {
         this.build(style, vertex_data);
     }
 
