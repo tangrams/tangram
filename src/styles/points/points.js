@@ -25,7 +25,8 @@ Object.assign(Points, TextLabels);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
-    selection: true, // turn feature selection on
+    selection: true,  // style enables feature selection
+    collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init(options = {}) {
