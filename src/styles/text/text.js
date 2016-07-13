@@ -117,6 +117,7 @@ Object.assign(TextStyle, {
                         style.size = text_info.size.logical_size;
                         style.angle = q.label.angle || 0;
                         style.texcoords = text_info.align[q.label.align].texcoords;
+                        style.multi_texcoords = text_info.align[q.label.align].multi_texcoords;
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
@@ -146,6 +147,7 @@ Object.assign(TextStyle, {
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            fq.layout.segment_size = text_info.size.segment_size;
             let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             for (let i = 0; i < feature_labels.length; i++) {
                 let fql = Object.create(fq);
@@ -193,10 +195,10 @@ Object.assign(TextStyle, {
             // in which it will attempt to place
             let seg_per_div = (line.length - 1) / subdiv;
             for (let i = 0; i < subdiv; i++) {
-                options.segment_start = Math.floor(i * seg_per_div);
-                options.segment_end = Math.floor((i + 1) * seg_per_div);
+                layout.segment_start = Math.floor(i * seg_per_div);
+                layout.segment_end = Math.floor((i + 1) * seg_per_div);
 
-                var label = new LabelLine(size, line, options);
+                var label = new LabelLine(size, line, layout);
                 if (!label.throw_away) {
                     labels.push(label);
                 }
@@ -205,7 +207,7 @@ Object.assign(TextStyle, {
             layout.segment_end = null;
         }
         else {
-            var label = new LabelLine(size, line, options);
+            var label = new LabelLine(size, line, layout);
             if (!label.throw_away) {
                 labels.push(label);
             }

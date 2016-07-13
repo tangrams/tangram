@@ -12,9 +12,10 @@ export default class Label {
         this.position = null;
         this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
         this.placed = null;
-        this.offset = options.offset;
+        this.offset = layout.offset;
         this.aabb = null;
         this.obb = null;
+        this.align = 'center';
     }
 
     update () {
@@ -77,7 +78,7 @@ export default class Label {
 
     // Whether the label should be discarded
     // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
-    discard (bboxes) {
+    discard (bboxes, exclude) {
         return this.occluded(bboxes, exclude);
     }
 }

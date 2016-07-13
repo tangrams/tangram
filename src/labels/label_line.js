@@ -16,9 +16,9 @@ export default class LabelLine extends Label {
 
         this.lines = lines;
 
-        this.segment_size = options.segment_size;
+        this.segment_size = layout.segment_size;
 
-        this.placement = (options.placement === undefined) ? PLACEMENT.MID_POINT : options.placement;
+        this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
 
         this.position = null;
         this.pre_offset = [[0,0], [0,0]];
@@ -29,8 +29,8 @@ export default class LabelLine extends Label {
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
-        this.segment_index = options.segment_index || options.segment_start || 0;
-        this.segment_max = options.segment_end || this.lines.length;
+        this.segment_index = layout.segment_index || layout.segment_start || 0;
+        this.segment_max = layout.segment_end || this.lines.length;
 
         this.throw_away = false;
 
@@ -103,11 +103,11 @@ export default class LabelLine extends Label {
                 does_fit = this.fitKinkedSegment(segment);
                 break;
             case PLACEMENT.MID_POINT:
-                let excess = 100 / (100 - this.options.line_exceed);
+                let excess = 100 / (100 - this.layout.line_exceed);
                 let p0p1 = Vector.sub(segment[0], segment[1]);
                 let line_length = Vector.length(p0p1);
 
-                let label_length = this.size[0] * this.options.units_per_pixel;
+                let label_length = this.size[0] * this.layout.units_per_pixel;
                 does_fit = (label_length < excess * line_length)
                 break;
         }
@@ -116,8 +116,8 @@ export default class LabelLine extends Label {
     }
 
     fitKinkedSegment(segment) {
-        let excess = 100 / (100 - this.options.line_exceed);
-        let opp = this.options.units_per_pixel;
+        let excess = 100 / (100 - this.layout.line_exceed);
+        let opp = this.layout.units_per_pixel;
 
         let does_fit = false;
 
@@ -232,8 +232,8 @@ export default class LabelLine extends Label {
     }
 
     updateBBoxes() {
-        let upp = this.options.units_per_pixel;
-        let height = (this.size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
+        let upp = this.layout.units_per_pixel;
+        let height = (this.size[1] + this.layout.buffer[1] * 2) * upp * Label.epsilon;
 
         this.obbs = [];
         this.aabbs = [];
@@ -275,7 +275,7 @@ export default class LabelLine extends Label {
                 }
                 break;
             case PLACEMENT.MID_POINT:
-                let width = (this.size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
+                let width = (this.size[0] + this.layout.buffer[0] * 2) * upp * Label.epsilon;
 
                 var angle = this.angle[0];
                 var obb = getOBB(this.position, width, height, angle, this.offset, upp);
@@ -306,13 +306,13 @@ export default class LabelLine extends Label {
         }
     }
 
-    discard(bboxes) {
+    discard(bboxes, exclude) {
         for (var i = 0; i < this.obbs.length; i++){
             var aabb = this.aabbs[i];
             var obb = this.obbs[i];
             var obj = { aabb, obb };
 
-            var shouldDiscard = super.occluded.call(obj, bboxes);
+            var shouldDiscard = super.occluded.call(obj, bboxes, exclude);
             if (shouldDiscard) return true;
         }
         return false;

@@ -248,38 +248,39 @@ export default class CanvasText {
                     first = false;
                 }
 
-                this.drawText(lines, info.position, info.size, {
-                    stroke: text_settings.stroke,
-                    transform: text_settings.transform,
-                    align: text_settings.align
-                });
+                for (let align in info.align) {
+                    this.drawText(lines, info.align[align].texture_position, info.size, {
+                        stroke: text_settings.stroke,
+                        transform: text_settings.transform,
+                        align: align
+                    });
 
-                info.texcoords = Texture.getTexcoordsForSprite(
-                    info.position,
-                    info.size.texture_size,
-                    texture_size
-                );
-
-                info.multi_texcoords = [];
-                var text_position = info.position.slice();
-                var text_texture_size = info.size.texture_size.slice();
-                var x = text_position[0];
-                var y = text_position[1];
-
-                for (var i = 0; i < info.size.segment_texture_size.length; i++){
-                    var w = info.size.segment_texture_size[i];
-                    text_texture_size[0] = w;
-                    text_position[0] = x;
-
-                    var texcoord = Texture.getTexcoordsForSprite(
-                        text_position,
-                        text_texture_size,
+                    info.align[align].texcoords = Texture.getTexcoordsForSprite(
+                        info.align[align].texture_position,
+                        info.size.texture_size,
                         texture_size
                     );
 
-                    info.multi_texcoords.push(texcoord);
+                    info.align[align].multi_texcoords = [];
+                    var text_position = info.align[align].texture_position.slice();
+                    var text_texture_size = info.size.texture_size.slice();
+                    var x = text_position[0];
+                    var y = text_position[1];
 
-                    x += w;
+                    for (var i = 0; i < info.size.segment_texture_size.length; i++){
+                        var w = info.size.segment_texture_size[i];
+                        text_texture_size[0] = w;
+                        text_position[0] = x;
+
+                        var texcoord = Texture.getTexcoordsForSprite(
+                            text_position,
+                            text_texture_size,
+                            texture_size
+                        );
+
+                        info.align[align].multi_texcoords.push(texcoord);
+                        x += w;
+                    }
                 }
             }
         }

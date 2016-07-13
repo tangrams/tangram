@@ -487,13 +487,13 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    // Override (style-specific rendering behavior)
-    render (mesh) {
-        // ensure a value is always bound to label texture
-        // avoids 'no texture bound to unit' warnings in Chrome 50+
-        ShaderProgram.current.uniform('1i', 'u_label_texture', 0);
-        Style.render.call(this, mesh);
-    },
+    // // Override (style-specific rendering behavior)
+    // render (mesh) {
+    //     // ensure a value is always bound to label texture
+    //     // avoids 'no texture bound to unit' warnings in Chrome 50+
+    //     ShaderProgram.current.uniform('1i', 'u_label_texture', 0);
+    //     Style.render.call(this, mesh);
+    // },
 
     buildQuad(points, size, angle, sampler, offset, pre_offset, texcoord_scale, vertex_data, vertex_template) {
         buildQuadsForPoints(
