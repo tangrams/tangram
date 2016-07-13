@@ -32,7 +32,8 @@ Object.assign(self, {
     config: {},     // raw config (e.g. functions, etc. not expanded)
 
     // Initialize worker
-    init (worker_id, num_workers, log_level, device_pixel_ratio) {
+    init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio) {
+        self.scene_id = scene_id;
         self._worker_id = worker_id;
         self.num_workers = num_workers;
         log.setLevel(log_level);
