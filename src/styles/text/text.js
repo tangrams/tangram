@@ -6,7 +6,6 @@ import {Points} from '../points/points';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
-import LabelGroup from '../../labels/label_group';
 
 export let TextStyle = Object.create(Points);
 
@@ -80,12 +79,8 @@ Object.assign(TextStyle, {
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
-
-            // debugger
             fq.layout.segment_size = text_info.size.segment_size;
-            fq.layout.collision_size = text_info.size.collision_size;
-
-            let feature_labels = this.buildLabels(text_info.size.logical_size, fq.feature.geometry, fq.layout);
+            let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             for (let i = 0; i < feature_labels.length; i++) {
                 let fql = Object.create(fq);
                 fql.label = feature_labels[i];
@@ -172,7 +167,7 @@ Object.assign(TextStyle, {
     },
 
     // Build one or more labels for a line geometry
-    buildLineLabels(size, line, options, labels) {
+    buildLineLabels (size, line, options, labels) {
         let subdiv = Math.min(options.subdiv, line.length - 1);
         if (subdiv > 1) {
             // Create multiple labels for line, with each allotted a range of segments
@@ -183,37 +178,18 @@ Object.assign(TextStyle, {
                 options.segment_end = Math.floor((i + 1) * seg_per_div);
 
                 var label = new LabelLine(size, line, options);
-                if (label.throw_away) return;
-
-                labels.push(label);
+                if (!label.throw_away) {
+                    labels.push(label);
+                }
             }
             options.segment_start = null;
             options.segment_end = null;
         }
         else {
             var label = new LabelLine(size, line, options);
-            if (label.throw_away) return;
-
-            // push only first label
-            labels.push(label);
-
-            // push all labels
-            // while (label) {
-            //     labels.push(label);
-            //     label = label.nextLabelLine();
-            // }
-
-            // push group label
-            // var labelsForGroup = [];
-            // while (label){
-            //     labelsForGroup.push(label);
-            //     label = label.nextLabelLine();
-            // }
-
-            // if (labelsForGroup.length > 0) {
-            //     var group = new LabelGroup(labelsForGroup);
-            //     labels.push(group);
-            // }
+            if (!label.throw_away) {
+                labels.push(label);
+            }
         }
     }
 

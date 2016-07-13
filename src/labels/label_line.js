@@ -1,7 +1,6 @@
 import Vector from '../vector';
 import Label from './label';
 import OBB from '../utils/obb';
-import Geo from '../geo';
 
 const PLACEMENT = {
     MID_POINT: 0,
@@ -26,6 +25,7 @@ export default class LabelLine extends Label {
         this.collapsed_size = [];
         this.kink_index = 0;
         this.angle = [];
+        this.isArticulated = false;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
@@ -40,22 +40,6 @@ export default class LabelLine extends Label {
         if (!segment) this.throw_away = true;
     }
 
-    nextLabelLine() {
-        // increment segment
-        var hasNext = this.getNextSegment();
-        if (!hasNext) return false;
-
-        // clone options
-        var options = Object.create(this.options);
-        options.segment_index = this.segment_index;
-        options.placement = this.placement;
-
-        // create new label
-        var label = new LabelLine(this.size, this.lines, options);
-
-        return (label.throw_away) ? false : label;
-    }
-
     getNextSegment() {
         switch (this.placement) {
             case PLACEMENT.CORNER:
@@ -64,10 +48,12 @@ export default class LabelLine extends Label {
                 this.pre_offset = [[0, 0], [0, 0]];
                 this.collapsed_size = [];
                 this.angle = [];
+                this.isArticulated = false;
                 break;
             case PLACEMENT.MID_POINT:
                 if (this.segment_index >= this.lines.length - 2) return false;
                 if (this.segment_size.length > 1) {
+                    this.isArticulated = true;
                     this.placement = PLACEMENT.CORNER;
                 }
                 this.segment_index++;
@@ -121,7 +107,7 @@ export default class LabelLine extends Label {
                 let p0p1 = Vector.sub(segment[0], segment[1]);
                 let line_length = Vector.length(p0p1);
 
-                let label_length = this.options.collision_size[0] * this.options.units_per_pixel;
+                let label_length = this.size[0] * this.options.units_per_pixel;
                 does_fit = (label_length < excess * line_length)
                 break;
         }
@@ -142,7 +128,7 @@ export default class LabelLine extends Label {
         let line_length2 = Vector.length(p1p2);
 
         // break up multiple segments into two chunks (N-1 options)
-        let label_length1 = this.options.collision_size[0];
+        let label_length1 = this.size[0];
         let label_length2 = 0;
         let width;
 
@@ -159,15 +145,16 @@ export default class LabelLine extends Label {
         }
 
         if (does_fit && this.kink_index > 0) {
-            var width1 = 0;
-            var width2 = this.size[0];
-            for (var i = 0; i < this.kink_index; i++) {
-                var segment_width = this.segment_size[i];
-                width1 += segment_width;
-                width2 -= segment_width;
+            this.collapsed_size[0] = 0;
+            this.collapsed_size[1] = 0;
+            for (var i = 0; i < this.segment_size.length; i++) {
+                if (i < this.kink_index) {
+                    this.collapsed_size[0] += this.segment_size[i];
+                }
+                else {
+                    this.collapsed_size[1] += this.segment_size[i];
+                }
             }
-            this.collapsed_size[0] = width1;
-            this.collapsed_size[1] = width2;
             return true;
         }
         else return false;
@@ -246,7 +233,7 @@ export default class LabelLine extends Label {
 
     updateBBoxes() {
         let upp = this.options.units_per_pixel;
-        let height = (this.options.collision_size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
+        let height = (this.size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
 
         this.obbs = [];
         this.aabbs = [];
@@ -265,7 +252,7 @@ export default class LabelLine extends Label {
 
                 var theta = Math.PI - Math.abs(angle1 - angle0);
 
-                var dx = Math.abs(0.5 * this.options.collision_size[1] / Math.tan(0.5 * theta));
+                var dx = Math.abs(0.5 * this.size[1] / Math.tan(0.5 * theta));
 
                 for (var i = 0; i < 2; i++){
                     var width_px = this.collapsed_size[i];
@@ -288,7 +275,7 @@ export default class LabelLine extends Label {
                 }
                 break;
             case PLACEMENT.MID_POINT:
-                let width = (this.options.collision_size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
+                let width = (this.size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
 
                 var angle = this.angle[0];
                 var obb = getOBB(this.position, width, height, angle, this.offset, upp);

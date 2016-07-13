@@ -502,27 +502,17 @@ Object.assign(Points, {
     },
 
     // Build quad for point sprite
-    build (style, vertex_data, flag) {
+    build (style, vertex_data) {
         let label = style.label;
-
-        if (label.labels) {
-            for (var i = 0; i < label.labels.length; i++){
-                var label0 = label.labels[i];
-                if (label0.angle.length > 1)
-                    this.buildArticulatedLabel(label0, style, vertex_data);
-                else
-                    this.buildLabel(label0, style, vertex_data);
-            }
+        if (label.isArticulated) {
+            this.buildArticulatedLabel(label, style, vertex_data);
         }
         else {
-            if (label.angle && label.angle.length > 1)
-                this.buildArticulatedLabel(label, style, vertex_data);
-            else
-                this.buildLabel(label, style, vertex_data);
+            this.buildLabel(label, style, vertex_data);
         }
     },
 
-    buildLabel(label, style, vertex_data) {
+    buildLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle ? label.angle[0] : style.angle[0];
         var pre_offset = label.pre_offset ? label.pre_offset[0] : [0,0];
@@ -530,16 +520,16 @@ Object.assign(Points, {
         this.buildQuad(
             [label.position],               // position
             style.size,                     // size in pixels
-            angle,                 // angle in degrees
+            angle,                          // angle in degrees
             style.sampler,                  // texture sampler to use
-            label.offset,                   // offset from center in pixels
-            pre_offset,
+            label.offset,                   // offset (from center in px) to apply after rotation
+            pre_offset,                     // offset (from center in px) to apply before rotation
             style.texcoords,                // texture UVs
             vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
 
-    buildArticulatedLabel(label, style, vertex_data) {
+    buildArticulatedLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         var size = style.size.slice();
 
@@ -560,11 +550,11 @@ Object.assign(Points, {
 
             this.buildQuad(
                 [label.position],               // position
-                size,                     // size in pixels
-                angle,                    // angle in degrees
+                size,                           // size in pixels
+                angle,                          // angle in degrees
                 style.sampler,                  // texture sampler to use
-                label.offset,                   // offset from center in pixels
-                pre_offset,
+                label.offset,                   // offset (from center in px) to apply after rotation
+                pre_offset,                     // offset (from center in px) to apply before rotation
                 texcoord,                       // texture UVs
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
