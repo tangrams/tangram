@@ -558,7 +558,7 @@ Object.assign(Points, {
             var pre_offset = label.pre_offset[i];
 
             var texcoord;
-            if (i == 0) {
+            if (i === 0) {
                 texcoord = style.multi_texcoords[0].slice();
                 texcoord[2] = style.multi_texcoords[label.kink_index - 1][2];
             }

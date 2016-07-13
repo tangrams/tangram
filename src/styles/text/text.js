@@ -190,6 +190,7 @@ Object.assign(TextStyle, {
     // Build one or more labels for a line geometry
     buildLineLabels (line, size, layout, labels) {
         let subdiv = Math.min(layout.subdiv, line.length - 1);
+        let label;
         if (subdiv > 1) {
             // Create multiple labels for line, with each allotted a range of segments
             // in which it will attempt to place
@@ -198,7 +199,7 @@ Object.assign(TextStyle, {
                 layout.segment_start = Math.floor(i * seg_per_div);
                 layout.segment_end = Math.floor((i + 1) * seg_per_div);
 
-                var label = new LabelLine(size, line, layout);
+                label = new LabelLine(size, line, layout);
                 if (!label.throw_away) {
                     labels.push(label);
                 }
@@ -207,7 +208,7 @@ Object.assign(TextStyle, {
             layout.segment_end = null;
         }
         else {
-            var label = new LabelLine(size, line, layout);
+            label = new LabelLine(size, line, layout);
             if (!label.throw_away) {
                 labels.push(label);
             }

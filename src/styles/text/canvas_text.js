@@ -114,7 +114,9 @@ export default class CanvasText {
                 let widths = [];
                 for (var i = 0; i < words_LTR.length; i++){
                     var str = words_LTR[i];
-                    if (i < words_LTR.length - 1) str += ' ';
+                    if (i < words_LTR.length - 1) {
+                        str += ' ';
+                    }
                     let width = ctx.measureText(str).width;
                     widths.push(width);
                     line_width += width;
@@ -180,7 +182,7 @@ export default class CanvasText {
         var segment_size = [];
         var segment_texture_size = [];
         for (var i = 0; i < segments.length; i++){
-            if (i == 0 || i == segments.length - 1){
+            if (i === 0 || i === segments.length - 1){
                 segment_size[i] = (segments[i] + buffer) / Utils.device_pixel_ratio;
                 segment_texture_size[i] = (segments[i] + buffer);
             }
@@ -203,7 +205,6 @@ export default class CanvasText {
 
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
         let texture_size = size.texture_size;
-        let collision_size = size.collision_size;
         let line_height = size.line_height;
 
         for (let line_num=0; line_num < lines.length; line_num++) {
@@ -265,7 +266,6 @@ export default class CanvasText {
                     var text_position = info.align[align].texture_position.slice();
                     var text_texture_size = info.size.texture_size.slice();
                     var x = text_position[0];
-                    var y = text_position[1];
 
                     for (var i = 0; i < info.size.segment_texture_size.length; i++){
                         var w = info.size.segment_texture_size[i];
@@ -463,7 +463,7 @@ function isRTL(s){
         rtlDirCheck     = new RegExp('^['+weakChars+']*['+rtlChars+']');
 
     return rtlDirCheck.test(s);
-};
+}
 
 function reorderWordsLTR(words) {
     var words_LTR = [];

@@ -35,9 +35,11 @@ export default class LabelLine extends Label {
         this.throw_away = false;
 
         // get first good segment
-        var segment = this.getNextFittingSegment(this.getCurrentSegment());
+        let segment = this.getNextFittingSegment(this.getCurrentSegment());
 
-        if (!segment) this.throw_away = true;
+        if (!segment) {
+            this.throw_away = true;
+        }
     }
 
     getNextSegment() {
@@ -51,7 +53,9 @@ export default class LabelLine extends Label {
                 this.isArticulated = false;
                 break;
             case PLACEMENT.MID_POINT:
-                if (this.segment_index >= this.lines.length - 2) return false;
+                if (this.segment_index >= this.lines.length - 2) {
+                    return false;
+                }
                 if (this.segment_size.length > 1) {
                     this.isArticulated = true;
                     this.placement = PLACEMENT.CORNER;
@@ -84,12 +88,15 @@ export default class LabelLine extends Label {
 
     getNextFittingSegment(segment) {
         segment = segment || this.getNextSegment();
-        if (!segment) return false;
+        if (!segment) {
+            return false;
+        }
 
         if (this.doesSegmentFit(segment)) {
             this.update();
-            if (this.inTileBounds() && this.inAngleBounds())
+            if (this.inTileBounds() && this.inAngleBounds()) {
                 return segment;
+            }
         }
 
         return this.getNextFittingSegment();
@@ -108,7 +115,7 @@ export default class LabelLine extends Label {
                 let line_length = Vector.length(p0p1);
 
                 let label_length = this.size[0] * this.layout.units_per_pixel;
-                does_fit = (label_length < excess * line_length)
+                does_fit = (label_length < excess * line_length);
                 break;
         }
 
@@ -141,13 +148,15 @@ export default class LabelLine extends Label {
             label_length2 += width;
 
             does_fit = (opp * label_length1 < excess * line_length1 && opp * label_length2 < excess * line_length2);
-            if (!does_fit) this.kink_index--;
+            if (!does_fit) {
+                this.kink_index--;
+            }
         }
 
         if (does_fit && this.kink_index > 0) {
             this.collapsed_size[0] = 0;
             this.collapsed_size[1] = 0;
-            for (var i = 0; i < this.segment_size.length; i++) {
+            for (let i = 0; i < this.segment_size.length; i++) {
                 if (i < this.kink_index) {
                     this.collapsed_size[0] += this.segment_size[i];
                 }
@@ -157,7 +166,9 @@ export default class LabelLine extends Label {
             }
             return true;
         }
-        else return false;
+        else {
+            return false;
+        }
     }
 
     update() {
@@ -167,16 +178,16 @@ export default class LabelLine extends Label {
     }
 
     getCurrentAngle() {
-        var segment = this.getCurrentSegment();
-        var angle;
+        let segment = this.getCurrentSegment();
+        let angle;
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                var theta1 = getAngleFromSegment(segment[0], segment[1]);
-                var theta2 = getAngleFromSegment(segment[1], segment[2]);
+                let theta1 = getAngleFromSegment(segment[0], segment[1]);
+                let theta2 = getAngleFromSegment(segment[1], segment[2]);
 
-                var orientation1 = getOrientationFromSegment(segment[0], segment[1]);
-                var orientation2 = getOrientationFromSegment(segment[1], segment[2]);
+                let orientation1 = getOrientationFromSegment(segment[0], segment[1]);
+                let orientation2 = getOrientationFromSegment(segment[1], segment[2]);
 
                 if (orientation1 !== orientation2) {
                     theta2 -= Math.PI;
@@ -185,7 +196,7 @@ export default class LabelLine extends Label {
                 angle = (orientation1) ? [theta2, theta1] : [theta1, theta2];
                 break;
             case PLACEMENT.MID_POINT:
-                var theta = getAngleFromSegment(segment[0], segment[1]);
+                let theta = getAngleFromSegment(segment[0], segment[1]);
                 angle = [theta];
                 break;
         }
@@ -215,13 +226,17 @@ export default class LabelLine extends Label {
     inAngleBounds() {
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                var angle0 = this.angle[0];
-                if (angle0 < 0) angle0 += 2 * Math.PI;
+                let angle0 = this.angle[0];
+                if (angle0 < 0) {
+                    angle0 += 2 * Math.PI;
+                }
 
-                var angle1 = this.angle[1];
-                if (angle1 < 0) angle1 += 2 * Math.PI;
+                let angle1 = this.angle[1];
+                if (angle1 < 0) {
+                    angle1 += 2 * Math.PI;
+                }
 
-                var theta = Math.abs(angle1 - angle0);
+                let theta = Math.abs(angle1 - angle0);
 
                 theta = Math.min(2 * Math.PI - theta, theta);
 
@@ -240,33 +255,33 @@ export default class LabelLine extends Label {
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                var segment = this.getCurrentSegment();
-                var orientation1 = getOrientationFromSegment(segment[0], segment[1]);
-                var orientation2 = getOrientationFromSegment(segment[1], segment[2]);
+                let angle0 = this.angle[0];
+                if (angle0 < 0) {
+                    angle0 += 2 * Math.PI;
+                }
 
-                var angle0 = this.angle[0];
-                if (angle0 < 0) angle0 += 2 * Math.PI;
+                let angle1 = this.angle[1];
+                if (angle1 < 0) {
+                    angle1 += 2 * Math.PI;
+                }
 
-                var angle1 = this.angle[1];
-                if (angle1 < 0) angle1 += 2 * Math.PI;
+                let theta = Math.PI - Math.abs(angle1 - angle0);
 
-                var theta = Math.PI - Math.abs(angle1 - angle0);
+                let dx = Math.abs(0.5 * this.size[1] / Math.tan(0.5 * theta));
 
-                var dx = Math.abs(0.5 * this.size[1] / Math.tan(0.5 * theta));
-
-                for (var i = 0; i < 2; i++){
-                    var width_px = this.collapsed_size[i];
-                    var angle = this.angle[i];
+                for (let i = 0; i < 2; i++){
+                    let width_px = this.collapsed_size[i];
+                    let angle = this.angle[i];
 
                     let width = width_px * upp * Label.epsilon;
 
-                    var direction = (i == 0) ? -1 : 1;
-                    var nudge = direction * (width/2 + dx);
-                    var offset = Vector.rot([nudge, 0], -angle);
-                    var position = Vector.add(this.position, offset);
+                    let direction = (i === 0) ? -1 : 1;
+                    let nudge = direction * (width/2 + dx);
+                    let offset = Vector.rot([nudge, 0], -angle);
+                    let position = Vector.add(this.position, offset);
 
-                    var obb = getOBB(position, width, height, angle, this.offset, upp);
-                    var aabb = obb.getExtent();
+                    let obb = getOBB(position, width, height, angle, this.offset, upp);
+                    let aabb = obb.getExtent();
 
                     this.obbs.push(obb);
                     this.aabbs.push(aabb);
@@ -277,9 +292,9 @@ export default class LabelLine extends Label {
             case PLACEMENT.MID_POINT:
                 let width = (this.size[0] + this.layout.buffer[0] * 2) * upp * Label.epsilon;
 
-                var angle = this.angle[0];
-                var obb = getOBB(this.position, width, height, angle, this.offset, upp);
-                var aabb = obb.getExtent();
+                let angle = this.angle[0];
+                let obb = getOBB(this.position, width, height, angle, this.offset, upp);
+                let aabb = obb.getExtent();
 
                 this.obbs.push(obb);
                 this.aabbs.push(aabb);
@@ -288,32 +303,36 @@ export default class LabelLine extends Label {
     }
 
     inTileBounds() {
-        for (var i = 0; i < this.aabbs.length; i++) {
-            var aabb = this.aabbs[i];
-            var obj = { aabb };
-            var in_bounds = super.inTileBounds.call(obj);
-            if (!in_bounds) return false;
+        for (let i = 0; i < this.aabbs.length; i++) {
+            let aabb = this.aabbs[i];
+            let obj = { aabb };
+            let in_bounds = super.inTileBounds.call(obj);
+            if (!in_bounds) {
+                return false;
+            }
         }
         return true;
     }
 
     add(bboxes) {
-        for (var i = 0; i < this.aabbs.length; i++) {
-            var aabb = this.aabbs[i];
-            var obb = this.obbs[i];
-            var obj = { aabb, obb };
+        for (let i = 0; i < this.aabbs.length; i++) {
+            let aabb = this.aabbs[i];
+            let obb = this.obbs[i];
+            let obj = { aabb, obb };
             super.add.call(obj, bboxes);
         }
     }
 
     discard(bboxes, exclude) {
-        for (var i = 0; i < this.obbs.length; i++){
-            var aabb = this.aabbs[i];
-            var obb = this.obbs[i];
-            var obj = { aabb, obb };
+        for (let i = 0; i < this.obbs.length; i++){
+            let aabb = this.aabbs[i];
+            let obb = this.obbs[i];
+            let obj = { aabb, obb };
 
-            var shouldDiscard = super.occluded.call(obj, bboxes, exclude);
-            if (shouldDiscard) return true;
+            let shouldDiscard = super.occluded.call(obj, bboxes, exclude);
+            if (shouldDiscard) {
+                return true;
+            }
         }
         return false;
     }
@@ -345,11 +364,11 @@ function getAngleFromSegment(pt1, pt2) {
     if (theta >= PI_2) {
         // If in 2nd quadrant, move to 4th quadrant
         theta += PI;
-        theta %= 2*Math.PI
+        theta %= 2 * Math.PI;
     }
     else if (theta < 0) {
         // If in 4th quadrant, make a positive angle
-        theta += 2 * PI
+        theta += 2 * PI;
     }
 
     return theta;
