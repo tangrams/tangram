@@ -546,7 +546,12 @@ export default class Scene {
             this.view.setupTile(tile, program);
 
             // Render tile
-            this.styles[style].render(tile.meshes[style]);
+            if (this.styles[style].render(tile.meshes[style])) {
+                // Don't incur additional renders while viewport is moving
+                if (!(this.view.panning || this.view.zooming)) {
+                   this.requestRedraw();
+                }
+            }
             render_count += tile.meshes[style].geometry_count;
         }
 

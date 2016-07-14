@@ -68,9 +68,13 @@ Object.assign(Points, {
         // Enable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = true;
 
-        // Fade out text when tile is zooming out, e.g. acting as proxy tiles
+        // Fade out when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
+
+        // Fade in (depending on tile proxy status)
+        this.fade_in_time = 0.25; // time in seconds
+        this.defines.TANGRAM_FADE_IN_RATE = 1 / this.fade_in_time;
 
         this.collision_group_points = this.name+'-points';
         this.collision_group_text = this.name+'-text';
@@ -536,6 +540,12 @@ Object.assign(Points, {
 
     buildPolygons (points, style, vertex_data) {
         this.build(style, vertex_data);
+    },
+
+    makeMesh (vertex_data, vertex_elements, options = {}) {
+        // Add label fade time
+        options = Object.assign({}, options, { fade_in_time: this.fade_in_time });
+        return Style.makeMesh.call(this, vertex_data, vertex_elements, options);
     }
 
 });

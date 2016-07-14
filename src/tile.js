@@ -26,6 +26,7 @@ export default class Tile {
         this.visible = false;
         this.proxy = null;
         this.proxy_depth = 0;
+        this.proxied_as = null;
         this.loading = false;
         this.loaded = false;
         this.built = false;
@@ -472,10 +473,11 @@ export default class Tile {
 
     // Set as a proxy tile for another tile
     setProxyFor (tile) {
-        this.proxy = tile;
+        this.proxy = (tile != null);
         if (tile) {
             this.visible = true;
             this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
+            tile.proxied_as = (tile.style_zoom > this.style_zoom ? 'child' : 'parent');
             this.update();
         }
         else {
@@ -495,6 +497,10 @@ export default class Tile {
         mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
         mat4.copy(model32, model);
         program.uniform('Matrix4fv', 'u_model', model32);
+
+        // Fade in labels according to proxy status, avoiding "flickering" where
+        // labels quickly go from invisible back to visible
+        program.uniform('1i', 'u_fade_in', this.proxied_as !== 'child');
     }
 
     // Slice a subset of keys out of a tile

@@ -5,6 +5,8 @@ uniform vec4 u_tile_origin;
 uniform float u_tile_proxy_depth;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
+uniform float u_visible_time;
+uniform bool u_fade_in;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
