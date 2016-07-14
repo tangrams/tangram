@@ -12,7 +12,7 @@ export default class LabelPoint extends Label {
         this.parent = this.layout.parent;
         this.update();
 
-        if (!this.inTileBounds()) {
+        if (this.layout.move_into_tile && !this.inTileBounds()) {
             this.moveIntoTile();
         }
     }
@@ -85,14 +85,14 @@ export default class LabelPoint extends Label {
         }
 
         if (updated) {
-            this.updateBBoxes();
+            this.update();
         }
 
         return updated;
     }
 
     discard (bboxes, exclude = null) {
-        if (super.discard(bboxes, exclude)) {
+        if (super.discard(bboxes, exclude) || (this.layout.cull_from_tile && !this.inTileBounds())) {
             // If more than one anchor specified, try them in order
             if (Array.isArray(this.layout.anchor)) {
                 // Start on second anchor (first anchor was set on creation)
