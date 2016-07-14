@@ -12,9 +12,8 @@ export default class LabelPoint extends Label {
         this.parent = this.layout.parent;
         this.update();
 
-        if (!this.inTileBounds()) {
-            this.moveIntoTile();
-        }
+        let hasNext = this.getNextFit();
+        this.throw_away = !hasNext;
     }
 
     update() {
@@ -89,6 +88,33 @@ export default class LabelPoint extends Label {
         }
 
         return updated;
+    }
+
+    getNextFit() {
+        if (this.inTileBounds()) {
+            return true;
+        }
+
+        if (this.layout.move_into_tile) {
+            this.moveIntoTile();
+            return true;
+        }
+        else {
+            if (this.layout.cull_from_tile) {
+                if (Array.isArray(this.layout.anchor)) {
+                    // Start on second anchor (first anchor was set on creation)
+                    for (let i=1; i < this.layout.anchor.length; i++) {
+                        this.anchor = this.layout.anchor[i];
+                        this.update();
+
+                        if (this.inTileBounds()) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
     }
 
     discard (bboxes, exclude = null) {

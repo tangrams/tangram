@@ -16,6 +16,7 @@ export default class Label {
         this.aabb = null;
         this.obb = null;
         this.align = 'center';
+        this.throw_away = false;
     }
 
     update () {
@@ -78,7 +79,10 @@ export default class Label {
 
     // Whether the label should be discarded
     // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
-    discard (bboxes, exclude) {
+    discard(bboxes, exclude) {
+        if (this.throw_away) {
+            return true;
+        }
         return this.occluded(bboxes, exclude);
     }
 }

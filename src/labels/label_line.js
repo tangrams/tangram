@@ -32,8 +32,6 @@ export default class LabelLine extends Label {
         this.segment_index = layout.segment_index || layout.segment_start || 0;
         this.segment_max = layout.segment_end || this.lines.length;
 
-        this.throw_away = false;
-
         // get first good segment
         let segment = this.getNextFittingSegment(this.getCurrentSegment());
 
@@ -324,6 +322,10 @@ export default class LabelLine extends Label {
     }
 
     discard(bboxes, exclude) {
+        if (this.throw_away) {
+            return true;
+        }
+
         for (let i = 0; i < this.obbs.length; i++){
             let aabb = this.aabbs[i];
             let obb = this.obbs[i];
