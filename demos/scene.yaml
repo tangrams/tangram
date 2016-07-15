@@ -265,7 +265,6 @@ layers:
                     size: 16px
                     text:
                         text_source: global.language_text_source
-                        offset: [0, 2px]
                         font:
                             family: Lucida Grande
                             size: 10pt
