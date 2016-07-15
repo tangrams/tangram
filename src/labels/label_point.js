@@ -12,6 +12,10 @@ export default class LabelPoint extends Label {
         this.parent = this.layout.parent;
         this.update();
 
+        if (this.layout.anchor) {
+            this.start_anchor_index = 1;
+        }
+
         let hasNext = this.getNextFit();
         this.throw_away = !hasNext;
     }
@@ -103,9 +107,11 @@ export default class LabelPoint extends Label {
             if (this.layout.cull_from_tile) {
                 if (Array.isArray(this.layout.anchor)) {
                     // Start on second anchor (first anchor was set on creation)
-                    for (let i=1; i < this.layout.anchor.length; i++) {
+                    for (let i = 1; i < this.layout.anchor.length; i++) {
                         this.anchor = this.layout.anchor[i];
                         this.update();
+
+                        this.start_anchor_index = i;
 
                         if (this.inTileBounds()) {
                             return true;
@@ -122,7 +128,7 @@ export default class LabelPoint extends Label {
             // If more than one anchor specified, try them in order
             if (Array.isArray(this.layout.anchor)) {
                 // Start on second anchor (first anchor was set on creation)
-                for (let i=1; i < this.layout.anchor.length; i++) {
+                for (let i=this.start_anchor_index; i < this.layout.anchor.length; i++) {
                     this.anchor = this.layout.anchor[i];
                     this.update();
 
