@@ -457,6 +457,7 @@ CanvasText.cache_stats = { hits: 0, misses: 0 };
 // Font detection
 CanvasText.fonts_loaded = Promise.resolve(); // resolves when all requested fonts have been detected
 
+// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
 function isRTL(s){
     var weakChars       = '\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF',
         rtlChars        = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC',
