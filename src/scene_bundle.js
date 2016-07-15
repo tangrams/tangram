@@ -55,29 +55,30 @@ export class ZipSceneBundle extends SceneBundle {
     }
 
     findRoot() {
-        // Must be a single YAML at top level of zip
-        let bundle_yaml = this.url.split('/').pop().split('.zip').shift() + '.yaml';
-        let root = Object.keys(this.files)
-            .filter(path => this.files[path].depth === 0)
-            .filter(path => Utils.extensionForURL(path) === 'yaml');
-
-        if (root.length === 1) {
-            this.root = root[0];
+        // First check for explicit scene.yaml at zip root
+        if (this.files['scene.yaml']) {
+            this.root = 'scene.yaml';
         }
-        else if (root.length > 1) {
-            // check for name of bundle w/YAML extension
-            let index = root.indexOf(bundle_yaml);
-            if (index > -1) {
-                this.root = root[index];
+
+        // Second check for a single YAML at top level of zip
+        let yamls = [];
+        if (!this.root) {
+            yamls = Object.keys(this.files)
+                .filter(path => this.files[path].depth === 0)
+                .filter(path => Utils.extensionForURL(path) === 'yaml');
+
+            if (yamls.length === 1) {
+                this.root = yamls[0];
             }
         }
 
+        // No root found
         if (!this.root) {
             let msg = `Could not find root scene for bundle '${this.url}': `;
-            msg += `there must be either a single scene YAML file at the root level of the zip archive, `;
-            msg += `or a scene YAML file with the same name as the archive file, e.g. '${bundle_yaml}'. `;
-            if (root.length > 0) {
-                msg += `Found these YAML files at the root level: ${root.map(r => '\'' + r + '\'' )}.`;
+            msg += `The zip archive's root level must contain either a single scene YAML file, `;
+            msg += `or a scene YAML file with name 'scene.yaml'. `;
+            if (yamls.length > 0) {
+                msg += `Found multiple YAML files at the root level but no 'scene.yaml': ${yamls.map(r => '\'' + r + '\'' )}.`;
             }
             else {
                 msg += `Found NO YAML files at the root level.`;
