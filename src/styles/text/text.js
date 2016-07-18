@@ -187,7 +187,14 @@ Object.assign(TextStyle, {
             layout.segment_end = null;
         }
         else {
-            labels.push(new LabelLine(size, line, layout));
+            // labels.push(new LabelLine(size, line, layout));
+
+            let label = new LabelLine(size, line, layout);
+            // push all labels
+            while (label && !label.throw_away) {
+                labels.push(label);
+                label = LabelLine.nextLabel(label);
+            }
         }
     }
 
