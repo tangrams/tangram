@@ -40,22 +40,32 @@ export default class LabelLine extends Label {
         }
     }
 
+    static nextLabel(label) {
+        // increment segment
+        var hasNext = label.getNextSegment();
+        if (!hasNext) return false;
+
+        // clone options
+        var layout = JSON.parse(JSON.stringify(label.layout));
+        layout.segment_index = label.segment_index;
+        layout.placement = label.placement;
+
+        // create new label
+        var nextLabel = new LabelLine(label.size, label.lines, layout);
+
+        return (nextLabel.throw_away) ? false : nextLabel;
+    }
+
     getNextSegment() {
         switch (this.placement) {
             case PLACEMENT.CORNER:
                 this.placement = PLACEMENT.MID_POINT;
-                this.kink_index = 0;
-                this.pre_offset = [[0, 0], [0, 0]];
-                this.collapsed_size = [];
-                this.angle = [];
-                this.isArticulated = false;
                 break;
             case PLACEMENT.MID_POINT:
                 if (this.segment_index >= this.lines.length - 2) {
                     return false;
                 }
                 if (this.segment_size.length > 1) {
-                    this.isArticulated = true;
                     this.placement = PLACEMENT.CORNER;
                 }
                 this.segment_index++;
@@ -93,6 +103,7 @@ export default class LabelLine extends Label {
         if (this.doesSegmentFit(segment)) {
             this.update();
             if (this.inTileBounds() && this.inAngleBounds()) {
+                this.isArticulated = (this.placement === PLACEMENT.CORNER) ? true : false;
                 return segment;
             }
         }
@@ -296,6 +307,8 @@ export default class LabelLine extends Label {
 
                 this.obbs.push(obb);
                 this.aabbs.push(aabb);
+
+                this.pre_offset = [[0,0], [0,0]];
                 break;
         }
     }
