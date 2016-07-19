@@ -16,7 +16,6 @@ attribute vec4 a_shape;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
-attribute vec2 a_pre_offset;
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
@@ -52,14 +51,12 @@ void main() {
     // Apply positioning and scaling in screen space
     vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
-    vec2 pre_offset = vec2(a_pre_offset.x, -a_pre_offset.y);
     float theta = a_shape.z / 4096.;                // values have a 12-bit fraction
 
     #ifdef TANGRAM_MULTI_SAMPLER
     v_sampler = a_shape.w; // texture sampler
     #endif
 
-    shape += pre_offset;
     shape = rotate2D(shape, theta);     // apply rotation to vertex
     shape += rotate2D(offset, theta);   // apply offset on rotated axis (e.g. so line labels follow text axis)
 

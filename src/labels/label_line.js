@@ -21,10 +21,17 @@ export default class LabelLine extends Label {
         this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
 
         this.position = null;
-        this.pre_offset = [[0,0], [0,0]];
         this.collapsed_size = [];
         this.kink_index = 0;
         this.angle = [];
+
+        if (layout.offset) {
+            this.offsets = [layout.offset.slice(), layout.offset.slice()];
+        }
+        else {
+            this.offsets = [[0,0], [0,0]];
+        }
+
         this.isArticulated = false;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
@@ -295,7 +302,7 @@ export default class LabelLine extends Label {
                     this.obbs.push(obb);
                     this.aabbs.push(aabb);
 
-                    this.pre_offset[i][0] = direction * (this.collapsed_size[i]/2 + dx);
+                    this.offsets[i][0] += direction * (this.collapsed_size[i]/2 + dx);
                 }
                 break;
             case PLACEMENT.MID_POINT:
@@ -308,8 +315,8 @@ export default class LabelLine extends Label {
                 this.obbs.push(obb);
                 this.aabbs.push(aabb);
 
-                this.pre_offset = [[0,0], [0,0]];
-                break;
+                this.offsets[0] = (this.layout.offset) ? this.layout.offset.slice() : [0, 0];
+                this.offsets[1] = (this.layout.offset) ? this.layout.offset.slice() : [0, 0];
         }
     }
 
