@@ -26,13 +26,7 @@ export default class LabelLine extends Label {
         this.angle = [];
         this.spread_factor = layout.spread_factor ? layout.spread_factor : 0.5;
         this.should_articulate = (layout.articulated === false) ? false : true;
-
-        if (layout.offset) {
-            this.offsets = [layout.offset.slice(), layout.offset.slice()];
-        }
-        else {
-            this.offsets = [[0,0], [0,0]];
-        }
+        this.offsets = [layout.offset.slice(), layout.offset.slice()];
 
         this.isArticulated = false;
 
@@ -306,7 +300,7 @@ export default class LabelLine extends Label {
                     this.obbs.push(obb);
                     this.aabbs.push(aabb);
 
-                    this.offsets[i][0] += direction * (this.collapsed_size[i]/2 + dx);
+                    this.offsets[i][0] = this.layout.offset[i] + direction * (this.collapsed_size[i]/2 + dx);
                 }
                 break;
             case PLACEMENT.MID_POINT:
@@ -319,8 +313,8 @@ export default class LabelLine extends Label {
                 this.obbs.push(obb);
                 this.aabbs.push(aabb);
 
-                this.offsets[0] = (this.layout.offset) ? this.layout.offset.slice() : [0, 0];
-                this.offsets[1] = (this.layout.offset) ? this.layout.offset.slice() : [0, 0];
+                this.offsets[0] = this.layout.offset.slice();
+                this.offsets[1] = this.layout.offset.slice();
         }
     }
 
