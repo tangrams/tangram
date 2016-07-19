@@ -24,7 +24,8 @@ export default class LabelLine extends Label {
         this.collapsed_size = [];
         this.kink_index = 0;
         this.angle = [];
-        this.spread_factor = 0.5;
+        this.spread_factor = layout.spread_factor ? layout.spread_factor : 0.5;
+        this.should_articulate = (layout.articulated === false) ? false : true;
 
         if (layout.offset) {
             this.offsets = [layout.offset.slice(), layout.offset.slice()];
@@ -50,16 +51,18 @@ export default class LabelLine extends Label {
 
     static nextLabel(label) {
         // increment segment
-        var hasNext = label.getNextSegment();
-        if (!hasNext) return false;
+        let hasNext = label.getNextSegment();
+        if (!hasNext) {
+            return false;
+        }
 
         // clone options
-        var layout = JSON.parse(JSON.stringify(label.layout));
+        let layout = JSON.parse(JSON.stringify(label.layout));
         layout.segment_index = label.segment_index;
         layout.placement = label.placement;
 
         // create new label
-        var nextLabel = new LabelLine(label.size, label.lines, layout);
+        let nextLabel = new LabelLine(label.size, label.lines, layout);
 
         return (nextLabel.throw_away) ? false : nextLabel;
     }
@@ -73,7 +76,7 @@ export default class LabelLine extends Label {
                 if (this.segment_index >= this.lines.length - 2) {
                     return false;
                 }
-                if (this.segment_size.length > 1) {
+                if (this.should_articulate && this.segment_size.length > 1) {
                     this.placement = PLACEMENT.CORNER;
                 }
                 this.segment_index++;
