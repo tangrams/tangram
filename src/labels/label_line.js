@@ -24,6 +24,7 @@ export default class LabelLine extends Label {
         this.collapsed_size = [];
         this.kink_index = 0;
         this.angle = [];
+        this.nudge_factor = 0.5;
 
         if (layout.offset) {
             this.offsets = [layout.offset.slice(), layout.offset.slice()];
@@ -283,7 +284,7 @@ export default class LabelLine extends Label {
 
                 let theta = Math.PI - Math.abs(angle1 - angle0);
 
-                let dx = Math.abs(0.5 * this.size[1] / Math.tan(0.5 * theta));
+                let dx = this.nudge_factor * Math.abs(this.size[1] / Math.tan(0.5 * theta));
 
                 for (let i = 0; i < 2; i++){
                     let width_px = this.collapsed_size[i];
