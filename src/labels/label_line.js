@@ -24,7 +24,7 @@ export default class LabelLine extends Label {
         this.collapsed_size = [];
         this.kink_index = 0;
         this.angle = [];
-        this.spread_factor = layout.spread_factor ? layout.spread_factor : 0.5;
+        this.spread_factor = (layout.spread_factor !== undefined) ? layout.spread_factor : 0.5;
         this.should_articulate = (layout.articulated === false) ? false : true;
         this.offsets = [layout.offset.slice(), layout.offset.slice()];
 
