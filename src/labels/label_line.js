@@ -145,6 +145,11 @@ export default class LabelLine extends Label {
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let p1p2 = Vector.sub(segment[1], segment[2]);
 
+        // Don't fit if segment doesn't pass the vertical line test, resulting in upside-down labels
+        if (p0p1[0] * p1p2[0] < 0 && p0p1[1] * p1p2[1] > 0) {
+            return false;
+        }
+
         let line_length1 = Vector.length(p0p1);
         let line_length2 = Vector.length(p1p2);
 
@@ -200,14 +205,12 @@ export default class LabelLine extends Label {
                 let theta1 = getAngleFromSegment(segment[0], segment[1]);
                 let theta2 = getAngleFromSegment(segment[1], segment[2]);
 
-                let orientation1 = getOrientationFromSegment(segment[0], segment[1]);
-                let orientation2 = getOrientationFromSegment(segment[1], segment[2]);
+                let p0p1 = Vector.sub(segment[0], segment[1]);
+                let p1p2 = Vector.sub(segment[1], segment[2]);
 
-                if (orientation1 !== orientation2) {
-                    theta2 -= Math.PI;
-                }
+                let orientation = (p0p1[0] >= 0 && p1p2[0] >= 0) ? 1 : -1;
 
-                angle = (orientation1) ? [theta2, theta1] : [theta1, theta2];
+                angle = (orientation > 0) ? [theta2, theta1] : [theta1, theta2];
                 break;
             case PLACEMENT.MID_POINT:
                 let theta = getAngleFromSegment(segment[0], segment[1]);
@@ -392,8 +395,4 @@ function getAngleFromSegment(pt1, pt2) {
     }
 
     return theta;
-}
-
-function getOrientationFromSegment(pt1, pt2) {
-    return pt1[0] >= pt2[0];
 }
