@@ -54,7 +54,7 @@ export default class CanvasText {
 
                         CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
                         CanvasText.text_cache[style][text] =
-                            this.textSize(text, text_settings.transform, text_settings.text_wrap);
+                            this.textSize(text, text_settings.transform, text_settings.text_wrap, text_settings.can_articulate);
                         CanvasText.cache_stats.misses++;
                     }
                     else {
@@ -73,7 +73,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, transform, text_wrap) {
+    textSize (text, transform, text_wrap, can_articulate) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
@@ -106,7 +106,7 @@ export default class CanvasText {
             var text = line.text;
             let line_width = 0;
 
-            if (!new_line) {
+            if (can_articulate && !new_line) {
                 var words = text.split(' ');
 
                 var words_LTR = reorderWordsLTR(words);
