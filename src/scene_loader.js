@@ -190,7 +190,7 @@ export default SceneLoader = {
             // Convert string
             if (typeof obj === 'string') {
                 let key = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
-                if (key && props[key]) {
+                if (key && props[key] !== undefined) {
                     obj = props[key];
                 }
             }
