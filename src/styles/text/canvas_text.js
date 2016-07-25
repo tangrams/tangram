@@ -1,6 +1,7 @@
 import log from '../../utils/log';
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
+import debugSettings from '../../utils/debug_settings'
 
 import FontFaceObserver from 'fontfaceobserver';
 
@@ -10,6 +11,7 @@ export default class CanvasText {
         this.canvas = document.createElement('canvas');
         this.canvas.style.backgroundColor = 'transparent'; // render text on transparent background
         this.context = this.canvas.getContext('2d');
+        this.text_buffer = 8; // pixel padding around text
     }
 
     resize (width, height) {
@@ -19,12 +21,17 @@ export default class CanvasText {
     }
 
     // Set font style params for canvas drawing
-    setFont ({ font_css, fill, stroke, stroke_width, px_size }) {
+    setFont ({ font_css, px_size }) {
         this.px_size = px_size;
-        this.text_buffer = 8; // pixel padding around text
         let ctx = this.context;
 
         ctx.font = font_css;
+        ctx.miterLimit = 2;
+    }
+
+    setFillAndStroke ({fill, stroke, stroke_width}) {
+        let ctx = this.context;
+
         if (stroke) {
             ctx.strokeStyle = stroke;
             ctx.lineWidth = stroke_width;
@@ -34,7 +41,6 @@ export default class CanvasText {
             ctx.lineWidth = 0;
         }
         ctx.fillStyle = fill;
-        ctx.miterLimit = 2;
     }
 
     textSizes (texts) {
@@ -187,6 +193,24 @@ export default class CanvasText {
             }
             this.context.fillText(str, tx, ty);
         }
+
+        // Draw bounding boxes for debugging
+        if (debugSettings.draw_label_collision_boxes) {
+            let buffer = this.text_buffer * Utils.device_pixel_ratio;
+            let collision_size = size.collision_size;
+
+            this.context.strokeStyle = '#000';
+            this.context.lineWidth = 2;
+            this.context.strokeRect(x + buffer, y + buffer, 2 * collision_size[0] + buffer, 2 * collision_size[1]);
+        }
+
+        if (debugSettings.draw_label_texture_boxes) {
+            let texture_size = size.texture_size;
+
+            this.context.strokeStyle = '#000';
+            this.context.lineWidth = 2;
+            this.context.strokeRect(x, y, texture_size[0], texture_size[1]);
+        }
     }
 
     rasterize (texts, texture_size) {
@@ -203,6 +227,8 @@ export default class CanvasText {
                     this.setFont(text_settings);
                     first = false;
                 }
+
+                this.setFillAndStroke(text_settings);
 
                 // each alignment needs to be rendered separately
                 for (let align in info.align) {

@@ -31,6 +31,7 @@ import {StyleParser} from './styles/style_parser';
 import Collision from './labels/collision';
 import FeatureSelection from './selection';
 import CanvasText from './styles/text/canvas_text';
+import debugSettings from './utils/debug_settings';
 
 import yaml from 'js-yaml';
 
@@ -56,7 +57,8 @@ var debug = {
     StyleParser,
     Collision,
     FeatureSelection,
-    CanvasText
+    CanvasText,
+    debugSettings
 };
 
 if (Thread.is_main) {
