@@ -54,7 +54,7 @@ export default class CanvasText {
 
                         CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
                         CanvasText.text_cache[style][text] =
-                            this.textSize(text, text_settings.transform, text_settings.text_wrap, text_settings.can_articulate);
+                            this.textSize(text, text_settings.transform, text_settings.text_wrap, text_settings.can_articulate, text_settings.stroke_width);
                         CanvasText.cache_stats.misses++;
                     }
                     else {
@@ -73,7 +73,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, transform, text_wrap, can_articulate) {
+    textSize (text, transform, text_wrap, can_articulate, stroke_width) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
@@ -118,7 +118,18 @@ export default class CanvasText {
                         str += ' ';
                     }
                     let width = ctx.measureText(str).width;
-                    widths.push(width);
+
+                    // To make sure strokes are not distorted, shift all widths after the first by the stroke width
+                    if (i === 0) {
+                        widths.push(width - 0.5 * stroke_width);
+                    }
+                    else if (i === words_LTR.length - 1) {
+                        widths.push(width + 0.5 * stroke_width);
+                    }
+                    else {
+                        widths.push(width);
+                    }
+
                     line_width += width;
                 }
 
@@ -178,17 +189,25 @@ export default class CanvasText {
 
         let logical_size = texture_size.map(v => v / Utils.device_pixel_ratio);
 
-        var segments = lines[0].segments;
         var segment_size = [];
         var segment_texture_size = [];
-        for (var i = 0; i < segments.length; i++){
-            if (i === 0 || i === segments.length - 1){
-                segment_size[i] = (segments[i] + buffer) / Utils.device_pixel_ratio;
-                segment_texture_size[i] = (segments[i] + buffer);
-            }
-            else{
-                segment_size[i] = segments[i] / Utils.device_pixel_ratio;
-                segment_texture_size[i] = segments[i];
+
+        // Create texture coordinate sizes
+        if (lines.length === 1) {
+            var segments = lines[0].segments;
+            for (var i = 0; i < segments.length; i++){
+                let width;
+                // First and last segments have a left and right buffer added
+                if (i === 0 || i === segments.length - 1) {
+                    width = (segments[i] + buffer);
+                    segment_size[i] = width / Utils.device_pixel_ratio;
+                    segment_texture_size[i] = width;
+                }
+                else {
+                    width = segments[i];
+                    segment_size[i] = width / Utils.device_pixel_ratio;
+                    segment_texture_size[i] = width;
+                }
             }
         }
 
