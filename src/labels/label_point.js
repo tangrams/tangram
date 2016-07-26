@@ -95,7 +95,7 @@ export default class LabelPoint extends Label {
     }
 
     getNextFit() {
-        if (this.inTileBounds()) {
+        if (!this.layout.cull_from_tile || this.inTileBounds()) {
             return true;
         }
 
@@ -104,22 +104,21 @@ export default class LabelPoint extends Label {
             return true;
         }
         else {
-            if (this.layout.cull_from_tile) {
-                if (Array.isArray(this.layout.anchor)) {
-                    // Start on second anchor (first anchor was set on creation)
-                    for (let i = 1; i < this.layout.anchor.length; i++) {
-                        this.anchor = this.layout.anchor[i];
-                        this.update();
+            if (Array.isArray(this.layout.anchor)) {
+                // Start on second anchor (first anchor was set on creation)
+                for (let i = 1; i < this.layout.anchor.length; i++) {
+                    this.anchor = this.layout.anchor[i];
+                    this.update();
 
-                        this.start_anchor_index = i;
+                    this.start_anchor_index = i;
 
-                        if (this.inTileBounds()) {
-                            return true;
-                        }
+                    if (this.inTileBounds()) {
+                        return true;
                     }
                 }
             }
-            return true;
+            // no anchors result in fit
+            return false;
         }
     }
 
