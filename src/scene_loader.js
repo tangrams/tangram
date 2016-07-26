@@ -3,6 +3,7 @@ import Utils from './utils/utils';
 import GLSL from './gl/glsl';
 import mergeObjects from './utils/merge';
 import subscribeMixin from './utils/subscribe';
+import {createSceneBundle} from './scene_bundle';
 
 var SceneLoader;
 
@@ -39,25 +40,23 @@ export default SceneLoader = {
             return Promise.resolve({});
         }
 
-        if (typeof url === 'string') {
-            path = path || Utils.pathForURL(url);
-        }
+        let bundle = createSceneBundle(url, path);
 
-        return Utils.loadResource(url).then(config => {
+        return bundle.load().then(config => {
             // accept single-string or array
             if (typeof config.import === 'string') {
                 config.import = [config.import];
             }
 
             if (!Array.isArray(config.import)) {
-                this.normalize(config, path);
+                this.normalize(config, bundle);
                 return config;
             }
 
             // Collect URLs of scenes to import
             let imports = [];
             for (let url of config.import) {
-                imports.push(Utils.addBaseURL(url, path));
+                imports.push(bundle.urlFor(url));
             }
             delete config.import; // don't want to merge this property
 
@@ -65,7 +64,7 @@ export default SceneLoader = {
                 all(imports.map(url => this.loadSceneRecursive(url, null, errors))).
                 then(configs => {
                     config = mergeObjects({}, ...configs, config);
-                    this.normalize(config, path);
+                    this.normalize(config, bundle);
                     return config;
                 });
         }).catch(error => {
@@ -76,22 +75,22 @@ export default SceneLoader = {
     },
 
     // Normalize properties that should be adjust within each local scene file (usually by path)
-    normalize(config, path) {
-        this.normalizeDataSources(config, path);
-        this.normalizeFonts(config, path);
-        this.normalizeTextures(config, path);
+    normalize(config, bundle) {
+        this.normalizeDataSources(config, bundle);
+        this.normalizeFonts(config, bundle);
+        this.normalizeTextures(config, bundle);
         return config;
     },
 
     // Expand paths for data source
-    normalizeDataSources(config, path) {
+    normalizeDataSources(config, bundle) {
         config.sources = config.sources || {};
 
         for (let source of  Utils.values(config.sources)) {
-            source.url = Utils.addBaseURL(source.url, path);
+            source.url = bundle.urlFor(source.url);
 
             if (Array.isArray(source.scripts)) {
-                source.scripts = source.scripts.map(url => Utils.addBaseURL(url, path));
+                source.scripts = source.scripts.map(url => bundle.urlFor(url));
             }
         }
 
@@ -99,12 +98,12 @@ export default SceneLoader = {
     },
 
     // Expand paths for fonts
-    normalizeFonts(config, path) {
+    normalizeFonts(config, bundle) {
         config.fonts = config.fonts || {};
 
         for (let val of Utils.recurseValues(config.fonts)) {
             if (val.url) {
-                val.url = Utils.addBaseURL(val.url, path);
+                val.url = bundle.urlFor(val.url);
             }
         }
 
@@ -112,7 +111,7 @@ export default SceneLoader = {
     },
 
     // Expand paths and centralize texture definitions for a scene object
-    normalizeTextures(config, path) {
+    normalizeTextures(config, bundle) {
         config.textures = config.textures || {};
 
         // Add current scene's base path to globally defined textures
@@ -121,7 +120,7 @@ export default SceneLoader = {
         if (config.textures) {
             for (let texture of Utils.values(config.textures)) {
                 if (texture.url) {
-                    texture.url = Utils.addBaseURL(texture.url, path);
+                    texture.url = bundle.urlFor(texture.url);
                 }
             }
         }
@@ -139,7 +138,7 @@ export default SceneLoader = {
                 // Style `texture`
                 let tex = style.texture;
                 if (typeof tex === 'string' && !config.textures[tex]) {
-                    tex = Utils.addBaseURL(tex, path);
+                    tex = bundle.urlFor(tex);
                     config.textures[tex] = { url: tex };
                     style.texture = tex;
                 }
@@ -150,7 +149,7 @@ export default SceneLoader = {
                         // Material property has a texture
                         let tex = style.material[prop] != null && style.material[prop].texture;
                         if (typeof tex === 'string' && !config.textures[tex]) {
-                            tex = Utils.addBaseURL(tex, path);
+                            tex = bundle.urlFor(tex);
                             config.textures[tex] = { url: tex };
                             style.material[prop].texture = tex;
                         }
@@ -162,7 +161,7 @@ export default SceneLoader = {
                     for (let {type, value, key, uniforms} of GLSL.parseUniforms(style.shaders.uniforms)) {
                         // Texture by URL (string-named texture not referencing existing texture definition)
                         if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
-                            let tex = Utils.addBaseURL(value, path);
+                            let tex = bundle.urlFor(value);
                             config.textures[tex] = { url: tex };
                             uniforms[key] = tex;
                         }

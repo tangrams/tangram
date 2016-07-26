@@ -15,7 +15,7 @@ import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
-import CanvasText from './styles/text/canvas_text';
+import FontManager from './styles/text/font_manager';
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
@@ -974,7 +974,7 @@ export default class Scene {
         this.createDataSources();
         this.loadTextures();
         this.setBackground();
-        CanvasText.loadFonts(this.config.fonts);
+        FontManager.loadFonts(this.config.fonts);
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
