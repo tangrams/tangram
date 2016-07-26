@@ -466,7 +466,7 @@ Texture.getInfo = function (name) {
 // Called from worker, gets info on one or more textures info from main thread via remote call, then stores it
 // locally in worker. 'textures' can be an array of texture names to sync, or if null, all textures are synced.
 Texture.syncTexturesToWorker = function (names) {
-    return WorkerBroker.postMessage('Texture.getInfo', [names]).
+    return WorkerBroker.postMessage('Texture.getInfo', names).
         then(textures => {
             for (var tex of textures) {
                 Texture.textures[tex.name] = tex;

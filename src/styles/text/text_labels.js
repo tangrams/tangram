@@ -95,7 +95,7 @@ export const TextLabels = {
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', [this.texts[tile.key]]).then(texts => {
+        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', this.texts[tile.key]).then(texts => {
 
             if (tile.canceled) {
                 log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
@@ -139,7 +139,7 @@ export const TextLabels = {
             });
 
             // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', [tile.key, texts]).then(({ texts, texture }) => {
+            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
                 if (tile.canceled) {
                     log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
                     return {};

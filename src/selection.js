@@ -134,7 +134,7 @@ export default class FeatureSelection {
                         WorkerBroker.postMessage(
                             this.workers[worker_id],
                             'self.getFeatureSelection',
-                            [{ id: request.id, key: feature_key }])
+                            { id: request.id, key: feature_key })
                         .then(message => {
                             this.finishRead(message);
                         });

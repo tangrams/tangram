@@ -138,7 +138,7 @@ export default class Tile {
     }
 
     destroy() {
-        this.workerMessage('self.removeTile', [this.key]);
+        this.workerMessage('self.removeTile', this.key);
         this.freeResources();
         this.worker = null;
     }
@@ -171,7 +171,7 @@ export default class Tile {
             this.loading = true;
             this.built = false;
         }
-        return this.workerMessage('self.buildTile', [{ tile: this.buildAsMessage() }]).catch(e => { throw e; });
+        return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
 
     /**
@@ -316,7 +316,7 @@ export default class Tile {
                 // Send meshes to main thread
                 WorkerBroker.postMessage(
                     `TileManager_${scene_id}.buildTileCompleted`,
-                    WorkerBroker.withTransferables([{ tile: Tile.slice(tile, ['mesh_data']), progress }])
+                    WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
                 );
                 progress.start = null;
                 tile.mesh_data = {}; // reset so each group sends separate set of style meshes

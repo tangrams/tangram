@@ -174,7 +174,7 @@ Object.assign(self, {
                     log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
 
                     // Send error to main thread
-                    WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, [Tile.slice(tile)]);
+                    WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, Tile.slice(tile));
                 });
             }
             // Tile already loaded, just rebuild
@@ -188,7 +188,7 @@ Object.assign(self, {
                 catch(error) {
                     // Send error to main thread
                     tile.error = error.toString();
-                    WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, [Tile.slice(tile)]);
+                    WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, Tile.slice(tile));
                 }
             }
         });

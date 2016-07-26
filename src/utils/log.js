@@ -24,7 +24,7 @@ export default function log (msg_level, ...msg) {
     if (LEVELS[msg_level] <= LEVELS[log.level]) {
         if (Thread.is_worker) {
             // Proxy to main thread
-            WorkerBroker.postMessage('_logProxy', [msg_level, msg]);
+            WorkerBroker.postMessage('_logProxy', msg_level, ...msg);
         }
         else {
             let logger = methodForLevel(msg_level);
@@ -47,7 +47,7 @@ log.setLevel = function (level) {
     log.level = level;
 
     if (Thread.is_main && Array.isArray(log.workers)) {
-        WorkerBroker.postMessage(log.workers, '_logSetLevelProxy', [level]);
+        WorkerBroker.postMessage(log.workers, '_logSetLevelProxy', level);
     }
 };
 

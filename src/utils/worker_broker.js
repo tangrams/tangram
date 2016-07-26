@@ -12,12 +12,11 @@
 //     };
 //
 // In main thread, invoke that method and receive the result (if any) as a promise.
-// Method arguments are passed as an array:
 //
 //     worker = new Worker(...);
 //     WorkerBroker.addWorker(worker);
 //
-//     WorkerBroker.postMessage(worker, 'self.square', [5]).then(function(y) {
+//     WorkerBroker.postMessage(worker, 'self.square', 5).then(function(y) {
 //         console.log(y);
 //     });
 //
@@ -77,9 +76,9 @@
 //
 //     WorkerBroker.addTarget('geometry', geometry);
 //
-// In worker thread (note multiple method arguments in array):
+// In worker thread):
 //
-//     WorkerBroker.postMessage('geometry.length', [3, 4]).then(function(d) {
+//     WorkerBroker.postMessage('geometry.length', 3, 4).then(function(d) {
 //         console.log(d);
 //     });
 //
@@ -138,15 +137,15 @@ function setupMainThread () {
     // Arguments:
     //   - worker: one or more web worker instances to send the message to (single value or array)
     //   - method: the method with this name, specified with dot-notation, will be invoked in the worker
-    //   - message: array of arguments to call the method with
+    //   - message: spread of arguments to call the method with
     // Returns:
     //   - a promise that will be fulfilled if the worker method returns a value (could be immediately, or async)
     //
-    WorkerBroker.postMessage = function (worker, method, message) {
+    WorkerBroker.postMessage = function (worker, method, ...message) {
         // If more than one worker specified, post to multiple
         if (Array.isArray(worker)) {
             return Promise.all(
-                worker.map(w => WorkerBroker.postMessage(w, method, message))
+                worker.map(w => WorkerBroker.postMessage(w, method, ...message))
             );
         }
 
@@ -158,9 +157,9 @@ function setupMainThread () {
 
         let payload, transferables = [];
 
-        if (message instanceof WorkerBroker.withTransferables) {
-            transferables = message.transferables;
-            message = message.value;
+        if (message && message.length === 1 && message[0] instanceof WorkerBroker.withTransferables) {
+            transferables = message[0].transferables;
+            message = message[0].value;
         }
 
         payload = {
@@ -319,7 +318,7 @@ function setupWorkerThread () {
     // Returns:
     //   - a promise that will be fulfilled if the main thread method returns a value (could be immediately, or async)
     //
-    WorkerBroker.postMessage = function (method, message) {
+    WorkerBroker.postMessage = function (method, ...message) {
         // Track state of this message
         var promise = new Promise((resolve, reject) => {
             messages[message_id] = { method, message, resolve, reject };
@@ -327,9 +326,9 @@ function setupWorkerThread () {
 
        let payload, transferables = [];
 
-        if (message instanceof WorkerBroker.withTransferables) {
-            transferables = message.transferables;
-            message = message.value;
+        if (message && message.length === 1 && message[0] instanceof WorkerBroker.withTransferables) {
+            transferables = message[0].transferables;
+            message = message[0].value;
         }
 
         payload = {
@@ -447,9 +446,9 @@ function setupWorkerThread () {
 }
 
 // Special value wrapper, to indicate that we want to find and include transferable objects in the message
-WorkerBroker.withTransferables = function (value) {
+WorkerBroker.withTransferables = function (...value) {
     if (!(this instanceof WorkerBroker.withTransferables)) {
-        return new WorkerBroker.withTransferables(value);
+        return new WorkerBroker.withTransferables(...value);
     }
 
     this.value = value;
