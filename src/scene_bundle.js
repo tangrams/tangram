@@ -55,30 +55,21 @@ export class ZipSceneBundle extends SceneBundle {
     }
 
     findRoot() {
-        // First check for explicit scene.yaml at zip root
-        if (this.files['scene.yaml']) {
-            this.root = 'scene.yaml';
-        }
+        // There must be a single YAML file at the top level of the zip
+        const yamls = Object.keys(this.files)
+            .filter(path => this.files[path].depth === 0)
+            .filter(path => Utils.extensionForURL(path) === 'yaml');
 
-        // Second check for a single YAML at top level of zip
-        let yamls = [];
-        if (!this.root) {
-            yamls = Object.keys(this.files)
-                .filter(path => this.files[path].depth === 0)
-                .filter(path => Utils.extensionForURL(path) === 'yaml');
-
-            if (yamls.length === 1) {
-                this.root = yamls[0];
-            }
+        if (yamls.length === 1) {
+            this.root = yamls[0];
         }
 
         // No root found
         if (!this.root) {
             let msg = `Could not find root scene for bundle '${this.url}': `;
-            msg += `The zip archive's root level must contain either a single scene YAML file, `;
-            msg += `or a scene YAML file with name 'scene.yaml'. `;
+            msg += `The zip archive's root level must contain a single scene file with the '.yaml' extension. `;
             if (yamls.length > 0) {
-                msg += `Found multiple YAML files at the root level but no 'scene.yaml': ${yamls.map(r => '\'' + r + '\'' )}.`;
+                msg += `Found multiple YAML files at the root level: ${yamls.map(r => '\'' + r + '\'' ).join(', ')}.`;
             }
             else {
                 msg += `Found NO YAML files at the root level.`;
