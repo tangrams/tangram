@@ -295,16 +295,16 @@ Enjoy!
                     scene.config.layers.buildings.extruded.draw.polygons.style = style;
 
                     var envmaps = {
-                        'Sunset': window.location.origin+window.location.pathname+'demos/images/sunset.jpg',
-                        'Chrome': window.location.origin+window.location.pathname+'demos/images/LitSphere_test_02.jpg',
-                        'Matte Red': window.location.origin+window.location.pathname+'demos/images/matball01.jpg',
-                        'Color Wheel': window.location.origin+window.location.pathname+'demos/images/wheel.png'
+                        'Sunset': 'images/sunset.jpg',
+                        'Chrome': 'images/LitSphere_test_02.jpg',
+                        'Matte Red': 'images/matball01.jpg',
+                        'Color Wheel': 'images/wheel.png'
                     };
 
-                    this.state.envmap = scene.styles.envmap.material.emission.texture;
+                    this.state.envmap = envmaps['Sunset'];
                     this.folder.add(this.state, 'envmap', envmaps).onChange(function(value) {
-                        scene.styles.envmap.material.emission.texture = value;
-                        scene.requestRedraw();
+                        scene.config.styles.envmap.material.emission.texture = value;
+                        scene.load(scene.config, scene.config_path);
                     }.bind(this));
                 }
             }
