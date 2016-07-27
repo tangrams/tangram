@@ -487,6 +487,13 @@ export default class Tile {
         }
     }
 
+    // Proxy tiles only need to render a specific style if any of the tiles they are proxying *for*
+    // haven't finished loading that style yet. If all proxied tiles *have* data for that style, then it's
+    // safe to hide the proxy tile's version.
+    shouldProxyForStyle (style) {
+        return !this.proxy_for || this.proxy_for.some(t => t.meshes[style] == null);
+    }
+
     // Update model matrix and tile uniforms
     setupProgram ({ model, model32 }, program) {
         // Tile origin
