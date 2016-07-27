@@ -315,7 +315,7 @@ export default class Tile {
 
                 // Send meshes to main thread
                 WorkerBroker.postMessage(
-                    `TileManager_${scene_id}.buildTileCompleted`,
+                    `TileManager_${scene_id}.buildTileStylesCompleted`,
                     WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
                 );
                 progress.start = null;

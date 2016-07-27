@@ -261,16 +261,16 @@ export default class TileManager {
     }
 
     // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-    buildTileCompleted({ tile, progress }) {
+    buildTileStylesCompleted({ tile, progress }) {
         // Removed this tile during load?
         if (this.tiles[tile.key] == null) {
-            log('trace', `discarded tile ${tile.key} in TileManager.buildTileCompleted because previously removed`);
+            log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because previously removed`);
             Tile.abortBuild(tile);
             this.updateTileStates();
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.scene.generation) {
-            log('debug', `discarded tile ${tile.key} in TileManager.buildTileCompleted because built with ` +
+            log('debug', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` +
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
