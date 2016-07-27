@@ -98,7 +98,6 @@ styles:
 
     envmap:
         base: polygons
-        animated: true
         material:
             ambient: 0
             diffuse: 0
