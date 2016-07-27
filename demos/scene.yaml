@@ -38,7 +38,7 @@ lights:
 
 scene:
     background:
-        color: '#9dc3de'
+        color: '#f0ebeb'
 
 fonts:
     Montserrat:
@@ -206,6 +206,7 @@ layers:
 
     earth:
         data: { source: mapzen }
+        visible: false
         draw:
             polygons:
                 style: flat

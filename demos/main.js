@@ -210,6 +210,11 @@ Enjoy!
                             gui.removeFolder(this.folder);
                         }
                     }
+
+                    scene.config.layers.earth.visible = true; // some custom shaders may need to render earth
+                }
+                else {
+                    scene.config.layers.earth.visible = false; // don't need earth layer in default style
                 }
             }
 
