@@ -24,7 +24,7 @@ export default class Tile {
         this.generation = null;
 
         this.visible = false;
-        this.proxy = null;
+        this.proxy_for = null;
         this.proxy_depth = 0;
         this.proxied_as = null;
         this.loading = false;
@@ -473,14 +473,16 @@ export default class Tile {
 
     // Set as a proxy tile for another tile
     setProxyFor (tile) {
-        this.proxy = (tile != null);
         if (tile) {
             this.visible = true;
+            this.proxy_for = this.proxy_for || [];
+            this.proxy_for.push(tile);
             this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
             tile.proxied_as = (tile.style_zoom > this.style_zoom ? 'child' : 'parent');
             this.update();
         }
         else {
+            this.proxy_for = null;
             this.proxy_depth = 0;
         }
     }
