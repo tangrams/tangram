@@ -81,9 +81,11 @@ void main (void) {
     #pragma tangram: color
 
     // Fade in (if requested) based on time mesh has been visible
+    #ifdef TANGRAM_FADE_IN_RATE
     if (u_fade_in) {
         color.a *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);
     }
+    #endif
 
     // Fade out when tile is zooming out, e.g. acting as proxy tiles
     // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels

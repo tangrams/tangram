@@ -73,8 +73,14 @@ Object.assign(Points, {
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
 
         // Fade in (depending on tile proxy status)
-        this.fade_in_time = 0.25; // time in seconds
-        this.defines.TANGRAM_FADE_IN_RATE = 1 / this.fade_in_time;
+        if (options.debug && options.debug.suppress_fade === true) {
+            this.fade_in_time = 0;
+            this.defines.TANGRAM_FADE_IN_RATE = null;
+        }
+        else {
+            this.fade_in_time = 0.25; // time in seconds
+            this.defines.TANGRAM_FADE_IN_RATE = 1 / this.fade_in_time;
+        }
 
         this.collision_group_points = this.name+'-points';
         this.collision_group_text = this.name+'-text';
