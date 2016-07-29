@@ -544,7 +544,7 @@ export default class Scene {
 
             // Skip proxy tiles if new tiles have finished loading this style
             if (!tile.shouldProxyForStyle(style)) {
-                log('debug', `Scene.renderStyle(): Skip proxy tile for style '${style}' `, tile, tile.proxy_for);
+                // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style}' `, tile, tile.proxy_for);
                 continue;
             }
 
