@@ -30,7 +30,9 @@ export default TextSettings = {
         family: 'Helvetica',
         fill: 'white',
         text_wrap: 15,
-        align: 'center'
+        align: 'center',
+        stroke: null,
+        stroke_width: 0
     },
 
     compute (feature, draw, context) {
