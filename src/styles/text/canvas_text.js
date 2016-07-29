@@ -150,7 +150,7 @@ export default class CanvasText {
     }
 
     // Draw one or more lines of text at specified location, adjusting for buffer and baseline
-    drawText (lines, [x, y], size, { stroke, transform, align }) {
+    drawText (lines, [x, y], size, { stroke, stroke_width, transform, align }) {
         align = align || 'center';
 
         for (let line_num=0; line_num < lines.length; line_num++) {
@@ -176,7 +176,7 @@ export default class CanvasText {
             // 0.75 buffer produces a better approximate vertical centering of text
             let ty = y + buffer * 0.75 + (line_num + 1) * line_height;
 
-            if (stroke && stroke.stroke_width > 0) {
+            if (stroke && stroke_width > 0) {
                 this.context.strokeText(str, tx, ty);
             }
             this.context.fillText(str, tx, ty);
@@ -202,6 +202,7 @@ export default class CanvasText {
                 for (let align in info.align) {
                     this.drawText(lines, info.align[align].texture_position, info.size, {
                         stroke: text_settings.stroke,
+                        stroke_width: text_settings.stroke_width,
                         transform: text_settings.transform,
                         align: align
                     });
