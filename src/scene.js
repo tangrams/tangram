@@ -15,7 +15,7 @@ import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
-import CanvasText from './styles/text/canvas_text';
+import FontManager from './styles/text/font_manager';
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
@@ -24,6 +24,7 @@ export default class Scene {
         options = options || {};
         subscribeMixin(this);
 
+        this.id = Scene.id++;
         this.initialized = false;
         this.initializing = null; // will be a promise that resolves when scene is loaded
         this.sources = {};
@@ -280,7 +281,7 @@ export default class Scene {
 
             log('debug', `Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'self.init', id, this.num_workers, this.log_level, Utils.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio).then(
                 (id) => {
                     log('debug', `Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -541,11 +542,22 @@ export default class Scene {
                 }
             }
 
+            // Skip proxy tiles if new tiles have finished loading this style
+            if (!tile.shouldProxyForStyle(style)) {
+                // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style}' `, tile, tile.proxy_for);
+                continue;
+            }
+
             // Tile-specific state
             this.view.setupTile(tile, program);
 
             // Render tile
-            this.styles[style].render(tile.meshes[style]);
+            if (this.styles[style].render(tile.meshes[style])) {
+                // Don't incur additional renders while viewport is moving
+                if (!(this.view.panning || this.view.zooming)) {
+                   this.requestRedraw();
+                }
+            }
             render_count += tile.meshes[style].geometry_count;
         }
 
@@ -973,7 +985,7 @@ export default class Scene {
         this.createDataSources();
         this.loadTextures();
         this.setBackground();
-        CanvasText.loadFonts(this.config.fonts);
+        FontManager.loadFonts(this.config.fonts);
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
@@ -1134,6 +1146,8 @@ export default class Scene {
                 geometry_build: false
             },
 
+            suppress_fade: false,
+
             // Rebuild geometry a given # of times and print average, min, max timings
             timeRebuild (num = 1, options = {}) {
                 let times = [];
@@ -1181,4 +1195,5 @@ export default class Scene {
 
 }
 
-Scene.generation = 0; // global unique generation id across all scenes
+Scene.id = 0;         // unique id for a scene instance
+Scene.generation = 0; // id that is incremented each time a scene config is re-parsed

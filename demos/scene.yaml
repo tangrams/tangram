@@ -38,7 +38,7 @@ lights:
 
 scene:
     background:
-        color: '#9dc3de'
+        color: '#f0ebeb'
 
 fonts:
     Montserrat:
@@ -98,7 +98,6 @@ styles:
 
     envmap:
         base: polygons
-        animated: true
         material:
             ambient: 0
             diffuse: 0
@@ -206,6 +205,7 @@ layers:
 
     earth:
         data: { source: mapzen }
+        visible: false
         draw:
             polygons:
                 style: flat
@@ -265,7 +265,6 @@ layers:
                     size: 16px
                     text:
                         text_source: global.language_text_source
-                        offset: [0, 2px]
                         font:
                             family: Lucida Grande
                             size: 10pt

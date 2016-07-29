@@ -19,6 +19,8 @@ export default class VBOMesh  {
         this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
         this.uniforms = options.uniforms;
         this.retain = options.retain || false; // whether to retain mesh data in CPU after uploading to GPU
+        this.created_at = +new Date();
+        this.fade_in_time = options.fade_in_time || 0; // optional time to fade in mesh
 
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
         this.vaos = new Map(); // map of VertexArrayObjects, keyed by program
@@ -48,6 +50,7 @@ export default class VBOMesh  {
     }
 
     // Render, by default with currently bound program, or otherwise with optionally provided one
+    // Returns true if mesh requests a render on next frame (e.g. for fade animations)
     render(options = {}) {
         if (!this.valid) {
             return false;
@@ -60,6 +63,9 @@ export default class VBOMesh  {
             program.saveUniforms(this.uniforms);
             program.setUniforms(this.uniforms, false); // don't reset texture unit
         }
+
+        let visible_time = (+new Date() - this.created_at) / 1000;
+        program.uniform('1f', 'u_visible_time', visible_time);
 
         this.bind(program);
 
@@ -76,7 +82,8 @@ export default class VBOMesh  {
             program.restoreUniforms(this.uniforms);
         }
 
-        return true;
+        // Request next render if mesh is fading in
+        return (visible_time < this.fade_in_time);
     }
 
     // Bind buffers and vertex attributes to prepare for rendering

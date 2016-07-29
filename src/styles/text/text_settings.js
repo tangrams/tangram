@@ -31,6 +31,7 @@ export default TextSettings = {
         fill: 'white',
         text_wrap: 15,
         align: 'center',
+        stroke: null,
         stroke_width: 0
     },
 

@@ -62,6 +62,18 @@ Utils.pathForURL = function (url) {
     return './';
 };
 
+Utils.isRelativeURL = function (url) {
+    return !(url.search(/^(http|https|data|blob):\/\//) > -1 || url.substr(0, 2) === '//');
+};
+
+Utils.extensionForURL = function (url) {
+    url = url.split('/').pop();
+    let last_dot = url.lastIndexOf('.');
+    if (last_dot > -1) {
+        return url.substring(last_dot + 1);
+    }
+};
+
 // Add a set of query string params to a URL
 // params: hash of key/value pairs of query string parameters
 Utils.addParamsToURL = function (url, params) {

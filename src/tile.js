@@ -24,10 +24,12 @@ export default class Tile {
         this.generation = null;
 
         this.visible = false;
-        this.proxy = null;
+        this.proxy_for = null;
         this.proxy_depth = 0;
+        this.proxied_as = null;
         this.loading = false;
         this.loaded = false;
+        this.built = false;
         this.error = null;
         this.debug = {};
 
@@ -167,6 +169,7 @@ export default class Tile {
         this.generation = generation;
         if (!this.loaded) {
             this.loading = true;
+            this.built = false;
         }
         return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
@@ -188,7 +191,7 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, { layers, styles, global }) {
+    static buildGeometry (tile, { scene_id, layers, styles, global }) {
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
 
@@ -265,31 +268,64 @@ export default class Tile {
         }
         tile.debug.rendering = +new Date() - tile.debug.rendering;
 
-        // Finalize array buffer for each render style
-        let tile_styles = StyleManager.stylesForTile(tile.key, styles);
-        tile.mesh_data = {};
-        let queue = [];
-        for (let s=0; s < tile_styles.length; s++) {
-            let style_name = tile_styles[s];
-            let style = styles[style_name];
-            queue.push(style.endData(tile).then((style_data) => {
-                if (style_data) {
-                    tile.mesh_data[style_name] = {
-                        vertex_data: style_data.vertex_data,
-                        vertex_elements: style_data.vertex_elements,
-                        uniforms: style_data.uniforms,
-                        textures: style_data.textures
-                    };
-                }
-            }));
-        }
+        // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
+        let tile_styles = StyleManager.stylesForTile(tile.key, styles).map(s => styles[s]);
+        Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.collision ? 'collision' : 'non-collision');
+        // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.name); // call for each style
+        // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => 'styles'); // all styles in single call (previous behavior)
+    }
 
-        return Promise.all(queue).then(() => {
-            Collision.resetTile(tile.key);
-
-            // Return keys to be transfered to main thread
-            return ['mesh_data'];
+    // Send groups of styles back to main thread, asynchronously (as they finish building),
+    // grouped by the provided function
+    static sendStyleGroups(tile, styles, { scene_id }, group_by) {
+        // Group styles
+        let groups = {};
+        styles.forEach(s => {
+            let group_name = group_by(s);
+            groups[group_name] = groups[group_name] || [];
+            groups[group_name].push(s);
         });
+
+        let progress = { start: true };
+        tile.mesh_data = {};
+
+        for (let group_name in groups) {
+            let group = groups[group_name];
+
+            Promise.all(group.map(style => {
+                return style.endData(tile).then(style_data => {
+                    if (style_data) {
+                        tile.mesh_data[style.name] = {
+                            vertex_data: style_data.vertex_data,
+                            vertex_elements: style_data.vertex_elements,
+                            uniforms: style_data.uniforms,
+                            textures: style_data.textures
+                        };
+                    }
+                });
+            }))
+            .then(() => {
+                log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
+
+                // Clear group and check if all groups finished
+                groups[group_name] = [];
+                if (Object.keys(groups).every(g => groups[g].length === 0)) {
+                    progress.done = true;
+                }
+
+                // Send meshes to main thread
+                WorkerBroker.postMessage(
+                    `TileManager_${scene_id}.buildTileStylesCompleted`,
+                    WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
+                );
+                progress.start = null;
+                tile.mesh_data = {}; // reset so each group sends separate set of style meshes
+
+                if (progress.done) {
+                    Collision.resetTile(tile.key); // clear collision if we're done with the tile
+                }
+            });
+        }
     }
 
     /**
@@ -342,7 +378,7 @@ export default class Tile {
        Called on main thread when a web worker completes processing
        for a single tile.
     */
-    buildMeshes(styles) {
+    buildMeshes(styles, progress) {
         if (this.error) {
             return;
         }
@@ -352,7 +388,7 @@ export default class Tile {
         this.debug.buffer_size = 0;
 
         // Create VBOs
-        let meshes = {}, textures = []; // new resources, to be swapped in
+        let meshes = {}, textures = []; // new data to be added to tile
         let mesh_data = this.mesh_data;
         if (mesh_data) {
             for (var s in mesh_data) {
@@ -383,13 +419,25 @@ export default class Tile {
         }
         delete this.mesh_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
 
-        // Swap in new data, free old data
-        this.freeResources();
-        this.meshes = meshes;
-        this.textures = textures;
+        // Add new tile data
+        if (progress.start) {
+            this.freeResources();
+            this.meshes = meshes;
+            this.textures = textures;
+        }
+        else {
+            this.meshes = Object.assign(this.meshes, meshes);
+            textures.forEach(t => {
+                if (this.textures.indexOf(t) === -1) {
+                    this.textures.push(t);
+                }
+            });
+        }
 
-        this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
-        this.printDebug();
+        if (progress.done) {
+            this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
+            this.printDebug();
+        }
     }
 
     /**
@@ -425,15 +473,25 @@ export default class Tile {
 
     // Set as a proxy tile for another tile
     setProxyFor (tile) {
-        this.proxy = tile;
         if (tile) {
             this.visible = true;
+            this.proxy_for = this.proxy_for || [];
+            this.proxy_for.push(tile);
             this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
+            tile.proxied_as = (tile.style_zoom > this.style_zoom ? 'child' : 'parent');
             this.update();
         }
         else {
+            this.proxy_for = null;
             this.proxy_depth = 0;
         }
+    }
+
+    // Proxy tiles only need to render a specific style if any of the tiles they are proxying *for*
+    // haven't finished loading that style yet. If all proxied tiles *have* data for that style, then it's
+    // safe to hide the proxy tile's version.
+    shouldProxyForStyle (style) {
+        return !this.proxy_for || this.proxy_for.some(t => t.meshes[style] == null);
     }
 
     // Update model matrix and tile uniforms
@@ -448,6 +506,10 @@ export default class Tile {
         mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
         mat4.copy(model32, model);
         program.uniform('Matrix4fv', 'u_model', model32);
+
+        // Fade in labels according to proxy status, avoiding "flickering" where
+        // labels quickly go from invisible back to visible
+        program.uniform('1i', 'u_fade_in', this.proxied_as !== 'child');
     }
 
     // Slice a subset of keys out of a tile

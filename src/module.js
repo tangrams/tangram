@@ -33,6 +33,7 @@ import FeatureSelection from './selection';
 import CanvasText from './styles/text/canvas_text';
 
 import yaml from 'js-yaml';
+import JSZip from 'jszip';
 
 // Make some modules accessible for debugging
 var debug = {
@@ -66,6 +67,7 @@ if (Thread.is_main) {
     // Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
     if (window.Promise === undefined) {
         window.Promise = Promise;
+        JSZip.external.Promise = Promise;
     }
 }
 
