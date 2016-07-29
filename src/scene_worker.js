@@ -149,36 +149,32 @@ Object.assign(self, {
             // First time building the tile
             if (tile.loaded !== true) {
 
-                return new Promise((resolve, reject) => {
+                tile.loading = true;
+                tile.loaded = false;
+                tile.error = null;
 
-                    tile.loading = true;
+                self.loadTileSourceData(tile).then(() => {
+                    if (!self.getTile(tile.key)) {
+                        log('trace', `stop tile build after data source load because tile was removed: ${tile.key}`);
+                        return;
+                    }
+
+                    // Warn and continue on data source error
+                    if (tile.source_data.error) {
+                        log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
+                    }
+
+                    tile.loading = false;
+                    tile.loaded = true;
+                    Tile.buildGeometry(tile, self);
+                }).catch((error) => {
+                    tile.loading = false;
                     tile.loaded = false;
-                    tile.error = null;
+                    tile.error = error.toString();
+                    log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
 
-                    self.loadTileSourceData(tile).then(() => {
-                        if (!self.getTile(tile.key)) {
-                            log('trace', `stop tile build after data source load because tile was removed: ${tile.key}`);
-                            return;
-                        }
-
-                        // Warn and continue on data source error
-                        if (tile.source_data.error) {
-                            log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
-                        }
-
-                        tile.loading = false;
-                        tile.loaded = true;
-                        Tile.buildGeometry(tile, self).then(keys => {
-                            resolve(WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) }));
-                        });
-                    }).catch((error) => {
-                        tile.loading = false;
-                        tile.loaded = false;
-                        tile.error = error.toString();
-                        log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
-
-                        resolve({ tile: Tile.slice(tile) });
-                    });
+                    // Send error to main thread
+                    WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, Tile.slice(tile));
                 });
             }
             // Tile already loaded, just rebuild
@@ -186,9 +182,14 @@ Object.assign(self, {
                 log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                return Tile.buildGeometry(tile, self).then(keys => {
-                    return WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) });
-                });
+                try {
+                    Tile.buildGeometry(tile, self);
+                }
+                catch(error) {
+                    // Send error to main thread
+                    tile.error = error.toString();
+                    WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, Tile.slice(tile));
+                }
             }
         });
     },

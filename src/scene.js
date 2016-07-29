@@ -542,11 +542,22 @@ export default class Scene {
                 }
             }
 
+            // Skip proxy tiles if new tiles have finished loading this style
+            if (!tile.shouldProxyForStyle(style)) {
+                // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style}' `, tile, tile.proxy_for);
+                continue;
+            }
+
             // Tile-specific state
             this.view.setupTile(tile, program);
 
             // Render tile
-            this.styles[style].render(tile.meshes[style]);
+            if (this.styles[style].render(tile.meshes[style])) {
+                // Don't incur additional renders while viewport is moving
+                if (!(this.view.panning || this.view.zooming)) {
+                   this.requestRedraw();
+                }
+            }
             render_count += tile.meshes[style].geometry_count;
         }
 
@@ -1134,6 +1145,8 @@ export default class Scene {
             profile: {
                 geometry_build: false
             },
+
+            suppress_fade: false,
 
             // Rebuild geometry a given # of times and print average, min, max timings
             timeRebuild (num = 1, options = {}) {

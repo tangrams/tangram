@@ -289,12 +289,12 @@ export var Style = {
         this.max_texture_size = Texture.getMaxTextureSize(this.gl);
     },
 
-    makeMesh (vertex_data, vertex_elements, { uniforms } = {}) {
-        return new VBOMesh(this.gl, vertex_data, vertex_elements, this.vertex_layout, { uniforms });
+    makeMesh (vertex_data, vertex_elements, options = {}) {
+        return new VBOMesh(this.gl, vertex_data, vertex_elements, this.vertex_layout, options);
     },
 
     render (mesh) {
-        mesh.render();
+        return mesh.render();
     },
 
     compile () {

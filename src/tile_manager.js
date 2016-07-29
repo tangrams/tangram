@@ -1,6 +1,7 @@
 import Tile from './tile';
 import TilePyramid from './tile_pyramid';
 import log from './utils/log';
+import WorkerBroker from './utils/worker_broker';
 
 export default class TileManager {
 
@@ -12,6 +13,10 @@ export default class TileManager {
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
+
+        // Provide a hook for this object to be called from worker threads
+        this.main_thread_target = ['TileManager', this.scene.id].join('_');
+        WorkerBroker.addTarget(this.main_thread_target, this);
     }
 
     destroy() {
@@ -129,7 +134,7 @@ export default class TileManager {
         let proxy = false;
         this.forEachTile(tile => {
             if (this.view.zoom_direction === 1) {
-                if (tile.visible && tile.loading && tile.coords.z > 0) {
+                if (tile.visible && !tile.built && tile.coords.z > 0) {
                     let p = this.pyramid.getAncestor(tile);
                     if (p) {
                         p.setProxyFor(tile);
@@ -138,7 +143,7 @@ export default class TileManager {
                 }
             }
             else if (this.view.zoom_direction === -1) {
-                if (tile.visible && tile.loading) {
+                if (tile.visible && !tile.built) {
                     let d = this.pyramid.getDescendants(tile);
                     for (let t of d) {
                         t.setProxyFor(tile);
@@ -252,30 +257,20 @@ export default class TileManager {
         this.tileBuildStart(tile.key);
         this.updateVisibility(tile);
         tile.update();
-        tile.build(this.scene.generation)
-            .then(message => {
-                if (message) { // empty message means tile build was aborted
-                    this.buildTileCompleted(message);
-                }
-            })
-            .catch(e => {
-                log('error', `Error building tile ${tile.key}:`, e);
-                this.forgetTile(tile.key);
-                Tile.abortBuild(tile);
-            });
+        tile.build(this.scene.generation);
     }
 
     // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-    buildTileCompleted({ tile }) {
+    buildTileStylesCompleted({ tile, progress }) {
         // Removed this tile during load?
         if (this.tiles[tile.key] == null) {
-            log('trace', `discarded tile ${tile.key} in TileManager.buildTileCompleted because previously removed`);
+            log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because previously removed`);
             Tile.abortBuild(tile);
             this.updateTileStates();
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.scene.generation) {
-            log('debug', `discarded tile ${tile.key} in TileManager.buildTileCompleted because built with ` +
+            log('debug', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` +
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
@@ -287,12 +282,25 @@ export default class TileManager {
                 tile = this.tiles[tile.key].merge(tile);
             }
 
-            tile.buildMeshes(this.scene.styles);
+            if (progress.done) {
+                tile.built = true;
+            }
+
+            tile.buildMeshes(this.scene.styles, progress);
             this.updateTileStates();
             this.scene.requestRedraw();
         }
 
-        this.tileBuildStop(tile.key);
+        if (progress.done) {
+            this.tileBuildStop(tile.key);
+        }
+    }
+
+    // Called on main thread when web worker encounters an error building a tile
+    buildTileError(tile) {
+        log('error', `Error building tile ${tile.key}:`, tile.error);
+        this.forgetTile(tile.key);
+        Tile.abortBuild(tile);
     }
 
     // Track tile build state
