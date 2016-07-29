@@ -21,15 +21,8 @@ export default class CanvasText {
     }
 
     // Set font style params for canvas drawing
-    setFont ({ font_css, px_size }) {
+    setFont ({ font_css, fill, stroke, stroke_width, px_size }) {
         this.px_size = px_size;
-        let ctx = this.context;
-
-        ctx.font = font_css;
-        ctx.miterLimit = 2;
-    }
-
-    setFillAndStroke ({fill, stroke, stroke_width}) {
         let ctx = this.context;
 
         if (stroke) {
@@ -41,6 +34,9 @@ export default class CanvasText {
             ctx.lineWidth = 0;
         }
         ctx.fillStyle = fill;
+
+        ctx.font = font_css;
+        ctx.miterLimit = 2;
     }
 
     textSizes (texts) {
@@ -196,20 +192,32 @@ export default class CanvasText {
 
         // Draw bounding boxes for debugging
         if (debugSettings.draw_label_collision_boxes) {
-            let buffer = this.text_buffer * Utils.device_pixel_ratio;
-            let collision_size = size.collision_size;
+            this.context.save();
 
-            this.context.strokeStyle = '#000';
-            this.context.lineWidth = 2;
-            this.context.strokeRect(x + buffer, y + buffer, 2 * collision_size[0] + buffer, 2 * collision_size[1]);
+            let dpr = Utils.device_pixel_ratio;
+            let buffer = dpr * this.text_buffer;
+            let collision_size = size.collision_size;
+            let lineWidth = 2;
+
+            this.context.strokeStyle = 'blue';
+            this.context.lineWidth = lineWidth;
+            this.context.strokeRect(x + buffer, y + buffer, dpr * collision_size[0], dpr * collision_size[1]);
+
+            this.context.restore();
         }
 
         if (debugSettings.draw_label_texture_boxes) {
-            let texture_size = size.texture_size;
+            this.context.save();
 
-            this.context.strokeStyle = '#000';
-            this.context.lineWidth = 2;
-            this.context.strokeRect(x, y, texture_size[0], texture_size[1]);
+            let texture_size = size.texture_size;
+            let lineWidth = 2;
+
+            this.context.strokeStyle = 'green';
+            this.context.lineWidth = lineWidth;
+            // stroke is applied internally, so the outer border is the edge of the texture
+            this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
+
+            this.context.restore();
         }
     }
 
@@ -227,8 +235,6 @@ export default class CanvasText {
                     this.setFont(text_settings);
                     first = false;
                 }
-
-                this.setFillAndStroke(text_settings);
 
                 // each alignment needs to be rendered separately
                 for (let align in info.align) {
