@@ -16,6 +16,7 @@ import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
 import CanvasText from './styles/text/canvas_text';
+import debugSettings from './utils/debug_settings';
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
@@ -682,7 +683,7 @@ export default class Scene {
             this.building = { resolve, reject };
 
             // Profiling
-            if (this.debug.profile.geometry_build) {
+            if (debugSettings.profile_geometry_build_time) {
                 this._profile('rebuildGeometry');
             }
 
@@ -705,7 +706,7 @@ export default class Scene {
             this.tile_manager.checkBuildQueue();    // resolve immediately if no tiles to build
         }).then(() => {
             // Profiling
-            if (this.debug.profile.geometry_build) {
+            if (debugSettings.profile_geometry_build_time) {
                 this._profileEnd('rebuildGeometry');
             }
         });
@@ -1131,10 +1132,6 @@ export default class Scene {
     setupDebug () {
         let scene = this;
         this.debug = {
-            profile: {
-                geometry_build: false
-            },
-
             // Rebuild geometry a given # of times and print average, min, max timings
             timeRebuild (num = 1, options = {}) {
                 let times = [];
