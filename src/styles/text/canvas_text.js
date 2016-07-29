@@ -1,7 +1,7 @@
 import log from '../../utils/log';
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
-import debugSettings from '../../utils/debug_settings'
+import debugSettings from '../../utils/debug_settings';
 
 import FontFaceObserver from 'fontfaceobserver';
 
