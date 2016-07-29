@@ -23,13 +23,9 @@ export default class CanvasText {
         let ctx = this.context;
 
         ctx.font = font_css;
-        if (stroke) {
+        if (stroke && stroke_width > 0) {
             ctx.strokeStyle = stroke;
             ctx.lineWidth = stroke_width;
-        }
-        else {
-            ctx.strokeStyle = null;
-            ctx.lineWidth = 0;
         }
         ctx.fillStyle = fill;
         ctx.miterLimit = 2;
@@ -180,7 +176,7 @@ export default class CanvasText {
             // 0.75 buffer produces a better approximate vertical centering of text
             let ty = y + buffer * 0.75 + (line_num + 1) * line_height;
 
-            if (stroke) {
+            if (stroke && stroke.stroke_width > 0) {
                 this.context.strokeText(str, tx, ty);
             }
             this.context.fillText(str, tx, ty);
