@@ -78,7 +78,7 @@ Object.assign(Points, {
             this.defines.TANGRAM_FADE_IN_RATE = null;
         }
         else {
-            this.fade_in_time = 0.25; // time in seconds
+            this.fade_in_time = 0.15; // time in seconds
             this.defines.TANGRAM_FADE_IN_RATE = 1 / this.fade_in_time;
         }
 
