@@ -405,7 +405,17 @@ function doesMatch(layer, context) {
     }
 
     // any remaining filter (more complex matches or dynamic function)
-    return layer.filter == null || layer.filter(context);
+    if (layer.filter instanceof Function){
+        try {
+            return layer.filter(context);
+        }
+        catch (error) {
+            log('error', 'Style parsing error. Bad filter function:', error.message);
+        }
+    }
+    else {
+        return layer.filter == null;
+    }
 }
 
 export function matchFeature(context, layers, collected_layers, collected_layers_ids) {
