@@ -106,6 +106,7 @@ class Layer {
     }
 
     buildFilter() {
+        this.filter_original = this.filter;
         this.filter = Utils.stringsToFunctions(this.filter, StyleParser.wrapFunction);
 
         let type = typeof this.filter;
@@ -130,7 +131,7 @@ class Layer {
         catch(e) {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, \`filter: ${JSON.stringify(this.filter)}\` `;
-            msg += `failed with error ${e.message}, ${e.stack}`;
+            msg += `failed with error '${e.message}', stack trace: ${e.stack}`;
             log('warn', msg);
         }
     }
@@ -405,7 +406,20 @@ function doesMatch(layer, context) {
     }
 
     // any remaining filter (more complex matches or dynamic function)
-    return layer.filter == null || layer.filter(context);
+    if (layer.filter instanceof Function){
+        try {
+            return layer.filter(context);
+        }
+        catch (error) {
+            // Filter function error
+            let msg = `Filter for layer ${layer.full_name}: \`filter: ${layer.filter_original}\` `;
+            msg += `failed with error '${error.message}', stack trace: ${error.stack}`;
+            log('error', msg, context.feature);
+        }
+    }
+    else {
+        return layer.filter == null;
+    }
 }
 
 export function matchFeature(context, layers, collected_layers, collected_layers_ids) {
