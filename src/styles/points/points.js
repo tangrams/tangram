@@ -351,7 +351,7 @@ Object.assign(Points, {
     },
 
     // Default to trying all anchor placements
-    default_anchor: ['bottom', 'top', 'right', 'left', 'bottom-right', 'bottom-left', 'top-right', 'top-left'],
+    default_anchor: ['bottom', 'top', 'right', 'left'],
 
     // Compute label layout-related properties
     computeLayout (target, feature, draw, context, tile) {
