@@ -12,6 +12,7 @@ import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import {TextLabels} from '../text/text_labels';
+import debugSettings from '../../utils/debug_settings';
 
 let fs = require('fs');
 const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
@@ -73,7 +74,7 @@ Object.assign(Points, {
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
 
         // Fade in (depending on tile proxy status)
-        if (options.debug && options.debug.suppress_fade === true) {
+        if (debugSettings.suppress_label_fade_in === true) {
             this.fade_in_time = 0;
             this.defines.TANGRAM_FADE_IN_RATE = null;
         }

@@ -1142,8 +1142,6 @@ export default class Scene {
     setupDebug () {
         let scene = this;
         this.debug = {
-            suppress_fade: false,
-
             // Rebuild geometry a given # of times and print average, min, max timings
             timeRebuild (num = 1, options = {}) {
                 let times = [];
