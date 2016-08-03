@@ -24,7 +24,6 @@ export class ZipSceneBundle extends SceneBundle {
         super(url, path);
         this.zip = null;
         this.files = {};
-        this.urls = {};
         this.root = null;
     }
 
