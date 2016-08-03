@@ -92,6 +92,7 @@ Object.assign(Points, {
     reset () {
         this.queues = {};
         this.resetText();
+        this.texture_missing_sprites = {}; // track which missing sprites we've found (reduce dupe log messages)
     },
 
     // Override to queue features instead of processing immediately
@@ -136,7 +137,10 @@ Object.assign(Points, {
                     }
                 }
                 else {
-                    log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                    if (!this.texture_missing_sprites[sprite]) { // only log each missing sprite once
+                        log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                        this.texture_missing_sprites[sprite] = true;
+                    }
                     return;
                 }
             }
