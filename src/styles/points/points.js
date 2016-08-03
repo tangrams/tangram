@@ -136,7 +136,7 @@ Object.assign(Points, {
                     }
                 }
                 else {
-                    log('warn', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                    log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
                     return;
                 }
             }
