@@ -16,6 +16,10 @@ export class SceneBundle {
         return Utils.addBaseURL(url, this.path);
     }
 
+    typeFor(url) {
+        return Utils.extensionForURL(url);
+    }
+
 }
 
 export class ZipSceneBundle extends SceneBundle {
@@ -45,7 +49,14 @@ export class ZipSceneBundle extends SceneBundle {
         if (Utils.isRelativeURL(url)) {
             return this.urlForZipFile(url);
         }
-        return Utils.addBaseURL(url, this.path);
+        return super.urlFor(url);
+    }
+
+    typeFor(url) {
+        if (Utils.isRelativeURL(url)) {
+            return this.typeForZipFile(url);
+        }
+        return super.typeFor(url);
     }
 
     loadRoot() {
@@ -92,7 +103,11 @@ export class ZipSceneBundle extends SceneBundle {
             for (let i=0; i < data.length; i++) {
                 let path = paths[i];
                 let depth = path.split('/').length - 1;
-                this.files[path] = { data: data[i], depth };
+                this.files[path] = {
+                    data: data[i],
+                    type: Utils.extensionForURL(path),
+                    depth
+                };
             }
         });
     }
@@ -107,10 +122,14 @@ export class ZipSceneBundle extends SceneBundle {
         }
     }
 
+    typeForZipFile(file) {
+        return this.files[file] && this.files[file].type;
+    }
+
 }
 
-export function createSceneBundle(url, path) {
-    if (typeof url === 'string' && Utils.extensionForURL(url) === 'zip') {
+export function createSceneBundle(url, path, type = null) {
+    if (type === 'zip' || (typeof url === 'string' && Utils.extensionForURL(url) === 'zip')) {
         return new ZipSceneBundle(url, path);
     }
     return new SceneBundle(url, path);
