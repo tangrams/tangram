@@ -105,7 +105,7 @@ export default class Scene {
                 // Scene loaded from a JS object may contain functions which need to be serialized,
                 // while one loaded from a URL does not
                 return this.updateConfig({
-                    serialize_funcs: (typeof config_source === 'object')
+                    serialize_funcs: (typeof this.config_source === 'object')
                 });
             }).then(() => {
                 this.updating--;
