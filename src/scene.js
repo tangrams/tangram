@@ -518,7 +518,7 @@ export default class Scene {
         }
 
         // Render tile GL geometries
-        for (let t in this.renderable_tiles) {
+        for (let t=0; t < this.renderable_tiles.length; t++) {
             let tile = this.renderable_tiles[t];
 
             if (tile.meshes[style] == null) {
