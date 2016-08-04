@@ -303,7 +303,7 @@ layers:
                     cap: round
 
         highway:
-            filter: { kind: highway }
+            filter: { kind: [highway, Road] } # TODO: remove Natural Earth Road value for mapzen vector tiles 1.0
             draw:
                 lines:
                     color: '#D16768'
