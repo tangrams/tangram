@@ -64,7 +64,7 @@ Object.assign(self, {
         self.global = Utils.stringsToFunctions(config.global);
 
         // Create data sources
-        this.createDataSources();
+        this.createDataSources(config);
 
         // Expand styles
         config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
@@ -89,7 +89,7 @@ Object.assign(self, {
     },
 
     // Create data sources and clear tile cache if necessary
-    createDataSources () {
+    createDataSources (config) {
         config.sources = Utils.stringsToFunctions(config.sources); // parse new sources
         self.sources.tiles = {}; // clear previous sources
         for (let name in config.sources) {
