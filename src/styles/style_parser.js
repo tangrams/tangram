@@ -12,22 +12,22 @@ export var StyleParser = {};
 // - $geometry: the type of geometry, 'point', 'line', or 'polygon'
 // - $meters_per_pixel: conversion for meters/pixels at current map zoom
 StyleParser.wrapFunction = function (func) {
-    var f = `function(context) {
-                var feature = context.feature.properties;
-                var global = context.global;
-                var $zoom = context.zoom;
-                var $layer = context.layer;
-                var $geometry = context.geometry;
-                var $meters_per_pixel = context.meters_per_pixel;
+    var f = `
+        var feature = context.feature.properties;
+        var global = context.global;
+        var $zoom = context.zoom;
+        var $layer = context.layer;
+        var $geometry = context.geometry;
+        var $meters_per_pixel = context.meters_per_pixel;
 
-                var val = (${func}());
+        var val = (function(){ ${func} }());
 
-                if (typeof val === 'number' && isNaN(val)) {
-                    val = null; // convert NaNs to nulls
-                }
+        if (typeof val === 'number' && isNaN(val)) {
+            val = null; // convert NaNs to nulls
+        }
 
-                return val;
-            }`;
+        return val;
+    `;
     return f;
 };
 
