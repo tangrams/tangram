@@ -64,6 +64,32 @@ Object.assign(self, {
         self.global = Utils.stringsToFunctions(config.global);
 
         // Create data sources
+        this.createDataSources();
+
+        // Expand styles
+        config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
+        self.styles = self.style_manager.build(config.styles);
+        self.style_manager.initStyles({
+            generation: self.generation,
+            styles: self.styles,
+            sources: self.sources.tiles,
+            introspection: self.introspection
+        });
+
+        // Parse each top-level layer as a separate tree
+        self.layers = parseLayers(config.layers);
+
+        // Sync tetxure info from main thread
+        self.syncing_textures = self.syncTextures(config.textures);
+
+        // Return promise for when config refresh finishes
+        self.configuring = self.syncing_textures.then(() => {
+            log('debug', `updated config`);
+        });
+    },
+
+    // Create data sources and clear tile cache if necessary
+    createDataSources () {
         config.sources = Utils.stringsToFunctions(config.sources); // parse new sources
         self.sources.tiles = {}; // clear previous sources
         for (let name in config.sources) {
@@ -103,27 +129,6 @@ Object.assign(self, {
             })) {
             self.tiles = {};
         }
-
-        // Expand styles
-        config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
-        self.styles = self.style_manager.build(config.styles);
-        self.style_manager.initStyles({
-            generation: self.generation,
-            styles: self.styles,
-            sources: self.sources.tiles,
-            introspection: self.introspection
-        });
-
-        // Parse each top-level layer as a separate tree
-        self.layers = parseLayers(config.layers);
-
-        // Sync tetxure info from main thread
-        self.syncing_textures = self.syncTextures(config.textures);
-
-        // Return promise for when config refresh finishes
-        self.configuring = self.syncing_textures.then(() => {
-            log('debug', `updated config`);
-        });
     },
 
     // Returns a promise that fulfills when config refresh is finished
