@@ -41,7 +41,7 @@ export default TextSettings = {
         draw.font = draw.font || this.defaults;
 
         // Use fill if specified, or default
-        style.fill = (draw.font.fill && Utils.toCSSColor(StyleParser.cacheColor(draw.font.fill, context))) || this.defaults.fill;
+        style.fill = (draw.font.fill && Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.fill, context))) || this.defaults.fill;
 
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
@@ -67,12 +67,12 @@ export default TextSettings = {
         style.size = draw.font.size || this.defaults.size;
 
         // calculated pixel size
-        style.px_size = StyleParser.cacheProperty(draw.font.px_size, context) || this.defaults.px_size;
+        style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) || this.defaults.px_size;
 
         // Use stroke if specified
         if (draw.font.stroke && draw.font.stroke.color) {
-            style.stroke = Utils.toCSSColor(StyleParser.cacheColor(draw.font.stroke.color, context) || this.defaults.stroke);
-            style.stroke_width = StyleParser.cacheProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
+            style.stroke = Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.stroke.color, context) || this.defaults.stroke);
+            style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
             style.stroke_width *= Utils.device_pixel_ratio;
         }
 

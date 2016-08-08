@@ -86,7 +86,7 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
 // Build a style param cache object
 // `value` is raw value, cache methods will add other properties as needed
 // `transform` is optional transform function to run on values (except function values)
-StyleParser.cacheObject = function (obj, transform = null) {
+StyleParser.createPropertyCache = function (obj, transform = null) {
     if (obj == null) {
         return;
     }
@@ -117,8 +117,8 @@ StyleParser.cacheObject = function (obj, transform = null) {
 
 // Convert old-style color macro into a function
 // TODO: deprecate this macro syntax
-StyleParser.colorCacheObject = function (obj) {
-    return StyleParser.cacheObject(obj, v => {
+StyleParser.createColorPropertyCache = function (obj) {
+    return StyleParser.createPropertyCache(obj, v => {
         if (v === 'Style.color.pseudoRandomColor') {
             return Utils.stringToFunction(StyleParser.wrapFunction(StyleParser.macros['Style.color.pseudoRandomColor']));
         }
@@ -132,7 +132,7 @@ StyleParser.colorCacheObject = function (obj) {
 
 // Interpolation and caching for a generic property (not a color or distance)
 // { value: original, static: val, zoom: { 1: val1, 2: val2, ... }, dynamic: function(){...} }
-StyleParser.cacheProperty = function(val, context) {
+StyleParser.evalCachedProperty = function(val, context) {
     if (val == null) {
         return;
     }
@@ -204,7 +204,7 @@ StyleParser.convertUnits = function(val, context) {
 };
 
 // Pre-parse units from string values
-StyleParser.cacheUnits = function (val) {
+StyleParser.parseUnits = function (val) {
     var obj = { val: parseFloat(val) };
     if (obj.val !== 0 && typeof val === 'string' && val.trim().slice(-2) === 'px') {
         obj.units = 'px';
@@ -215,7 +215,7 @@ StyleParser.cacheUnits = function (val) {
 // Takes a distance cache object and returns a distance value for this zoom
 // (caching the result for future use)
 // { value: original, zoom: { z: meters }, dynamic: function(){...} }
-StyleParser.cacheDistance = function(val, context) {
+StyleParser.evalCachedDistanceProperty = function(val, context) {
     if (val.dynamic) {
         let v = val.dynamic(context);
         return v;
@@ -270,7 +270,7 @@ StyleParser.colorForString = function(string) {
 // Takes a color cache object and returns a color value for this zoom
 // (caching the result for future use)
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
-StyleParser.cacheColor = function(val, context = {}) {
+StyleParser.evalCachedColorProperty = function(val, context = {}) {
     if (val.dynamic) {
         let v = val.dynamic(context);
 
@@ -396,7 +396,7 @@ StyleParser.calculateOrder = function(order, context) {
 };
 
 // Evaluate a function-based property, or pass-through static value
-StyleParser.evalProp = function(prop, context) {
+StyleParser.evalProperty = function(prop, context) {
     if (typeof prop === 'function') {
         return prop(context);
     }

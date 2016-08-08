@@ -220,25 +220,25 @@ export const TextLabels = {
         }
 
         // Colors
-        draw.font.fill = StyleParser.cacheObject(draw.font.fill);
+        draw.font.fill = StyleParser.createPropertyCache(draw.font.fill);
         if (draw.font.stroke) {
-            draw.font.stroke.color = StyleParser.cacheObject(draw.font.stroke.color);
+            draw.font.stroke.color = StyleParser.createPropertyCache(draw.font.stroke.color);
         }
 
         // Convert font and text stroke sizes
-        draw.font.px_size = StyleParser.cacheObject(draw.font.size, CanvasText.fontPixelSize);
+        draw.font.px_size = StyleParser.createPropertyCache(draw.font.size, CanvasText.fontPixelSize);
         if (draw.font.stroke && draw.font.stroke.width != null) {
-            draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
+            draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, parseFloat);
         }
 
         // Offset (2d array)
-        draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+        draw.offset = StyleParser.createPropertyCache(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
 
         // Buffer (1d value or or 2d array)
-        draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
+        draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
         // Repeat rules
-        draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
+        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
 
         return draw;
     },
@@ -263,7 +263,7 @@ export const TextLabels = {
         }
 
         // repeat minimum distance
-        layout.repeat_distance = StyleParser.cacheProperty(draw.repeat_distance, context);
+        layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
         if (layout.repeat_distance == null) {
             layout.repeat_distance = Geo.tile_size;
         }
