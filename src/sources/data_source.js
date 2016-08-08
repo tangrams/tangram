@@ -170,6 +170,9 @@ export class NetworkSource extends DataSource {
 
     _load (dest) {
         let url = this.formatUrl(this.url, dest);
+        if (!url) {
+            return Promise.resolve(dest);
+        }
 
         let source_data = dest.source_data;
         source_data.url = url;
@@ -221,6 +224,16 @@ export class NetworkTileSource extends NetworkSource {
         super(source);
 
         this.tiled = true;
+
+        if (Array.isArray(source.bounds) && source.bounds.length === 4) {
+            this.bounds = source.bounds;
+            let [w, n, e, s] = this.bounds;
+            this.bounds_meters = {
+                min: Geo.latLngToMeters([w, n]),
+                max: Geo.latLngToMeters([e, s])
+            };
+        }
+
         this.url_hosts = null;
         var host_match = this.url.match(/{s:\[([^}+]+)\]}/);
         if (host_match != null && host_match.length > 1) {
@@ -231,6 +244,12 @@ export class NetworkTileSource extends NetworkSource {
 
     formatUrl(url_template, tile) {
         let coords = Geo.wrapTile(tile.coords, { x: true });
+
+        // Check tile bounds
+        if (!this.checkBounds(coords)) {
+            return;
+        }
+
         let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
 
         if (this.url_hosts != null) {
@@ -246,6 +265,21 @@ export class NetworkTileSource extends NetworkSource {
             url.search('{x}') > -1 &&
             url.search('{y}') > -1 &&
             url.search('{z}') > -1;
+    }
+
+    // Returns false if tile is outside data source's bounds, true if within
+    checkBounds (coords) {
+        // Check tile bounds
+        if (this.bounds) {
+            let min = Geo.tileForMeters(this.bounds_meters.min, coords.z);
+            let max = Geo.tileForMeters(this.bounds_meters.max, coords.z);
+
+            if (coords.x < min.x || coords.x > max.x ||
+                coords.y < min.y || coords.y > max.y) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }
