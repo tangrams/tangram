@@ -97,10 +97,15 @@ StyleParser.cacheObject = function (obj, transform = null) {
 
     let c = { value: obj };
 
+    // does value contain zoom stops to be interpolated?
+    if (Array.isArray(c.value) && Array.isArray(c.value[0])) {
+        c.zoom = {}; // will hold values interpolated by zoom
+    }
+
+    // apply optional transform function
     if (typeof transform === 'function') {
-        if (Array.isArray(c.value) && Array.isArray(c.value[0])) { // zoom stops
+        if (c.zoom) { // apply to each zoom stop value
             c.value = c.value.map(v => [v[0], transform(v[1])]);
-            c.zoom = {}; // will hold values interpolated by zoom
         }
         else if (typeof c.value !== 'function') { // don't transform functions
             c.value = transform(c.value); // single value
