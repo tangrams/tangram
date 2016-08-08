@@ -28,6 +28,9 @@ export default class DataSource {
         // NOTE: these are loaded alongside the library when the workers are instantiated
         this.scripts = config.scripts;
 
+        // no tiles will be requested below this zoom
+        this.min_zoom = (config.min_zoom != null) ? config.min_zoom : 0;
+
         // overzoom will apply for zooms higher than this
         this.max_zoom = config.max_zoom || Geo.default_source_max_zoom;
     }
@@ -140,6 +143,14 @@ export default class DataSource {
         return this.default_winding;
     }
 
+    // All data sources support a min zoom, tiled sources can subclass for more specific limits (e.g. bounding box)
+    includesTile (coords, style_zoom) {
+        if (coords.z < this.min_zoom) {
+            return false;
+        }
+        return true;
+    }
+
     // Register a new data source type, under a type name
     static register(type_class, type_name) {
         if (!type_class || !type_name) {
@@ -170,9 +181,6 @@ export class NetworkSource extends DataSource {
 
     _load (dest) {
         let url = this.formatUrl(this.url, dest);
-        if (!url) {
-            return Promise.resolve(dest);
-        }
 
         let source_data = dest.source_data;
         source_data.url = url;
@@ -225,14 +233,11 @@ export class NetworkTileSource extends NetworkSource {
 
         this.tiled = true;
 
-        if (Array.isArray(source.bounds) && source.bounds.length === 4) {
-            this.bounds = source.bounds;
-            let [w, n, e, s] = this.bounds;
-            this.bounds_meters = {
-                min: Geo.latLngToMeters([w, n]),
-                max: Geo.latLngToMeters([e, s])
-            };
-        }
+        // indicates if source should build geometry tiles, enabled for sources referenced in the scene's layers,
+        // and left disabled for sources that are never referenced, or only used as raster textures
+        this.builds_geometry_tiles = false;
+
+        this.parseBounds(source);
 
         this.url_hosts = null;
         var host_match = this.url.match(/{s:\[([^}+]+)\]}/);
@@ -242,29 +247,16 @@ export class NetworkTileSource extends NetworkSource {
         }
     }
 
-    formatUrl(url_template, tile) {
-        let coords = Geo.wrapTile(tile.coords, { x: true });
-
-        // Check tile bounds
-        if (!this.checkBounds(coords)) {
-            return;
+    // Get bounds from source config parameters
+    parseBounds (source) {
+        if (Array.isArray(source.bounds) && source.bounds.length === 4) {
+            this.bounds = source.bounds;
+            let [w, n, e, s] = this.bounds;
+            this.bounds_meters = {
+                min: Geo.latLngToMeters([w, n]),
+                max: Geo.latLngToMeters([e, s])
+            };
         }
-
-        let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
-
-        if (this.url_hosts != null) {
-            url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
-            this.next_host = (this.next_host + 1) % this.url_hosts.length;
-        }
-        return url;
-    }
-
-    // Checks for the x/y/z tile pattern in URL template
-    urlHasTilePattern(url) {
-        return url &&
-            url.search('{x}') > -1 &&
-            url.search('{y}') > -1 &&
-            url.search('{z}') > -1;
     }
 
     // Returns false if tile is outside data source's bounds, true if within
@@ -280,6 +272,39 @@ export class NetworkTileSource extends NetworkSource {
             }
         }
         return true;
+    }
+
+    includesTile (coords, style_zoom) {
+        if (!super.includesTile(coords, style_zoom)) {
+            return false;
+        }
+
+        coords = Geo.wrapTile(coords, { x: true });
+
+        // Check tile bounds
+        if (!this.checkBounds(coords)) {
+            return false;
+        }
+        return true;
+    }
+
+    formatUrl(url_template, tile) {
+        let coords = Geo.wrapTile(tile.coords, { x: true });
+        let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
+
+        if (this.url_hosts != null) {
+            url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
+            this.next_host = (this.next_host + 1) % this.url_hosts.length;
+        }
+        return url;
+    }
+
+    // Checks for the x/y/z tile pattern in URL template
+    urlHasTilePattern(url) {
+        return url &&
+            url.search('{x}') > -1 &&
+            url.search('{y}') > -1 &&
+            url.search('{z}') > -1;
     }
 
 }
