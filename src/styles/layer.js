@@ -218,6 +218,38 @@ class Layer {
         return true;
     }
 
+    doesMatch (context) {
+        if (!this.is_built) {
+            this.build();
+        }
+
+        // zoom pre-filter: skip rest of filter if out of layer zoom range
+        if (this.zooms != null && !this.zooms[context.zoom]) {
+            return false;
+        }
+
+        // direct feature property matches
+        if (!this.doPropMatches(context)) {
+            return false;
+        }
+
+        // any remaining filter (more complex matches or dynamic function)
+        if (this.filter instanceof Function){
+            try {
+                return this.filter(context);
+            }
+            catch (error) {
+                // Filter function error
+                let msg = `Filter for this ${this.full_name}: \`filter: ${this.filter_original}\` `;
+                msg += `failed with error '${error.message}', stack trace: ${error.stack}`;
+                log('error', msg, context.feature);
+            }
+        }
+        else {
+            return this.filter == null;
+        }
+    }
+
 }
 
 Layer.id = 0;
@@ -389,39 +421,6 @@ export function parseLayers (layers) {
     return layer_trees;
 }
 
-
-function doesMatch(layer, context) {
-    if (!layer.is_built) {
-        layer.build();
-    }
-
-    // zoom pre-filter: skip rest of filter if out of layer zoom range
-    if (layer.zooms != null && !layer.zooms[context.zoom]) {
-        return false;
-    }
-
-    // direct feature property matches
-    if (!layer.doPropMatches(context)) {
-        return false;
-    }
-
-    // any remaining filter (more complex matches or dynamic function)
-    if (layer.filter instanceof Function){
-        try {
-            return layer.filter(context);
-        }
-        catch (error) {
-            // Filter function error
-            let msg = `Filter for layer ${layer.full_name}: \`filter: ${layer.filter_original}\` `;
-            msg += `failed with error '${error.message}', stack trace: ${error.stack}`;
-            log('error', msg, context.feature);
-        }
-    }
-    else {
-        return layer.filter == null;
-    }
-}
-
 export function matchFeature(context, layers, collected_layers, collected_layers_ids) {
     let matched = false;
     let childMatched = false;
@@ -432,14 +431,14 @@ export function matchFeature(context, layers, collected_layers, collected_layers
         let current = layers[r];
 
         if (current.is_leaf) {
-            if (doesMatch(current, context)) {
+            if (current.doesMatch(context)) {
                 matched = true;
                 collected_layers.push(current);
                 collected_layers_ids.push(current.id);
             }
 
         } else if (current.is_tree) {
-            if (doesMatch(current, context)) {
+            if (current.doesMatch(context)) {
                 matched = true;
 
                 childMatched = matchFeature(
