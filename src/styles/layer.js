@@ -199,7 +199,7 @@ class Layer {
             for (let r=0; r < this.feature_prop_matches.length; r++) {
                 let match = this.feature_prop_matches[r];
                 let val = context.feature.properties[match[0]];
-                if (!val || match[1].indexOf(val) === -1) {
+                if (val == null || match[1].indexOf(val) === -1) {
                     return false;
                 }
             }
@@ -209,7 +209,7 @@ class Layer {
             for (let r=0; r < this.context_prop_matches.length; r++) {
                 let match = this.context_prop_matches[r];
                 let val = context[match[0]];
-                if (!val || match[1].indexOf(val) === -1) {
+                if (val == null || match[1].indexOf(val) === -1) {
                     return false;
                 }
             }
