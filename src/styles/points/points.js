@@ -547,35 +547,32 @@ Object.assign(Points, {
         let vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle ? label.angle[0] : style.angle[0];
 
-        this.buildQuad(
-            [label.position],               // position
-            style.size,                     // size in pixels
-            angle,                          // angle in degrees
-            style.sampler,                  // texture sampler to use
-            label.offset,                   // offset (from center in px) to apply after rotation
-            style.texcoords,                // texture UVs
-            vertex_data, vertex_template    // VBO and data for current vertex
-        );
+        for (var i = 0; i < label.num_segments; i++){
+            let angle = label.angle[i];
+            let size = label.segment_size[i];
+            let offset = label.offsets[i];
+            let texcoord = style.multi_texcoords[i];
+
+            this.buildQuad(
+                [label.position],               // position
+                size,                           // size in pixels
+                angle,                          // angle in degrees
+                style.sampler,                  // texture sampler to use
+                offset,                         // offset (from center in px) to apply after rotation
+                texcoord,                       // texture UVs
+                vertex_data, vertex_template    // VBO and data for current vertex
+            );
+        }
     },
 
     buildArticulatedLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
-        var size = style.size.slice();
 
-        for (var i = 0; i < 2; i++){
-            var angle = label.angle[i];
-            size[0] = label.collapsed_size[i];
-            var offset = label.offsets[i];
-
-            var texcoord;
-            if (i === 0) {
-                texcoord = style.multi_texcoords[0].slice();
-                texcoord[2] = style.multi_texcoords[label.kink_index - 1][2];
-            }
-            else {
-                texcoord = style.multi_texcoords[label.kink_index].slice();
-                texcoord[2] = style.multi_texcoords[style.multi_texcoords.length - 1][2];
-            }
+        for (var i = 0; i < label.num_segments; i++){
+            let angle = label.angle[i];
+            let size = label.segment_size[i];
+            let offset = label.offsets[i];
+            let texcoord = style.multi_texcoords[i];
 
             this.buildQuad(
                 [label.position],               // position
