@@ -71,7 +71,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, {transform, text_wrap, can_articulate, stroke_width}) {
+    textSize (text, {transform, text_wrap, stroke_width}) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
@@ -104,39 +104,8 @@ export default class CanvasText {
             var text = line.text;
             let line_width = 0;
 
-            if (can_articulate && !new_line) {
-                var words = text.split(' ');
-
-                var words_LTR = reorderWordsLTR(words);
-
-                let widths = [];
-                for (var i = 0; i < words_LTR.length; i++){
-                    var str = words_LTR[i];
-                    if (i < words_LTR.length - 1) {
-                        str += ' ';
-                    }
-                    let width = ctx.measureText(str).width;
-
-                    // To make sure strokes are not distorted, shift all widths after the first by the stroke width
-                    if (i === 0) {
-                        widths.push(width - 0.5 * stroke_width);
-                    }
-                    else if (i === words_LTR.length - 1) {
-                        widths.push(width + 0.5 * stroke_width);
-                    }
-                    else {
-                        widths.push(width);
-                    }
-
-                    line_width += width;
-                }
-
-                line.segments = widths;
-            }
-            else {
-                line_width = ctx.measureText(text).width;
-                line.segments = [line_width];
-            }
+            line_width = ctx.measureText(text).width;
+            line.segments = [line_width];
 
             line.width = line_width;
             lines.push(line);
@@ -190,29 +159,10 @@ export default class CanvasText {
         var segment_size = [];
         var segment_texture_size = [];
 
-        // Create texture coordinate sizes
-        if (lines.length === 1) {
-            var segments = lines[0].segments;
-            for (var i = 0; i < segments.length; i++){
-                let width;
-                // First and last segments have a left and right buffer added
-                if (i === 0 || i === segments.length - 1) {
-                    width = (segments[i] + buffer);
-                    segment_size[i] = width / Utils.device_pixel_ratio;
-                    segment_texture_size[i] = width;
-                }
-                else {
-                    width = segments[i];
-                    segment_size[i] = width / Utils.device_pixel_ratio;
-                    segment_texture_size[i] = width;
-                }
-            }
-        }
-
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
             lines,
-            size: { collision_size, texture_size, logical_size, line_height, segment_size, segment_texture_size}
+            size: { collision_size, texture_size, logical_size, line_height }
         };
     }
 
@@ -305,6 +255,8 @@ export default class CanvasText {
     drawTextArticulated (text, [x, y], texture_size, line_height, { stroke, transform }) {
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
 
+        let tx = x + buffer;
+
         // In the absence of better Canvas TextMetrics (not supported by browsers yet),
         // 0.75 buffer produces a better approximate vertical centering of text
         let ty = y + buffer * 0.75 + line_height;
@@ -346,7 +298,7 @@ export default class CanvasText {
                         this.drawTextArticulated(word, texture_position, text_texture_size, line_height, text_settings);
 
                         var texcoord = Texture.getTexcoordsForSprite(
-                            text_position,
+                            texture_position,
                             text_texture_size,
                             texture_size
                         );
@@ -397,11 +349,13 @@ export default class CanvasText {
                 let text_info = text_infos[text];
 
                 if (text_info.text_settings.can_articulate){
-                    let texture_sizes = text_info.size.texture_sizes;
-                    for (let i = 0; i < texture_sizes; i++) {
+                    let texture_sizes = text_info.size.texture_size;
+                    text_info.texture_position = [];
+                    for (let i = 0; i < texture_sizes.length; i++) {
                         let size = texture_sizes[i];
+                        if (size[0] > widest) widest = size[0];
                         if (cy + size[1] < max_texture_size) {
-                            text_info.texture_position = [cx, cy]; // add label to current column
+                            text_info.texture_position[i] = [cx, cy]; // add label to current column
                             cy += size[1];
                             if (cy > height) {
                                 height = cy;
@@ -411,13 +365,14 @@ export default class CanvasText {
                             cx += widest;
                             widest = 0;
                             cy = 0;
-                            text_info.texture_position = [cx, cy];
+                            text_info.texture_position[i] = [cx, cy];
                         }
                     }
                 }
                 else {
                     // rendered size is same for all alignments
                     let size = text_info.size.texture_size;
+                    if (size[0] > widest) widest = size[0];
 
                     // but each alignment needs to be rendered separately
                     for (let align in text_info.align) {

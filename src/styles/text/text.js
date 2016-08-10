@@ -100,7 +100,7 @@ Object.assign(TextStyle, {
                         style.size = text_info.size.logical_size;
                         style.angle = q.label.angle || 0;
                         style.texcoords = text_info.align[q.label.align].texcoords;
-                        style.multi_texcoords = text_info.align[q.label.align].multi_texcoords;
+                        style.multi_texcoords = text_info.multi_texcoords;
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
@@ -130,12 +130,13 @@ Object.assign(TextStyle, {
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            let feature_labels;
             if (text_info.text_settings.can_articulate){
                 fq.layout.segment_size = text_info.size.logical_size;
-                let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
+                feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             }
             else {
-                let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
+                feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             }
             for (let i = 0; i < feature_labels.length; i++) {
                 let fql = Object.create(fq);
@@ -201,7 +202,10 @@ Object.assign(TextStyle, {
                 }
             }
             else {
-                labels.push(new LabelLine(size, line, layout));
+                let label = new LabelLine(size, line, layout);
+                if (!label.throw_away){
+                    labels.push(label);
+                }
             }
         }
     }
