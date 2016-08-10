@@ -37,6 +37,7 @@ export default class CanvasText {
                 let text_infos = texts[style];
                 let first = true;
 
+                // TODO: move the cache to per word (segment). Within this.textSize/Articulated
                 for (let text in text_infos) {
                     // Use cached size, or compute via canvas
                     if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
@@ -72,10 +73,11 @@ export default class CanvasText {
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
     textSize (text, {transform, text_wrap, stroke_width}) {
+        let dpr = Utils.device_pixel_ratio;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
-        let leading = 2 * Utils.device_pixel_ratio; // make configurable and/or use Canvas TextMetrics when available
+        let buffer = this.text_buffer * dpr;
+        let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
 
         // Word wrapping
@@ -145,8 +147,8 @@ export default class CanvasText {
         let height = lines.length * line_height;
 
         let collision_size = [
-            max_width / Utils.device_pixel_ratio,
-            height / Utils.device_pixel_ratio
+            max_width / dpr,
+            height / dpr
         ];
 
         let texture_size = [
@@ -154,10 +156,10 @@ export default class CanvasText {
             height + buffer * 2
         ];
 
-        let logical_size = texture_size.map(v => v / Utils.device_pixel_ratio);
-
-        var segment_size = [];
-        var segment_texture_size = [];
+        let logical_size = [
+            texture_size[0] / dpr,
+            texture_size[1] / dpr,
+        ];
 
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
@@ -282,6 +284,7 @@ export default class CanvasText {
                     first = false;
                 }
 
+                // TODO: move the cache to per word (segment)
                 let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
 
                 if (text_settings.can_articulate){
@@ -327,17 +330,8 @@ export default class CanvasText {
 
     // Place text labels within an atlas of the given max size
     setTextureTextPositions (texts, max_texture_size) {
-        // Find widest label
-        let widest = 0;
-        // for (let style in texts) {
-        //     let text_infos = texts[style];
-        //     for (let text in text_infos) {
-        //         let size = text_infos[text].size.texture_size;
-        //         if (size[0] > widest) {
-        //             widest = size[0];
-        //         }
-        //     }
-        // }
+        // Keep track of column width
+        let column_width = 0;
 
         // Layout labels, stacked in columns
         let cx = 0, cy = 0; // current x/y position in atlas
@@ -353,7 +347,7 @@ export default class CanvasText {
                     text_info.texture_position = [];
                     for (let i = 0; i < texture_sizes.length; i++) {
                         let size = texture_sizes[i];
-                        if (size[0] > widest) widest = size[0];
+                        if (size[0] > column_width) column_width = size[0];
                         if (cy + size[1] < max_texture_size) {
                             text_info.texture_position[i] = [cx, cy]; // add label to current column
                             cy += size[1];
@@ -362,8 +356,8 @@ export default class CanvasText {
                             }
                         }
                         else { // start new column if taller than texture
-                            cx += widest;
-                            widest = 0;
+                            cx += column_width;
+                            column_width = 0;
                             cy = 0;
                             text_info.texture_position[i] = [cx, cy];
                         }
@@ -372,7 +366,7 @@ export default class CanvasText {
                 else {
                     // rendered size is same for all alignments
                     let size = text_info.size.texture_size;
-                    if (size[0] > widest) widest = size[0];
+                    if (size[0] > column_width) column_width = size[0];
 
                     // but each alignment needs to be rendered separately
                     for (let align in text_info.align) {
@@ -384,8 +378,8 @@ export default class CanvasText {
                             }
                         }
                         else { // start new column if taller than texture
-                            cx += widest;
-                            widest = 0;
+                            cx += column_width;
+                            column_width = 0;
                             cy = 0;
                             text_info.align[align].texture_position = [cx, cy];
                         }
@@ -394,7 +388,7 @@ export default class CanvasText {
             }
         }
 
-        return [cx + widest, height]; // overall atlas size
+        return [cx + column_width, height]; // overall atlas size
     }
 
     // Called before rasterization
