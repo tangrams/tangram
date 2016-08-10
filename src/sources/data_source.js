@@ -232,12 +232,11 @@ export class NetworkTileSource extends NetworkSource {
         super(source);
 
         this.tiled = true;
+        this.parseBounds(source);
 
         // indicates if source should build geometry tiles, enabled for sources referenced in the scene's layers,
         // and left disabled for sources that are never referenced, or only used as raster textures
         this.builds_geometry_tiles = false;
-
-        this.parseBounds(source);
 
         this.url_hosts = null;
         var host_match = this.url.match(/{s:\[([^}+]+)\]}/);
@@ -254,8 +253,9 @@ export class NetworkTileSource extends NetworkSource {
             let [w, n, e, s] = this.bounds;
             this.bounds_meters = {
                 min: Geo.latLngToMeters([w, n]),
-                max: Geo.latLngToMeters([e, s])
+                max: Geo.latLngToMeters([e, s]),
             };
+            this.bounds_tiles = { min: {}, max: {} }; // max tile bounds per zoom (lazily evaluated)
         }
     }
 
@@ -263,8 +263,17 @@ export class NetworkTileSource extends NetworkSource {
     checkBounds (coords) {
         // Check tile bounds
         if (this.bounds) {
-            let min = Geo.tileForMeters(this.bounds_meters.min, coords.z);
-            let max = Geo.tileForMeters(this.bounds_meters.max, coords.z);
+            coords = Geo.wrapTile(coords, { x: true });
+
+            let min = this.bounds_tiles.min[coords.z];
+            if (!min) {
+                min = this.bounds_tiles.min[coords.z] = Geo.tileForMeters(this.bounds_meters.min, coords.z);
+            }
+
+            let max = this.bounds_tiles.max[coords.z];
+            if (!max) {
+                max = this.bounds_tiles.max[coords.z] = Geo.tileForMeters(this.bounds_meters.max, coords.z);
+            }
 
             if (coords.x < min.x || coords.x > max.x ||
                 coords.y < min.y || coords.y > max.y) {
@@ -278,8 +287,6 @@ export class NetworkTileSource extends NetworkSource {
         if (!super.includesTile(coords, style_zoom)) {
             return false;
         }
-
-        coords = Geo.wrapTile(coords, { x: true });
 
         // Check tile bounds
         if (!this.checkBounds(coords)) {
