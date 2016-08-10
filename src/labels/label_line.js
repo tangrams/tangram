@@ -31,6 +31,7 @@ export default class LabelLine extends Label {
         this.offsets = [layout.offset.slice(), layout.offset.slice()];
 
         this.isArticulated = false;
+        this.can_articulate = true;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
@@ -333,10 +334,10 @@ export default class LabelLine extends Label {
                     let angle = this.angle[i];
 
                     let width = width_px * upp * Label.epsilon;
-
-                    // TODO: create kink_index for straight labels
                     let direction = 1;
                     let nudge = direction * width/2;
+                    //TODO: nudge has factor of epsilon in there. mistake?
+
                     let position = [this.position[0] + nudge, this.position[1]];
 
                     let obb = getOBB(position, width, height, angle, this.offset, upp);

@@ -535,7 +535,7 @@ Object.assign(Points, {
     // Build quad for point sprite
     build (style, vertex_data) {
         let label = style.label;
-        if (label.isArticulated) {
+        if (label.can_articulate) {
             this.buildArticulatedLabel(label, style, vertex_data);
         }
         else {
@@ -545,24 +545,17 @@ Object.assign(Points, {
 
     buildLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
-        var angle = label.angle ? label.angle[0] : style.angle[0];
+        var angle = label.angle ? label.angle : style.angle;
 
-        for (var i = 0; i < label.num_segments; i++){
-            let angle = label.angle[i];
-            let size = label.segment_size[i];
-            let offset = label.offsets[i];
-            let texcoord = style.multi_texcoords[i];
-
-            this.buildQuad(
-                [label.position],               // position
-                size,                           // size in pixels
-                angle,                          // angle in degrees
-                style.sampler,                  // texture sampler to use
-                offset,                         // offset (from center in px) to apply after rotation
-                texcoord,                       // texture UVs
-                vertex_data, vertex_template    // VBO and data for current vertex
-            );
-        }
+        this.buildQuad(
+            [label.position],               // position
+            style.size,                     // size in pixels
+            angle,                          // angle in degrees
+            style.sampler,                  // texture sampler to use
+            label.offset,                   // offset (from center in px) to apply after rotation
+            style.texcoords,                // texture UVs
+            vertex_data, vertex_template    // VBO and data for current vertex
+        );
     },
 
     buildArticulatedLabel (label, style, vertex_data) {
