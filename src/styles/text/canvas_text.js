@@ -191,7 +191,7 @@ export default class CanvasText {
         for (var i = 0; i < words_LTR.length; i++){
             var word = words_LTR[i];
             if (i < words_LTR.length - 1) {
-                word += ' ';
+                // word += ' ';
             }
             let width = ctx.measureText(word).width;
 
@@ -254,9 +254,35 @@ export default class CanvasText {
             }
             this.context.fillText(str, tx, ty);
         }
+
+        if (true) {
+            this.context.save();
+            let collision_size = size.collision_size;
+            let lineWidth = 2;
+
+            this.context.strokeStyle = 'blue';
+            this.context.lineWidth = lineWidth;
+            this.context.strokeRect(x + stroke_width, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
+
+            this.context.restore();
+        }
+
+        if (true) {
+            this.context.save();
+
+            let texture_size = size.texture_size;
+            let lineWidth = 2;
+
+            this.context.strokeStyle = 'green';
+            this.context.lineWidth = lineWidth;
+            // stroke is applied internally, so the outer border is the edge of the texture
+            this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
+
+            this.context.restore();
+        }
     }
 
-    drawTextArticulated (text, [x, y], texture_size, line_height, { stroke, stroke_width, transform }) {
+    drawTextArticulated (text, [x, y], texture_size, collision_size, line_height, { stroke, stroke_width, transform }) {
         let dpr = Utils.device_pixel_ratio;
         let vertical_buffer = this.vertical_text_buffer * dpr;
 
@@ -269,6 +295,30 @@ export default class CanvasText {
             this.context.strokeText(text, tx, ty);
         }
         this.context.fillText(text, tx, ty);
+
+        if (true) {
+            this.context.save();
+            let lineWidth = 2;
+
+            this.context.strokeStyle = 'blue';
+            this.context.lineWidth = lineWidth;
+            this.context.strokeRect(x + stroke_width, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
+
+            this.context.restore();
+        }
+
+        if (true) {
+            this.context.save();
+
+            let lineWidth = 2;
+
+            this.context.strokeStyle = 'green';
+            this.context.lineWidth = lineWidth;
+            // stroke is applied internally, so the outer border is the edge of the texture
+            this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
+
+            this.context.restore();
+        }
     }
 
     rasterize (texts, texture_size) {
@@ -299,8 +349,9 @@ export default class CanvasText {
                         //TODO: put texture start coordinates into text_info as an array
                         let texture_position = text_info.texture_position[i];
                         let text_texture_size = size.texture_size[i];
+                        let text_collision_size = size.collision_size[i];
 
-                        this.drawTextArticulated(word, texture_position, text_texture_size, line_height, text_settings);
+                        this.drawTextArticulated(word, texture_position, text_texture_size, text_collision_size, line_height, text_settings);
 
                         var texcoord = Texture.getTexcoordsForSprite(
                             texture_position,
@@ -315,6 +366,7 @@ export default class CanvasText {
                     for (let align in text_info.align) {
                         this.drawText(lines, text_info.align[align].texture_position, text_info.size, {
                             stroke: text_settings.stroke,
+                            stroke_width: text_settings.stroke_width,
                             transform: text_settings.transform,
                             align: align
                         });
