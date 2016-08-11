@@ -329,16 +329,19 @@ export default class LabelLine extends Label {
                 }
                 break;
             case PLACEMENT.MID_POINT:
-                for (let i = 0; i < this.num_segments; i++){
+                let nudge = 0;
+                // backwards
+                for (let i = this.kink_index - 1; i >= 0; i--){
                     let width_px = this.segment_size[i][0];
+                    let width = width_px * upp;
                     let angle = this.angle[i];
 
-                    let width = width_px * upp * Label.epsilon;
-                    let direction = 1;
-                    let nudge = direction * width/2;
-                    //TODO: nudge has factor of epsilon in there. mistake?
+                    nudge -= 0.5 * width_px;
 
-                    let position = [this.position[0] + nudge, this.position[1]];
+                    let position = [
+                        this.position[0] + nudge * upp,
+                        this.position[1]
+                    ];
 
                     let obb = getOBB(position, width, height, angle, this.offset, upp);
                     let aabb = obb.getExtent();
@@ -346,7 +349,32 @@ export default class LabelLine extends Label {
                     this.obbs.push(obb);
                     this.aabbs.push(aabb);
 
-                    this.offsets[i][0] = this.layout.offset[0] + direction * 0.5 * width_px;
+                    this.offsets[i][0] = this.layout.offset[0] + nudge;
+                    this.offsets[i][1] = this.layout.offset[1];
+                }
+
+                nudge = 0
+
+                // forwards
+                for (let i = this.kink_index; i < this.num_segments; i++){
+                    let width_px = this.segment_size[i][0];
+                    let angle = this.angle[i];
+                    let width = width_px * upp;
+
+                    nudge += 0.5 * width_px;
+
+                    let position = [
+                        this.position[0] + nudge * upp,
+                        this.position[1]
+                    ];
+
+                    let obb = getOBB(position, width, height, angle, this.offset, upp);
+                    let aabb = obb.getExtent();
+
+                    this.obbs.push(obb);
+                    this.aabbs.push(aabb);
+
+                    this.offsets[i][0] = this.layout.offset[0] + nudge;
                     this.offsets[i][1] = this.layout.offset[1];
                 }
                 break;
