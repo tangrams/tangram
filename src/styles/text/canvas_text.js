@@ -19,13 +19,14 @@ export default class CanvasText {
     // Set font style params for canvas drawing
     setFont ({ font_css, fill, stroke, stroke_width, px_size }) {
         this.px_size = px_size;
-        this.text_buffer = 8; // pixel padding around text
+        this.vertical_text_buffer = 8; // vertical pixel padding around text
         let ctx = this.context;
+        let dpr = Utils.device_pixel_ratio;
 
         ctx.font = font_css;
         if (stroke && stroke_width > 0) {
             ctx.strokeStyle = stroke;
-            ctx.lineWidth = stroke_width;
+            ctx.lineWidth = stroke_width * dpr;
         }
         ctx.fillStyle = fill;
         ctx.miterLimit = 2;
@@ -76,7 +77,7 @@ export default class CanvasText {
         let dpr = Utils.device_pixel_ratio;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
-        let buffer = this.text_buffer * dpr;
+        let vertical_buffer = this.vertical_text_buffer * dpr;
         let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
 
@@ -152,8 +153,8 @@ export default class CanvasText {
         ];
 
         let texture_size = [
-            max_width + buffer * 2,
-            height + buffer * 2
+            max_width + stroke_width * 2,
+            height + vertical_buffer * 2
         ];
 
         let logical_size = [
@@ -168,11 +169,11 @@ export default class CanvasText {
         };
     }
 
-    textSizeArticulated(text, {transform}){
+    textSizeArticulated(text, {transform, stroke_width}){
         let dpr = Utils.device_pixel_ratio;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
-        let buffer = this.text_buffer * dpr;
+        let vertical_buffer = this.vertical_text_buffer * dpr;
         let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
 
@@ -202,8 +203,8 @@ export default class CanvasText {
             ];
 
             let texture_size = [
-                width + buffer * 2,
-                line_height + buffer * 2
+                width + stroke_width * 2,
+                line_height + vertical_buffer * 2
             ];
 
             let logical_size = [
@@ -221,9 +222,10 @@ export default class CanvasText {
 
     // Draw one or more lines of text at specified location, adjusting for buffer and baseline
     drawText (lines, [x, y], size, { stroke, stroke_width, transform, align }) {
+        let dpr = Utils.device_pixel_ratio;
         align = align || 'center';
 
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
+        let vertical_buffer = this.vertical_text_buffer * dpr;
         let texture_size = size.texture_size;
         let line_height = size.line_height;
 
@@ -234,18 +236,18 @@ export default class CanvasText {
             // Text alignment
             let tx;
             if (align === 'left') {
-                tx = x + buffer;
+                tx = x + stroke_width;
             }
             else if (align === 'center') {
                 tx = x + texture_size[0]/2 - line.width/2;
             }
             else if (align === 'right') {
-                tx = x + texture_size[0] - line.width - buffer;
+                tx = x + texture_size[0] - line.width - stroke_width;
             }
 
             // In the absence of better Canvas TextMetrics (not supported by browsers yet),
             // 0.75 buffer produces a better approximate vertical centering of text
-            let ty = y + buffer * 0.75 + (line_num + 1) * line_height;
+            let ty = y + vertical_buffer * 0.75 + (line_num + 1) * line_height;
 
             if (stroke && stroke_width > 0) {
                 this.context.strokeText(str, tx, ty);
@@ -254,16 +256,16 @@ export default class CanvasText {
         }
     }
 
-    drawTextArticulated (text, [x, y], texture_size, line_height, { stroke, transform }) {
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
-
-        let tx = x + buffer;
+    drawTextArticulated (text, [x, y], texture_size, line_height, { stroke, stroke_width, transform }) {
+        let dpr = Utils.device_pixel_ratio;
+        let vertical_buffer = this.vertical_text_buffer * dpr;
 
         // In the absence of better Canvas TextMetrics (not supported by browsers yet),
         // 0.75 buffer produces a better approximate vertical centering of text
-        let ty = y + buffer * 0.75 + line_height;
+        let ty = y + vertical_buffer * 0.75 + line_height;
+        let tx = x + stroke_width;
 
-        if (stroke) {
+        if (stroke && stroke_width > 0) {
             this.context.strokeText(text, tx, ty);
         }
         this.context.fillText(text, tx, ty);

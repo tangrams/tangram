@@ -77,7 +77,6 @@ export default TextSettings = {
         if (draw.font.stroke && draw.font.stroke.color) {
             style.stroke = Utils.toCSSColor(StyleParser.cacheColor(draw.font.stroke.color, context) || this.defaults.stroke);
             style.stroke_width = StyleParser.cacheProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
-            style.stroke_width *= Utils.device_pixel_ratio;
         }
 
         style.font_css = this.fontCSS(style);
