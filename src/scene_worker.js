@@ -64,7 +64,7 @@ Object.assign(self, {
         self.global = Utils.stringsToFunctions(config.global);
 
         // Create data sources
-        this.createDataSources(config);
+        self.createDataSources(config);
 
         // Expand styles
         config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
