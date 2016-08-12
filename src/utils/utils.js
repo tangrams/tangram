@@ -57,9 +57,9 @@ Utils.addBaseURL = function (url, base) {
 
 Utils.pathForURL = function (url) {
     if (url && url.search(/^(data|blob):/) === -1) {
-        return url.substr(0, url.lastIndexOf('/') + 1) || './';
+        return url.substr(0, url.lastIndexOf('/') + 1) || '';
     }
-    return './';
+    return '';
 };
 
 Utils.isRelativeURL = function (url) {

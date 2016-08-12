@@ -12,7 +12,7 @@ export default SceneLoader = {
     // Load scenes definitions from URL & proprocess
     loadScene(url, path = null) {
         let errors = [];
-        return this.loadSceneRecursive(url, path, null, errors).
+        return this.loadSceneRecursive({ url, path }, null, errors).
             then(config => this.finalize(config)).
             then(config => {
                 if (!config) {
@@ -35,12 +35,12 @@ export default SceneLoader = {
     // Optional *initial* path only (won't be passed to recursive 'import' calls)
     // Useful for loading resources in base scene file from a separate location
     // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
-    loadSceneRecursive(url, path, type, errors = []) {
+    loadSceneRecursive({ url, path, type }, parent, errors = []) {
         if (!url) {
             return Promise.resolve({});
         }
 
-        let bundle = createSceneBundle(url, path, type);
+        let bundle = createSceneBundle(url, path, parent, type);
 
         return bundle.load().then(config => {
             // accept single-string or array
@@ -56,12 +56,12 @@ export default SceneLoader = {
             // Collect URLs of scenes to import
             let imports = [];
             for (let url of config.import) {
-                imports.push([bundle.urlFor(url), bundle.typeFor(url)]);
+                imports.push(bundle.resourceFor(url));
             }
             delete config.import; // don't want to merge this property
 
             return Promise.
-                all(imports.map(([url, type]) => this.loadSceneRecursive(url, null, type, errors))).
+            all(imports.map(resource => this.loadSceneRecursive(resource, bundle, errors))).
                 then(configs => {
                     config = mergeObjects({}, ...configs, config);
                     this.normalize(config, bundle);

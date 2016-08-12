@@ -3,32 +3,74 @@ import JSZip from 'jszip';
 
 export class SceneBundle {
 
-    constructor(url, path) {
+    constructor(url, path, parent = null) {
         this.url = url;
         this.path = path || Utils.pathForURL(this.url);
+        this.parent = parent;
+
+        // An ancestor bundle may be a container (e.g. zip file) that needs to resolve relative paths
+        // for any scenes it contains, e.g. `root.zip` has a `root.yaml` that includes a `folder/child.yaml`:
+        // resources within `child.yaml` must be resolved through the bundle for `root.zip`
+        this.container = null;
+        if (this.parent) {
+            if (this.parent.container) {
+                this.container = this.parent.container;
+            }
+            else if (this.parent.isContainer()) {
+                this.container = this.parent;
+            }
+        }
     }
 
     load() {
         return Utils.loadResource(this.url);
     }
 
+    // Info for retrieving a specific resource from this bundle
+    // url: fully qualified URL to retrieve the content of the resource (e.g. zips will transform this to blob URL)
+    // path: original path of the resource within the bundle (for resolving paths up the bundle tree)
+    // type: file extension (used for determining bundle type, `yaml` or `zip`)
+    resourceFor(url) {
+        return {
+            url: this.urlFor(url),
+            path: this.pathFor(url),
+            type: this.typeFor(url)
+        };
+    }
+
     urlFor(url) {
+        if (Utils.isRelativeURL(url) && this.container) {
+            return this.parent.urlFor(this.path + url);
+        }
         return Utils.addBaseURL(url, this.path);
+    }
+
+    pathFor(url) {
+        return Utils.pathForURL(url);
     }
 
     typeFor(url) {
         return Utils.extensionForURL(url);
     }
 
+    isContainer() {
+        return false;
+    }
+
 }
 
 export class ZipSceneBundle extends SceneBundle {
 
-    constructor(url, path) {
-        super(url, path);
+    constructor(url, path, parent) {
+        super(url, path, parent);
         this.zip = null;
         this.files = {};
         this.root = null;
+        this.path = '';
+    }
+
+    isContainer() {
+        return true;
     }
 
     load() {
@@ -128,9 +170,9 @@ export class ZipSceneBundle extends SceneBundle {
 
 }
 
-export function createSceneBundle(url, path, type = null) {
+export function createSceneBundle(url, path, parent, type = null) {
     if (type === 'zip' || (typeof url === 'string' && Utils.extensionForURL(url) === 'zip')) {
-        return new ZipSceneBundle(url, path);
+        return new ZipSceneBundle(url, path, parent);
     }
-    return new SceneBundle(url, path);
+    return new SceneBundle(url, path, parent);
 }
