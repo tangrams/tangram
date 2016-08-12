@@ -17,7 +17,7 @@ Tangram is instantiated as a [Leaflet](http://leafletjs.com/) plugin for integra
 
 The current version of Tangram can be included in your page with:
 
-```
+```html
 <script src="https://mapzen.com/tangram/tangram.min.js"></script>
 ```
 
@@ -25,9 +25,11 @@ The library includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletL
 
 Data sources, layers, and styling rules are written in a *scene file* ([here's an example](https://github.com/tangrams/simple-demo/blob/gh-pages/scene.yaml)). Armed with a scene file like `scene.yaml`, you can create a Tangram scene and add it to a Leaflet map like so:
 
-```
+```js
 var map = L.map('map');
+
 var layer = Tangram.leafletLayer({ scene: 'scene.yaml' });
+
 layer.addTo(map);
 ```
 
