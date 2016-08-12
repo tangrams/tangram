@@ -183,6 +183,7 @@ export default class CanvasText {
         let lines = [];
         let size = {
             line_height: line_height,
+            space_width: ctx.measureText(' ').width / dpr,
             collision_size: [],
             texture_size: [],
             logical_size: []
@@ -190,9 +191,7 @@ export default class CanvasText {
 
         for (var i = 0; i < words_LTR.length; i++){
             var word = words_LTR[i];
-            if (i < words_LTR.length - 1) {
-                // word += ' ';
-            }
+
             let width = ctx.measureText(word).width;
 
             lines.push(word);

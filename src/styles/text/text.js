@@ -133,6 +133,7 @@ Object.assign(TextStyle, {
             let feature_labels;
             if (text_info.text_settings.can_articulate){
                 fq.layout.segment_size = text_info.size.logical_size;
+                fq.layout.space_width = text_info.size.space_width;
                 feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             }
             else {
