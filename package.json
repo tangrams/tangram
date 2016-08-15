@@ -74,7 +74,7 @@
     "gl-shader-errors": "1.0.3",
     "js-yaml": "tangrams/js-yaml#read-only",
     "jszip": "tangrams/jszip#read-only",
-    "match-feature": "tangrams/match-feature#v1.2.0",
+    "match-feature": "tangrams/match-feature#v1.3.0",
     "pbf": "1.3.2",
     "strip-comments": "0.3.2",
     "topojson": "1.6.19",

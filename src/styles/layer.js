@@ -122,7 +122,7 @@ class Layer {
             this.buildZooms();
             this.buildPropMatches();
             if (this.filter != null && (typeof this.filter === 'function' || Object.keys(this.filter).length > 0)) {
-                this.filter = match(this.filter);
+                this.filter = match(this.filter, FilterOptions);
             }
             else {
                 this.filter = null;
@@ -326,6 +326,16 @@ export class LayerTree extends Layer {
     }
 
 }
+
+const FilterOptions = {
+    // Handle unit conversions on filter ranges
+    rangeTransform(val) {
+        if (typeof val === 'string' && val.trim().slice(-3) === 'px2') {
+            return `${parseFloat(val)} * context.meters_per_pixel_sq`;
+        }
+        return val;
+    }
+};
 
 function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
