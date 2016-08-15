@@ -28,7 +28,6 @@ export default class LabelLine extends Label {
         this.kink_index = 0;
         this.angle = [];
         this.spread_factor = (layout.spread_factor !== undefined) ? layout.spread_factor : 0.5;
-        this.should_articulate = (layout.articulated === false) ? false : true;
         this.offsets = [];
 
         this.isArticulated = false;
@@ -74,7 +73,7 @@ export default class LabelLine extends Label {
                 if (this.segment_index >= this.lines.length - 2) {
                     return false;
                 }
-                if (this.should_articulate && this.size.length > 1) {
+                else if (this.size.length > 1) {
                     this.placement = PLACEMENT.CORNER;
                 }
                 this.segment_index++;
@@ -171,34 +170,9 @@ export default class LabelLine extends Label {
     fitStraightSegment(segment) {
         let excess = 100 / (100 - this.layout.line_exceed);
         let upp = this.layout.units_per_pixel;
+        let line_length = Vector.length(Vector.sub(segment[0], segment[1])) / upp;
 
-        let does_fit = false;
-        let midpoint = Vector.mult(Vector.add(segment[0], segment[1]), 0.5);
-
-        let line_length1 = Vector.length(Vector.sub(midpoint, segment[0])) / upp;
-        let line_length2 = Vector.length(Vector.sub(midpoint, segment[1])) / upp;
-
-        // break up multiple segments into two chunks (N-1 options)
-        let label_length1 = this.total_length;
-        let label_length2 = 0;
-        let width;
-
-        this.kink_index = this.num_segments - 1;
-
-        // TODO: space width unneccessary if kink_index = 0
-        while (!does_fit && this.kink_index > 0) {
-            width = this.size[this.kink_index][0] + this.space_width;
-
-            label_length1 -= width;
-            label_length2 += width;
-
-            does_fit = (label_length1 < excess * line_length1 && label_length2 < excess * line_length2);
-            if (!does_fit) {
-                this.kink_index--;
-            }
-        }
-
-        return (does_fit && this.kink_index > 0);
+        return this.total_length < excess * line_length;
     }
 
     update() {
@@ -252,7 +226,6 @@ export default class LabelLine extends Label {
                 position = segment[1].slice();
                 break;
             case PLACEMENT.MID_POINT:
-                //TODO: position depends on placement
                 position = [
                     (segment[0][0] + segment[1][0]) / 2,
                     (segment[0][1] + segment[1][1]) / 2
@@ -277,7 +250,6 @@ export default class LabelLine extends Label {
                 }
 
                 let theta = Math.abs(angle1 - angle0);
-
                 theta = Math.min(2 * Math.PI - theta, theta);
 
                 return theta <= MAX_ANGLE;
@@ -311,7 +283,7 @@ export default class LabelLine extends Label {
 
                 let dx = this.spread_factor * Math.abs(this.total_height / Math.tan(0.5 * theta));
 
-                nudge = -dx;
+                nudge = - dx - 0.5 * this.space_width;
 
                 // backwards
                 for (let i = this.kink_index - 1; i >= 0; i--) {
@@ -320,7 +292,7 @@ export default class LabelLine extends Label {
 
                     let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
 
-                    nudge -= 0.5 * (width_px + this.space_width);
+                    nudge -= 0.5 * width_px;
 
                     let offset = Vector.rot([nudge * upp, 0], -angle);
                     let position = Vector.add(this.position, offset);
@@ -336,10 +308,10 @@ export default class LabelLine extends Label {
                         this.layout.offset[1]
                     ];
 
-                    nudge -= 0.5 * (width + this.space_width);
+                    nudge -= 0.5 * width_px + this.space_width;
                 }
 
-                nudge = dx;
+                nudge = dx + 0.5 * this.space_width;
 
                 // forwards
                 for (let i = this.kink_index; i < this.num_segments; i++){
@@ -348,7 +320,7 @@ export default class LabelLine extends Label {
 
                     let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
 
-                    nudge += 0.5 * (width_px + this.space_width);
+                    nudge += 0.5 * width_px;
 
                     let offset = Vector.rot([nudge * upp, 0], -angle);
                     let position = Vector.add(this.position, offset);
@@ -364,23 +336,22 @@ export default class LabelLine extends Label {
                         this.layout.offset[1]
                     ];
 
-                    nudge += 0.5 * (width + this.space_width);
+                    nudge += 0.5 * width_px + this.space_width;
                 }
 
                 break;
             case PLACEMENT.MID_POINT:
-                // backwards
-                for (let i = this.kink_index - 1; i >= 0; i--){
+                nudge = -0.5 * this.total_length;
+
+                for (let i = 0; i < this.num_segments; i++){
                     let width_px = this.size[i][0];
                     let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
                     let angle = this.angle[i];
 
-                    nudge -= 0.5 * width_px + this.space_width;
+                    nudge += 0.5 * width_px;
 
-                    let position = [
-                        this.position[0] + nudge * upp,
-                        this.position[1]
-                    ];
+                    let offset = Vector.rot([nudge * upp, 0], -angle);
+                    let position = Vector.add(this.position, offset);
 
                     let obb = getOBB(position, width, height, angle, this.offset, upp);
                     let aabb = obb.getExtent();
@@ -393,37 +364,9 @@ export default class LabelLine extends Label {
                         this.layout.offset[1]
                     ];
 
-                    nudge -= 0.5 * width_px;
+                    nudge += 0.5 * width_px + this.space_width;
                 }
 
-                nudge = 0
-
-                // forwards
-                for (let i = this.kink_index; i < this.num_segments; i++){
-                    let width_px = this.size[i][0];
-                    let angle = this.angle[i];
-                    let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-
-                    let position = [
-                        this.position[0] + nudge * upp,
-                        this.position[1]
-                    ];
-
-                    let obb = getOBB(position, width, height, angle, this.offset, upp);
-                    let aabb = obb.getExtent();
-
-                    this.obbs.push(obb);
-                    this.aabbs.push(aabb);
-
-                    nudge += 0.5 * (width_px + this.space_width);
-
-                    this.offsets[i] = [
-                        this.layout.offset[0] + nudge,
-                        this.layout.offset[1]
-                    ];
-
-                    nudge += 0.5 * (width_px + this.space_width);
-                }
                 break;
         }
     }
