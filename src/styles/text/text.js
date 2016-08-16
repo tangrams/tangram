@@ -97,10 +97,16 @@ Object.assign(TextStyle, {
                         // setup styling object expected by Style class
                         let style = this.feature_style;
                         style.label = q.label;
-                        style.size = text_info.size.logical_size;
-                        style.angle = q.label.angle || 0;
-                        style.texcoords = text_info.align[q.label.align].texcoords;
-                        style.multi_texcoords = text_info.multi_texcoords;
+
+                        if (text_info.text_settings.can_articulate){
+                            style.size = text_info.size.map(function(size){ return size.logical_size; });
+                            style.multi_texcoords = text_info.multi_texcoords;
+                        }
+                        else {
+                            style.size = text_info.size.logical_size;
+                            style.angle = q.label.angle || 0;
+                            style.texcoords = text_info.align[q.label.align].texcoords;
+                        }
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
@@ -132,9 +138,10 @@ Object.assign(TextStyle, {
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
             let feature_labels;
             if (text_info.text_settings.can_articulate){
-                fq.layout.segment_size = text_info.size.logical_size;
-                fq.layout.space_width = text_info.size.space_width;
-                feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
+                var sizes = text_info.size.map(function(size){ return size.collision_size; });
+                // TODO: super ghetoo
+                fq.layout.space_width = text_info.size[0].space_width;
+                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout);
             }
             else {
                 feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);

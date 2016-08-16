@@ -38,32 +38,34 @@ export default class CanvasText {
                 let text_infos = texts[style];
                 let first = true;
 
-                // TODO: move the cache to per word (segment). Within this.textSize/Articulated
+                let space_width;
                 for (let text in text_infos) {
-                    // Use cached size, or compute via canvas
-                    if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
-                        let text_settings = text_infos[text].text_settings;
-                        if (first) {
-                            this.setFont(text_settings);
-                            first = false;
-                        }
+                    let text_info = text_infos[text];
+                    let text_settings = text_info.text_settings;
 
-                        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
-                        if (text_settings.can_articulate){
-                            CanvasText.text_cache[style][text] = this.textSizeArticulated(text, text_settings);
+                    if (first) {
+                        this.setFont(text_settings);
+                        space_width = this.context.measureText(' ').width;
+                        first = false;
+                    }
+
+                    CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                    if (text_settings.can_articulate){
+                        let results = this.textSizeArticulated(text, text_settings, space_width);
+                        text_info.size = [];
+                        for (let i = 0; i < results.length; i++){
+                            let word = results[i].lines.text;
+                            CanvasText.text_cache[style][word] = results[i];
+                            //TODO: can this be by words instead?
+                            text_info.size.push(results[i].size);
                         }
-                        else {
-                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
-                        }
-                        CanvasText.cache_stats.misses++;
                     }
                     else {
-                        CanvasText.cache_stats.hits++;
+                        CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
+                        // Only send text sizes back to worker (keep computed text line info
+                        // on main thread, for future rendering)
+                        text_info.size = CanvasText.text_cache[style][text].size;
                     }
-
-                    // Only send text sizes back to worker (keep computed text line info
-                    // on main thread, for future rendering)
-                    text_infos[text].size = CanvasText.text_cache[style][text].size;
                 }
             }
 
@@ -80,6 +82,7 @@ export default class CanvasText {
         let vertical_buffer = this.vertical_text_buffer * dpr;
         let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
+        stroke_width = stroke_width || 0;
 
         // Word wrapping
         // Line breaks can be caused by:
@@ -105,10 +108,7 @@ export default class CanvasText {
             }
 
             var text = line.text;
-            let line_width = 0;
-
-            line_width = ctx.measureText(text).width;
-            line.segments = [line_width];
+            let line_width = ctx.measureText(text).width;
 
             line.width = line_width;
             lines.push(line);
@@ -169,32 +169,29 @@ export default class CanvasText {
         };
     }
 
-    textSizeArticulated(text, {transform, stroke_width}){
+    textSizeArticulated(text, {transform, stroke_width}, space_width){
         let dpr = Utils.device_pixel_ratio;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let vertical_buffer = this.vertical_text_buffer * dpr;
         let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
+        stroke_width = stroke_width || 0;
 
         var words = text.split(' ');
         var words_LTR = reorderWordsLTR(words);
 
-        let lines = [];
-        let size = {
-            line_height: line_height,
-            space_width: ctx.measureText(' ').width / dpr,
-            collision_size: [],
-            texture_size: [],
-            logical_size: []
-        };
+        let results = [];
 
         for (var i = 0; i < words_LTR.length; i++){
             var word = words_LTR[i];
 
             let width = ctx.measureText(word).width;
 
-            lines.push(word);
+            let line = {
+                text: word,
+                width: width
+            }
 
             let collision_size = [
                 width / dpr,
@@ -211,16 +208,28 @@ export default class CanvasText {
                 texture_size[1] / dpr,
             ];
 
-            size.collision_size.push(collision_size);
-            size.texture_size.push(texture_size);
-            size.logical_size.push(logical_size);
+            let result = {
+                lines : line,
+                size: { collision_size, texture_size, logical_size, line_height, space_width}
+            }
+
+            results.push(result);
         }
 
-        return {lines, size};
+        return results;
     }
 
     // Draw one or more lines of text at specified location, adjusting for buffer and baseline
-    drawText (lines, [x, y], size, { stroke, stroke_width, transform, align }) {
+    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width, transform, align }) {
+        let line_height = size.line_height;
+        for (let line_num=0; line_num < lines.length; line_num++) {
+            let line = lines[line_num];
+            this.drawTextLine(line, [x, y], size, { stroke, stroke_width, transform, align });
+            y += line_height;
+        }
+    }
+
+    drawTextLine (line, [x, y], size, { stroke, stroke_width, transform, align }) {
         let dpr = Utils.device_pixel_ratio;
         align = align || 'center';
 
@@ -228,96 +237,28 @@ export default class CanvasText {
         let texture_size = size.texture_size;
         let line_height = size.line_height;
 
-        for (let line_num=0; line_num < lines.length; line_num++) {
-            let line = lines[line_num];
-            let str = this.applyTextTransform(line.text, transform);
+        let str = this.applyTextTransform(line.text, transform);
 
-            // Text alignment
-            let tx;
-            if (align === 'left') {
-                tx = x + stroke_width;
-            }
-            else if (align === 'center') {
-                tx = x + texture_size[0]/2 - line.width/2;
-            }
-            else if (align === 'right') {
-                tx = x + texture_size[0] - line.width - stroke_width;
-            }
-
-            // In the absence of better Canvas TextMetrics (not supported by browsers yet),
-            // 0.75 buffer produces a better approximate vertical centering of text
-            let ty = y + vertical_buffer * 0.75 + (line_num + 1) * line_height;
-
-            if (stroke && stroke_width > 0) {
-                this.context.strokeText(str, tx, ty);
-            }
-            this.context.fillText(str, tx, ty);
+        // Text alignment
+        let tx;
+        if (align === 'left') {
+            tx = x + stroke_width;
         }
-
-        if (true) {
-            this.context.save();
-            let collision_size = size.collision_size;
-            let lineWidth = 2;
-
-            this.context.strokeStyle = 'blue';
-            this.context.lineWidth = lineWidth;
-            this.context.strokeRect(x + stroke_width, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
-
-            this.context.restore();
+        else if (align === 'center') {
+            tx = x + texture_size[0]/2 - line.width/2;
         }
-
-        if (true) {
-            this.context.save();
-
-            let texture_size = size.texture_size;
-            let lineWidth = 2;
-
-            this.context.strokeStyle = 'green';
-            this.context.lineWidth = lineWidth;
-            // stroke is applied internally, so the outer border is the edge of the texture
-            this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
-
-            this.context.restore();
+        else if (align === 'right') {
+            tx = x + texture_size[0] - line.width - stroke_width;
         }
-    }
-
-    drawTextArticulated (text, [x, y], texture_size, collision_size, line_height, { stroke, stroke_width, transform }) {
-        let dpr = Utils.device_pixel_ratio;
-        let vertical_buffer = this.vertical_text_buffer * dpr;
 
         // In the absence of better Canvas TextMetrics (not supported by browsers yet),
         // 0.75 buffer produces a better approximate vertical centering of text
         let ty = y + vertical_buffer * 0.75 + line_height;
-        let tx = x + stroke_width;
 
         if (stroke && stroke_width > 0) {
-            this.context.strokeText(text, tx, ty);
+            this.context.strokeText(str, tx, ty);
         }
-        this.context.fillText(text, tx, ty);
-
-        if (true) {
-            this.context.save();
-            let lineWidth = 2;
-
-            this.context.strokeStyle = 'blue';
-            this.context.lineWidth = lineWidth;
-            this.context.strokeRect(x + stroke_width, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
-
-            this.context.restore();
-        }
-
-        if (true) {
-            this.context.save();
-
-            let lineWidth = 2;
-
-            this.context.strokeStyle = 'green';
-            this.context.lineWidth = lineWidth;
-            // stroke is applied internally, so the outer border is the edge of the texture
-            this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
-
-            this.context.restore();
-        }
+        this.context.fillText(str, tx, ty);
     }
 
     rasterize (texts, texture_size) {
@@ -335,35 +276,31 @@ export default class CanvasText {
                     first = false;
                 }
 
-                // TODO: move the cache to per word (segment)
-                let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
-
                 if (text_settings.can_articulate){
+                    let words = text.split(' ');
                     text_info.multi_texcoords = [];
-                    let size = CanvasText.text_cache[style][text].size;
-                    let line_height = size.line_height;
-
-                    for (let i = 0; i < lines.length; i++){
-                        let word = lines[i];
-                        //TODO: put texture start coordinates into text_info as an array
+                    for (let i = 0; i < words.length; i++){
+                        let word = words[i];
                         let texture_position = text_info.texture_position[i];
-                        let text_texture_size = size.texture_size[i];
-                        let text_collision_size = size.collision_size[i];
+                        let size = CanvasText.text_cache[style][word].size;
+                        let line = CanvasText.text_cache[style][word].lines;
 
-                        this.drawTextArticulated(word, texture_position, text_texture_size, text_collision_size, line_height, text_settings);
+                        this.drawTextLine(line, texture_position, size, text_settings);
 
                         var texcoord = Texture.getTexcoordsForSprite(
                             texture_position,
-                            text_texture_size,
+                            size.texture_size,
                             texture_size
                         );
 
+                        //TODO: necessary?
                         text_info.multi_texcoords.push(texcoord);
                     }
                 }
                 else {
+                    let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
                     for (let align in text_info.align) {
-                        this.drawText(lines, text_info.align[align].texture_position, text_info.size, {
+                        this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, {
                             stroke: text_settings.stroke,
                             stroke_width: text_settings.stroke_width,
                             transform: text_settings.transform,
@@ -396,10 +333,9 @@ export default class CanvasText {
                 let text_info = text_infos[text];
 
                 if (text_info.text_settings.can_articulate){
-                    let texture_sizes = text_info.size.texture_size;
                     text_info.texture_position = [];
-                    for (let i = 0; i < texture_sizes.length; i++) {
-                        let size = texture_sizes[i];
+                    for (let i = 0; i < text_info.size.length; i++) {
+                        let size = text_info.size[i].texture_size;
                         if (size[0] > column_width) column_width = size[0];
                         if (cy + size[1] < max_texture_size) {
                             text_info.texture_position[i] = [cx, cy]; // add label to current column
