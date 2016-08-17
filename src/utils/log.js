@@ -31,10 +31,10 @@ export default function log (msg_level, ...msg) {
 
             // Write to console (on main thread)
             if (msg.length > 1) {
-                logger(`Tangram ${version.string} [${msg_level}]: ${msg[0]}`, ...msg.slice(1));
+                logger(`Tangram ${version} [${msg_level}]: ${msg[0]}`, ...msg.slice(1));
             }
             else {
-                logger(`Tangram ${version.string} [${msg_level}]: ${msg[0]}`);
+                logger(`Tangram ${version} [${msg_level}]: ${msg[0]}`);
             }
         }
     }

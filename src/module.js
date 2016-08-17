@@ -76,5 +76,5 @@ if (Thread.is_main) {
 module.exports = {
     leafletLayer,
     debug,
-    version: version.string
+    version
 };
