@@ -171,7 +171,7 @@ export class GeoJSONSource extends NetworkSource {
 }
 
 /**
- Mapzen/OSM.US-style GeoJSON vector tiles
+ GeoJSON vector tiles
  @class GeoJSONTileSource
 */
 export class GeoJSONTileSource extends NetworkTileSource {
@@ -182,7 +182,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
         // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
         if (!this.urlHasTilePattern(this.url)) {
             // Check instance type from parent class
-            if (this instanceof GeoJSONTileSource) {
+            if (source.type === 'GeoJSON') {
                 // Replace instance type
                 return new GeoJSONSource(source);
             }
@@ -220,7 +220,6 @@ export class GeoJSONTileSource extends NetworkTileSource {
 }
 
 DataSource.register(GeoJSONTileSource, 'GeoJSON');      // prefered shorter name
-DataSource.register(GeoJSONTileSource, 'GeoJSONTiles'); // for backwards-compatibility
 
 // Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
 function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {

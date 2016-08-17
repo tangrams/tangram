@@ -5,7 +5,7 @@ chai.use(chaiAsPromised);
 
 import Geo from '../src/geo';
 import sampleTile from './fixtures/sample-tile';
-import DataSource, {NetworkTileSource} from '../src/sources/data_source';
+import DataSource from '../src/sources/data_source';
 import {
     GeoJSONTileSource,
     GeoJSONSource
@@ -17,7 +17,6 @@ import {
 import {MVTSource} from '../src/sources/mvt';
 
 import Utils from '../src/utils/utils';
-import {MethodNotImplemented} from '../src/utils/errors';
 
 function getMockTile() {
     return _.clone(require('./fixtures/sample-tile.json'));
@@ -64,20 +63,6 @@ describe('DataSource', () => {
 
         describe('when I ask for a TopoJSON source with a tile template URL', () => {
             let subject = DataSource.create(_.merge({type: 'TopoJSON'}, options));
-            it('returns a new TopoJSONTileSource', () => {
-                assert.instanceOf(subject, TopoJSONTileSource);
-            });
-        });
-
-        describe('when I ask for a GeoJSONTiles source (backwards compatibility', () => {
-            let subject = DataSource.create(_.merge({type: 'GeoJSONTiles'}, options));
-            it('returns a new GeoJSONTileSource', () => {
-                assert.instanceOf(subject, GeoJSONTileSource);
-            });
-        });
-
-        describe('when I ask for a TopoJSONTiles source (backwards compatibility', () => {
-            let subject = DataSource.create(_.merge({type: 'TopoJSONTiles'}, options));
             it('returns a new TopoJSONTileSource', () => {
                 assert.instanceOf(subject, TopoJSONTileSource);
             });
@@ -163,26 +148,6 @@ describe('DataSource', () => {
             });
         });
 
-    });
-
-    describe('NetworkTileSource', () => {
-
-        describe('.parseSourceData(dest, source, reponse)', () => {
-            let subject;
-            beforeEach(() => {
-                subject = new NetworkTileSource(options);
-            });
-
-            describe('when not overriden by a subclass', () => {
-                it('throws an error', () => {
-                    assert.throws(
-                        () => { subject.parseSourceData({}); },
-                        MethodNotImplemented,
-                        'Method parseSourceData must be implemented in subclass'
-                    );
-                });
-            });
-        });
     });
 
     describe('GeoJSONTileSource', () => {
