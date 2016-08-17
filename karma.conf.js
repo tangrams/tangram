@@ -23,7 +23,6 @@ module.exports = function (config) {
         basePath: '',
         frameworks: ['browserify', 'mocha', 'sinon'],
         files: [
-            'node_modules/lodash/lodash.js',
             'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js',
             {
                 pattern : 'test/fixtures/*',
@@ -41,7 +40,7 @@ module.exports = function (config) {
         },
         browserify : {
             debug: true,
-            transform: [['babelify', {optional : 'runtime'}], 'brfs']
+            transform: [['babelify', { presets: ['es2015'], plugins: ['transform-runtime'] }], 'brfs']
         },
 
         plugins: [
