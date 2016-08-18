@@ -544,7 +544,7 @@ Object.assign(Points, {
     // Build quad for point sprite
     build (style, vertex_data) {
         let label = style.label;
-        if (label.can_articulate) {
+        if (label.num_segments) {
             this.buildArticulatedLabel(label, style, vertex_data);
         }
         else {

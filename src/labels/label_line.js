@@ -31,7 +31,6 @@ export default class LabelLine extends Label {
         this.offsets = [];
 
         this.isArticulated = false;
-        this.can_articulate = true;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
