@@ -175,56 +175,6 @@ export default class CanvasText {
         };
     }
 
-    textSizeArticulated(text, {transform, stroke_width}, space_width){
-        let dpr = Utils.device_pixel_ratio;
-        let str = this.applyTextTransform(text, transform);
-        let ctx = this.context;
-        let vertical_buffer = this.vertical_text_buffer * dpr;
-        let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
-        let line_height = this.px_size + leading; // px_size already in device pixels
-        stroke_width = stroke_width || 0;
-
-        var words = text.split(' ');
-        var words_LTR = reorderWordsLTR(words);
-
-        let results = [];
-
-        for (var i = 0; i < words_LTR.length; i++){
-            var word = words_LTR[i];
-
-            let width = ctx.measureText(word).width;
-
-            let line = {
-                text: word,
-                width: width
-            }
-
-            let collision_size = [
-                width / dpr,
-                line_height / dpr
-            ];
-
-            let texture_size = [
-                width + stroke_width * 2,
-                line_height + vertical_buffer * 2
-            ];
-
-            let logical_size = [
-                texture_size[0] / dpr,
-                texture_size[1] / dpr,
-            ];
-
-            let result = {
-                lines : line,
-                size: { collision_size, texture_size, logical_size, line_height, space_width}
-            }
-
-            results.push(result);
-        }
-
-        return results;
-    }
-
     // Draw one or more lines of text at specified location, adjusting for buffer and baseline
     drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width, transform, align }) {
         let line_height = size.line_height;
