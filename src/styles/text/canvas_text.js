@@ -268,15 +268,7 @@ export default class CanvasText {
     }
 
     rasterize (texts, texture_size, tile_key) {
-        if (!CanvasText.texcoord_cache[tile_key]) {
-            CanvasText.texcoord_cache[tile_key] = {};
-        }
-
         for (let style in texts) {
-            if (!CanvasText.texcoord_cache[tile_key][style]) {
-                CanvasText.texcoord_cache[tile_key][style] = {};
-            }
-
             let text_infos = texts[style];
             let first = true;
 
@@ -296,16 +288,16 @@ export default class CanvasText {
 
                     for (let i = 0; i < words.length; i++){
                         let word = words[i];
-                        let texture_position = text_info.texture_position[i];
-                        let size = CanvasText.text_cache[style][word].size;
-                        let line = CanvasText.text_cache[style][word].lines[0];
-
                         let texcoord;
 
-                        if (CanvasText.texcoord_cache[tile_key][style][word]){
-                            texcoord = CanvasText.texcoord_cache[tile_key][style][word];
+                        if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
+                            texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
                         }
                         else {
+                            let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
+                            let size = CanvasText.text_cache[style][word].size;
+                            let line = CanvasText.text_cache[style][word].lines[0];
+
                             this.drawTextLine(line, texture_position, size, text_settings);
 
                             texcoord = Texture.getTexcoordsForSprite(
@@ -314,7 +306,7 @@ export default class CanvasText {
                                 texture_size
                             );
 
-                            CanvasText.texcoord_cache[tile_key][style][word] = texcoord;
+                            CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
                         }
 
                         text_info.multi_texcoords.push(texcoord);
@@ -342,7 +334,11 @@ export default class CanvasText {
     }
 
     // Place text labels within an atlas of the given max size
-    setTextureTextPositions (texts, max_texture_size) {
+    setTextureTextPositions (texts, max_texture_size, tile_key) {
+        if (!CanvasText.texcoord_cache[tile_key]) {
+            CanvasText.texcoord_cache[tile_key] = {};
+        }
+
         // Keep track of column width
         let column_width = 0;
 
@@ -350,36 +346,42 @@ export default class CanvasText {
         let cx = 0, cy = 0; // current x/y position in atlas
         let height = 0;     // overall atlas height
         for (let style in texts) {
+            if (!CanvasText.texcoord_cache[tile_key][style]) {
+               CanvasText.texcoord_cache[tile_key][style] = {};
+            }
+
             let text_infos = texts[style];
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
 
                 if (text_info.text_settings.can_articulate){
-                    text_info.texture_position = [];
+                    let texture_position;
                     for (let i = 0; i < text_info.size.length; i++) {
-                        let size = text_info.size[i].texture_size;
-                        if (size[0] > column_width) column_width = size[0];
-                        if (cy + size[1] < max_texture_size) {
-                            // if (CanvasText.texcoord_cache[style][text]){
-                            //     let texture_position = CanvasText.texcoord_cache[style][text];
-                            // }
-                            // else {
-                            //     let texture_position = [cx, cy]; // add label to current column
-                            // }
+                        let word = text_info.segments[i];
 
-                            text_info.texture_position[i] = [cx, cy];
+                        if (!CanvasText.texcoord_cache[tile_key][style][word]) {
+                            let size = text_info.size[i].texture_size;
+                            if (size[0] > column_width) column_width = size[0];
+                            if (cy + size[1] < max_texture_size) {
+                                texture_position = [cx, cy];
 
-                            cy += size[1];
-                            if (cy > height) {
-                                height = cy;
+                                cy += size[1];
+                                if (cy > height) {
+                                    height = cy;
+                                }
                             }
-                        }
-                        else { // start new column if taller than texture
-                            cx += column_width;
-                            column_width = 0;
-                            cy = 0;
-                            text_info.texture_position[i] = [cx, cy];
+                            else { // start new column if taller than texture
+                                cx += column_width;
+                                column_width = 0;
+                                cy = 0;
+                                texture_position = [cx, cy];
+                            }
+
+                            // TODO: find where text_info.texture_position is used. If unnecessary only use cache
+                            CanvasText.texcoord_cache[tile_key][style][word] = {
+                                texture_position: texture_position
+                            };
                         }
                     }
                 }
@@ -449,6 +451,10 @@ export default class CanvasText {
         px_size = parseFloat(px_size);
         px_size *= Utils.device_pixel_ratio;
         return px_size;
+    }
+
+    clearTexcoordCache (tile_key) {
+        CanvasText.texcoord_cache[tile_key] = {};
     }
 
 }
