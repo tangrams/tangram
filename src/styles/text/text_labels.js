@@ -134,8 +134,10 @@ export const TextLabels = {
             labels.forEach(q => {
                 let text_settings_key = q.text_settings_key;
                 let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-                text_info.align = text_info.align || {};
-                text_info.align[q.label.align] = {};
+                if (!text_info.text_settings.can_articulate){
+                    text_info.align = text_info.align || {};
+                    text_info.align[q.label.align] = {};
+                }
             });
 
             // second call to main thread, for rasterizing the set of texts
@@ -193,7 +195,7 @@ export const TextLabels = {
         if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
             // update canvas size & rasterize all the text strings we need
             canvas.resize(...texture_size);
-            canvas.rasterize(texts, texture_size);
+            canvas.rasterize(texts, texture_size, tile_key);
         }
         else {
             log('error', [

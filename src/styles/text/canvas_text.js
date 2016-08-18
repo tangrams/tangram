@@ -50,18 +50,24 @@ export default class CanvasText {
                     }
 
                     CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+
                     if (text_settings.can_articulate){
-                        let results = this.textSizeArticulated(text, text_settings, space_width);
+                        // TODO: what if some parts of text are used, but others not. Perhaps do the splitting logic here?
+                        var words = text.split(' ');
+                        var words_LTR = reorderWordsLTR(words);
+                        text_info.segments = words;
+
                         text_info.size = [];
-                        for (let i = 0; i < results.length; i++){
-                            let word = results[i].lines.text;
-                            CanvasText.text_cache[style][word] = results[i];
-                            //TODO: can this be by words instead?
-                            text_info.size.push(results[i].size);
+                        for (let i = 0; i < words_LTR.length; i++){
+                            let word = words_LTR[i];
+                            if (!CanvasText.text_cache[style][word])
+                                CanvasText.text_cache[style][word] = this.textSize(word, text_settings, space_width);
+                            text_info.size.push(CanvasText.text_cache[style][word].size);
                         }
                     }
                     else {
-                        CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
+                        if (!CanvasText.text_cache[style][text])
+                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings, 0);
                         // Only send text sizes back to worker (keep computed text line info
                         // on main thread, for future rendering)
                         text_info.size = CanvasText.text_cache[style][text].size;
@@ -75,7 +81,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, {transform, text_wrap, stroke_width}) {
+    textSize (text, {transform, text_wrap, stroke_width}, space_width) {
         let dpr = Utils.device_pixel_ratio;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
@@ -165,7 +171,7 @@ export default class CanvasText {
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
             lines,
-            size: { collision_size, texture_size, logical_size, line_height }
+            size: { collision_size, texture_size, logical_size, line_height, space_width }
         };
     }
 
@@ -261,8 +267,16 @@ export default class CanvasText {
         this.context.fillText(str, tx, ty);
     }
 
-    rasterize (texts, texture_size) {
+    rasterize (texts, texture_size, tile_key) {
+        if (!CanvasText.texcoord_cache[tile_key]) {
+            CanvasText.texcoord_cache[tile_key] = {};
+        }
+
         for (let style in texts) {
+            if (!CanvasText.texcoord_cache[tile_key][style]) {
+                CanvasText.texcoord_cache[tile_key][style] = {};
+            }
+
             let text_infos = texts[style];
             let first = true;
 
@@ -277,23 +291,32 @@ export default class CanvasText {
                 }
 
                 if (text_settings.can_articulate){
-                    let words = text.split(' ');
+                    let words = text_info.segments;
                     text_info.multi_texcoords = [];
+
                     for (let i = 0; i < words.length; i++){
                         let word = words[i];
                         let texture_position = text_info.texture_position[i];
                         let size = CanvasText.text_cache[style][word].size;
-                        let line = CanvasText.text_cache[style][word].lines;
+                        let line = CanvasText.text_cache[style][word].lines[0];
 
-                        this.drawTextLine(line, texture_position, size, text_settings);
+                        let texcoord;
 
-                        var texcoord = Texture.getTexcoordsForSprite(
-                            texture_position,
-                            size.texture_size,
-                            texture_size
-                        );
+                        if (CanvasText.texcoord_cache[tile_key][style][word]){
+                            texcoord = CanvasText.texcoord_cache[tile_key][style][word];
+                        }
+                        else {
+                            this.drawTextLine(line, texture_position, size, text_settings);
 
-                        //TODO: necessary?
+                            texcoord = Texture.getTexcoordsForSprite(
+                                texture_position,
+                                size.texture_size,
+                                texture_size
+                            );
+
+                            CanvasText.texcoord_cache[tile_key][style][word] = texcoord;
+                        }
+
                         text_info.multi_texcoords.push(texcoord);
                     }
                 }
@@ -338,7 +361,15 @@ export default class CanvasText {
                         let size = text_info.size[i].texture_size;
                         if (size[0] > column_width) column_width = size[0];
                         if (cy + size[1] < max_texture_size) {
-                            text_info.texture_position[i] = [cx, cy]; // add label to current column
+                            // if (CanvasText.texcoord_cache[style][text]){
+                            //     let texture_position = CanvasText.texcoord_cache[style][text];
+                            // }
+                            // else {
+                            //     let texture_position = [cx, cy]; // add label to current column
+                            // }
+
+                            text_info.texture_position[i] = [cx, cy];
+
                             cy += size[1];
                             if (cy > height) {
                                 height = cy;
@@ -428,6 +459,8 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
+
+CanvasText.texcoord_cache = {};
 
 // Right-to-left / bi-directional text handling
 // Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
