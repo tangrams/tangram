@@ -303,14 +303,15 @@ Object.assign(Points, {
 
                         if (Array.isArray(text_info.size)){
                             style.size = text_info.size[0].logical_size;
+                            style.texcoords = text_info.texcoords;
                         }
                         else {
                             style.size = text_info.size.logical_size;
+                            style.texcoords = text_info.align[q.label.align].texcoords;
                         }
 
                         style.angle = q.label.angle || 0;
                         style.sampler = 1; // non-0 = labels
-                        style.texcoords = text_info.align[q.label.align].texcoords;
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
