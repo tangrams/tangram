@@ -43,9 +43,6 @@ export default TextSettings = {
         // LineString labels can articulate while point labels cannot. Needed for future texture coordinate calculations.
         style.can_articulate = draw.can_articulate;
 
-        // TODO: necessary?
-        if (style.can_articulate) style.align = 'left';
-
         // Use fill if specified, or default
         style.fill = (draw.font.fill && Utils.toCSSColor(StyleParser.cacheColor(draw.font.fill, context))) || this.defaults.fill;
 

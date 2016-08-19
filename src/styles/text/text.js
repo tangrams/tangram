@@ -142,8 +142,6 @@ Object.assign(TextStyle, {
             let feature_labels;
             if (text_info.text_settings.can_articulate){
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
-                //TODO: put space_width into text_info?
-                console.log(text_info.space_width)
                 fq.layout.space_width = text_info.space_width;
                 feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout);
             }
