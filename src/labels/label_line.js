@@ -30,8 +30,6 @@ export default class LabelLine extends Label {
         this.spread_factor = (layout.spread_factor !== undefined) ? layout.spread_factor : 0.5;
         this.offsets = [];
 
-        this.isArticulated = false;
-
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
         this.segment_index = layout.segment_index || layout.segment_start || 0;
@@ -110,7 +108,6 @@ export default class LabelLine extends Label {
         if (this.doesSegmentFit(segment)) {
             this.update();
             if (this.inTileBounds() && this.inAngleBounds()) {
-                this.isArticulated = (this.placement === PLACEMENT.CORNER) ? true : false;
                 return segment;
             }
         }

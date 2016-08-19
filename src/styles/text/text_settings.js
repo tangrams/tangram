@@ -40,9 +40,8 @@ export default TextSettings = {
 
         draw.font = draw.font || this.defaults;
 
-        // LineString labels can articulatem while point labels cannot. Needed for future texture coordinate calculations.
-        let type = feature.geometry.type;
-        style.can_articulate = (type === "LineString" || type === "MultiLineString");
+        // LineString labels can articulate while point labels cannot. Needed for future texture coordinate calculations.
+        style.can_articulate = draw.can_articulate;
 
         // TODO: necessary?
         if (style.can_articulate) style.align = 'left';

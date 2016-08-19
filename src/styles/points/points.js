@@ -300,16 +300,8 @@ Object.assign(Points, {
                         // setup styling object expected by Style class
                         let style = this.feature_style;
                         style.label = q.label;
-
-                        if (Array.isArray(text_info.size)){
-                            style.size = text_info.size[0].logical_size;
-                            style.texcoords = text_info.texcoords;
-                        }
-                        else {
-                            style.size = text_info.size.logical_size;
-                            style.texcoords = text_info.align[q.label.align].texcoords;
-                        }
-
+                        style.size = text_info.size.logical_size;
+                        style.texcoords = text_info.align[q.label.align].texcoords;
                         style.angle = q.label.angle || 0;
                         style.sampler = 1; // non-0 = labels
 
@@ -389,7 +381,6 @@ Object.assign(Points, {
         layout.buffer = StyleParser.cacheProperty(draw.buffer, context) || StyleParser.zeroPair;
 
         // variations for articulated label placement
-        layout.articulated = draw.articulated;     // boolean value to articulate labels or not
         layout.spread_factor = draw.spread_factor; // spread between kinked labels
         layout.placement_type = draw.placement;    // strategy for placing labels
 
@@ -414,7 +405,7 @@ Object.assign(Points, {
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
-            let size = (text_info.size.collision_size) ? text_info.size.collision_size : text_info.size[0].collision_size;
+            let size = text_info.size.collision_size;
             fq.label = new LabelPoint(fq.point_label.position, size, fq.layout);
             labels.push(fq);
         }
