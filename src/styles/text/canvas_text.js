@@ -38,15 +38,16 @@ export default class CanvasText {
             for (let style in texts) {
                 let text_infos = texts[style];
                 let first = true;
+                let space_width = this.context.measureText(' ').width;
 
-                let space_width;
                 for (let text in text_infos) {
                     let text_info = text_infos[text];
+                    text_info.space_width = space_width;
+
                     let text_settings = text_info.text_settings;
 
                     if (first) {
                         this.setFont(text_settings);
-                        space_width = this.context.measureText(' ').width;
                         first = false;
                     }
 
@@ -61,7 +62,7 @@ export default class CanvasText {
                         for (let i = 0; i < words_LTR.length; i++){
                             let word = words_LTR[i];
                             if (!CanvasText.text_cache[style][word])
-                                CanvasText.text_cache[style][word] = this.textSize(word, text_settings, space_width);
+                                CanvasText.text_cache[style][word] = this.textSize(word, text_settings);
                             text_info.size.push(CanvasText.text_cache[style][word].size);
                         }
                     }
@@ -81,7 +82,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, {transform, text_wrap, stroke_width = 0}, space_width) {
+    textSize (text, {transform, text_wrap, stroke_width = 0}) {
         let dpr = Utils.device_pixel_ratio;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
@@ -171,7 +172,7 @@ export default class CanvasText {
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
             lines,
-            size: { collision_size, texture_size, logical_size, line_height, space_width }
+            size: { collision_size, texture_size, logical_size, line_height }
         };
     }
 
