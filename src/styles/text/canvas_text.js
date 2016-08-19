@@ -8,6 +8,8 @@ export default class CanvasText {
         this.canvas = document.createElement('canvas');
         this.canvas.style.backgroundColor = 'transparent'; // render text on transparent background
         this.context = this.canvas.getContext('2d');
+        this.vertical_text_buffer = 8; // vertical pixel padding around text
+        this.horizontal_text_buffer = 4; // text styling such as italic emphasis is not measured by the Canvas API, so padding is necessary
     }
 
     resize (width, height) {
@@ -19,7 +21,6 @@ export default class CanvasText {
     // Set font style params for canvas drawing
     setFont ({ font_css, fill, stroke, stroke_width, px_size }) {
         this.px_size = px_size;
-        this.vertical_text_buffer = 8; // vertical pixel padding around text
         let ctx = this.context;
         let dpr = Utils.device_pixel_ratio;
 
@@ -52,7 +53,6 @@ export default class CanvasText {
                     CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
 
                     if (text_settings.can_articulate){
-                        // TODO: what if some parts of text are used, but others not. Perhaps do the splitting logic here?
                         var words = text.split(' ');
                         var words_LTR = reorderWordsLTR(words);
                         text_info.segments = words;
@@ -81,14 +81,14 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, {transform, text_wrap, stroke_width}, space_width) {
+    textSize (text, {transform, text_wrap, stroke_width = 0}, space_width) {
         let dpr = Utils.device_pixel_ratio;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let vertical_buffer = this.vertical_text_buffer * dpr;
+        let horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
         let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
-        stroke_width = stroke_width || 0;
 
         // Word wrapping
         // Line breaks can be caused by:
@@ -159,8 +159,8 @@ export default class CanvasText {
         ];
 
         let texture_size = [
-            max_width + stroke_width * 2,
-            height + vertical_buffer * 2
+            max_width + 2 * horizontal_buffer,
+            height + 2 * vertical_buffer
         ];
 
         let logical_size = [
@@ -192,19 +192,20 @@ export default class CanvasText {
         let vertical_buffer = this.vertical_text_buffer * dpr;
         let texture_size = size.texture_size;
         let line_height = size.line_height;
+        let horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
 
         let str = this.applyTextTransform(line.text, transform);
 
         // Text alignment
         let tx;
         if (align === 'left') {
-            tx = x + stroke_width;
+            tx = x + horizontal_buffer;
         }
         else if (align === 'center') {
             tx = x + texture_size[0]/2 - line.width/2;
         }
         else if (align === 'right') {
-            tx = x + texture_size[0] - line.width - stroke_width;
+            tx = x + texture_size[0] - line.width - horizontal_buffer;
         }
 
         // In the absence of better Canvas TextMetrics (not supported by browsers yet),
@@ -328,7 +329,6 @@ export default class CanvasText {
                                 texture_position = [cx, cy];
                             }
 
-                            // TODO: find where text_info.texture_position is used. If unnecessary only use cache
                             CanvasText.texcoord_cache[tile_key][style][word] = {
                                 texture_position: texture_position
                             };
