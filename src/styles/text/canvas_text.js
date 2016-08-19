@@ -61,14 +61,16 @@ export default class CanvasText {
                         text_info.size = [];
                         for (let i = 0; i < words_LTR.length; i++){
                             let word = words_LTR[i];
-                            if (!CanvasText.text_cache[style][word])
+                            if (!CanvasText.text_cache[style][word]) {
                                 CanvasText.text_cache[style][word] = this.textSize(word, text_settings);
+                            }
                             text_info.size.push(CanvasText.text_cache[style][word].size);
                         }
                     }
                     else {
-                        if (!CanvasText.text_cache[style][text])
+                        if (!CanvasText.text_cache[style][text]) {
                             CanvasText.text_cache[style][text] = this.textSize(text, text_settings, 0);
+                        }
                         // Only send text sizes back to worker (keep computed text line info
                         // on main thread, for future rendering)
                         text_info.size = CanvasText.text_cache[style][text].size;
@@ -314,7 +316,9 @@ export default class CanvasText {
 
                         if (!CanvasText.texcoord_cache[tile_key][style][word]) {
                             let size = text_info.size[i].texture_size;
-                            if (size[0] > column_width) column_width = size[0];
+                            if (size[0] > column_width) {
+                                column_width = size[0];
+                            }
                             if (cy + size[1] < max_texture_size) {
                                 texture_position = [cx, cy];
 
@@ -339,7 +343,9 @@ export default class CanvasText {
                 else {
                     // rendered size is same for all alignments
                     let size = text_info.size.texture_size;
-                    if (size[0] > column_width) column_width = size[0];
+                    if (size[0] > column_width) {
+                        column_width = size[0];
+                    }
 
                     // but each alignment needs to be rendered separately
                     for (let align in text_info.align) {
