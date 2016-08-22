@@ -8,6 +8,8 @@ const PLACEMENT = {
 };
 
 const MAX_ANGLE = Math.PI / 2;
+const LINE_EXCEED_STRAIGHT = .15; // minimal ratio of (label length) / (line length)
+const LINE_EXCEED_KINKED = .15;
 
 export default class LabelLine extends Label {
 
@@ -15,15 +17,11 @@ export default class LabelLine extends Label {
         super(size, layout);
 
         this.lines = lines;
-
         this.space_width = layout.space_width;
         this.total_length = size.reduce(function(prev, next){ return prev + next[0]; }, 0) + (size.length - 1) * this.space_width;
         this.total_height = size[0][1];
-
         this.num_segments = size.length;
-
         this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
-
         this.position = null;
         this.kink_index = 0;
         this.angle = [];
@@ -125,10 +123,7 @@ export default class LabelLine extends Label {
     }
 
     fitKinkedSegment(segment) {
-        let excess = 100 / (100 - this.layout.line_exceed);
         let upp = this.layout.units_per_pixel;
-
-        let does_fit = false;
 
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let p1p2 = Vector.sub(segment[1], segment[2]);
@@ -144,31 +139,47 @@ export default class LabelLine extends Label {
         // break up multiple segments into two chunks (N-1 options)
         let label_length1 = this.total_length;
         let label_length2 = 0;
-        let width;
+        let width, fitness = 0;
+        let kink_index = this.num_segments - 1;
+        let fitnesses = [];
 
-        this.kink_index = this.num_segments - 1;
-
-        while (!does_fit && this.kink_index > 0) {
-            width = this.size[this.kink_index][0] + this.space_width;
+        while (kink_index > 0) {
+            width = this.size[kink_index][0] + this.space_width;
 
             label_length1 -= width;
             label_length2 += width;
 
-            does_fit = (label_length1 < excess * line_length1 && label_length2 < excess * line_length2);
-            if (!does_fit) {
-                this.kink_index--;
-            }
+            fitness = Math.min(line_length1 / label_length1, line_length2 / label_length2);
+            fitnesses.unshift(fitness);
+
+            kink_index--;
         }
 
-        return (does_fit && this.kink_index > 0);
+        let max_fitness = Math.max.apply(null, fitnesses);
+
+        if (max_fitness > LINE_EXCEED_KINKED) {
+            this.kink_index = fitnesses.indexOf(max_fitness) + 1;
+            this.fitness = max_fitness;
+            return true;
+        }
+        else {
+            this.kink_index = 0;
+            return false;
+        }
     }
 
     fitStraightSegment(segment) {
-        let excess = 100 / (100 - this.layout.line_exceed);
         let upp = this.layout.units_per_pixel;
         let line_length = Vector.length(Vector.sub(segment[0], segment[1])) / upp;
+        let fitness =  line_length / this.total_length;
 
-        return this.total_length < excess * line_length;
+        if (fitness > LINE_EXCEED_STRAIGHT){
+            this.fitness = fitness;
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
     update() {
