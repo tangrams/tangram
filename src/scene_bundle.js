@@ -5,7 +5,8 @@ export class SceneBundle {
 
     constructor(url, path, parent = null) {
         this.url = url;
-        this.path = path || Utils.pathForURL(this.url);
+        this.path = (Utils.isRelativeURL(this.url) && path) || Utils.pathForURL(this.url);
+        this.parent_path = path || this.path;
         this.parent = parent;
 
         // An ancestor bundle may be a container (e.g. zip file) that needs to resolve relative paths
@@ -40,7 +41,7 @@ export class SceneBundle {
 
     urlFor(url) {
         if (Utils.isRelativeURL(url) && this.container) {
-            return this.parent.urlFor(this.path + url);
+            return this.parent.urlFor(this.parent_path + url);
         }
         return Utils.addBaseURL(url, this.path);
     }
@@ -89,7 +90,7 @@ export class ZipSceneBundle extends SceneBundle {
 
     urlFor(url) {
         if (Utils.isRelativeURL(url)) {
-            return this.urlForZipFile(url);
+            return this.urlForZipFile(Utils.flattenRelativeURL(url));
         }
         return super.urlFor(url);
     }

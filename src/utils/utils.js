@@ -66,6 +66,23 @@ Utils.isRelativeURL = function (url) {
     return !(url.search(/^(http|https|data|blob):/) > -1 || url.substr(0, 2) === '//');
 };
 
+// Resolves './' and '../' components from relative path, to get a "flattened" path
+Utils.flattenRelativeURL = function (url) {
+    let dirs = (url || '').split('/');
+    for (let d = 1; d < dirs.length; d++) {
+        if (dirs[d] === '.') {
+            dirs.splice(d, 1);
+            d--;
+        }
+        else if (dirs[d] === '..') {
+            d = d + 0;
+            dirs.splice(d-1, 2);
+            d--;
+        }
+    }
+    return dirs.join('/');
+};
+
 Utils.extensionForURL = function (url) {
     url = url.split('/').pop();
     let last_dot = url.lastIndexOf('.');
