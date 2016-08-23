@@ -380,10 +380,6 @@ Object.assign(Points, {
         layout.offset = StyleParser.cacheProperty(draw.offset, context) || StyleParser.zeroPair;
         layout.buffer = StyleParser.cacheProperty(draw.buffer, context) || StyleParser.zeroPair;
 
-        // variations for articulated label placement
-        layout.spread_factor = draw.spread_factor; // spread between kinked labels
-        layout.placement_type = draw.placement;    // strategy for placing labels
-
         // label priority (lower is higher)
         let priority = draw.priority;
         if (priority != null) {

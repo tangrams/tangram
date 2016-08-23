@@ -7,9 +7,9 @@ const PLACEMENT = {
     CORNER: 1
 };
 
-const MAX_ANGLE = Math.PI / 2;
-const LINE_EXCEED_STRAIGHT = .15; // minimal ratio of (label length) / (line length)
-const LINE_EXCEED_KINKED = .15;
+const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
+const LINE_EXCEED_STRAIGHT = .15;   // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_KINKED = .15;     // minimal ratio for kinked labels
 
 export default class LabelLine extends Label {
 
@@ -17,23 +17,29 @@ export default class LabelLine extends Label {
         super(size, layout);
 
         this.lines = lines;
-        this.space_width = layout.space_width;
+        this.space_width = layout.space_width; // width of space for the font used
+        this.num_segments = size.length; // number of label segments
         this.total_length = size.reduce(function(prev, next){ return prev + next[0]; }, 0) + (size.length - 1) * this.space_width;
         this.total_height = size[0][1];
-        this.num_segments = size.length;
         this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
-        this.position = null;
-        this.kink_index = 0;
+
+        this.kink_index = 0; // index at which an articulated label will kink (e.g., 1 means a kink _after_ the first segment)
+        this.spread_factor = 1; // spaces out adjacent words to prevent overlap
+        this.fitness = 0; // measure of quality of fit
+
+        // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
+        this.position = [];
         this.angle = [];
-        this.spread_factor = (layout.spread_factor !== undefined) ? layout.spread_factor : 0.5;
         this.offsets = [];
+        this.obbs = [];
+        this.aabbs = [];
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
         this.segment_index = layout.segment_index || layout.segment_start || 0;
         this.segment_max = layout.segment_end || this.lines.length;
 
-        // get first good segment
+        // First fitting segment
         let segment = this.getNextFittingSegment(this.getCurrentSegment());
 
         if (!segment) {
@@ -41,6 +47,7 @@ export default class LabelLine extends Label {
         }
     }
 
+    // Iterate through the line geometry creating the next valid label.
     static nextLabel(label) {
         // increment segment
         let hasNext = label.getNextSegment();
@@ -49,7 +56,7 @@ export default class LabelLine extends Label {
         }
 
         // clone options
-        let layout = JSON.parse(JSON.stringify(label.layout));
+        let layout = Object.create(label.layout);
         layout.segment_index = label.segment_index;
         layout.placement = label.placement;
 
@@ -59,6 +66,9 @@ export default class LabelLine extends Label {
         return (nextLabel.throw_away) ? false : nextLabel;
     }
 
+    // Strategy for returning the next segment. Assumes an "ordering" of possible segments
+    // taking into account both straight and articulated segments. Returns false if all possibilities
+    // have been exhausted
     getNextSegment() {
         switch (this.placement) {
             case PLACEMENT.CORNER:
@@ -78,6 +88,9 @@ export default class LabelLine extends Label {
         return this.getCurrentSegment();
     }
 
+    // Returns the line segments necessary for other calculations at the current line segment index.
+    // This is the current and next segment for a straight line, and the previous, current and next
+    // for an articulated segment.
     getCurrentSegment() {
         let p1, p2, segment;
         switch (this.placement) {
@@ -97,6 +110,7 @@ export default class LabelLine extends Label {
         return segment;
     }
 
+    // Returns next segment that is valid (within tile, inside angle requirements and within line geometry).
     getNextFittingSegment(segment) {
         segment = segment || this.getNextSegment();
         if (!segment) {
@@ -113,6 +127,7 @@ export default class LabelLine extends Label {
         return this.getNextFittingSegment();
     }
 
+    // Returns boolean indicating whether current segment is valid
     doesSegmentFit(segment) {
         switch (this.placement) {
             case PLACEMENT.CORNER:
@@ -122,6 +137,9 @@ export default class LabelLine extends Label {
         }
     }
 
+    // Returns boolean indicating whether kinked segment is valid
+    // Cycles through various ways of kinking the labels around the segment's pivot,
+    // finding the best fit, and determines the kink_index.
     fitKinkedSegment(segment) {
         let upp = this.layout.units_per_pixel;
 
@@ -168,6 +186,9 @@ export default class LabelLine extends Label {
         }
     }
 
+    // Returns boolean indicating whether straight segment is valid
+    // A straight segment is placed at the midpoint and is valid if the label's length is greater than a
+    // factor (LINE_EXCEED_STRAIGHT) of the line segment's length
     fitStraightSegment(segment) {
         let upp = this.layout.units_per_pixel;
         let line_length = Vector.length(Vector.sub(segment[0], segment[1])) / upp;
@@ -182,6 +203,7 @@ export default class LabelLine extends Label {
         }
     }
 
+    // Once a fitting segment is found, determine its angles, positions and bounding boxes
     update() {
         this.angle = this.getCurrentAngle();
         this.position = this.getCurrentPosition();
@@ -224,6 +246,7 @@ export default class LabelLine extends Label {
         return angles;
     }
 
+    // Return the position of the center of the label
     getCurrentPosition() {
         let segment = this.getCurrentSegment();
         let position;
@@ -234,8 +257,8 @@ export default class LabelLine extends Label {
                 break;
             case PLACEMENT.MID_POINT:
                 position = [
-                    (segment[0][0] + segment[1][0]) / 2,
-                    (segment[0][1] + segment[1][1]) / 2
+                    0.5 * (segment[0][0] + segment[1][0]),
+                    0.5 * (segment[0][1] + segment[1][1])
                 ];
                 break;
         }
@@ -243,6 +266,7 @@ export default class LabelLine extends Label {
         return position;
     }
 
+    // Check for articulated labels to be within an angle range [-MAX_ANGLE, +MAX_ANGLE]
     inAngleBounds() {
         switch (this.placement) {
             case PLACEMENT.CORNER:
@@ -265,34 +289,27 @@ export default class LabelLine extends Label {
         }
     }
 
+    // Calculate bounding boxes
     updateBBoxes() {
         let upp = this.layout.units_per_pixel;
         let height = (this.total_height + this.layout.buffer[1] * 2) * upp * Label.epsilon;
 
+        // reset bounding boxes
         this.obbs = [];
         this.aabbs = [];
 
-        let nudge = 0;
-
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                let angle0 = this.angle[this.kink_index - 1];
-                if (angle0 < 0) {
-                    angle0 += 2 * Math.PI;
-                }
+                let angle0 = this.angle[this.kink_index - 1]; // angle before kink
+                let angle1 = this.angle[this.kink_index]; // angle after kink
+                let theta = Math.abs(angle1 - angle0); // angle delta
 
-                let angle1 = this.angle[this.kink_index];
-                if (angle1 < 0) {
-                    angle1 += 2 * Math.PI;
-                }
+                // A spread factor of 0 pivots the boxes on their horizontal center, looking like: "X"
+                // a spread factor of 1 offsets the boxes so that their corners touch, looking like: "\/" or "/\"
+                let dx = this.spread_factor * Math.abs(this.total_height * Math.tan(0.5 * theta));
+                let nudge = 0.5 * (-dx - this.space_width);
 
-                let theta = Math.PI - Math.abs(angle1 - angle0);
-
-                let dx = this.spread_factor * Math.abs(this.total_height / Math.tan(0.5 * theta));
-
-                nudge = - dx - 0.5 * this.space_width;
-
-                // backwards
+                // Place labels backwards from kink index
                 for (let i = this.kink_index - 1; i >= 0; i--) {
                     let width_px = this.size[i][0];
                     let angle = this.angle[i];
@@ -318,9 +335,9 @@ export default class LabelLine extends Label {
                     nudge -= 0.5 * width_px + this.space_width;
                 }
 
-                nudge = dx + 0.5 * this.space_width;
+                // Place labels forwards from kink index
+                nudge = 0.5 * (dx + this.space_width);
 
-                // forwards
                 for (let i = this.kink_index; i < this.num_segments; i++){
                     let width_px = this.size[i][0];
                     let angle = this.angle[i];
@@ -345,17 +362,16 @@ export default class LabelLine extends Label {
 
                     nudge += 0.5 * width_px + this.space_width;
                 }
-
                 break;
             case PLACEMENT.MID_POINT:
-                nudge = -0.5 * this.total_length;
+                let shift = -0.5 * this.total_length; // shift for centering the labels
 
                 for (let i = 0; i < this.num_segments; i++){
                     let width_px = this.size[i][0];
                     let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
                     let angle = this.angle[i];
 
-                    nudge += 0.5 * width_px;
+                    shift += 0.5 * width_px;
 
                     let offset = Vector.rot([nudge * upp, 0], -angle);
                     let position = Vector.add(this.position, offset);
@@ -367,17 +383,19 @@ export default class LabelLine extends Label {
                     this.aabbs.push(aabb);
 
                     this.offsets[i] = [
-                        this.layout.offset[0] + nudge,
+                        this.layout.offset[0] + shift,
                         this.layout.offset[1]
                     ];
 
-                    nudge += 0.5 * width_px + this.space_width;
+                    shift += 0.5 * width_px + this.space_width;
                 }
 
                 break;
         }
     }
 
+    // Checks each segment to see if it is within the tile. If any segment fails this test, they all fail.
+    // TODO: label group
     inTileBounds() {
         for (let i = 0; i < this.aabbs.length; i++) {
             let aabb = this.aabbs[i];
@@ -390,6 +408,8 @@ export default class LabelLine extends Label {
         return true;
     }
 
+    // Adds each segment to the collision pass as its own bounding box
+    // TODO: label group
     add(bboxes) {
         for (let i = 0; i < this.aabbs.length; i++) {
             let aabb = this.aabbs[i];
@@ -399,6 +419,8 @@ export default class LabelLine extends Label {
         }
     }
 
+    // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
+    // TODO: label group
     discard(bboxes, exclude) {
         if (this.throw_away) {
             return true;
@@ -418,6 +440,7 @@ export default class LabelLine extends Label {
     }
 }
 
+// Private method to calculate oriented bounding box
 function getOBB(position, width, height, angle, offset, upp) {
     let p0, p1;
     // apply offset, x positive, y pointing down
@@ -435,13 +458,16 @@ function getOBB(position, width, height, angle, offset, upp) {
     return new OBB(p0, p1, -angle, width, height);
 }
 
+// Private method to calculate the angle of a segment.
+// Transforms the angle to lie within the range [0, PI/2] and [3*PI/2, 2*PI] (1st or 4th quadrants)
+// as other ranges produce "upside down" labels
 function getAngleFromSegment(pt1, pt2) {
     let PI = Math.PI;
     let PI_2 = PI / 2;
     let p1p2 = Vector.sub(pt1, pt2);
     let theta = Math.atan2(p1p2[0], p1p2[1]) + PI_2;
 
-    if (theta >= PI_2) {
+    if (theta > PI_2) {
         // If in 2nd quadrant, move to 4th quadrant
         theta += PI;
         theta %= 2 * Math.PI;

@@ -16,7 +16,7 @@ export default class Label {
         this.aabb = null;
         this.obb = null;
         this.align = 'center';
-        this.throw_away = false;
+        this.throw_away = false;    // if label does not fit (exceeds tile boundary, etc) this boolean will be true
     }
 
     update () {
