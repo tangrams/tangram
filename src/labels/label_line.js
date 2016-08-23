@@ -276,12 +276,12 @@ export default class LabelLine extends Label {
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                let angle0 = this.angle[0];
+                let angle0 = this.angle[this.kink_index - 1];
                 if (angle0 < 0) {
                     angle0 += 2 * Math.PI;
                 }
 
-                let angle1 = this.angle[1];
+                let angle1 = this.angle[this.kink_index];
                 if (angle1 < 0) {
                     angle1 += 2 * Math.PI;
                 }
