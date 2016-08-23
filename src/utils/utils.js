@@ -63,6 +63,9 @@ Utils.pathForURL = function (url) {
 };
 
 Utils.isRelativeURL = function (url) {
+    if (typeof url !== 'string') {
+        return;
+    }
     return !(url.search(/^(http|https|data|blob):/) > -1 || url.substr(0, 2) === '//');
 };
 
