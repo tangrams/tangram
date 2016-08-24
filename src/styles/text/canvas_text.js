@@ -190,7 +190,7 @@ export default class CanvasText {
     }
 
     // Draw multiple lines of text
-    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width, transform, align }) {
+    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, transform, align }) {
         let line_height = size.line_height;
         let height = y;
         for (let line_num=0; line_num < lines.length; line_num++) {
@@ -232,7 +232,7 @@ export default class CanvasText {
     }
 
     // Draw single line of text at specified location, adjusting for buffer and baseline
-    drawTextLine (line, [x, y], size, { stroke, stroke_width, transform, align }) {
+    drawTextLine (line, [x, y], size, { stroke, stroke_width = 0, transform, align }) {
         let dpr = Utils.device_pixel_ratio;
         align = align || 'center';
 
