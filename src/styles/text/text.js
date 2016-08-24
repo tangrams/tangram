@@ -216,8 +216,8 @@ Object.assign(TextStyle, {
 
 });
 
-const TARGET_STRAIGHT = .25; // Optimistic target ratio for straight labels (label length / line length)
-const TARGET_KINKED = .2; // Optimistic target ratio for kinked labels (label length / line length)
+const TARGET_STRAIGHT = 0.25; // Optimistic target ratio for straight labels (label length / line length)
+const TARGET_KINKED = 0.2; // Optimistic target ratio for kinked labels (label length / line length)
 
 // Place labels according to the following strategy:
 // - choose the best straight label that satisfies the optimistic straight cutoff (if any)
