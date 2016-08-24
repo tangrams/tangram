@@ -662,7 +662,7 @@ layers:
     #             interactive: true
 
     #     labels:
-    #         filter: { label_placement: yes }
+    #         filter: { label_placement: true }
     #         draw:
     #             text:
     #                 text_source: schoolDistrict

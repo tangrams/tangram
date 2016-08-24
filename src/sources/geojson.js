@@ -123,7 +123,7 @@ export class GeoJSONSource extends NetworkSource {
         // Avoids redundant label placement for each generated tile at higher zoom levels
         if (this.config.generate_label_centroids){
             let features_centroid = [];
-            let centroid_properties = {"label_placement" : "yes"};
+            let centroid_properties = {"label_placement" : true};
 
             features.forEach(feature => {
                 let coordinates, centroid_feature;
