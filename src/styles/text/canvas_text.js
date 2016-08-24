@@ -36,29 +36,32 @@ export default class CanvasText {
     textSizes (texts) {
         return FontManager.loadFonts().then(() => {
             for (let style in texts) {
+                CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+
                 let text_infos = texts[style];
                 let first = true;
-                let space_width = this.context.measureText(' ').width;
+                let space_width;
 
                 for (let text in text_infos) {
                     let text_info = text_infos[text];
-                    text_info.space_width = space_width;
-
                     let text_settings = text_info.text_settings;
 
                     if (first) {
                         this.setFont(text_settings);
+                        space_width = this.context.measureText(' ').width;
                         first = false;
                     }
 
-                    CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                    text_info.space_width = space_width;
 
                     if (text_settings.can_articulate){
+
                         var words = text.split(' ');
                         var words_LTR = reorderWordsLTR(words);
-                        text_info.segments = words;
 
+                        text_info.segments = words;
                         text_info.size = [];
+
                         for (let i = 0; i < words_LTR.length; i++){
                             let word = words_LTR[i];
                             if (!CanvasText.text_cache[style][word]) {
