@@ -24,7 +24,7 @@ export default class LabelLine extends Label {
         this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
 
         this.kink_index = 0; // index at which an articulated label will kink (e.g., 1 means a kink _after_ the first segment)
-        this.spread_factor = 1; // spaces out adjacent words to prevent overlap
+        this.spread_factor = 0.5; // spaces out adjacent words to prevent overlap
         this.fitness = 0; // measure of quality of fit
 
         // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
