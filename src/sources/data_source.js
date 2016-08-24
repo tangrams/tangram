@@ -28,13 +28,11 @@ export default class DataSource {
         // NOTE: these are loaded alongside the library when the workers are instantiated
         this.scripts = config.scripts;
 
-        // no tiles will be requested below this zoom
-        this.min_zoom = (config.min_zoom != null) ? config.min_zoom : 0;
-
         // overzoom will apply for zooms higher than this
         this.max_zoom = (config.max_zoom != null) ? config.max_zoom : Geo.default_source_max_zoom;
 
-        // no tiles will be *displayed* above this zoom
+        // no tiles will be requested or displayed outside of these min/max values
+        this.min_display_zoom = (config.min_display_zoom != null) ? config.min_display_zoom : 0;
         this.max_display_zoom = (config.max_display_zoom != null) ? config.max_display_zoom : null;
     }
 
@@ -148,7 +146,7 @@ export default class DataSource {
 
     // All data sources support a min zoom, tiled sources can subclass for more specific limits (e.g. bounding box)
     includesTile (coords, style_zoom) {
-        if (coords.z < this.min_zoom || (this.max_display_zoom != null && style_zoom > this.max_display_zoom)) {
+        if (coords.z < this.min_display_zoom || (this.max_display_zoom != null && style_zoom > this.max_display_zoom)) {
             return false;
         }
         return true;
