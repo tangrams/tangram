@@ -5,8 +5,17 @@ export class SceneBundle {
 
     constructor(url, path, parent = null) {
         this.url = url;
-        this.path = (Utils.isRelativeURL(this.url) && path) || Utils.pathForURL(this.url);
-        this.parent_path = path || this.path;
+
+        // If a base path was provided, use it for resolving local bundle resources only if
+        // the base path is absolute, or this bundle's path is relative
+        if (path && (!Utils.isRelativeURL(path) || Utils.isRelativeURL(this.url))) {
+            this.path = path;
+        }
+        else {
+            this.path = Utils.pathForURL(this.url);
+        }
+
+        this.path_for_parent = path || this.path; // for resolving paths relative to a parent bundle
         this.parent = parent;
 
         // An ancestor bundle may be a container (e.g. zip file) that needs to resolve relative paths
@@ -41,7 +50,7 @@ export class SceneBundle {
 
     urlFor(url) {
         if (Utils.isRelativeURL(url) && this.container) {
-            return this.parent.urlFor(this.parent_path + url);
+            return this.parent.urlFor(this.path_for_parent + url);
         }
         return Utils.addBaseURL(url, this.path);
     }
