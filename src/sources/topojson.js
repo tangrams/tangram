@@ -54,16 +54,16 @@ function getTopoJSONFeature (topology, object) {
 
 
 /**
- Mapzen/OSM.US-style TopoJSON vector tiles
+ TopoJSON vector tiles
  @class TopoJSONTileSource
 */
 export class TopoJSONTileSource extends GeoJSONTileSource {
 
     constructor(source) {
-        let _this = super(source);
+        super(source);
 
         // Replace with non-tiled source if tiled source failed to instantiate
-        if (_this !== this) {
+        if (!this.urlHasTilePattern(this.url)) {
             return new TopoJSONSource(source);
         }
     }
@@ -77,5 +77,3 @@ export class TopoJSONTileSource extends GeoJSONTileSource {
 }
 
 DataSource.register(TopoJSONTileSource, 'TopoJSON');        // prefered shorter name
-DataSource.register(TopoJSONTileSource, 'TopoJSONTiles');   // for backwards-compatibility
-

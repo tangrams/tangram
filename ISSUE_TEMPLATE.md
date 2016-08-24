@@ -1,5 +1,3 @@
-For bug reports, please use this template:
-
 **TO REPRODUCE THE ISSUE, FOLLOW THESE STEPS:**
 
 - List the steps you used

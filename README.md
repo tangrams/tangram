@@ -17,7 +17,7 @@ Tangram is instantiated as a [Leaflet](http://leafletjs.com/) plugin for integra
 
 The current version of Tangram can be included in your page with:
 
-```
+```html
 <script src="https://mapzen.com/tangram/tangram.min.js"></script>
 ```
 
@@ -25,9 +25,11 @@ The library includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletL
 
 Data sources, layers, and styling rules are written in a *scene file* ([here's an example](https://github.com/tangrams/simple-demo/blob/gh-pages/scene.yaml)). Armed with a scene file like `scene.yaml`, you can create a Tangram scene and add it to a Leaflet map like so:
 
-```
+```js
 var map = L.map('map');
+
 var layer = Tangram.leafletLayer({ scene: 'scene.yaml' });
+
 layer.addTo(map);
 ```
 
@@ -51,7 +53,7 @@ More examples are available on our documentation's [Demos](https://mapzen.com/do
 
 Instead of loading traditional bitmap tiles, Tangram draws its own tiles from scratch, based on *vector tiles* that contain the source data.
 
-Mapzen provides a free [vector tile service](http://mapzen.com/vector/) extracted from OpenStreetMap and Natural Earth data, with worldwide coverage updated continuously -- [sign up for an API key here](https://mapzen.com/developers). There is also an [OSM.US-hosted](http://openstreetmap.us/~migurski/vector-datasource/) alternative.
+Mapzen provides a free [vector tile service](https://mapzen.com/documentation/vector-tiles/) based on open data from [OpenStreetMap](https://openstreetmap.org/), [Natural Earth](http://www.naturalearthdata.com/), [Who's On First](https://whosonfirst.mapzen.com/) and other projects,  with worldwide coverage updated continuously -- [sign up for an API key here](https://mapzen.com/developers).
 
 Tangram currently supports [GeoJSON](http://geojson.org/) & [TopoJSON](https://github.com/mbostock/topojson)-based tiles, as well as Mapbox's [binary format](https://github.com/mapbox/vector-tile-spec), all of which are available from the [Mapzen vector tile service](http://mapzen.com/vector/). (Here's an [example GeoJSON tile](http://vector.mapzen.com/osm/all/14/4826/6161.json).)
 

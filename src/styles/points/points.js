@@ -12,6 +12,7 @@ import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import {TextLabels} from '../text/text_labels';
+import debugSettings from '../../utils/debug_settings';
 
 let fs = require('fs');
 const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
@@ -73,7 +74,7 @@ Object.assign(Points, {
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
 
         // Fade in (depending on tile proxy status)
-        if (options.debug && options.debug.suppress_fade === true) {
+        if (debugSettings.suppress_label_fade_in === true) {
             this.fade_in_time = 0;
             this.defines.TANGRAM_FADE_IN_RATE = null;
         }
@@ -91,6 +92,7 @@ Object.assign(Points, {
     reset () {
         this.queues = {};
         this.resetText();
+        this.texture_missing_sprites = {}; // track which missing sprites we've found (reduce dupe log messages)
     },
 
     // Override to queue features instead of processing immediately
@@ -117,7 +119,7 @@ Object.assign(Points, {
             return null;
         }
 
-        let sprite = style.sprite = StyleParser.evalProp(draw.sprite, context);
+        let sprite = style.sprite = StyleParser.evalProperty(draw.sprite, context);
         style.sprite_default = draw.sprite_default; // optional fallback if 'sprite' not found
 
         // if point has texture and sprites, require a valid sprite to draw
@@ -135,7 +137,10 @@ Object.assign(Points, {
                     }
                 }
                 else {
-                    log('warn', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                    if (!this.texture_missing_sprites[sprite]) { // only log each missing sprite once
+                        log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                        this.texture_missing_sprites[sprite] = true;
+                    }
                     return;
                 }
             }
@@ -155,7 +160,7 @@ Object.assign(Points, {
         }
 
         // points can be placed off the ground
-        style.z = (draw.z && StyleParser.cacheDistance(draw.z, context)) || StyleParser.defaults.z;
+        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
 
         // point size defined explicitly, or defaults to sprite size, or generic fallback
         style.size = draw.size;
@@ -168,7 +173,7 @@ Object.assign(Points, {
             }
         }
         else {
-            style.size = StyleParser.cacheProperty(style.size, context);
+            style.size = StyleParser.evalCachedProperty(style.size, context);
         }
 
         // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
@@ -177,7 +182,7 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.angle = StyleParser.evalProp(draw.angle, context) || 0;
+        style.angle = StyleParser.evalProperty(draw.angle, context) || 0;
         style.sampler = 0; // 0 = sprites
 
         this.computeLayout(style, feature, draw, context, tile);
@@ -326,17 +331,17 @@ Object.assign(Points, {
     },
 
     _preprocess (draw) {
-        draw.color = StyleParser.colorCacheObject(draw.color);
-        draw.z = StyleParser.cacheObject(draw.z, StyleParser.cacheUnits);
+        draw.color = StyleParser.createColorPropertyCache(draw.color);
+        draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
 
         // Size (1d value or 2d array)
-        draw.size = StyleParser.cacheObject(draw.size, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+        draw.size = StyleParser.createPropertyCache(draw.size, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
 
         // Offset (2d array)
-        draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+        draw.offset = StyleParser.createPropertyCache(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
 
         // Buffer (1d value or 2d array, expand 1d to 2d)
-        draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
+        draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
         // Optional text styling
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
@@ -350,7 +355,7 @@ Object.assign(Points, {
     },
 
     // Default to trying all anchor placements
-    default_anchor: ['bottom', 'top', 'right', 'left', 'bottom-right', 'bottom-left', 'top-right', 'top-left'],
+    default_anchor: ['bottom', 'top', 'right', 'left'],
 
     // Compute label layout-related properties
     computeLayout (target, feature, draw, context, tile) {
@@ -377,8 +382,8 @@ Object.assign(Points, {
         layout.anchor = draw.anchor;
 
         // label offset and buffer in pixel (applied in screen space)
-        layout.offset = StyleParser.cacheProperty(draw.offset, context) || StyleParser.zeroPair;
-        layout.buffer = StyleParser.cacheProperty(draw.buffer, context) || StyleParser.zeroPair;
+        layout.offset = StyleParser.evalCachedProperty(draw.offset, context) || StyleParser.zeroPair;
+        layout.buffer = StyleParser.evalCachedProperty(draw.buffer, context) || StyleParser.zeroPair;
 
         // label priority (lower is higher)
         let priority = draw.priority;

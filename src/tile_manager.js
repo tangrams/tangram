@@ -193,7 +193,7 @@ export default class TileManager {
     }
 
     isLoadingVisibleTiles() {
-        return Object.keys(this.tiles).some(k => this.tiles[k].visible && this.tiles[k].loading);
+        return Object.keys(this.tiles).some(k => this.tiles[k].visible && !this.tiles[k].built);
     }
 
     // Queue a tile for load

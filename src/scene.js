@@ -105,7 +105,7 @@ export default class Scene {
                 // Scene loaded from a JS object may contain functions which need to be serialized,
                 // while one loaded from a URL does not
                 return this.updateConfig({
-                    serialize_funcs: (typeof config_source === 'object')
+                    serialize_funcs: (typeof this.config_source === 'object')
                 });
             }).then(() => {
                 this.updating--;
@@ -518,7 +518,7 @@ export default class Scene {
         }
 
         // Render tile GL geometries
-        for (let t in this.renderable_tiles) {
+        for (let t=0; t < this.renderable_tiles.length; t++) {
             let tile = this.renderable_tiles[t];
 
             if (tile.meshes[style] == null) {
@@ -672,20 +672,20 @@ export default class Scene {
     // Rebuild all tiles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuildGeometry({ sync = true, sources = null, serialize_funcs } = {}) {
+    rebuildGeometry({ sync = true, sources = null, serialize_funcs, profile = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
                 // Queue up to one rebuild call at a time, only save last request
                 if (this.building.queued && this.building.queued.reject) {
                     // notify previous request that it did not complete
-                    log('debug', 'Scene.rebuildGeometry: request superceded by a newer call');
+                    log('debug', 'Scene.rebuild: request superceded by a newer call');
                     this.building.queued.resolve(false); // false flag indicates rebuild request was superceded
                 }
 
                 // Save queued request
                 this.building.queued = { resolve, reject };
-                log('trace', `Scene.rebuildGeometry(): queuing request`);
+                log('trace', `Scene.rebuild(): queuing request`);
                 return;
             }
 
@@ -693,8 +693,8 @@ export default class Scene {
             this.building = { resolve, reject };
 
             // Profiling
-            if (this.debug.profile.geometry_build) {
-                this._profile('rebuildGeometry');
+            if (profile) {
+                this._profile('Scene.rebuild');
             }
 
             // Update config (in case JS objects were manipulated directly)
@@ -716,8 +716,8 @@ export default class Scene {
             this.tile_manager.checkBuildQueue();    // resolve immediately if no tiles to build
         }).then(() => {
             // Profiling
-            if (this.debug.profile.geometry_build) {
-                this._profileEnd('rebuildGeometry');
+            if (profile) {
+                this._profileEnd('Scene.rebuild');
             }
         });
     }
@@ -735,8 +735,8 @@ export default class Scene {
             var queued = this.building.queued;
             this.building = null;
             if (queued) {
-                log('debug', `Scene: starting queued rebuildGeometry() request`);
-                this.rebuildGeometry().then(queued.resolve, queued.reject);
+                log('debug', `Scene: starting queued rebuild() request`);
+                this.rebuild().then(queued.resolve, queued.reject);
             }
         }
     }
@@ -992,8 +992,8 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuildGeometry(Object.assign({ serialize_funcs }, typeof rebuild === 'object' && rebuild)) :
-            this.syncConfigToWorker({ serialize_funcs }); // rebuildGeometry() also syncs config
+            this.rebuild(Object.assign({ serialize_funcs }, typeof rebuild === 'object' && rebuild)) :
+            this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
         return done.then(() => {
@@ -1142,12 +1142,6 @@ export default class Scene {
     setupDebug () {
         let scene = this;
         this.debug = {
-            profile: {
-                geometry_build: false
-            },
-
-            suppress_fade: false,
-
             // Rebuild geometry a given # of times and print average, min, max timings
             timeRebuild (num = 1, options = {}) {
                 let times = [];

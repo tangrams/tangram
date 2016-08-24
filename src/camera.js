@@ -175,16 +175,16 @@ class PerspectiveCamera extends Camera {
         this.vanishing_point_skew[1] = this.vanishing_point[1] / this.view.size.css.height;
 
         // Adjust projection matrix to include vanishing point skew
-        this.projection_matrix[8] = -this.vanishing_point_skew[0]; // z column of x row, e.g. amount z skews x
-        this.projection_matrix[9] = -this.vanishing_point_skew[1]; // z column of y row, e.g. amount z skews y
+        this.projection_matrix[8] = -this.vanishing_point_skew[0] * 2; // z column of x row, e.g. amount z skews x
+        this.projection_matrix[9] = -this.vanishing_point_skew[1] * 2; // z column of y row, e.g. amount z skews y
 
         // Translate geometry into the distance so that camera is appropriate height above ground
         // Additionally, adjust xy to compensate for any vanishing point skew, e.g. move geometry so that the displayed g
         // plane of the map matches that expected by a traditional web mercator map at this [lat, lng, zoom].
         mat4.translate(this.projection_matrix, this.projection_matrix,
             vec3.fromValues(
-                viewport_height/2 * this.view.aspect * -this.vanishing_point_skew[0],
-                viewport_height/2 * -this.vanishing_point_skew[1],
+                viewport_height/2 * this.view.aspect * (-this.vanishing_point_skew[0] * 2),
+                viewport_height/2 * (-this.vanishing_point_skew[1] * 2),
                 0
             )
         );

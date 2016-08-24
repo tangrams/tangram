@@ -64,10 +64,10 @@ Object.assign(Polygons, {
             return null;
         }
 
-        style.z = (draw.z && StyleParser.cacheDistance(draw.z, context)) || StyleParser.defaults.z;
+        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
         style.z *= Geo.height_scale; // provide sub-meter precision of height values
 
-        style.extrude = StyleParser.evalProp(draw.extrude, context);
+        style.extrude = StyleParser.evalProperty(draw.extrude, context);
         if (style.extrude) {
             // use feature's height and min_height properties
             if (style.extrude === true) {
@@ -96,8 +96,8 @@ Object.assign(Polygons, {
     },
 
     _preprocess (draw) {
-        draw.color = StyleParser.colorCacheObject(draw.color);
-        draw.z = StyleParser.cacheObject(draw.z, StyleParser.cacheUnits);
+        draw.color = StyleParser.createColorPropertyCache(draw.color);
+        draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
         return draw;
     },
 

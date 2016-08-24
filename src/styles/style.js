@@ -209,7 +209,7 @@ export var Style = {
             var selectable = false;
             style.interactive = this.introspection || draw.interactive;
             if (this.selection) {
-                selectable = StyleParser.evalProp(style.interactive, context);
+                selectable = StyleParser.evalProperty(style.interactive, context);
             }
 
             // If feature is marked as selectable
@@ -269,7 +269,7 @@ export var Style = {
     parseColor(color, context) {
         // Need either a color, or a shader block for 'color' or 'filter'
         if (color) {
-            return StyleParser.cacheColor(color, context);
+            return StyleParser.evalCachedColorProperty(color, context);
         }
         else if (this.shaders.blocks.color || this.shaders.blocks.filter) {
             return StyleParser.defaults.color;

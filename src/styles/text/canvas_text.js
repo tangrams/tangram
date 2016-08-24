@@ -1,6 +1,7 @@
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
 import FontManager from './font_manager';
+import debugSettings from '../../utils/debug_settings';
 
 export default class CanvasText {
 
@@ -24,12 +25,13 @@ export default class CanvasText {
         let ctx = this.context;
         let dpr = Utils.device_pixel_ratio;
 
-        ctx.font = font_css;
         if (stroke && stroke_width > 0) {
             ctx.strokeStyle = stroke;
             ctx.lineWidth = stroke_width * dpr;
         }
         ctx.fillStyle = fill;
+
+        ctx.font = font_css;
         ctx.miterLimit = 2;
     }
 
@@ -190,10 +192,42 @@ export default class CanvasText {
     // Draw multiple lines of text
     drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width, transform, align }) {
         let line_height = size.line_height;
+        let height = y;
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
-            this.drawTextLine(line, [x, y], size, { stroke, stroke_width, transform, align });
-            y += line_height;
+            this.drawTextLine(line, [x, height], size, { stroke, stroke_width, transform, align });
+            height += line_height;
+        }
+
+        // Draw bounding boxes for debugging
+        if (debugSettings.draw_label_collision_boxes) {
+            this.context.save();
+
+            let dpr = Utils.device_pixel_ratio;
+            let horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
+            let vertical_buffer = dpr * this.vertical_text_buffer;
+            let collision_size = size.collision_size;
+            let lineWidth = 2;
+
+            this.context.strokeStyle = 'blue';
+            this.context.lineWidth = lineWidth;
+            this.context.strokeRect(x + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
+
+            this.context.restore();
+        }
+
+        if (debugSettings.draw_label_texture_boxes) {
+            this.context.save();
+
+            let texture_size = size.texture_size;
+            let lineWidth = 2;
+
+            this.context.strokeStyle = 'green';
+            this.context.lineWidth = lineWidth;
+            // stroke is applied internally, so the outer border is the edge of the texture
+            this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
+
+            this.context.restore();
         }
     }
 
@@ -260,9 +294,9 @@ export default class CanvasText {
                         else {
                             let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
                             let size = CanvasText.text_cache[style][word].size;
-                            let line = CanvasText.text_cache[style][word].lines[0];
+                            let line = CanvasText.text_cache[style][word].lines;
 
-                            this.drawTextLine(line, texture_position, size, text_settings);
+                            this.drawTextMultiLine(line, texture_position, size, text_settings);
 
                             texcoord = Texture.getTexcoordsForSprite(
                                 texture_position,

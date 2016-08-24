@@ -17,7 +17,7 @@ cameras:
     perspective:
         type: perspective
         focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
-        vanishing_point: [0, -500] # relative to center of screen, in pixels
+        vanishing_point: [0, -250px] # relative to center of screen, in pixels
         active: true
 
     isometric:
@@ -303,7 +303,7 @@ layers:
                     cap: round
 
         highway:
-            filter: { kind: highway }
+            filter: { kind: [highway, Road] } # TODO: remove Natural Earth Road value for mapzen vector tiles 1.0
             draw:
                 lines:
                     color: '#D16768'
@@ -384,38 +384,16 @@ layers:
                             color: orange
                             width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
 
-    buildings:
-        data: { source: mapzen }
-        filter: { $zoom: { min: 14 } }
-
-        draw:
-            polygons:
-                order: global.feature_order
-                color: [.65, .65, .65]
-
-        # turn interactive feature selection on for buildings with names
-        interactive:
-            filter: { name: true }
-            draw: { polygons: { interactive: true } }
-
-        # extrude 3d buildings
-        extruded:
-            filter: { $zoom: { min: 15 } }
-            draw:
-                polygons:
-                    style: buildings
-                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
-
-        high-line:
-            filter: { roof_material: grass }
-            draw:
-                polygons:
-                    style: flat
-                    color: '#bddec5'
-
     road_labels:
         data: { source: mapzen, layer: roads }
-        filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
+        filter:
+            $zoom: { min: 7 }
+            any: [name: true, ref: true]
+            aeroway: false
+            tunnel: false
+            railway: false
+            not: { kind: rail }
+
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
@@ -467,21 +445,12 @@ layers:
 
         shields:
             filter:
-                all:
-                    - highway: motorway
-                    - |
-                        function() {
-                            var m = feature.ref &&
-                                feature.ref[0] === 'I' &&
-                                feature.ref.match(/\d+/);
-                            //var m = feature.ref && feature.ref.match(/\d+/);
-                            return m && m[0];
-                        }
+                network: 'US:I' # US interstates
+                ref: true # some roads don't have shield text
             draw:
                 icons:
                     sprite: shield
                     priority: 2
-                    interactive: true
                     color: white
                     size: 24px
                     cull_from_tile: true
@@ -489,15 +458,59 @@ layers:
                         anchor: center
                         text_source: |
                             function() {
-                                var m = feature.ref &&
-                                    feature.ref[0] === 'I' &&
-                                    feature.ref.match(/\d+/);
-                                // var m = feature.ref && feature.ref.match(/\d+/);
+                                // Extract shield text
+                                var m = feature.ref.match(/\d+/);
                                 return m && m[0];
                             }
                         font:
                             family: Helvetica
                             size: 11px
+
+    buildings:
+        data: { source: mapzen }
+        filter: { $zoom: { min: 14 } }
+
+        draw:
+            polygons:
+                order: global.feature_order
+                color: [.65, .65, .65]
+
+        # turn interactive feature selection on for buildings with names
+        interactive:
+            filter: { name: true }
+            draw: { polygons: { interactive: true } }
+
+        # extrude 3d buildings
+        extruded:
+            filter: { $zoom: { min: 15 } }
+            draw:
+                polygons:
+                    style: buildings
+                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
+
+        high-line:
+            filter: { roof_material: grass }
+            draw:
+                polygons:
+                    style: flat
+                    color: '#bddec5'
+
+        # point labels for buildings
+        labels:
+            filter:
+                $geometry: point
+                name: true
+                any:
+                    - { $zoom: { min: 17 }, height: { min: 50 } }
+                    - $zoom: { min: 18 }
+            draw:
+                text:
+                    priority: 7
+                    font:
+                        family: Helvetica
+                        size: 8pt
+                        fill: darkred
+                        stroke: { color: white, width: 3 }
 
     pois:
         data: { source: mapzen }
@@ -638,22 +651,6 @@ layers:
             draw:
                 lines:
                     color: function() { return feature.colour; }
-
-    # building_labels:
-    #     data: { source: mapzen, layer: buildings }
-    #     filter:
-    #         name: true
-    #         any:
-    #             - { $zoom: { min: 17 }, height: { min: 50 } }
-    #             - $zoom: { min: 18 }
-    #     draw:
-    #         text:
-    #             priority: 6
-    #             font:
-    #                 family: Lucida Grande
-    #                 size: 8pt
-    #                 fill: darkred
-    #                 stroke: { color: white, width: 3 }
 
     # schools:
     #     data: { source: schools }

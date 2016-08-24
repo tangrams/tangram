@@ -286,45 +286,55 @@ export default class Tile {
             groups[group_name].push(s);
         });
 
-        let progress = { start: true };
-        tile.mesh_data = {};
+        if (Object.keys(groups).length > 0) {
+            let progress = { start: true };
+            tile.mesh_data = {};
 
-        for (let group_name in groups) {
-            let group = groups[group_name];
+            for (let group_name in groups) {
+                let group = groups[group_name];
 
-            Promise.all(group.map(style => {
-                return style.endData(tile).then(style_data => {
-                    if (style_data) {
-                        tile.mesh_data[style.name] = {
-                            vertex_data: style_data.vertex_data,
-                            vertex_elements: style_data.vertex_elements,
-                            uniforms: style_data.uniforms,
-                            textures: style_data.textures
-                        };
+                Promise.all(group.map(style => {
+                    return style.endData(tile).then(style_data => {
+                        if (style_data) {
+                            tile.mesh_data[style.name] = {
+                                vertex_data: style_data.vertex_data,
+                                vertex_elements: style_data.vertex_elements,
+                                uniforms: style_data.uniforms,
+                                textures: style_data.textures
+                            };
+                        }
+                    });
+                }))
+                .then(() => {
+                    log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
+
+                    // Clear group and check if all groups finished
+                    groups[group_name] = [];
+                    if (Object.keys(groups).every(g => groups[g].length === 0)) {
+                        progress.done = true;
+                    }
+
+                    // Send meshes to main thread
+                    WorkerBroker.postMessage(
+                        `TileManager_${scene_id}.buildTileStylesCompleted`,
+                        WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
+                    );
+                    progress.start = null;
+                    tile.mesh_data = {}; // reset so each group sends separate set of style meshes
+
+                    if (progress.done) {
+                        Collision.resetTile(tile.key); // clear collision if we're done with the tile
                     }
                 });
-            }))
-            .then(() => {
-                log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
-
-                // Clear group and check if all groups finished
-                groups[group_name] = [];
-                if (Object.keys(groups).every(g => groups[g].length === 0)) {
-                    progress.done = true;
-                }
-
-                // Send meshes to main thread
-                WorkerBroker.postMessage(
-                    `TileManager_${scene_id}.buildTileStylesCompleted`,
-                    WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
-                );
-                progress.start = null;
-                tile.mesh_data = {}; // reset so each group sends separate set of style meshes
-
-                if (progress.done) {
-                    Collision.resetTile(tile.key); // clear collision if we're done with the tile
-                }
-            });
+            }
+        }
+        else {
+            // Nothing to build, return empty tile to main thread
+            WorkerBroker.postMessage(
+                `TileManager_${scene_id}.buildTileStylesCompleted`,
+                WorkerBroker.withTransferables({ tile: Tile.slice(tile), progress: { start: true, done: true } })
+            );
+            Collision.resetTile(tile.key); // clear collision if we're done with the tile
         }
     }
 

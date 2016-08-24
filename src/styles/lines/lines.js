@@ -111,7 +111,7 @@ Object.assign(Lines, {
 
     // Calculate width at zoom given in `context`
     calcWidth (width, context) {
-        return (width && StyleParser.cacheDistance(width, context)) || 0;
+        return (width && StyleParser.evalCachedDistanceProperty(width, context)) || 0;
     },
 
     // Calculate width at next zoom (used for line width interpolation)
@@ -149,9 +149,9 @@ Object.assign(Lines, {
         }
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-        style.z = (draw.z && StyleParser.cacheDistance(draw.z || 0, context)) || StyleParser.defaults.z;
+        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z || 0, context)) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
-        style.extrude = StyleParser.evalProp(draw.extrude, context);
+        style.extrude = StyleParser.evalProperty(draw.extrude, context);
         if (style.extrude) {
             if (typeof style.extrude === 'number') {
                 style.height = style.extrude;
@@ -228,15 +228,15 @@ Object.assign(Lines, {
     },
 
     _preprocess (draw) {
-        draw.color = StyleParser.colorCacheObject(draw.color);
-        draw.width = StyleParser.cacheObject(draw.width, StyleParser.cacheUnits);
-        draw.next_width = StyleParser.cacheObject(draw.width, StyleParser.cacheUnits); // width will be computed for next zoom
-        draw.z = StyleParser.cacheObject(draw.z, StyleParser.cacheUnits);
+        draw.color = StyleParser.createColorPropertyCache(draw.color);
+        draw.width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits);
+        draw.next_width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits); // width will be computed for next zoom
+        draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
 
         if (draw.outline) {
-            draw.outline.color = StyleParser.colorCacheObject(draw.outline.color);
-            draw.outline.width = StyleParser.cacheObject(draw.outline.width, StyleParser.cacheUnits);
-            draw.outline.next_width = StyleParser.cacheObject(draw.outline.width, StyleParser.cacheUnits); // width re-computed for next zoom
+            draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
+            draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
+            draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
         }
         return draw;
     },

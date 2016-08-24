@@ -56,14 +56,34 @@ Utils.addBaseURL = function (url, base) {
 };
 
 Utils.pathForURL = function (url) {
-    if (url && url.search(/^(data|blob):/) === -1) {
-        return url.substr(0, url.lastIndexOf('/') + 1) || './';
+    if (typeof url === 'string' && url.search(/^(data|blob):/) === -1) {
+        return url.substr(0, url.lastIndexOf('/') + 1) || '';
     }
-    return './';
+    return '';
 };
 
 Utils.isRelativeURL = function (url) {
-    return !(url.search(/^(http|https|data|blob):\/\//) > -1 || url.substr(0, 2) === '//');
+    if (typeof url !== 'string') {
+        return;
+    }
+    return !(url.search(/^(http|https|data|blob):/) > -1 || url.substr(0, 2) === '//');
+};
+
+// Resolves './' and '../' components from relative path, to get a "flattened" path
+Utils.flattenRelativeURL = function (url) {
+    let dirs = (url || '').split('/');
+    for (let d = 1; d < dirs.length; d++) {
+        if (dirs[d] === '.') {
+            dirs.splice(d, 1);
+            d--;
+        }
+        else if (dirs[d] === '..') {
+            d = d + 0;
+            dirs.splice(d-1, 2);
+            d--;
+        }
+    }
+    return dirs.join('/');
 };
 
 Utils.extensionForURL = function (url) {
@@ -230,13 +250,6 @@ Utils.serializeWithFunctions = function (obj) {
     return serialized;
 };
 
-// Parse a JSON string, but convert function-like strings back into functions
-Utils.deserializeWithFunctions = function(serialized, wrap) {
-    var obj = JSON.parse(serialized);
-    obj = Utils.stringsToFunctions(obj, wrap);
-    return obj;
-};
-
 // Recursively parse an object, attempting to convert string properties that look like functions back into functions
 Utils.stringsToFunctions = function(obj, wrap) {
     // Convert string
@@ -253,19 +266,24 @@ Utils.stringsToFunctions = function(obj, wrap) {
 };
 
 // Convert string back into a function
-// TODO: make function matching tolerant of whitespace and multilines
 Utils.stringToFunction = function(val, wrap) {
-    // Convert strings back into functions
-    if (typeof val === 'string' && val.match(/^\s*function\s*\w*\s*\([\s\S]*\)\s*\{[\s\S]*\}/m) != null) {
-        var f;
+    // Parse function signature and body
+    let fmatch =
+        (typeof val === 'string') &&
+        val.match(/^\s*function[^(]*\(([^)]*)\)\s*?\{([\s\S]*)\}$/m);
+
+    if (fmatch && fmatch.length > 2) {
         try {
+            let src = fmatch[2];
+            let args = fmatch[1].length > 0 && fmatch[1].split(',').map(x => x.trim()).filter(x => x);
+            args = args.length > 0 ? args : ['context']; // default to single 'context' argument
+
             if (typeof wrap === 'function') {
-                eval('f = ' + wrap(val)); // jshint ignore:line
+                return new Function(...args, wrap(src)); // jshint ignore:line
             }
             else {
-                eval('f = ' + val); // jshint ignore:line
+                return new Function(...args, src); // jshint ignore:line
             }
-            return f;
         }
         catch (e) {
             // fall-back to original value if parsing failed
