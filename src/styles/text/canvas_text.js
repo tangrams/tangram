@@ -64,6 +64,10 @@ export default class CanvasText {
                             let segment = segments[i];
                             if (!CanvasText.text_cache[style][segment]) {
                                 CanvasText.text_cache[style][segment] = this.textSize(segment, text_settings);
+                                CanvasText.cache_stats.misses++;
+                            }
+                            else {
+                                CanvasText.cache_stats.hits++;
                             }
                             text_info.size.push(CanvasText.text_cache[style][segment].size);
                         }
@@ -71,6 +75,10 @@ export default class CanvasText {
                     else {
                         if (!CanvasText.text_cache[style][text]) {
                             CanvasText.text_cache[style][text] = this.textSize(text, text_settings, 0);
+                            CanvasText.cache_stats.misses++;
+                        }
+                        else {
+                            CanvasText.cache_stats.hits++;
                         }
                         // Only send text sizes back to worker (keep computed text line info
                         // on main thread, for future rendering)
@@ -423,7 +431,6 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
-
 CanvasText.texcoord_cache = {};
 
 // Right-to-left / bi-directional text handling
