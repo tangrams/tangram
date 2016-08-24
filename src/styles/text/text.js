@@ -103,7 +103,7 @@ Object.assign(TextStyle, {
 
                         if (text_info.text_settings.can_articulate){
                             style.size = text_info.size.map(function(size){ return size.logical_size; });
-                            style.multi_texcoords = text_info.multi_texcoords;
+                            style.texcoords = text_info.texcoords;
                         }
                         else {
                             style.size = text_info.size.logical_size;

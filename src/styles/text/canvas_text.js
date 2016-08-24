@@ -239,7 +239,7 @@ export default class CanvasText {
 
                 if (text_settings.can_articulate){
                     let words = text_info.segments;
-                    text_info.multi_texcoords = [];
+                    text_info.texcoords = [];
 
                     for (let i = 0; i < words.length; i++){
                         let word = words[i];
@@ -264,7 +264,7 @@ export default class CanvasText {
                             CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
                         }
 
-                        text_info.multi_texcoords.push(texcoord);
+                        text_info.texcoords.push(texcoord);
                     }
                 }
                 else {

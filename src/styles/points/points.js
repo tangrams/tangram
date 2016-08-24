@@ -561,7 +561,7 @@ Object.assign(Points, {
             let angle = label.angle[i];
             let size = style.size[i];
             let offset = label.offsets[i];
-            let texcoord = style.multi_texcoords[i];
+            let texcoord = style.texcoords[i];
 
             this.buildQuad(
                 [label.position],               // position
