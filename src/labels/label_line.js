@@ -411,6 +411,7 @@ export default class LabelLine extends Label {
     // Adds each segment to the collision pass as its own bounding box
     // TODO: label group
     add(bboxes) {
+        this.placed = true;
         for (let i = 0; i < this.aabbs.length; i++) {
             let aabb = this.aabbs[i];
             let obb = this.obbs[i];
@@ -421,7 +422,7 @@ export default class LabelLine extends Label {
 
     // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
     // TODO: label group
-    discard(bboxes, exclude) {
+    discard(bboxes, exclude = null) {
         if (this.throw_away) {
             return true;
         }

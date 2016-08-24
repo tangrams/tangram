@@ -79,7 +79,7 @@ export default class Label {
 
     // Whether the label should be discarded
     // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
-    discard(bboxes, exclude) {
+    discard(bboxes, exclude = null) {
         if (this.throw_away) {
             return true;
         }
