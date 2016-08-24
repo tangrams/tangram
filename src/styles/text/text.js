@@ -102,6 +102,7 @@ Object.assign(TextStyle, {
                         style.label = q.label;
 
                         if (text_info.text_settings.can_articulate){
+                            // unpack logical sizes of each segment into an array for the style
                             style.size = text_info.size.map(function(size){ return size.logical_size; });
                             style.texcoords = text_info.texcoords;
                         }

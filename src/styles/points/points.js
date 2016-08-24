@@ -497,14 +497,6 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    // // Override (style-specific rendering behavior)
-    // render (mesh) {
-    //     // ensure a value is always bound to label texture
-    //     // avoids 'no texture bound to unit' warnings in Chrome 50+
-    //     ShaderProgram.current.uniform('1i', 'u_label_texture', 0);
-    //     Style.render.call(this, mesh);
-    // },
-
     buildQuad(points, size, angle, sampler, offset, texcoord_scale, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
@@ -541,14 +533,13 @@ Object.assign(Points, {
 
     buildLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
-        var angle = label.angle ? label.angle : style.angle;
 
         this.buildQuad(
             [label.position],               // position
             style.size,                     // size in pixels
-            angle,                          // angle in degrees
+            style.angle,                    // angle in degrees
             style.sampler,                  // texture sampler to use
-            label.offset,                   // offset (from center in px) to apply after rotation
+            label.offset,                   // offset from center in pixels
             style.texcoords,                // texture UVs
             vertex_data, vertex_template    // VBO and data for current vertex
         );
@@ -568,7 +559,7 @@ Object.assign(Points, {
                 size,                           // size in pixels
                 angle,                          // angle in degrees
                 style.sampler,                  // texture sampler to use
-                offset,                         // offset (from center in px) to apply after rotation
+                offset,                         // offset from center in pixels
                 texcoord,                       // texture UVs
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
