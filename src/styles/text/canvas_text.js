@@ -55,19 +55,17 @@ export default class CanvasText {
                     text_info.space_width = space_width;
 
                     if (text_settings.can_articulate){
+                        let segments = splitLabelText(text);
 
-                        var words = text.split(' ');
-                        var words_LTR = reorderWordsLTR(words);
-
-                        text_info.segments = words;
+                        text_info.segments = segments;
                         text_info.size = [];
 
-                        for (let i = 0; i < words_LTR.length; i++){
-                            let word = words_LTR[i];
-                            if (!CanvasText.text_cache[style][word]) {
-                                CanvasText.text_cache[style][word] = this.textSize(word, text_settings);
+                        for (let i = 0; i < segments.length; i++){
+                            let segment = segments[i];
+                            if (!CanvasText.text_cache[style][segment]) {
+                                CanvasText.text_cache[style][segment] = this.textSize(segment, text_settings);
                             }
-                            text_info.size.push(CanvasText.text_cache[style][word].size);
+                            text_info.size.push(CanvasText.text_cache[style][segment].size);
                         }
                     }
                     else {
@@ -439,8 +437,8 @@ function isRTL(s){
 }
 
 function reorderWordsLTR(words) {
-    var words_LTR = [];
-    var words_RTL = [];
+    let words_LTR = [];
+    let words_RTL = [];
 
     // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
     for (var i = 0; i < words.length; i++){
@@ -462,4 +460,9 @@ function reorderWordsLTR(words) {
     }
 
     return words_LTR;
+}
+
+function splitLabelText(text){
+    let words = text.split(' ');
+    return reorderWordsLTR(words);
 }
