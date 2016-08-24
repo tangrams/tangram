@@ -258,14 +258,6 @@ export const TextLabels = {
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
         layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
 
-        // label line exceed percentage
-        if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
-            layout.line_exceed = parseFloat(draw.line_exceed.substr(0,draw.line_exceed.length-1));
-        }
-        else {
-            layout.line_exceed = 80;
-        }
-
         // repeat minimum distance
         layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
         if (layout.repeat_distance == null) {
