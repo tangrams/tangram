@@ -215,9 +215,15 @@ Object.assign(TextStyle, {
 
 });
 
-const TARGET_STRAIGHT = .25;
-const TARGET_KINKED = .2;
+const TARGET_STRAIGHT = .25; // Optimistic target ratio for straight labels (label length / line length)
+const TARGET_KINKED = .2; // Optimistic target ratio for kinked labels (label length / line length)
 
+// Place labels according to the following strategy:
+// - choose the best straight label that satisfies the optimistic straight cutoff (if any)
+// - else choose the best kinked label that satisfies the optimistic kinked cutoff (if any)
+// - else choose the best straight label that satisfies its internal (less optimistic) cutoff (if any)
+// - else choose the best kinked labels that satisfies its internal (less optimistic) cutoff (if any)
+// - else don't place a label
 function placementStrategy(label){
     let labels_straight = [];
     let labels_kinked = [];
