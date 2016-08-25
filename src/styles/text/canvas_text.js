@@ -419,8 +419,7 @@ class MultiLine {
         if (line){
             this.push(line);
         }
-
-        if (this.max_lines === this.lines.length) {
+        else {
             this.addEllipsis();
         }
     }
