@@ -251,7 +251,7 @@ export class NetworkTileSource extends NetworkSource {
     parseBounds (source) {
         if (Array.isArray(source.bounds) && source.bounds.length === 4) {
             this.bounds = source.bounds;
-            let [w, n, e, s] = this.bounds;
+            let [w, s, e, n] = this.bounds;
             this.bounds_meters = {
                 min: Geo.latLngToMeters([w, n]),
                 max: Geo.latLngToMeters([e, s]),
