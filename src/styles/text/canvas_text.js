@@ -87,7 +87,7 @@ export default class CanvasText {
             words = [str]; // no max line word wrapping (but new lines will still be in effect)
         }
 
-        let multiline = new MultiLine(max_lines, text_wrap, ctx);
+        let multiline = new MultiLine(ctx, max_lines, text_wrap);
         let line = multiline.createLine(line_height);
 
         // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
@@ -345,7 +345,7 @@ CanvasText.cache_stats = { hits: 0, misses: 0 };
 // Private class to arrange text labels into multiple lines based on
 // "text wrap" and "max line" values
 class MultiLine {
-    constructor (max_lines = Infinity, text_wrap = Infinity, context) {
+    constructor (context, max_lines = Infinity, text_wrap = Infinity) {
         this.width = 0;
         this.height = 0;
         this.lines = [];
