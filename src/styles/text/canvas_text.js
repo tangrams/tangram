@@ -49,8 +49,7 @@ export default class CanvasText {
                         }
 
                         CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
-                        CanvasText.text_cache[style][text] =
-                            this.textSize(text, text_settings.transform, text_settings.text_wrap);
+                        CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
                         CanvasText.cache_stats.misses++;
                     }
                     else {
@@ -69,7 +68,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, transform, text_wrap) {
+    textSize (text, {transform, text_wrap, max_lines}) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
@@ -87,58 +86,57 @@ export default class CanvasText {
         else {
             words = [str]; // no max line word wrapping (but new lines will still be in effect)
         }
-        let new_line_template = { width: 0, chars: 0, text: '' };
-        let line = Object.assign({}, new_line_template); // current line
-        let lines = []; // completed lines
-        let max_width = 0; // max width to fit all lines
 
-        // add current line buffer to completed lines, optionally start new line
-        function addLine (new_line) {
-            line.text = line.text.trim();
-            if (line.text.length > 0) {
-                line.width = ctx.measureText(line.text).width;
-                max_width = Math.max(max_width, Math.ceil(line.width));
-                lines.push(line);
-            }
-            if (new_line) {
-                line = Object.assign({}, new_line_template);
-            }
-        }
+        let multiline = new MultiLine(max_lines, text_wrap, ctx);
+        let line = multiline.createLine(line_height);
 
         // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
         for (let w=0; w < words.length; w++) {
+            if (!line) {
+                break;
+            }
+
             let breaks = words[w].split('\n'); // split on line breaks
 
             for (let n=0; n < breaks.length; n++) {
                 let word = breaks[n];
 
-                // if adding current word would overflow, add a new line instead
-                if (line.chars + word.length > text_wrap && line.chars > 0) {
-                    addLine(true);
+                if (!word) {
+                    continue;
                 }
 
-                // add current word (plus space)
-                line.chars += word.length + 1;
-                line.text += word + ' ';
+                // if adding current word would overflow, add a new line instead
+                if (line.exceedsTextwrap(word)) {
+                    line = multiline.createLine(line_height);
+                    if (!line){
+                        break;
+                    }
+                }
+
+                multiline.appendToLastLine(word);
 
                 // if line breaks present, add new line (unless on last line)
-                if (breaks.length > 1 && n < breaks.length - 1) {
-                    addLine(true);
+                if (n < breaks.length - 1) {
+                    line = multiline.createLine(line_height);
+                    if (!line){
+                        break;
+                    }
                 }
             }
         }
-        addLine(false);
 
         // Final dimensions of text
-        let height = lines.length * line_height;
+        let height = multiline.height;
+        let width = multiline.width;
+        let lines = multiline.lines;
 
         let collision_size = [
-            max_width / Utils.device_pixel_ratio,
+            width / Utils.device_pixel_ratio,
             height / Utils.device_pixel_ratio
         ];
 
         let texture_size = [
-            max_width + buffer * 2,
+            width + buffer * 2,
             height + buffer * 2
         ];
 
@@ -343,3 +341,75 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
+
+// Private class to arrange text labels into multiple lines based on
+// "text wrap" and "max line" values
+class MultiLine {
+    constructor (max_lines = Infinity, text_wrap = Infinity, context) {
+        this.width = 0;
+        this.height = 0;
+        this.lines = [];
+        this.ellipsis = '...';
+
+        this.max_lines = max_lines;
+        this.text_wrap = text_wrap;
+        this.context = context;
+    }
+
+    createLine (line_height){
+        let line = new Line(line_height, this.text_wrap);
+        return this.push(line);
+    }
+
+    appendToLastLine (text){
+        if (!text) {
+            return;
+        }
+
+        text = text.trim();
+
+        let last = this.lines[this.lines.length - 1];
+        let width = this.context.measureText(text).width;
+
+        last.append(text, width);
+
+        if (last.width > this.width){
+            this.width = Math.ceil(last.width);
+        }
+    }
+
+    push (line){
+        if (this.lines.length < this.max_lines){
+            this.lines.push(line);
+            this.height += line.height;
+            return line;
+        }
+        else {
+            this.appendToLastLine(this.ellipsis);
+            return false;
+        }
+    }
+}
+
+// A Private class used by MultiLine to contain the logic for a single line
+// including character count, width, height and text
+class Line {
+    constructor (height = 0, text_wrap = 0){
+        this.chars = 0;
+        this.text = '';
+        this.width = 0;
+
+        this.height = height;
+        this.text_wrap = text_wrap;
+    }
+
+    append (text, width){
+        this.chars += text.length + 1;
+        this.text += text + ' ';
+        this.width += width;
+    }
+
+    exceedsTextwrap(text){
+        return text.length + this.chars > this.text_wrap;
+    }
+}

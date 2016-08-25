@@ -30,6 +30,7 @@ export default TextSettings = {
         family: 'Helvetica',
         fill: 'white',
         text_wrap: 15,
+        max_lines: 5,
         align: 'center',
         stroke: null,
         stroke_width: 0
@@ -81,6 +82,7 @@ export default TextSettings = {
         // Word wrap and text alignment
         // Not a font properties, but affect atlas of unique text textures
         let text_wrap = draw.text_wrap; // use explicitly set value
+
         if (text_wrap == null && Geo.geometryType(feature.geometry.type) !== 'line') {
             // point labels (for point and polygon features) have word wrap on w/default max length,
             // line labels default off
@@ -92,6 +94,9 @@ export default TextSettings = {
             text_wrap = this.defaults.text_wrap;
         }
         style.text_wrap = text_wrap;
+
+        // max_lines setting to truncate very long labels with an ellipsis
+        style.max_lines = draw.max_lines || this.defaults.max_lines;
 
         return style;
     },
