@@ -977,7 +977,6 @@ export default class Scene {
     updateConfig({ rebuild = true, serialize_funcs } = {}) {
         this.generation = ++Scene.generation;
         this.updating++;
-        this.config.scene = this.config.scene || {};
 
         this.style_manager.init();
         this.view.reset();
