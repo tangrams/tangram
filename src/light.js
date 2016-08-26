@@ -203,7 +203,19 @@ class DirectionalLight extends Light {
         this.type = 'directional';
         this.struct_name = 'DirectionalLight';
 
-        this.direction = (config.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
+        if (config.direction) {
+            this.direction = config.direction;
+        }
+        else {
+            // Default directional light maintains full intensity on ground, with basic extrusion shading
+            this.direction = [-0.707, 0.707, -0.58]; // [x, y, z]
+
+            if (config.ambient == null) {
+                this.ambient = GLSL.expandVec4(0.5);
+            }
+        }
+
+        this.direction = this.direction.map(parseFloat);
     }
 
     // Inject struct and calculate function
