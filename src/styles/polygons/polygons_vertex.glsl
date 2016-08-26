@@ -49,7 +49,7 @@ varying vec4 v_world_position;
 #endif
 
 #if defined(TANGRAM_LIGHTING_VERTEX)
-    varying vec4 v_lighting;
+    varying vec3 v_lighting;
 #endif
 
 #pragma tangram: camera
@@ -124,7 +124,7 @@ void main() {
         #pragma tangram: normal
 
         // Pass lighting intensity to fragment shader
-        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));
+        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec3(1.));
     #endif
 
     // Camera

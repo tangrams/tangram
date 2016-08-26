@@ -7,9 +7,9 @@ light_accumulator_*
 */
 
 struct DirectionalLight {
-    vec4 ambient;
-    vec4 diffuse;
-    vec4 specular;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
     vec3 direction;
 };
 

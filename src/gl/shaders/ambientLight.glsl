@@ -6,7 +6,7 @@ light_accumulator_*
 */
 
 struct AmbientLight {
-    vec4 ambient;
+    vec3 ambient;
 };
 
 void calculateLight(in AmbientLight _light, in vec3 _eyeToPoint, in vec3 _normal) {

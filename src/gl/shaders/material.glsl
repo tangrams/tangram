@@ -71,10 +71,10 @@ uniform sampler2D u_material_normal_texture;
 #endif
 
 // Global light accumulators for each property
-vec4 light_accumulator_ambient = vec4(0.0);
-vec4 light_accumulator_diffuse = vec4(0.0);
+vec3 light_accumulator_ambient = vec3(0.0);
+vec3 light_accumulator_diffuse = vec3(0.0);
 #ifdef TANGRAM_MATERIAL_SPECULAR
-    vec4 light_accumulator_specular = vec4(0.0);
+    vec3 light_accumulator_specular = vec3(0.0);
 #endif
 
 

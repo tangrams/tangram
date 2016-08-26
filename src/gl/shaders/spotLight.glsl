@@ -7,10 +7,10 @@ light_accumulator_*
 */
 
 struct SpotLight {
-    vec4 ambient;
-    vec4 diffuse;
-    vec4 specular;
-    vec4 position;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    vec3 position;
 
 #ifdef TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT
     float attenuationExponent;

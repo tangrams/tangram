@@ -18,21 +18,21 @@ export default class Light {
         this.view = view;
 
         if (config.ambient == null || typeof config.ambient === 'number') {
-            this.ambient = GLSL.expandVec4(config.ambient || 0);
+            this.ambient = GLSL.expandVec3(config.ambient || 0);
         }
         else {
             this.ambient = StyleParser.parseColor(config.ambient);
         }
 
         if (config.diffuse == null || typeof config.diffuse === 'number') {
-            this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
+            this.diffuse = GLSL.expandVec3(config.diffuse != null ? config.diffuse : 1);
         }
         else {
             this.diffuse = StyleParser.parseColor(config.diffuse);
         }
 
         if (config.specular == null || typeof config.specular === 'number') {
-            this.specular = GLSL.expandVec4(config.specular || 0);
+            this.specular = GLSL.expandVec3(config.specular || 0);
         }
         else {
             this.specular = StyleParser.parseColor(config.specular);
@@ -90,18 +90,10 @@ export default class Light {
                 calculateLights += `calculateLight(${light_name}, _eyeToPoint, _normal);\n`;
             }
         }
-        else {
-            // If no light is defined, use 100% omnidirectional diffuse light
-            calculateLights = `
-                #ifdef TANGRAM_MATERIAL_DIFFUSE
-                    light_accumulator_diffuse = vec4(1.);
-                #endif
-            `;
-        }
 
         // Glue together the final lighting function that sums all the lights
         let calculateFunction = `
-            vec4 calculateLighting(in vec3 _eyeToPoint, in vec3 _normal, in vec4 _color) {
+            vec3 calculateLighting(in vec3 _eyeToPoint, in vec3 _normal, in vec3 _color) {
 
                 // Do initial material calculations over normal, emission, ambient, diffuse and specular values
                 calculateMaterial(_eyeToPoint,_normal);
@@ -110,26 +102,26 @@ export default class Light {
                 ${calculateLights}
 
                 //  Final light intensity calculation
-                vec4 color = vec4(0.0);
+                vec3 color = vec3(0.0);
 
                 #ifdef TANGRAM_MATERIAL_EMISSION
                     color = material.emission;
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_AMBIENT
-                    color += light_accumulator_ambient * _color * material.ambient;
+                    color += light_accumulator_ambient * _color * material.ambient.rgb;
                 #else
                     #ifdef TANGRAM_MATERIAL_DIFFUSE
-                        color += light_accumulator_ambient * _color * material.diffuse;
+                        color += light_accumulator_ambient * _color * material.diffuse.rgb;
                     #endif
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_DIFFUSE
-                    color += light_accumulator_diffuse * _color * material.diffuse;
+                    color += light_accumulator_diffuse * _color * material.diffuse.rgb;
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_SPECULAR
-                    color += light_accumulator_specular * material.specular;
+                    color += light_accumulator_specular * material.specular.rgb;
                 #endif
 
                 // Clamp final color
@@ -163,9 +155,9 @@ export default class Light {
     // pass for feature selection, etc.)
     setupProgram (_program) {
         //  Three common light properties
-        _program.uniform('4fv', `u_${this.name}.ambient`, this.ambient);
-        _program.uniform('4fv', `u_${this.name}.diffuse`, this.diffuse);
-        _program.uniform('4fv', `u_${this.name}.specular`, this.specular);
+        _program.uniform('3fv', `u_${this.name}.ambient`, this.ambient);
+        _program.uniform('3fv', `u_${this.name}.diffuse`, this.diffuse);
+        _program.uniform('3fv', `u_${this.name}.specular`, this.specular);
     }
 
 }
@@ -211,7 +203,7 @@ class DirectionalLight extends Light {
             this.direction = [-0.707, 0.707, -0.58]; // [x, y, z]
 
             if (config.ambient == null) {
-                this.ambient = GLSL.expandVec4(0.5);
+                this.ambient = GLSL.expandVec3(0.5);
             }
         }
 
