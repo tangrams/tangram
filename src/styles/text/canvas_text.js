@@ -351,8 +351,9 @@ class MultiLine {
         this.height = 0;
         this.lines = [];
 
-        this.ellipsis = '...';
+        this.ellipsis = '…';
         this.ellipsis_width = context.measureText(this.ellipsis).width;
+        this.space_width = context.measureText(' ').width;
 
         this.max_lines = max_lines;
         this.text_wrap = text_wrap;
@@ -372,7 +373,8 @@ class MultiLine {
         // remove last space from previous line
         if (this.lines.length > 0){
             let last_line = this.lines[this.lines.length - 1];
-            last_line.text = last_line.text.slice(0, last_line.text.length - 1);
+            last_line.removeLastChar();
+            last_line.width -= this.space_width;
         }
 
         if (this.lines.length < this.max_lines){
@@ -408,8 +410,10 @@ class MultiLine {
 
     addEllipsis (){
         let last_line = this.lines[this.lines.length - 1];
+        last_line.removeLastChar();
         last_line.append(this.ellipsis);
-        last_line.width += this.ellipsis_width;
+
+        last_line.width += this.ellipsis_width - this.space_width;
         if (last_line.width > this.width) {
             this.width = last_line.width;
         }
@@ -442,7 +446,11 @@ class Line {
         this.text += text;
     }
 
-    exceedsTextwrap(text){
+    exceedsTextwrap (text){
         return text.length + this.chars > this.text_wrap;
+    }
+
+    removeLastChar (){
+        this.text = this.text.slice(0, this.text.length - 1);
     }
 }
