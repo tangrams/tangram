@@ -75,6 +75,7 @@ export default class CanvasText {
         let leading = 2 * Utils.device_pixel_ratio; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
 
+        // Parse string into series of lines if it exceeds the text wrapping value or contains line breaks
         let multiline = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx);
 
         // Final dimensions of text
