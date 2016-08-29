@@ -838,11 +838,11 @@ export default class Scene {
             });
         }
 
-        // Mark sources that generate geometry tiles
+        // Mark sources that will generate geometry tiles
         // (all except those that are only raster sources attached to other sources)
         for (let layer of Utils.values(this.config.layers)) {
             if (layer.data && this.sources[layer.data.source]) {
-                this.sources[layer.data.source].geometry_tiles = true;
+                this.sources[layer.data.source].builds_geometry_tiles = true;
             }
         }
     }

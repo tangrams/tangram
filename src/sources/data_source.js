@@ -29,7 +29,11 @@ export default class DataSource {
         this.scripts = config.scripts;
 
         // overzoom will apply for zooms higher than this
-        this.max_zoom = config.max_zoom || Geo.default_source_max_zoom;
+        this.max_zoom = (config.max_zoom != null) ? config.max_zoom : Geo.default_source_max_zoom;
+
+        // no tiles will be requested or displayed outside of these min/max values
+        this.min_display_zoom = (config.min_display_zoom != null) ? config.min_display_zoom : 0;
+        this.max_display_zoom = (config.max_display_zoom != null) ? config.max_display_zoom : null;
     }
 
     // Create a tile source by type, factory-style
@@ -140,6 +144,14 @@ export default class DataSource {
         return this.default_winding;
     }
 
+    // All data sources support a min zoom, tiled sources can subclass for more specific limits (e.g. bounding box)
+    includesTile (coords, style_zoom) {
+        if (coords.z < this.min_display_zoom || (this.max_display_zoom != null && style_zoom > this.max_display_zoom)) {
+            return false;
+        }
+        return true;
+    }
+
     // Register a new data source type, under a type name
     static register(type_class, type_name) {
         if (!type_class || !type_name) {
@@ -221,12 +233,67 @@ export class NetworkTileSource extends NetworkSource {
         super(source);
 
         this.tiled = true;
+        this.parseBounds(source);
+
+        // indicates if source should build geometry tiles, enabled for sources referenced in the scene's layers,
+        // and left disabled for sources that are never referenced, or only used as raster textures
+        this.builds_geometry_tiles = false;
+
         this.url_hosts = null;
         var host_match = this.url.match(/{s:\[([^}+]+)\]}/);
         if (host_match != null && host_match.length > 1) {
             this.url_hosts = host_match[1].split(',');
             this.next_host = 0;
         }
+    }
+
+    // Get bounds from source config parameters
+    parseBounds (source) {
+        if (Array.isArray(source.bounds) && source.bounds.length === 4) {
+            this.bounds = source.bounds;
+            let [w, s, e, n] = this.bounds;
+            this.bounds_meters = {
+                min: Geo.latLngToMeters([w, n]),
+                max: Geo.latLngToMeters([e, s]),
+            };
+            this.bounds_tiles = { min: {}, max: {} }; // max tile bounds per zoom (lazily evaluated)
+        }
+    }
+
+    // Returns false if tile is outside data source's bounds, true if within
+    checkBounds (coords) {
+        // Check tile bounds
+        if (this.bounds) {
+            coords = Geo.wrapTile(coords, { x: true });
+
+            let min = this.bounds_tiles.min[coords.z];
+            if (!min) {
+                min = this.bounds_tiles.min[coords.z] = Geo.tileForMeters(this.bounds_meters.min, coords.z);
+            }
+
+            let max = this.bounds_tiles.max[coords.z];
+            if (!max) {
+                max = this.bounds_tiles.max[coords.z] = Geo.tileForMeters(this.bounds_meters.max, coords.z);
+            }
+
+            if (coords.x < min.x || coords.x > max.x ||
+                coords.y < min.y || coords.y > max.y) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    includesTile (coords, style_zoom) {
+        if (!this.builds_geometry_tiles || !super.includesTile(coords, style_zoom)) {
+            return false;
+        }
+
+        // Check tile bounds
+        if (!this.checkBounds(coords)) {
+            return false;
+        }
+        return true;
     }
 
     formatUrl(url_template, tile) {
