@@ -37,6 +37,10 @@ Utils.addBaseURL = function (url, base) {
         if (relative) {
             let path = base_info.href.match(/([^\#]+)/); // strip hash
             path = (path && path.length > 1) ? path[0] : '';
+
+            path = base_info.href.match(/([^\?]+)/); // strip query string
+            path = (path && path.length > 1) ? path[0] : '';
+
             url = path + url;
         }
         else {
