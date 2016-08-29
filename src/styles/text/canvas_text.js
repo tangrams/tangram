@@ -75,63 +75,7 @@ export default class CanvasText {
         let leading = 2 * Utils.device_pixel_ratio; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
 
-        // Word wrapping
-        // Line breaks can be caused by:
-        //  - implicit line break when a maximum character threshold is exceeded per line (text_wrap)
-        //  - explicit line break in the label text (\n)
-        let words;
-        if (typeof text_wrap === 'number') {
-            words = str.split(' '); // split words on spaces
-        }
-        else {
-            words = [str]; // no max line word wrapping (but new lines will still be in effect)
-        }
-
-        let multiline = new MultiLine(ctx, max_lines, text_wrap);
-        let line = multiline.createLine(line_height);
-
-        // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
-        for (let w=0; w < words.length; w++) {
-            let breaks = words[w].split('\n'); // split on line breaks
-            let new_line = (w === 0) ? true : false;
-
-            for (let n=0; n < breaks.length; n++) {
-                if (!line){
-                    break;
-                }
-
-                let word = breaks[n].trim();
-
-                if (!word) {
-                    continue;
-                }
-
-                let spaced_word = (new_line) ? word : ' ' + word;
-
-                // if adding current word would overflow, add a new line instead
-                if (text_wrap && line.exceedsTextwrap(spaced_word)) {
-                    line = multiline.advance(line, line_height);
-                    if (!line){
-                        break;
-                    }
-                    line.append(word);
-                    new_line = true;
-                }
-                else {
-                    line.append(spaced_word);
-                }
-
-                // if line breaks present, add new line (unless on last line)
-                if (n < breaks.length - 1) {
-                    line = multiline.advance(line, line_height);
-                    new_line = true;
-                }
-            }
-
-            if (w === words.length - 1){
-                multiline.finish(line);
-            }
-        }
+        let multiline = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx);
 
         // Final dimensions of text
         let height = multiline.height;
@@ -425,6 +369,67 @@ class MultiLine {
         else {
             this.addEllipsis();
         }
+    }
+
+    static parse (str, text_wrap, max_lines, line_height, ctx) {
+        // Word wrapping
+        // Line breaks can be caused by:
+        //  - implicit line break when a maximum character threshold is exceeded per line (text_wrap)
+        //  - explicit line break in the label text (\n)
+        let words;
+        if (typeof text_wrap === 'number') {
+            words = str.split(' '); // split words on spaces
+        }
+        else {
+            words = [str]; // no max line word wrapping (but new lines will still be in effect)
+        }
+
+        let multiline = new MultiLine(ctx, max_lines, text_wrap);
+        let line = multiline.createLine(line_height);
+
+        // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
+        for (let w=0; w < words.length; w++) {
+            let breaks = words[w].split('\n'); // split on line breaks
+            let new_line = (w === 0) ? true : false;
+
+            for (let n=0; n < breaks.length; n++) {
+                if (!line){
+                    break;
+                }
+
+                let word = breaks[n].trim();
+
+                if (!word) {
+                    continue;
+                }
+
+                let spaced_word = (new_line) ? word : ' ' + word;
+
+                // if adding current word would overflow, add a new line instead
+                if (text_wrap && line.exceedsTextwrap(spaced_word)) {
+                    line = multiline.advance(line, line_height);
+                    if (!line){
+                        break;
+                    }
+                    line.append(word);
+                    new_line = true;
+                }
+                else {
+                    line.append(spaced_word);
+                }
+
+                // if line breaks present, add new line (unless on last line)
+                if (n < breaks.length - 1) {
+                    line = multiline.advance(line, line_height);
+                    new_line = true;
+                }
+            }
+
+            if (w === words.length - 1){
+                multiline.finish(line);
+            }
+        }
+        return multiline;
     }
 }
 
