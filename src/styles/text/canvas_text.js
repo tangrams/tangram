@@ -93,6 +93,7 @@ export default class CanvasText {
         // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
         for (let w=0; w < words.length; w++) {
             let breaks = words[w].split('\n'); // split on line breaks
+            let new_line = (w === 0) ? true : false;
 
             for (let n=0; n < breaks.length; n++) {
                 if (!line){
@@ -105,19 +106,25 @@ export default class CanvasText {
                     continue;
                 }
 
+                let spaced_word = (new_line) ? word : ' ' + word;
+
                 // if adding current word would overflow, add a new line instead
-                if (line.exceedsTextwrap(word)) {
+                if (text_wrap && line.exceedsTextwrap(spaced_word)) {
                     line = multiline.advance(line, line_height);
                     if (!line){
                         break;
                     }
+                    line.append(word);
+                    new_line = true;
                 }
-
-                line.append(word);
+                else {
+                    line.append(spaced_word);
+                }
 
                 // if line breaks present, add new line (unless on last line)
                 if (n < breaks.length - 1) {
                     line = multiline.advance(line, line_height);
+                    new_line = true;
                 }
             }
 
@@ -353,7 +360,6 @@ class MultiLine {
 
         this.ellipsis = '…';
         this.ellipsis_width = context.measureText(this.ellipsis).width;
-        this.space_width = context.measureText(' ').width;
 
         this.max_lines = max_lines;
         this.text_wrap = text_wrap;
@@ -370,13 +376,6 @@ class MultiLine {
     }
 
     push (line){
-        // remove last space from previous line
-        if (this.lines.length > 0){
-            let last_line = this.lines[this.lines.length - 1];
-            last_line.removeLastChar();
-            last_line.width -= this.space_width;
-        }
-
         if (this.lines.length < this.max_lines){
             // measure line width
             let line_width = this.context.measureText(line.text).width;
@@ -410,10 +409,10 @@ class MultiLine {
 
     addEllipsis (){
         let last_line = this.lines[this.lines.length - 1];
-        last_line.removeLastChar();
-        last_line.append(this.ellipsis);
 
-        last_line.width += this.ellipsis_width - this.space_width;
+        last_line.append(this.ellipsis);
+        last_line.width += this.ellipsis_width;
+
         if (last_line.width > this.width) {
             this.width = last_line.width;
         }
@@ -441,16 +440,11 @@ class Line {
     }
 
     append (text){
-        text += ' '; // add space (to be removed later if necessary)
         this.chars += text.length;
         this.text += text;
     }
 
     exceedsTextwrap (text){
         return text.length + this.chars > this.text_wrap;
-    }
-
-    removeLastChar (){
-        this.text = this.text.slice(0, this.text.length - 1);
     }
 }
