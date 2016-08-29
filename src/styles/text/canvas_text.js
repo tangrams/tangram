@@ -302,7 +302,7 @@ class MultiLine {
         this.height = 0;
         this.lines = [];
 
-        this.ellipsis = '…';
+        this.ellipsis = '...';
         this.ellipsis_width = context.measureText(this.ellipsis).width;
 
         this.max_lines = max_lines;
@@ -388,9 +388,9 @@ class MultiLine {
         let line = multiline.createLine(line_height);
 
         // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
-        for (let w=0; w < words.length; w++) {
-            let breaks = words[w].split('\n'); // split on line breaks
-            let new_line = (w === 0) ? true : false;
+        for (let i = 0; i < words.length; i++) {
+            let breaks = words[i].split('\n'); // split on line breaks
+            let new_line = (i === 0) ? true : false;
 
             for (let n=0; n < breaks.length; n++) {
                 if (!line){
@@ -406,7 +406,8 @@ class MultiLine {
                 let spaced_word = (new_line) ? word : ' ' + word;
 
                 // if adding current word would overflow, add a new line instead
-                if (text_wrap && line.exceedsTextwrap(spaced_word)) {
+                // first word (i === 0) always appends
+                if (text_wrap && i > 0 && line.exceedsTextwrap(spaced_word)) {
                     line = multiline.advance(line, line_height);
                     if (!line){
                         break;
@@ -425,7 +426,7 @@ class MultiLine {
                 }
             }
 
-            if (w === words.length - 1){
+            if (i === words.length - 1){
                 multiline.finish(line);
             }
         }
