@@ -36,6 +36,7 @@ export default class CanvasText {
     }
 
     textSizes (texts) {
+        let dpr = Utils.device_pixel_ratio;
         return FontManager.loadFonts().then(() => {
             for (let style in texts) {
                 CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
@@ -50,7 +51,7 @@ export default class CanvasText {
 
                     if (first) {
                         this.setFont(text_settings);
-                        space_width = this.context.measureText(' ').width;
+                        space_width = this.context.measureText(' ').width / dpr;
                         first = false;
                     }
 
