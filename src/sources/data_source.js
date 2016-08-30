@@ -146,9 +146,20 @@ export default class DataSource {
 
     // All data sources support a min zoom, tiled sources can subclass for more specific limits (e.g. bounding box)
     includesTile (coords, style_zoom) {
+        // Limit by this data source
         if (coords.z < this.min_display_zoom || (this.max_display_zoom != null && style_zoom > this.max_display_zoom)) {
             return false;
         }
+
+        // Limit by any dependent raster sources
+        for (let source_name of this.rasters) {
+            if (this.sources[source_name] &&
+                this.sources[source_name] !== this &&
+                !this.sources[source_name].includesTile(coords, coords.z)) {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -170,8 +181,8 @@ DataSource.types = {}; // set of supported data source classes, referenced by ty
 
 export class NetworkSource extends DataSource {
 
-    constructor (source) {
-        super(source);
+    constructor (source, sources) {
+        super(source, sources);
         this.url = Utils.addParamsToURL(source.url, source.url_params);
         this.response_type = ""; // use to set explicit XHR type
 
@@ -229,8 +240,8 @@ export class NetworkSource extends DataSource {
 
 export class NetworkTileSource extends NetworkSource {
 
-    constructor (source) {
-        super(source);
+    constructor (source, sources) {
+        super(source, sources);
 
         this.tiled = true;
         this.parseBounds(source);

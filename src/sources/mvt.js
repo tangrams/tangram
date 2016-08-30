@@ -10,8 +10,8 @@ import {VectorTile, VectorTileFeature} from 'vector-tile';
 */
 export class MVTSource extends NetworkTileSource {
 
-    constructor (source) {
-        super(source);
+    constructor (source, sources) {
+        super(source, sources);
         this.response_type = "arraybuffer"; // binary data
     }
 
