@@ -285,7 +285,7 @@ export class NetworkTileSource extends NetworkSource {
     }
 
     includesTile (coords, style_zoom) {
-        if (!this.builds_geometry_tiles || !super.includesTile(coords, style_zoom)) {
+        if (!super.includesTile(coords, style_zoom)) {
             return false;
         }
 

@@ -228,7 +228,7 @@ export default class TileManager {
         for (let s in this.scene.sources) {
             let source = this.scene.sources[s];
             // Check if data source should build this tile
-            if (!source.includesTile(coords, this.view.tile_zoom)) {
+            if (!source.builds_geometry_tiles || !source.includesTile(coords, this.view.tile_zoom)) {
                 continue;
             }
 
