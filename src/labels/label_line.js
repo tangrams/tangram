@@ -373,7 +373,7 @@ export default class LabelLine extends Label {
 
                     shift += 0.5 * width_px;
 
-                    let offset = Vector.rot([nudge * upp, 0], -angle);
+                    let offset = Vector.rot([shift * upp, 0], -angle);
                     let position = Vector.add(this.position, offset);
 
                     let obb = getOBB(position, width, height, angle, this.offset, upp);
