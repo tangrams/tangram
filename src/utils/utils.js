@@ -35,12 +35,7 @@ Utils.addBaseURL = function (url, base) {
         }
 
         if (relative) {
-            let path = base_info.href.match(/([^\#]+)/); // strip hash
-            path = (path && path.length > 1) ? path[0] : '';
-
-            path = base_info.href.match(/([^\?]+)/); // strip query string
-            path = (path && path.length > 1) ? path[0] : '';
-
+            let path = Utils.pathForURL(base_info.href);
             url = path + url;
         }
         else {
@@ -61,6 +56,16 @@ Utils.addBaseURL = function (url, base) {
 
 Utils.pathForURL = function (url) {
     if (typeof url === 'string' && url.search(/^(data|blob):/) === -1) {
+        let qs = url.indexOf('?');
+        if (qs > -1) {
+            url = url.substr(0, qs);
+        }
+
+        let hash = url.indexOf('#');
+        if (hash > -1) {
+            url = url.substr(0, hash);
+        }
+
         return url.substr(0, url.lastIndexOf('/') + 1) || '';
     }
     return '';
