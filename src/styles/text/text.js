@@ -216,8 +216,8 @@ Object.assign(TextStyle, {
 
 });
 
-const TARGET_STRAIGHT = 0.25; // Optimistic target ratio for straight labels (label length / line length)
-const TARGET_KINKED = 0.5; // Optimistic target ratio for kinked labels (label length / line length)
+const TARGET_STRAIGHT = 0.5; // Optimistic target ratio for straight labels (label length / line length)
+const TARGET_KINKED = 0.3; // Optimistic target ratio for kinked labels (label length / line length)
 
 // Place labels according to the following strategy:
 // - choose the best straight label that satisfies the optimistic straight cutoff (if any)
@@ -228,21 +228,21 @@ const TARGET_KINKED = 0.5; // Optimistic target ratio for kinked labels (label l
 function placementStrategy(label){
     let labels_straight = [];
     let labels_kinked = [];
-    let best_straight_fitness = -Infinity;
-    let best_kinked_fitness = -Infinity;
+    let best_straight_fitness = Infinity;
+    let best_kinked_fitness = Infinity;
 
     // loop through all labels
     while (label && !label.throw_away) {
         if (label.kink_index > 0){
             // check if articulated label is above lowest cutoff
-            if (label.fitness > best_kinked_fitness){
+            if (label.fitness < best_kinked_fitness){
                 best_kinked_fitness = label.fitness;
                 labels_kinked.unshift(label);
             }
         }
         else {
             // check if straight label is above lowest straight cutoff
-            if (label.fitness > best_straight_fitness){
+            if (label.fitness < best_straight_fitness){
                 best_straight_fitness = label.fitness;
                 labels_straight.unshift(label);
             }
@@ -254,11 +254,11 @@ function placementStrategy(label){
     let best_straight = labels_straight[0];
     let best_kinked = labels_kinked[0];
 
-    if (labels_straight.length && best_straight.fitness > TARGET_STRAIGHT){
+    if (labels_straight.length && best_straight.fitness < TARGET_STRAIGHT){
         // return the best straight segment if it is above the stricter straight cutoff
         return best_straight;
     }
-    else if (labels_kinked.length && best_kinked.fitness > TARGET_KINKED){
+    else if (labels_kinked.length && best_kinked.fitness < TARGET_KINKED){
         // return the best kinked segment if it is above the stricter kinked cutoff
         return best_kinked;
     }

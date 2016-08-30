@@ -8,8 +8,8 @@ const PLACEMENT = {
 };
 
 const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
-const LINE_EXCEED_STRAIGHT = 0.15;  // minimal ratio for straight labels (label length) / (line length)
-const LINE_EXCEED_KINKED = 0.4;     // minimal ratio for kinked labels
+const LINE_EXCEED_STRAIGHT = 0.8;   // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_KINKED = 0.6;     // minimal ratio for kinked labels
 
 export default class LabelLine extends Label {
 
@@ -167,7 +167,7 @@ export default class LabelLine extends Label {
             label_length1 -= width;
             label_length2 += width;
 
-            fitness = Math.min(line_length1 / label_length1, line_length2 / label_length2);
+            fitness = Math.max(calcFitness(line_length1, label_length1), calcFitness(line_length2, label_length2));
             fitnesses.unshift(fitness);
 
             kink_index--;
@@ -175,7 +175,7 @@ export default class LabelLine extends Label {
 
         let max_fitness = Math.max.apply(null, fitnesses);
 
-        if (max_fitness > LINE_EXCEED_KINKED) {
+        if (max_fitness < LINE_EXCEED_KINKED) {
             this.kink_index = fitnesses.indexOf(max_fitness) + 1;
             this.fitness = max_fitness;
             return true;
@@ -192,9 +192,9 @@ export default class LabelLine extends Label {
     fitStraightSegment(segment) {
         let upp = this.layout.units_per_pixel;
         let line_length = Vector.length(Vector.sub(segment[0], segment[1])) / upp;
-        let fitness =  line_length / this.total_length;
+        let fitness = calcFitness(line_length, this.total_length);
 
-        if (fitness > LINE_EXCEED_STRAIGHT){
+        if (fitness < LINE_EXCEED_STRAIGHT){
             this.fitness = fitness;
             return true;
         }
@@ -479,4 +479,8 @@ function getAngleFromSegment(pt1, pt2) {
     }
 
     return theta;
+}
+
+function calcFitness(line_length, label_length){
+    return 1 - line_length / label_length;
 }
