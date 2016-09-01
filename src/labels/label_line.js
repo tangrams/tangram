@@ -8,7 +8,7 @@ const PLACEMENT = {
 };
 
 const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
-const LINE_EXCEED_STRAIGHT = 0.8;   // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_STRAIGHT = 0.7;   // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_KINKED = 0.6;     // minimal ratio for kinked labels
 
 export default class LabelLine extends Label {
