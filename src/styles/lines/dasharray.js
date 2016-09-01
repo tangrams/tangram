@@ -17,6 +17,7 @@ export default function renderDashArray (pattern, options = {}) {
     const dash_pixel = options.dash_color || default_dash_color;
     const background_color = options.background_color || default_background_color;
     const dashes = pattern;
+    const scale = options.scale || 1;
 
     // If pattern is odd, repeat it to make it even (see SVG spec)
     if (dashes.length % 2 === 1) {
@@ -26,7 +27,7 @@ export default function renderDashArray (pattern, options = {}) {
     let dash = true;
     let pixels = [];
     for (let i=0; i < dashes.length; i++) {
-        let segment = dashes[i];
+        let segment = Math.floor(dashes[i] * scale);
         for (let s=0; s < segment; s++) {
             Array.prototype.push.apply(pixels, dash ? dash_pixel : background_color);
         }
