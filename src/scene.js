@@ -62,6 +62,7 @@ export default class Scene {
         this.render_count_changed = false;
         this.frame = 0;
         this.queue_screenshot = null;
+        this.video_capture = null;
         this.selection = null;
         this.introspection = false;
         this.resetTime();
@@ -1122,6 +1123,52 @@ export default class Scene {
             this.queue_screenshot.resolve({ url, blob });
             this.queue_screenshot = null;
         }
+    }
+
+    startVideoCapture () {
+        if (typeof window.MediaRecorder !== 'function' || !this.canvas || typeof this.canvas.captureStream !== 'function') {
+            log('warn', 'Video capture (Canvas.captureStream and/or MediaRecorder APIs) not supported by browser');
+            return false;
+        }
+        else if (this.video_capture) {
+            log('warn', 'Video capture already in progress, call Scene.stopVideoCapture() first');
+            return false;
+        }
+
+        // Start a new capture
+        try {
+            let cap = this.video_capture = {};
+            cap.chunks = [];
+            cap.stream = this.canvas.captureStream();
+            cap.options = { mimeType: 'video/webm' }; // TODO: support other format options
+            cap.media_recorder = new MediaRecorder(cap.stream, cap.options);
+            cap.media_recorder.ondataavailable = function (event) {
+                if (event.data.size > 0) {
+                   cap.chunks.push(event.data);
+                }
+            };
+            cap.media_recorder.start();
+        }
+        catch (e) {
+            this.video_capture = null;
+            log('error', 'Scene video capture failed', e);
+            return false;
+        }
+        return true;
+    }
+
+    stopVideoCapture () {
+        if (!this.video_capture) {
+            log('warn', 'No scene video capture in progress, call Scene.startVideoCapture() first');
+            return Promise.resolve({});
+        }
+
+        this.video_capture.media_recorder.stop();
+        let blob = new Blob(this.video_capture.chunks, { type: this.video_capture.options.mimeType });
+        let url = Utils.createObjectURL(blob);
+        this.video_capture = null;
+
+        return Promise.resolve({ url, blob });
     }
 
 
