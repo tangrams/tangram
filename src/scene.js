@@ -16,6 +16,7 @@ import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
 import FontManager from './styles/text/font_manager';
+import MediaCapture from './utils/media_capture';
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
@@ -61,8 +62,7 @@ export default class Scene {
         this.last_render_count = 0;
         this.render_count_changed = false;
         this.frame = 0;
-        this.queue_screenshot = null;
-        this.video_capture = null;
+        this.media_capture = new MediaCapture();
         this.selection = null;
         this.introspection = false;
         this.resetTime();
@@ -222,6 +222,7 @@ export default class Scene {
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
         this.render_states = new RenderStateManager(this.gl);
+        this.media_capture.setCanvas(this.canvas);
     }
 
     // Get the URL to load the web worker from
@@ -413,7 +414,7 @@ export default class Scene {
         this.updateDevicePixelRatio();
         this.render();
         this.updateViewComplete(); // fires event when rendered tile set or style changes
-        this.completeScreenshot(); // completes screenshot capture if requested
+        this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
         // Post-render loop hook
         if (typeof this.postUpdate === 'function') {
@@ -1090,85 +1091,17 @@ export default class Scene {
     // Asynchronous because we have to wait for next render to capture buffer
     // Returns a promise
     screenshot () {
-        if (this.queue_screenshot != null) {
-            return this.queue_screenshot.promise; // only capture one screenshot at a time
-        }
-
         this.requestRedraw();
-
-        // Will resolve once rendering is complete and render buffer is captured
-        this.queue_screenshot = {};
-        this.queue_screenshot.promise = new Promise((resolve, reject) => {
-            this.queue_screenshot.resolve = resolve;
-            this.queue_screenshot.reject = reject;
-        });
-        return this.queue_screenshot.promise;
-    }
-
-    // Called after rendering, captures render buffer and resolves promise with image data
-    completeScreenshot () {
-        if (this.queue_screenshot != null) {
-            // Get data URL, convert to blob
-            // Strip host/mimetype/etc., convert base64 to binary without UTF-8 mangling
-            // Adapted from: https://gist.github.com/unconed/4370822
-            var url = this.canvas.toDataURL('image/png');
-            var data = atob(url.slice(22));
-            var buffer = new Uint8Array(data.length);
-            for (var i = 0; i < data.length; ++i) {
-                buffer[i] = data.charCodeAt(i);
-            }
-            var blob = new Blob([buffer], { type: 'image/png' });
-
-            // Resolve with screenshot data
-            this.queue_screenshot.resolve({ url, blob });
-            this.queue_screenshot = null;
-        }
+        return this.media_capture.screenshot();
     }
 
     startVideoCapture () {
-        if (typeof window.MediaRecorder !== 'function' || !this.canvas || typeof this.canvas.captureStream !== 'function') {
-            log('warn', 'Video capture (Canvas.captureStream and/or MediaRecorder APIs) not supported by browser');
-            return false;
-        }
-        else if (this.video_capture) {
-            log('warn', 'Video capture already in progress, call Scene.stopVideoCapture() first');
-            return false;
-        }
-
-        // Start a new capture
-        try {
-            let cap = this.video_capture = {};
-            cap.chunks = [];
-            cap.stream = this.canvas.captureStream();
-            cap.options = { mimeType: 'video/webm' }; // TODO: support other format options
-            cap.media_recorder = new MediaRecorder(cap.stream, cap.options);
-            cap.media_recorder.ondataavailable = function (event) {
-                if (event.data.size > 0) {
-                   cap.chunks.push(event.data);
-                }
-            };
-            cap.media_recorder.start();
-        }
-        catch (e) {
-            this.video_capture = null;
-            log('error', 'Scene video capture failed', e);
-            return false;
-        }
-        return true;
+        this.requestRedraw();
+        return this.media_capture.startVideoCapture();
     }
 
     stopVideoCapture () {
-        if (!this.video_capture) {
-            log('warn', 'No scene video capture in progress, call Scene.startVideoCapture() first');
-            return Promise.resolve({});
-        }
-
-        this.video_capture.media_recorder.stop();
-        let blob = new Blob(this.video_capture.chunks, { type: this.video_capture.options.mimeType });
-        let url = Utils.createObjectURL(blob);
-        this.video_capture = null;
-
-        return Promise.resolve({ url, blob });
+        return this.media_capture.stopVideoCapture();
     }
 
 
