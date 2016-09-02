@@ -81,10 +81,10 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
     #endif
 
     // Computer accumulators
-    light_accumulator_ambient += _light.ambient * attenuation;
+    light_accumulator_ambient.rgb += _light.ambient * attenuation;
 
     #ifdef TANGRAM_MATERIAL_DIFFUSE
-        light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation;
+        light_accumulator_diffuse.rgb += _light.diffuse * nDotVP * attenuation;
     #endif
 
     #ifdef TANGRAM_MATERIAL_SPECULAR
@@ -95,6 +95,6 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
             pf = pow(eyeDotR, material.shininess);
         }
 
-        light_accumulator_specular += _light.specular * pf * attenuation;
+        light_accumulator_specular.rgb += _light.specular * pf * attenuation;
     #endif
 }

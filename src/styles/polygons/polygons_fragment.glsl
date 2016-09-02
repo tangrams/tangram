@@ -26,7 +26,7 @@ varying vec4 v_world_position;
 #endif
 
 #if defined(TANGRAM_LIGHTING_VERTEX)
-    varying vec3 v_lighting;
+    varying vec4 v_lighting;
 #endif
 
 #pragma tangram: camera
@@ -87,10 +87,10 @@ void main (void) {
 
     #if defined(TANGRAM_LIGHTING_FRAGMENT)
         // Calculate per-fragment lighting
-        color.rgb = calculateLighting(v_position.xyz - u_eye, normal, color.rgb);
+        color = calculateLighting(v_position.xyz - u_eye, normal, color);
     #elif defined(TANGRAM_LIGHTING_VERTEX)
         // Apply lighting intensity interpolated from vertex shader
-        color.rgb *= v_lighting;
+        color *= v_lighting;
     #endif
 
     // Post-processing effects (modify color after lighting)

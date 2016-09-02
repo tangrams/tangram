@@ -10,7 +10,7 @@ struct SpotLight {
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
-    vec3 position;
+    vec4 position;
 
 #ifdef TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT
     float attenuationExponent;
@@ -94,10 +94,10 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
         spotAttenuation = pow(spotDot, _light.spotExponent);
     }
 
-    light_accumulator_ambient += _light.ambient * attenuation * spotAttenuation;
+    light_accumulator_ambient.rgb += _light.ambient * attenuation * spotAttenuation;
 
     #ifdef TANGRAM_MATERIAL_DIFFUSE
-        light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation * spotAttenuation;
+        light_accumulator_diffuse.rgb += _light.diffuse * nDotVP * attenuation * spotAttenuation;
     #endif
 
     #ifdef TANGRAM_MATERIAL_SPECULAR
@@ -108,6 +108,6 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
             float eyeDotR = max(dot(-normalize(_eyeToPoint), reflectVector), 0.0);
             pf = pow(eyeDotR, material.shininess);
         }
-        light_accumulator_specular += _light.specular * pf * attenuation * spotAttenuation;
+        light_accumulator_specular.rgb += _light.specular * pf * attenuation * spotAttenuation;
     #endif
 }
