@@ -251,7 +251,8 @@ export default SceneLoader = {
         }
 
         // If no lights specified, create default
-        if (Object.keys(config.lights).length === 0) {
+        if (Object.keys(config.lights).length === 0 ||
+            Object.keys(config.lights).every(i => config.lights[i].visible === false)) {
             config.lights.default_light = {
                 type: 'directional'
             };
