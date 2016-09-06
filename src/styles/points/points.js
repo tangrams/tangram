@@ -11,6 +11,7 @@ import Geo from '../../geo';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
+import LabelMultipoint from '../../labels/label_multipoint';
 import {TextLabels} from '../text/text_labels';
 import debugSettings from '../../utils/debug_settings';
 
@@ -427,19 +428,19 @@ Object.assign(Points, {
             }
         }
         else if (geometry.type === "LineString") {
-            // Point at each line vertex
-            let points = geometry.coordinates;
-            for (let i = 0; i < points.length; ++i) {
-                labels.push(new LabelPoint(points[i], size, options));
+            let line = geometry.coordinates;
+            let point_labels = LabelMultipoint(line, size, options);
+            for (let i = 0; i < point_labels.length; ++i) {
+                labels.push(point_labels[i]);
             }
         }
         else if (geometry.type === "MultiLineString") {
-            // Point at each line vertex
             let lines = geometry.coordinates;
             for (let ln = 0; ln < lines.length; ln++) {
-                let points = lines[ln];
-                for (let i = 0; i < points.length; ++i) {
-                    labels.push(new LabelPoint(points[i], size, options));
+                let line = lines[ln];
+                let point_labels = LabelMultipoint(line, size, options);
+                for (let i = 0; i < point_labels.length; ++i) {
+                    labels.push(point_labels[i]);
                 }
             }
         }
@@ -528,11 +529,13 @@ Object.assign(Points, {
     build (style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         let label = style.label;
+        // TODO: remove angle from style
+        let angle = label.angle || style.angle;
 
         this.buildQuad(
             [label.position],               // position
             style.size,                     // size in pixels
-            style.angle,                    // angle in radians
+            angle,                          // angle in radians
             style.sampler,                  // texture sampler to use
             label.offset,                   // offset from center in pixels
             style.texcoords,                // texture UVs
