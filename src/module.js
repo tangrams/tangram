@@ -13,6 +13,7 @@ import log from './utils/log';
 import Thread from './utils/thread';
 import Utils from './utils/utils';
 import Geo from './geo';
+import Vector from './vector';
 import DataSource from './sources/data_source';
 import './sources/geojson';
 import './sources/topojson';
@@ -43,6 +44,7 @@ var debug = {
     Thread,
     Utils,
     Geo,
+    Vector,
     DataSource,
     GLSL,
     ShaderProgram,
