@@ -226,7 +226,13 @@ class DirectionalLight extends Light {
         }
         else {
             // Default directional light maintains full intensity on ground, with basic extrusion shading
-            this.direction = [-0.707, 0.707, -0.58]; // [x, y, z]
+            let theta = 135; // angle of light in xy plane (rotated around z axis)
+            let scale = Math.sin(Math.PI*60/180); // scaling factor to keep total directional intensity to 0.5
+            this.direction = [
+                Math.cos(Math.PI*theta/180) * scale,
+                Math.sin(Math.PI*theta/180) * scale,
+                -0.5
+            ];
 
             if (config.ambient == null) {
                 this.ambient = GLSL.expandVec3(0.5);
