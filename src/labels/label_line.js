@@ -11,11 +11,11 @@ const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
 const LINE_EXCEED_STRAIGHT = 0.7;   // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_KINKED = 0.6;     // minimal ratio for kinked labels
 
-export default class LabelLine extends Label {
+export default class LabelLine {
 
     constructor (size, lines, layout) {
-        super(size, layout);
-
+        this.size = size;
+        this.layout = layout;
         this.lines = lines;
         this.space_width = layout.space_width; // width of space for the font used
         this.num_segments = size.length; // number of label segments
@@ -41,10 +41,7 @@ export default class LabelLine extends Label {
 
         // First fitting segment
         let segment = this.getNextFittingSegment(this.getCurrentSegment());
-
-        if (!segment) {
-            this.throw_away = true;
-        }
+        this.throw_away = (!segment);
     }
 
     // Iterate through the line geometry creating the next valid label.
@@ -400,7 +397,7 @@ export default class LabelLine extends Label {
         for (let i = 0; i < this.aabbs.length; i++) {
             let aabb = this.aabbs[i];
             let obj = { aabb };
-            let in_bounds = super.inTileBounds.call(obj);
+            let in_bounds = Label.prototype.inTileBounds.call(obj);
             if (!in_bounds) {
                 return false;
             }
@@ -416,7 +413,7 @@ export default class LabelLine extends Label {
             let aabb = this.aabbs[i];
             let obb = this.obbs[i];
             let obj = { aabb, obb };
-            super.add.call(obj, bboxes);
+            Label.prototype.add.call(obj, bboxes);
         }
     }
 
@@ -432,7 +429,7 @@ export default class LabelLine extends Label {
             let obb = this.obbs[i];
             let obj = { aabb, obb };
 
-            let shouldDiscard = super.occluded.call(obj, bboxes, exclude);
+            let shouldDiscard = Label.prototype.occluded.call(obj, bboxes, exclude);
             if (shouldDiscard) {
                 return true;
             }
@@ -445,7 +442,7 @@ export default class LabelLine extends Label {
 function getOBB(position, width, height, angle, offset, upp) {
     let p0, p1;
     // apply offset, x positive, y pointing down
-    if (offset[0] !== 0 || offset[1] !== 0) {
+    if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
         offset = Vector.rot(offset, angle);
         p0 = position[0] + (offset[0] * upp);
         p1 = position[1] - (offset[1] * upp);
