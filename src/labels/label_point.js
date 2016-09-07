@@ -88,7 +88,6 @@ export default class LabelPoint extends Label {
     }
 
     discard (bboxes, exclude = null) {
-        return false;
         if (super.discard(bboxes, exclude)) {
             // If more than one anchor specified, try them in order
             if (Array.isArray(this.layout.anchor)) {
