@@ -429,16 +429,18 @@ Object.assign(Points, {
         }
         else if (geometry.type === "LineString") {
             let line = geometry.coordinates;
-            let point_labels = LabelMultipoint(line, size, options);
+            let strategy = LabelMultipoint.STRATEGY.ENDPOINTS;
+            let point_labels = LabelMultipoint(line, size, strategy, options);
             for (let i = 0; i < point_labels.length; ++i) {
                 labels.push(point_labels[i]);
             }
         }
         else if (geometry.type === "MultiLineString") {
             let lines = geometry.coordinates;
+            let strategy = LabelMultipoint.STRATEGY.ENDPOINTS;
             for (let ln = 0; ln < lines.length; ln++) {
                 let line = lines[ln];
-                let point_labels = LabelMultipoint(line, size, options);
+                let point_labels = LabelMultipoint(line, size, strategy, options);
                 for (let i = 0; i < point_labels.length; ++i) {
                     labels.push(point_labels[i]);
                 }

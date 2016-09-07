@@ -1,24 +1,42 @@
 import LabelPoint from './label_point';
 import Vector from '../vector';
 
-let spacing_px = 40;
+let spacing_px = 50;
 let angled = true;
 
-export default function fit(line, size, options) {
+let FIT_STRATEGY = {
+    ENDPOINTS: 0,       // place labels at endpoints of lines
+    SPACED: 1           // place labels equally spaced along line
+};
+
+export default function fitToLine (line, size, strategy, options) {
     let labels = [];
-    let {positions, angles} = getPositionsAndAngles(line, options);
 
-    for (let i = 0; i < positions.length; i++){
-        let position = positions[i];
-        let angle = angles[i];
+    switch (strategy){
+        case FIT_STRATEGY.SPACED:
+            let {positions, angles} = getPositionsAndAngles(line, options);
+            for (let i = 0; i < positions.length; i++){
+                let position = positions[i];
+                let angle = angles[i];
 
-        let label = new LabelPoint(position, size, options);
-        label.angle = angle;
-
-        labels.push(label);
+                let label = new LabelPoint(position, size, options);
+                label.angle = angle;
+                labels.push(label);
+            }
+            break;
+        case FIT_STRATEGY.ENDPOINTS:
+            for (let i = 0; i < line.length; i++){
+                let position = line[i];
+                let label = new LabelPoint(position, size, options);
+                label.angle = 0;
+                labels.push(label);
+            }
+            break;
     }
     return labels;
 }
+
+fitToLine.STRATEGY = FIT_STRATEGY;
 
 function getPositionsAndAngles(line, options){
     let upp = options.units_per_pixel;
