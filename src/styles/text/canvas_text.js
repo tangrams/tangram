@@ -77,7 +77,7 @@ export default class CanvasText {
                     }
                     else {
                         if (!CanvasText.text_cache[style][text]) {
-                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings, 0);
+                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
                             CanvasText.cache_stats.misses++;
                         }
                         else {
