@@ -4,8 +4,8 @@ import Geo from '../geo';
 
 export class RasterTileSource extends NetworkTileSource {
 
-    constructor(source) {
-        super(source);
+    constructor(source, sources) {
+        super(source, sources);
 
         if (this.rasters.indexOf(this.name) === -1) {
             this.rasters.unshift(this.name); // add this raster as the first

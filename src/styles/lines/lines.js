@@ -49,7 +49,8 @@ Object.assign(Lines, {
             this.defines.TANGRAM_TEXTURE_COORDS = true;
 
             // Scaling factor to add precision to line texture V coordinate packed as normalized short
-            this.defines.TANGRAM_V_SCALE_ADJUST = Geo.tile_scale;
+            this.defines.TANGRAM_DASH_SCALE = 1;
+            this.defines.TANGRAM_V_SCALE_ADJUST = Geo.tile_scale * this.defines.TANGRAM_DASH_SCALE;
 
             // Add vertex attribute for UVs only when needed
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
@@ -81,8 +82,12 @@ Object.assign(Lines, {
                     `vec3(${this.dash_background_color.slice(0, 3).join(', ')})`;
             }
 
+            // Adjust texcoord scale to allow for dash patterns that are a fraction of line width
+            this.defines.TANGRAM_DASH_SCALE = 20;
+            this.defines.TANGRAM_V_SCALE_ADJUST = Geo.tile_scale * this.defines.TANGRAM_DASH_SCALE;
+
             // Render line pattern
-            let dash = renderDashArray(this.dash);
+            const dash = renderDashArray(this.dash, { scale: this.defines.TANGRAM_DASH_SCALE });
             this.texture = '_' + this.name + '_dasharray';
             Texture.create(this.gl, this.texture, {
                 data: dash.pixels,

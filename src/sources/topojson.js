@@ -59,8 +59,8 @@ function getTopoJSONFeature (topology, object) {
 */
 export class TopoJSONTileSource extends GeoJSONTileSource {
 
-    constructor(source) {
-        super(source);
+    constructor(source, sources) {
+        super(source, sources);
 
         // Replace with non-tiled source if tiled source failed to instantiate
         if (!this.urlHasTilePattern(this.url)) {

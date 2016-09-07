@@ -12,8 +12,8 @@ import geojsonvt from 'geojson-vt';
 
 export class GeoJSONSource extends NetworkSource {
 
-    constructor(source) {
-        super(source);
+    constructor(source, sources) {
+        super(source, sources);
         this.tiled = true;
         this.load_data = null;
         this.tile_indexes = {}; // geojson-vt tile indices, by layer name
@@ -123,7 +123,7 @@ export class GeoJSONSource extends NetworkSource {
         // Avoids redundant label placement for each generated tile at higher zoom levels
         if (this.config.generate_label_centroids){
             let features_centroid = [];
-            let centroid_properties = {"label_placement" : "yes"};
+            let centroid_properties = {"label_placement" : true};
 
             features.forEach(feature => {
                 let coordinates, centroid_feature;
@@ -176,8 +176,8 @@ export class GeoJSONSource extends NetworkSource {
 */
 export class GeoJSONTileSource extends NetworkTileSource {
 
-    constructor(source) {
-        super(source);
+    constructor(source, sources) {
+        super(source, sources);
 
         // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
         if (!this.urlHasTilePattern(this.url)) {

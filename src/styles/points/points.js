@@ -182,7 +182,7 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.angle = StyleParser.evalProperty(draw.angle, context) || 0;
+        style.angle = (StyleParser.evalProperty(draw.angle, context) * Math.PI / 180) || 0;
         style.sampler = 0; // 0 = sprites
 
         this.computeLayout(style, feature, draw, context, tile);
@@ -542,7 +542,7 @@ Object.assign(Points, {
         this.buildQuad(
             [label.position],               // position
             style.size,                     // size in pixels
-            style.angle,                    // angle in degrees
+            style.angle,                    // angle in radians
             style.sampler,                  // texture sampler to use
             label.offset,                   // offset from center in pixels
             style.texcoords,                // texture UVs

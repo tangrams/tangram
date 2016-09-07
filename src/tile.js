@@ -44,7 +44,8 @@ export default class Tile {
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
         this.center_dist = 0;
 
-        this.meters_per_pixel = Geo.metersPerPixel(this.coords.z);
+        this.meters_per_pixel = Geo.metersPerPixel(this.style_zoom);
+        this.meters_per_pixel_sq = this.meters_per_pixel * this.meters_per_pixel;
         this.units_per_pixel = Geo.units_per_pixel / this.overzoom2; // adjusted for overzoom
         this.units_per_meter_overzoom = Geo.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
 
@@ -152,6 +153,7 @@ export default class Tile {
             max: this.max,
             units_per_pixel: this.units_per_pixel,
             meters_per_pixel: this.meters_per_pixel,
+            meters_per_pixel_sq: this.meters_per_pixel_sq,
             units_per_meter_overzoom: this.units_per_meter_overzoom,
             style_zoom: this.style_zoom,
             overzoom: this.overzoom,

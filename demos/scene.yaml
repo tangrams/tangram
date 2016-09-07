@@ -214,10 +214,11 @@ layers:
 
     landuse:
         data: { source: mapzen }
+        filter:
+            - { $zoom: { min: 16 } }
+            - { area: { min: 500px2 } }
 
         areas:
-            filter:
-                function() { return $geometry === 'polygon' && $zoom >= feature.min_zoom }
             draw:
                 polygons:
                     order: global.feature_order
@@ -248,16 +249,8 @@ layers:
 
         labels:
             filter:
-                $geometry: point
                 label_placement: yes
                 kind: [park, forest, cemetery, graveyard]
-                any:
-                    # show labels for smaller landuse areas at higher zooms
-                    - { $zoom: { min: 9 }, area: { min: 100000000 } }
-                    - { $zoom: { min: 10 }, area: { min: 10000000 } }
-                    - { $zoom: { min: 12 }, area: { min: 1000000 } }
-                    - { $zoom: { min: 15 }, area: { min: 10000 } }
-                    - { $zoom: { min: 18 } }
             draw:
                 icons:
                     sprite: tree
@@ -662,7 +655,7 @@ layers:
     #             interactive: true
 
     #     labels:
-    #         filter: { label_placement: yes }
+    #         filter: { label_placement: true }
     #         draw:
     #             text:
     #                 text_source: schoolDistrict
