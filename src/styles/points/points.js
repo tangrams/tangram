@@ -358,6 +358,9 @@ Object.assign(Points, {
         // Buffer (1d value or 2d array, expand 1d to 2d)
         draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
+        // Repeat rules
+        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance || 0, parseFloat);
+
         // Optional text styling
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
         if (draw.text) {
@@ -399,6 +402,24 @@ Object.assign(Points, {
         // label offset and buffer in pixel (applied in screen space)
         layout.offset = StyleParser.evalCachedProperty(draw.offset, context) || StyleParser.zeroPair;
         layout.buffer = StyleParser.evalCachedProperty(draw.buffer, context) || StyleParser.zeroPair;
+
+        // repeat minimum distance
+        layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
+        if (layout.repeat_distance == null) {
+            layout.repeat_distance = Geo.tile_size;
+        }
+        layout.repeat_distance *= layout.units_per_pixel;
+
+        // repeat group key
+        if (typeof draw.repeat_group === 'function') {
+            layout.repeat_group = draw.repeat_group(context);
+        }
+        else if (typeof draw.repeat_group === 'string') {
+            layout.repeat_group = draw.repeat_group;
+        }
+        else {
+            layout.repeat_group = draw.key; // default to unique set of matching layers
+        }
 
         // label priority (lower is higher)
         let priority = draw.priority;
