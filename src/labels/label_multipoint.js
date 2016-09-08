@@ -1,16 +1,16 @@
 import LabelPoint from './label_point';
 import Vector from '../vector';
 
-let spacing_px = 50;
-let angled = true;
+const default_spacing = 50; // spacing of points along line in pixels
 
 let FIT_STRATEGY = {
     ENDPOINTS: 0,       // place labels at endpoints of lines
     SPACED: 1           // place labels equally spaced along line
 };
 
-export default function fitToLine (line, size, strategy, options) {
+export default function fitToLine (line, size, options) {
     let labels = [];
+    let strategy = options.spacing ? FIT_STRATEGY.SPACED : FIT_STRATEGY.ENDPOINTS;
 
     switch (strategy){
         case FIT_STRATEGY.SPACED:
@@ -36,11 +36,9 @@ export default function fitToLine (line, size, strategy, options) {
     return labels;
 }
 
-fitToLine.STRATEGY = FIT_STRATEGY;
-
 function getPositionsAndAngles(line, options){
     let upp = options.units_per_pixel;
-    let spacing = spacing_px * upp;
+    let spacing = (options.spacing || default_spacing) * upp;
 
     let length = getLineLength(line);
     let num_labels = Math.floor(length / spacing);
@@ -60,8 +58,8 @@ function getPositionsAndAngles(line, options){
     return {positions, angles};
 }
 
-function getAngle(p, q, options){
-    return (angled) ? Math.atan2(q[0] - p[0], q[1] - p[1]) + Math.PI/2: 0;
+function getAngle(p, q, {angle = 0}){
+    return (angle === 'auto') ? Math.atan2(q[0] - p[0], q[1] - p[1]) + Math.PI/2 : angle;
 }
 
 function getLineLength(line){

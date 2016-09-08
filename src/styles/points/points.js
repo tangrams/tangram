@@ -183,7 +183,21 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.angle = (StyleParser.evalProperty(draw.angle, context) * Math.PI / 180) || 0;
+        // Spacing parameter (in pixels) to equally space points along a line
+        if (draw.spacing) {
+            style.spacing = parseInt(draw.spacing);
+        };
+
+        // Angle parameter (can be a number or the string "auto")
+        let angle = StyleParser.evalProperty(draw.angle, context);
+        if (typeof angle === 'number'){
+            style.angle = angle * Math.PI / 180;
+        }
+        else {
+            // angle can be a string like "auto" (use angle of geometry)
+            style.angle = angle || 0;
+        }
+
         style.sampler = 0; // 0 = sprites
 
         this.computeLayout(style, feature, draw, context, tile);
@@ -429,18 +443,16 @@ Object.assign(Points, {
         }
         else if (geometry.type === "LineString") {
             let line = geometry.coordinates;
-            let strategy = LabelMultipoint.STRATEGY.ENDPOINTS;
-            let point_labels = LabelMultipoint(line, size, strategy, options);
+            let point_labels = LabelMultipoint(line, size, options);
             for (let i = 0; i < point_labels.length; ++i) {
                 labels.push(point_labels[i]);
             }
         }
         else if (geometry.type === "MultiLineString") {
             let lines = geometry.coordinates;
-            let strategy = LabelMultipoint.STRATEGY.ENDPOINTS;
             for (let ln = 0; ln < lines.length; ln++) {
                 let line = lines[ln];
-                let point_labels = LabelMultipoint(line, size, strategy, options);
+                let point_labels = LabelMultipoint(line, size, options);
                 for (let i = 0; i < point_labels.length; ++i) {
                     labels.push(point_labels[i]);
                 }
