@@ -65,6 +65,8 @@ textures:
             hotel: [0, 259, 32, 32]
             bookstore: [0, 333, 32, 32]
             shield: [0, 1142, 32, 32]
+    arrow:
+        url: images/arrow.png
 
 styles:
     rainbow:
@@ -112,6 +114,16 @@ styles:
     flat_lines:
         base: lines
         lighting: false
+    texture_lines:
+        base: lines
+        texcoords: true
+        shaders:
+            blocks:
+                color: |
+                    //vec2 st = fract(v_texcoord.xy);
+                    //color.rg = st;
+                    color.rg = vec2(v_texcoord.x, v_texcoord.y);
+                    //color.rg = vec2(mod(st.x,1.0), mod(st.y, 1.0));
 
     buildings:
         base: polygons
@@ -123,6 +135,10 @@ styles:
     icons:
         base: points
         texture: pois
+
+    arrow:
+        base: points
+        texture: arrow
 
     grid:
         base: polygons
@@ -282,6 +298,7 @@ layers:
             lines:
                 style: flat_lines
                 color: white
+                # color: function() { return [Math.random(), Math.random(), Math.random()] }
                 width: 12
                 order: global.feature_order
                 outline:
@@ -299,7 +316,7 @@ layers:
             filter: { kind: [highway, Road] } # TODO: remove Natural Earth Road value for mapzen vector tiles 1.0
             draw:
                 lines:
-                    color: '#D16768'
+                    # color: '#D16768'
                     width: [[14, 2px], [15, 12]]
                     outline:
                         width: [[14, 0], [15, 2]]
@@ -398,7 +415,6 @@ layers:
                         family: Helvetica
                         size: 12px
                         stroke: { color: white, width: 4 }
-
         not_highway:
             filter: { not: { kind: highway }, $zoom: { min: 13 } }
             draw:
@@ -435,6 +451,14 @@ layers:
             small:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
+        arrows:
+            filter: { $zoom: {min: 17} }
+            draw:
+                arrow:
+                    size: 8px
+                    priority: 1000000000000
+                    spacing: 40px
+                    angle: auto
 
         shields:
             filter:
@@ -443,10 +467,13 @@ layers:
             draw:
                 icons:
                     sprite: shield
-                    priority: 2
+                    priority: .1
                     color: white
                     size: 24px
+                    spacing: 100px
                     cull_from_tile: true
+                    repeat_distance: 100px
+                    repeat_group: hwy
                     text:
                         anchor: center
                         text_source: |
