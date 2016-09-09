@@ -383,6 +383,28 @@ Enjoy!
         };
         gui.add(gui, 'screenshot');
 
+        // Take a video capture and save to file
+        if (typeof window.MediaRecorder == 'function') {
+            gui.video = function () {
+                if (!gui.video_capture) {
+                    if (scene.startVideoCapture()) {
+                        gui.video_capture = true;
+                        gui.video_button.name('stop video');
+                    }
+                }
+                else {
+                    return scene.stopVideoCapture().then(function(video) {
+                        gui.video_capture = false;
+                        gui.video_button.name('capture video');
+                        saveAs(video.blob, 'tangram-video-' + (+new Date()) + '.webm');
+                    });
+                }
+            };
+            gui.video_button = gui.add(gui, 'video');
+            gui.video_button.name('capture video');
+            gui.video_capture = false;
+        }
+
         // Layers
         var layer_gui = gui.addFolder('Layers');
         var layer_controls = {};
