@@ -3,17 +3,26 @@ import Vector from '../vector';
 
 const default_spacing = 50; // spacing of points along line in pixels
 
-let FIT_STRATEGY = {
-    ENDPOINTS: 0,       // place labels at endpoints of lines
-    SPACED: 1           // place labels equally spaced along line
+let PLACEMENT = {
+    ENDPOINTS: 0,       // place labels at endpoints of line segments
+    MIDPOINTS: 1,       // place labels at midpoints of line segments
+    SPACED: 2           // place labels equally spaced along line
 };
 
 export default function fitToLine (line, size, options) {
     let labels = [];
-    let strategy = options.spacing ? FIT_STRATEGY.SPACED : FIT_STRATEGY.ENDPOINTS;
+    let strategy;
+
+    if (options.spacing){
+        strategy = PLACEMENT.SPACED;
+    }
+    else {
+        // strategy = PLACEMENT.MIDPOINTS;
+        strategy = PLACEMENT.ENDPOINTS;
+    }
 
     switch (strategy){
-        case FIT_STRATEGY.SPACED:
+        case PLACEMENT.SPACED:
             let {positions, angles} = getPositionsAndAngles(line, options);
             for (let i = 0; i < positions.length; i++){
                 let position = positions[i];
@@ -24,11 +33,24 @@ export default function fitToLine (line, size, options) {
                 labels.push(label);
             }
             break;
-        case FIT_STRATEGY.ENDPOINTS:
+        case PLACEMENT.ENDPOINTS:
             for (let i = 0; i < line.length; i++){
                 let position = line[i];
                 let label = new LabelPoint(position, size, options);
-                label.angle = 0;
+                label.angle = getAngle(p, q, options.angle);
+                labels.push(label);
+            }
+            break;
+        case PLACEMENT.MIDPOINTS:
+            for (let i = 0; i < line.length - 1; i++){
+                let p = line[i];
+                let q = line[i + 1];
+                let position = [
+                    0.5 * (p[0] + q[0]),
+                    0.5 * (p[1] + q[1])
+                ];
+                let label = new LabelPoint(position, size, options);
+                label.angle = getAngle(p, q, options.angle);
                 labels.push(label);
             }
             break;
@@ -58,7 +80,7 @@ function getPositionsAndAngles(line, options){
     return {positions, angles};
 }
 
-function getAngle(p, q, {angle = 0}){
+function getAngle(p, q, angle = 0){
     return (angle === 'auto') ? Math.atan2(q[0] - p[0], q[1] - p[1]) + Math.PI/2 : angle;
 }
 
@@ -84,7 +106,7 @@ function interpolateLine(line, distance, options){
 
         if (sum > distance){
             let position = interpolateSegment(p, q, sum - distance);
-            let angle = getAngle(p, q, options);
+            let angle = getAngle(p, q, options.angle);
             return {position, angle};
         }
     }
