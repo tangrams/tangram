@@ -66,7 +66,7 @@ export default class MediaCapture {
             cap.stream = this.canvas.captureStream();
             cap.options = { mimeType: 'video/webm' }; // TODO: support other format options
             cap.media_recorder = new MediaRecorder(cap.stream, cap.options);
-            cap.media_recorder.ondataavailable = function (event) {
+            cap.media_recorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                    cap.chunks.push(event.data);
                 }
@@ -75,6 +75,7 @@ export default class MediaCapture {
                 if (cap.resolve) {
                     let blob = new Blob(cap.chunks, { type: cap.options.mimeType });
                     let url = Utils.createObjectURL(blob);
+                    this.video_capture = null;
                     cap.resolve({ url, blob, type: 'webm' });
                 }
             };
