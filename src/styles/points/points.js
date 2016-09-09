@@ -186,7 +186,7 @@ Object.assign(Points, {
         // Spacing parameter (in pixels) to equally space points along a line
         if (draw.spacing) {
             style.spacing = parseInt(draw.spacing);
-        };
+        }
 
         // Angle parameter (can be a number or the string "auto")
         let angle = StyleParser.evalProperty(draw.angle, context);
