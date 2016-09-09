@@ -88,7 +88,7 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
     float spotAttenuation = 0.0;
 
     // See if point on surface is inside cone of illumination
-    float spotDot = clamp(dot(-VP, normalize(_light.direction)), 0.0, 1.0);
+    float spotDot = clamp(dot(-VP, _light.direction), 0.0, 1.0);
 
     if (spotDot >= _light.spotCosCutoff) {
         spotAttenuation = pow(spotDot, _light.spotExponent);

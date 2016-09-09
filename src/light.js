@@ -1,6 +1,7 @@
 import ShaderProgram from './gl/shader_program';
 import GLSL from './gl/glsl';
 import Geo from './geo';
+import Vector from './vector';
 import {StyleParser} from './styles/style_parser';
 
 let fs = require('fs');
@@ -222,13 +223,13 @@ class DirectionalLight extends Light {
         this.struct_name = 'DirectionalLight';
 
         if (config.direction) {
-            this.direction = config.direction;
+            this._direction = config.direction;
         }
         else {
             // Default directional light maintains full intensity on ground, with basic extrusion shading
             let theta = 135; // angle of light in xy plane (rotated around z axis)
             let scale = Math.sin(Math.PI*60/180); // scaling factor to keep total directional intensity to 0.5
-            this.direction = [
+            this._direction = [
                 Math.cos(Math.PI*theta/180) * scale,
                 Math.sin(Math.PI*theta/180) * scale,
                 -0.5
@@ -238,8 +239,15 @@ class DirectionalLight extends Light {
                 this.ambient = GLSL.expandVec3(0.5);
             }
         }
+        this.direction = this._direction.map(parseFloat);
+    }
 
-        this.direction = this.direction.map(parseFloat);
+    get direction () {
+        return this._direction;
+    }
+
+    set direction (v) {
+        this._direction = Vector.normalize(v);
     }
 
     // Inject struct and calculate function
@@ -359,9 +367,17 @@ class SpotLight extends PointLight {
         this.type = 'spotlight';
         this.struct_name = 'SpotLight';
 
-        this.direction = (config.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
+        this.direction = this._direction = (config.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
         this.exponent = config.exponent ? parseFloat(config.exponent) : 0.2;
         this.angle = config.angle ? parseFloat(config.angle) : 20;
+    }
+
+    get direction () {
+        return this._direction;
+    }
+
+    set direction (v) {
+        this._direction = Vector.normalize(v);
     }
 
     // Inject struct and calculate function
