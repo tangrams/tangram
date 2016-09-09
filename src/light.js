@@ -1,6 +1,7 @@
 import ShaderProgram from './gl/shader_program';
 import GLSL from './gl/glsl';
 import Geo from './geo';
+import Vector from './vector';
 import {StyleParser} from './styles/style_parser';
 
 let fs = require('fs');
@@ -18,24 +19,24 @@ export default class Light {
         this.view = view;
 
         if (config.ambient == null || typeof config.ambient === 'number') {
-            this.ambient = GLSL.expandVec4(config.ambient || 0);
+            this.ambient = GLSL.expandVec3(config.ambient || 0);
         }
         else {
-            this.ambient = StyleParser.parseColor(config.ambient);
+            this.ambient = StyleParser.parseColor(config.ambient).slice(0, 3);
         }
 
         if (config.diffuse == null || typeof config.diffuse === 'number') {
-            this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
+            this.diffuse = GLSL.expandVec3(config.diffuse != null ? config.diffuse : 1);
         }
         else {
-            this.diffuse = StyleParser.parseColor(config.diffuse);
+            this.diffuse = StyleParser.parseColor(config.diffuse).slice(0, 3);
         }
 
         if (config.specular == null || typeof config.specular === 'number') {
-            this.specular = GLSL.expandVec4(config.specular || 0);
+            this.specular = GLSL.expandVec3(config.specular || 0);
         }
         else {
-            this.specular = StyleParser.parseColor(config.specular);
+            this.specular = StyleParser.parseColor(config.specular).slice(0, 3);
         }
     }
 
@@ -90,14 +91,6 @@ export default class Light {
                 calculateLights += `calculateLight(${light_name}, _eyeToPoint, _normal);\n`;
             }
         }
-        else {
-            // If no light is defined, use 100% omnidirectional diffuse light
-            calculateLights = `
-                #ifdef TANGRAM_MATERIAL_DIFFUSE
-                    light_accumulator_diffuse = vec4(1.);
-                #endif
-            `;
-        }
 
         // Glue together the final lighting function that sums all the lights
         let calculateFunction = `
@@ -112,24 +105,50 @@ export default class Light {
                 //  Final light intensity calculation
                 vec4 color = vec4(0.0);
 
-                #ifdef TANGRAM_MATERIAL_EMISSION
-                    color = material.emission;
-                #endif
-
-                #ifdef TANGRAM_MATERIAL_AMBIENT
-                    color += light_accumulator_ambient * _color * material.ambient;
-                #else
-                    #ifdef TANGRAM_MATERIAL_DIFFUSE
-                        color += light_accumulator_ambient * _color * material.diffuse;
+                // Keep material alpha channel when alpha blending is on
+                #if !defined(TANGRAM_BLEND_OPAQUE)
+                    #ifdef TANGRAM_MATERIAL_EMISSION
+                        color = material.emission;
                     #endif
-                #endif
 
-                #ifdef TANGRAM_MATERIAL_DIFFUSE
-                    color += light_accumulator_diffuse * _color * material.diffuse;
-                #endif
+                    #ifdef TANGRAM_MATERIAL_AMBIENT
+                        color += light_accumulator_ambient * _color * material.ambient;
+                    #else
+                        #ifdef TANGRAM_MATERIAL_DIFFUSE
+                            color += light_accumulator_ambient * _color * material.diffuse;
+                        #endif
+                    #endif
 
-                #ifdef TANGRAM_MATERIAL_SPECULAR
-                    color += light_accumulator_specular * material.specular;
+                    #ifdef TANGRAM_MATERIAL_DIFFUSE
+                        color += light_accumulator_diffuse * _color * material.diffuse;
+                    #endif
+
+                    #ifdef TANGRAM_MATERIAL_SPECULAR
+                        color += light_accumulator_specular * material.specular;
+                    #endif
+                // Multiply material alpha channel into material RGB when alpha blending is off
+                #else
+                    color.a = _color.a; // use vertex color alpha
+
+                    #ifdef TANGRAM_MATERIAL_EMISSION
+                        color.rgb = material.emission.rgb * material.emission.a;
+                    #endif
+
+                    #ifdef TANGRAM_MATERIAL_AMBIENT
+                        color.rgb += light_accumulator_ambient.rgb * _color.rgb * material.ambient.rgb * material.ambient.a;
+                    #else
+                        #ifdef TANGRAM_MATERIAL_DIFFUSE
+                            color.rgb += light_accumulator_ambient.rgb * _color.rgb * material.diffuse.rgb * material.diffuse.a;
+                        #endif
+                    #endif
+
+                    #ifdef TANGRAM_MATERIAL_DIFFUSE
+                        color.rgb += light_accumulator_diffuse.rgb * _color.rgb * material.diffuse.rgb * material.diffuse.a;
+                    #endif
+
+                    #ifdef TANGRAM_MATERIAL_SPECULAR
+                        color.rgb += light_accumulator_specular.rgb * material.specular.rgb * material.specular.a;
+                    #endif
                 #endif
 
                 // Clamp final color
@@ -163,9 +182,9 @@ export default class Light {
     // pass for feature selection, etc.)
     setupProgram (_program) {
         //  Three common light properties
-        _program.uniform('4fv', `u_${this.name}.ambient`, this.ambient);
-        _program.uniform('4fv', `u_${this.name}.diffuse`, this.diffuse);
-        _program.uniform('4fv', `u_${this.name}.specular`, this.specular);
+        _program.uniform('3fv', `u_${this.name}.ambient`, this.ambient);
+        _program.uniform('3fv', `u_${this.name}.diffuse`, this.diffuse);
+        _program.uniform('3fv', `u_${this.name}.specular`, this.specular);
     }
 
 }
@@ -190,7 +209,7 @@ class AmbientLight extends Light {
     }
 
     setupProgram (_program) {
-        _program.uniform('4fv', `u_${this.name}.ambient`, this.ambient);
+        _program.uniform('3fv', `u_${this.name}.ambient`, this.ambient);
     }
 
 }
@@ -203,7 +222,32 @@ class DirectionalLight extends Light {
         this.type = 'directional';
         this.struct_name = 'DirectionalLight';
 
-        this.direction = (config.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
+        if (config.direction) {
+            this._direction = config.direction;
+        }
+        else {
+            // Default directional light maintains full intensity on ground, with basic extrusion shading
+            let theta = 135; // angle of light in xy plane (rotated around z axis)
+            let scale = Math.sin(Math.PI*60/180); // scaling factor to keep total directional intensity to 0.5
+            this._direction = [
+                Math.cos(Math.PI*theta/180) * scale,
+                Math.sin(Math.PI*theta/180) * scale,
+                -0.5
+            ];
+
+            if (config.ambient == null) {
+                this.ambient = GLSL.expandVec3(0.5);
+            }
+        }
+        this.direction = this._direction.map(parseFloat);
+    }
+
+    get direction () {
+        return this._direction;
+    }
+
+    set direction (v) {
+        this._direction = Vector.normalize(v);
     }
 
     // Inject struct and calculate function
@@ -323,9 +367,17 @@ class SpotLight extends PointLight {
         this.type = 'spotlight';
         this.struct_name = 'SpotLight';
 
-        this.direction = (config.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
+        this.direction = this._direction = (config.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
         this.exponent = config.exponent ? parseFloat(config.exponent) : 0.2;
         this.angle = config.angle ? parseFloat(config.angle) : 20;
+    }
+
+    get direction () {
+        return this._direction;
+    }
+
+    set direction (v) {
+        this._direction = Vector.normalize(v);
     }
 
     // Inject struct and calculate function

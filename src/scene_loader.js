@@ -211,6 +211,13 @@ export default SceneLoader = {
             return;
         }
 
+        // Ensure top-level properties
+        config.scene = config.scene || {};
+        config.cameras = config.cameras || {};
+        config.lights = config.lights || {};
+        config.styles = config.styles || {};
+        config.layers = config.layers || {};
+
         // Replace global scene properties
         config = this.applyGlobalProperties(config);
 
@@ -221,7 +228,6 @@ export default SceneLoader = {
         }
 
         // If only one camera specified, set it as default
-        config.cameras = config.cameras || {};
         if (config.camera) {
             config.cameras.default = config.camera;
         }
@@ -244,10 +250,13 @@ export default SceneLoader = {
             config.cameras[Object.keys(config.cameras)[0]].active = true;
         }
 
-        // Ensure top-level properties
-        config.lights = config.lights || {};
-        config.styles = config.styles || {};
-        config.layers = config.layers || {};
+        // If no lights specified, create default
+        if (Object.keys(config.lights).length === 0 ||
+            Object.keys(config.lights).every(i => config.lights[i].visible === false)) {
+            config.lights.default_light = {
+                type: 'directional'
+            };
+        }
 
         return config;
     }
