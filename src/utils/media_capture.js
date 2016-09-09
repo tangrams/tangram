@@ -75,7 +75,17 @@ export default class MediaCapture {
                 if (cap.resolve) {
                     let blob = new Blob(cap.chunks, { type: cap.options.mimeType });
                     let url = Utils.createObjectURL(blob);
+
+                    // Explicitly remove all stream tracks, and set objects to null
+                    let tracks = cap.stream.getTracks();
+                    tracks.forEach(track => {
+                        track.stop();
+                        cap.stream.removeTrack(track);
+                    });
+                    cap.stream = null;
+                    cap.media_recorder = null;
                     this.video_capture = null;
+
                     cap.resolve({ url, blob, type: 'webm' });
                 }
             };
