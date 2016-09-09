@@ -134,8 +134,10 @@ export const TextLabels = {
             labels.forEach(q => {
                 let text_settings_key = q.text_settings_key;
                 let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-                text_info.align = text_info.align || {};
-                text_info.align[q.label.align] = {};
+                if (!text_info.text_settings.can_articulate){
+                    text_info.align = text_info.align || {};
+                    text_info.align[q.label.align] = {};
+                }
             });
 
             // second call to main thread, for rasterizing the set of texts
@@ -186,14 +188,16 @@ export const TextLabels = {
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts (tile_key, texts) {
         let canvas = new CanvasText();
-        let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size);
+        canvas.clearTexcoordCache(tile_key);
+
+        let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size, tile_key);
         log('trace', `text summary for tile ${tile_key}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
         // fits in max texture size?
         if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
             // update canvas size & rasterize all the text strings we need
             canvas.resize(...texture_size);
-            canvas.rasterize(texts, texture_size);
+            canvas.rasterize(texts, texture_size, tile_key);
         }
         else {
             log('error', [
@@ -253,14 +257,6 @@ export const TextLabels = {
         // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
         layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
-
-        // label line exceed percentage
-        if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
-            layout.line_exceed = parseFloat(draw.line_exceed.substr(0,draw.line_exceed.length-1));
-        }
-        else {
-            layout.line_exceed = 80;
-        }
 
         // repeat minimum distance
         layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);

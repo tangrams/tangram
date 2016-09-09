@@ -42,6 +42,9 @@ export default TextSettings = {
 
         draw.font = draw.font || this.defaults;
 
+        // LineString labels can articulate while point labels cannot. Needed for future texture coordinate calculations.
+        style.can_articulate = draw.can_articulate;
+
         // Use fill if specified, or default
         style.fill = (draw.font.fill && Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.fill, context))) || this.defaults.fill;
 
@@ -75,7 +78,6 @@ export default TextSettings = {
         if (draw.font.stroke && draw.font.stroke.color) {
             style.stroke = Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.stroke.color, context) || this.defaults.stroke);
             style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
-            style.stroke_width *= Utils.device_pixel_ratio;
         }
 
         style.font_css = this.fontCSS(style);
