@@ -1,5 +1,4 @@
 import LabelPoint from './label_point';
-import Vector from '../vector';
 
 const default_spacing = 50; // spacing of points along line in pixels
 
@@ -34,12 +33,19 @@ export default function fitToLine (line, size, options) {
             }
             break;
         case PLACEMENT.ENDPOINTS:
-            for (let i = 0; i < line.length; i++){
-                let position = line[i];
-                let label = new LabelPoint(position, size, options);
+        let p, q, label;
+            for (let i = 0; i < line.length - 1; i++){
+                p = line[i];
+                q = line[i + 1];
+                label = new LabelPoint(p, size, options);
                 label.angle = getAngle(p, q, options.angle);
                 labels.push(label);
             }
+
+            // add last endpoint
+            label = new LabelPoint(q, size, options);
+            label.angle = getAngle(p, q, options.angle);
+            labels.push(label);
             break;
         case PLACEMENT.MIDPOINTS:
             for (let i = 0; i < line.length - 1; i++){
