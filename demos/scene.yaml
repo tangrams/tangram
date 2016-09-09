@@ -16,7 +16,6 @@ global:
 cameras:
     perspective:
         type: perspective
-        focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
         vanishing_point: [0, -250px] # relative to center of screen, in pixels
         active: true
 
@@ -29,13 +28,6 @@ cameras:
         type: flat
         active: false
 
-lights:
-    directional1:
-        type: directional
-        direction: [.1, .5, -1] #[0.1, 0.1, -1]
-        diffuse: .2
-        ambient: 1.1
-
 scene:
     background:
         color: '#f0ebeb'
@@ -45,7 +37,7 @@ fonts:
         url: https://fonts.gstatic.com/s/montserrat/v7/zhcz-_WihjSQC0oHJ9TCYL3hpw3pgy2gAi-Ip7WPMi0.woff
 
 textures:
-    pois:
+    icons:
         url: images/pois.png
         filtering: mipmap
         sprites:
@@ -67,6 +59,36 @@ textures:
             shield: [0, 1142, 32, 32]
 
 styles:
+    buildings:
+        base: polygons
+        shaders:
+            blocks:
+                color: |
+                    // Modify lighting
+                    material.ambient.rgb = vec3(2.);
+                    material.diffuse.rgb = vec3(.5);
+
+                    // Shade by building height
+                    color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
+
+    icons:
+        base: points
+        texture: icons
+
+    dashed:
+        base: lines
+        dash: [2, 1]
+
+    transit-lines:
+        base: lines
+        blend: overlay
+        blend_order: -2
+        shaders:
+            blocks:
+                filter: |
+                    color.rgb *= 1.25; // pump up the colors
+                    color.a = 0.5;     // translucent
+
     rainbow:
         base: polygons
         animated: true
@@ -104,57 +126,6 @@ styles:
             emission:
                 texture: images/sunset.jpg
                 mapping: spheremap
-
-    flat:
-        base: polygons
-        lighting: false
-
-    flat_lines:
-        base: lines
-        lighting: false
-
-    buildings:
-        base: polygons
-        shaders:
-            blocks:
-                color: |
-                    color.rgb = vec3(min((worldPosition().z*.0005 + .65),.8));
-
-    icons:
-        base: points
-        texture: pois
-
-    grid:
-        base: polygons
-        lighting: false
-        shaders:
-            extensions: OES_standard_derivatives
-            # extensions: [OES_standard_derivatives, EXT_frag_depth]
-            blocks:
-                color: |
-                    // From: http://madebyevan.com/shaders/grid/
-                    // Pick a coordinate to visualize in a grid
-                    vec3 coord = worldPosition().xyz / 10.;
-
-                    // Compute anti-aliased world-space grid lines
-                    vec3 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
-                    float line = min(min(grid.x, grid.y), grid.z);
-
-                    // Just visualize the grid lines directly
-                    color = vec4(vec3(1.0 - min(line, 1.0)), 1.0);
-
-    line-alpha:
-        base: lines
-        blend: overlay
-        blend_order: -2
-        shaders:
-            blocks:
-                filter:
-                    color.a = 0.5;
-
-    dashed:
-        base: lines
-        dash: [2, 1]
 
 sources:
     mapzen:
@@ -208,7 +179,6 @@ layers:
         visible: false
         draw:
             polygons:
-                style: flat
                 order: global.feature_order
                 color: '#f0ebeb'
 
@@ -223,7 +193,6 @@ layers:
                 polygons:
                     order: global.feature_order
                     interactive: true
-                    style: flat
                     color: honeydew
 
             parks:
@@ -270,7 +239,6 @@ layers:
         draw:
             polygons:
                 interactive: true
-                style: flat
                 order: global.feature_order
                 color: '#9dc3de'
 
@@ -280,7 +248,6 @@ layers:
             not: { kind: [rail] }
         draw:
             lines:
-                style: flat_lines
                 color: white
                 width: 12
                 order: global.feature_order
@@ -466,7 +433,7 @@ layers:
         draw:
             polygons:
                 order: global.feature_order
-                color: [.65, .65, .65]
+                color: [.83, .83, .83]
 
         # turn interactive feature selection on for buildings with names
         interactive:
@@ -485,7 +452,6 @@ layers:
             filter: { roof_material: grass }
             draw:
                 polygons:
-                    style: flat
                     color: '#bddec5'
 
         # point labels for buildings
@@ -630,7 +596,7 @@ layers:
         filter: { $zoom: { min: 16 } }
         draw:
             lines:
-                style: line-alpha
+                style: transit-lines
                 order: 400
                 color: gray
                 width: 6px
