@@ -40,14 +40,6 @@ describe('Labels', () => {
                     assert.isFalse(label.inTileBounds());
                 });
 
-                it(`can move back into tile for ${edge} edge`, () => {
-                    label.position = p;
-                    label.update();
-                    let moved = label.moveIntoTile();
-                    assert.isTrue(moved);
-                    assert.isTrue(label.inTileBounds());
-                });
-
             });
 
         });
