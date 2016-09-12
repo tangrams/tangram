@@ -33,7 +33,7 @@ export default function fitToLine (line, size, options) {
             }
             break;
         case PLACEMENT.ENDPOINTS:
-        let p, q, label;
+            let p, q, label;
             for (let i = 0; i < line.length - 1; i++){
                 p = line[i];
                 q = line[i + 1];
