@@ -146,6 +146,7 @@ Object.assign(TextStyle, {
             if (text_info.text_settings.can_articulate){
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
                 fq.layout.space_width = text_info.space_width;
+                fq.layout.space_indices = text_info.space_indices;
                 feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout);
             }
             else {

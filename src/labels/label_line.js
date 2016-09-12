@@ -18,8 +18,9 @@ export default class LabelLine {
         this.layout = layout;
         this.lines = lines;
         this.space_width = layout.space_width; // width of space for the font used
+        this.space_indices = layout.space_indices;
         this.num_segments = size.length; // number of label segments
-        this.total_length = size.reduce(function(prev, next){ return prev + next[0]; }, 0) + (size.length - 1) * this.space_width;
+        this.total_length = size.reduce(function(prev, next){ return prev + next[0]; }, 0) + this.space_indices.length * this.space_width;
         this.total_height = size[0][1];
         this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
 
@@ -159,7 +160,11 @@ export default class LabelLine {
         let fitnesses = [];
 
         while (kink_index > 0) {
-            width = this.size[kink_index][0] + this.space_width;
+            width = this.size[kink_index][0];
+
+            if (hasSpaceAtIndex(kink_index, this.space_indices)){
+                width += this.space_width;
+            }
 
             label_length1 -= width;
             label_length2 += width;
@@ -307,7 +312,11 @@ export default class LabelLine {
                 // A spread factor of 0 pivots the boxes on their horizontal center, looking like: "X"
                 // a spread factor of 1 offsets the boxes so that their corners touch, looking like: "\/" or "/\"
                 let dx = this.spread_factor * Math.abs(this.total_height * Math.tan(0.5 * theta));
-                let nudge = 0.5 * (-dx - this.space_width);
+                let nudge = -0.5 * dx;
+
+                if (hasSpaceAtIndex(this.kink_index, this.space_indices)){
+                    nudge -= 0.5 * this.space_width;
+                }
 
                 // Place labels backwards from kink index
                 for (let i = this.kink_index - 1; i >= 0; i--) {
@@ -332,11 +341,19 @@ export default class LabelLine {
                         this.layout.offset[1]
                     ];
 
-                    nudge -= 0.5 * width_px + this.space_width;
+                    nudge -= 0.5 * width_px;
+
+                    if (hasSpaceAtIndex(this.kink_index, this.space_indices)){
+                       nudge -= 0.5 * this.space_width;
+                    }
                 }
 
                 // Place labels forwards from kink index
-                nudge = 0.5 * (dx + this.space_width);
+                nudge = 0.5 * dx;
+
+                if (hasSpaceAtIndex(this.kink_index, this.space_indices)){
+                    nudge += 0.5 * this.space_width;
+                }
 
                 for (let i = this.kink_index; i < this.num_segments; i++){
                     let width_px = this.size[i][0];
@@ -360,13 +377,21 @@ export default class LabelLine {
                         this.layout.offset[1]
                     ];
 
-                    nudge += 0.5 * width_px + this.space_width;
+                    nudge += 0.5 * width_px;
+
+                    if (hasSpaceAtIndex(this.kink_index, this.space_indices)){
+                        nudge += 0.5 * this.space_width;
+                    }
                 }
                 break;
             case PLACEMENT.MID_POINT:
                 let shift = -0.5 * this.total_length; // shift for centering the labels
 
                 for (let i = 0; i < this.num_segments; i++){
+                    if (hasSpaceAtIndex(i, this.space_indices)){
+                        shift += 0.5 * this.space_width;
+                    }
+
                     let width_px = this.size[i][0];
                     let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
                     let angle = this.angle[i];
@@ -387,7 +412,7 @@ export default class LabelLine {
                         this.layout.offset[1]
                     ];
 
-                    shift += 0.5 * width_px + this.space_width;
+                    shift += 0.5 * width_px;
                 }
 
                 break;
@@ -481,6 +506,10 @@ function getAngleFromSegment(pt1, pt2) {
     return theta;
 }
 
-function calcFitness(line_length, label_length){
+function calcFitness(line_length, label_length) {
     return 1 - line_length / label_length;
+}
+
+function hasSpaceAtIndex(index, space_indices) {
+    return (space_indices.indexOf(index) !== -1);
 }
