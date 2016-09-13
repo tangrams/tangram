@@ -453,12 +453,37 @@ function reorderWordsLTR(words) {
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text){
     let words = text.split(' ');
-    let segments = reorderWordsLTR(words);
-
+    let segments = [];
+    let codon = 3;
     let space_indices = [];
-    for (let i = 0; i < words.length - 1; i++){
-        space_indices.push(i + 1);
+    let space_index = 0;
+
+    for (let i = 0; i < words.length; i++){
+        let word = words[i];
+        if (word.length > codon){
+            while (word.length > codon){
+                segments.push(word.substring(0,3));
+                word = word.substring(3);
+                space_index++;
+            }
+            if (word.length > 0){
+                segments.push(word);
+                space_index++;
+            }
+            space_indices.push(space_index);
+        }
+        else {
+            segments.push(word);
+            space_index++;
+            space_indices.push(space_index);
+        }
     }
+
+    // let segments = reorderWordsLTR(words);
+    // let space_indices = [];
+    // for (let i = 0; i < words.length - 1; i++){
+    //     space_indices.push(i + 1);
+    // }
 
     return {segments, space_indices};
 }

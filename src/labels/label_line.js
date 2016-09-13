@@ -8,7 +8,7 @@ const PLACEMENT = {
 };
 
 const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
-const LINE_EXCEED_STRAIGHT = 0.7;   // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_STRAIGHT = .1;   // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_KINKED = 0.6;     // minimal ratio for kinked labels
 
 export default class LabelLine {
@@ -25,8 +25,11 @@ export default class LabelLine {
         this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
 
         this.kink_index = 0; // index at which an articulated label will kink (e.g., 1 means a kink _after_ the first segment)
-        this.spread_factor = 0.5; // spaces out adjacent words to prevent overlap
+        this.spread_factor = 1; // spaces out adjacent words to prevent overlap
         this.fitness = 0; // measure of quality of fit
+
+        this.line_lengths = getLineLengths(lines);
+        this.line_angles = getLineAngles(lines);
 
         // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
         this.position = [];
@@ -40,9 +43,44 @@ export default class LabelLine {
         this.segment_index = layout.segment_index || layout.segment_start || 0;
         this.segment_max = layout.segment_end || this.lines.length;
 
+        let spacing = 50;
+        let result = getStartingPositions(lines, spacing + this.total_length, layout.units_per_pixel);
+        let label_positions = result.positions;
+        let indices = result.indices;
+        debugger
+        for (let i = 0; i < label_positions.length; i++){
+            // only do first one for now
+            if (i !== 0 ) return;
+
+            let index = indices[i];
+            let line_position = lines[index];
+            let label_position = label_positions[i];
+
+            let offset = [
+                label_position[0] - line_position[0],
+                label_position[1] - line_position[1]
+            ];
+
+            // todo: offsets
+            debugger
+            let result1 = placeAtPosition.call(this, lines, this.line_lengths, this.size, index, offset);
+            let positions = result1.positions
+            let angles = result1.angles
+            let widths = result1.widths;
+
+            let result2 = createBoundingBoxes(positions, angles, widths);
+            let obbs = result2.obbs;
+            let aabbs = result2.aabbs;
+
+            this.position = positions;
+            this.angle = angles;
+            this.obbs = obbs;
+            this.aabbs = aabbs;
+        }
+
         // First fitting segment
-        let segment = this.getNextFittingSegment(this.getCurrentSegment());
-        this.throw_away = (!segment);
+        // let segment = this.getNextFittingSegment(this.getCurrentSegment());
+        // this.throw_away = (!segment);
     }
 
     // Iterate through the line geometry creating the next valid label.
@@ -62,6 +100,15 @@ export default class LabelLine {
         let nextLabel = new LabelLine(label.size, label.lines, layout);
 
         return (nextLabel.throw_away) ? false : nextLabel;
+    }
+
+    fit (line){
+        let length = getLineLength(line);
+        let spacing = 50;
+
+        for (let i = 0; i < line.length; i++){
+            let segment = line[i];
+        }
     }
 
     // Strategy for returning the next segment. Assumes an "ordering" of possible segments
@@ -512,4 +559,155 @@ function calcFitness(line_length, label_length) {
 
 function hasSpaceAtIndex(index, space_indices) {
     return (space_indices.indexOf(index) !== -1);
+}
+
+function getLineLength(line){
+    let distance = 0;
+    for (let i = 0; i < line.length - 1; i++){
+        distance += norm(line[i], line[i+1]);
+    }
+    return distance;
+}
+
+function norm(p, q){
+    return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
+}
+
+function getStartingPositions(line, spacing, upp){
+    let length = getLineLength(line);
+    let num_labels = Math.floor(length / spacing);
+    let remainder = length - (num_labels - 1) * spacing;
+
+    var positions = [];
+    var indices = [];
+
+    let distance = 0.5 * remainder;
+    for (let i = 0; i < num_labels; i++){
+        let result = interpolateLine(line, distance);
+        let position = result.position;
+        let index = result.index;
+
+        positions.push(position);
+        indices.push(index);
+        distance += spacing;
+    }
+
+    return {positions, indices};
+}
+
+function interpolateLine(line, distance){
+    let sum = 0;
+    for (let i = 0; i < line.length - 1; i++){
+        let prevSum = sum
+        let p = line[i];
+        let q = line[i+1];
+        let segment_length = norm(p, q);
+
+        sum += segment_length;
+
+        if (sum > distance){
+            let overflow = sum - distance;
+            let position = interpolateSegment(p, q, overflow);
+            let index = i; // super weird
+            return {position, index};
+        }
+    }
+}
+
+function interpolateAngle(index, ratio){
+    let angle1 = this.line_angles[index];
+    let angle2 = this.line_angles[index + 1];
+    return interpolate1d(angle1, angle2, ratio);
+}
+
+function interpolateSegment(p, q, distance){
+    let length = norm(p, q);
+    let ratio = distance / length;
+    return interpolate2d(p, q, ratio);
+}
+
+function interpolate1d(x, y, t){
+     return t * x + (1 - t) * y
+}
+
+function interpolate2d(x, y, t){
+     return [
+         interpolate1d(x[0], y[0], t),
+         interpolate1d(x[1], y[1], t)
+     ];
+}
+
+function placeAtPosition(line, line_lengths, sizes, index, offset){
+    var positions = [];
+    var angles = [];
+    var widths = [];
+
+    let position = [
+        line[index][0] + offset[0],
+        line[index][1] + offset[1]
+    ];
+
+    let length = Math.sqrt(offset[0]*offset[0] + offset[1]*offset[1]);
+    let segment_length = line_lengths[index];
+
+    debugger
+
+    for (let i = 0; i < sizes.length; i++){
+        while (length > segment_length){
+            index++;
+            length = length - segment_length;
+            segment_length = line_lengths[index];
+        }
+
+        let segment_width = sizes[i][0];
+        let ratio = length / segment_length;
+        let angle = interpolateAngle.call(this, index, ratio);
+        let segment_offset = Vector.rot([0.5 * segment_width, 0], angle);
+
+        position = Vector.add(position, segment_offset);
+
+        positions.push(position);
+        angles.push(angle);
+        widths.push(segment_width);
+
+        position = Vector.add(position, segment_offset);
+        length += segment_length;
+    }
+
+    return {positions, angles, widths};
+}
+
+function createBoundingBoxes(positions, angles, widths, height){
+    let obbs = [];
+    let aabbs = [];
+    for (let i = 0; i < positions.length; i++){
+        let obb = getOBB(positions[i], widths[i], height, angles[i]);
+        let aabb = obb.getExtent();
+
+        obbs.push(obb);
+        aabbs.push(aabb);
+    }
+    return {obbs, aabbs};
+}
+
+function getLineAngles(line){
+    let angles = [];
+    for (let i = 0; i < line.length - 1; i++){
+        let p = line[i];
+        let q = line[i+1];
+        let angle = Math.atan2(q[0] - p[0], q[1] - p[1]);
+        angles.push(angle);
+    }
+    return angles;
+}
+
+function getLineLengths(line){
+    let lengths = [];
+    for (let i = 0; i < line.length - 1; i++){
+        let p = line[i];
+        let q = line[i+1];
+        let length = norm(p,q);
+        lengths.push(length);
+    }
+    return lengths;
 }
