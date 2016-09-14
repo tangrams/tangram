@@ -229,6 +229,8 @@ const TARGET_KINKED = 0.5; // Optimistic target ratio for kinked labels (label l
 // - else choose the best kinked labels that satisfies its internal (less optimistic) cutoff (if any)
 // - else don't place a label
 function placementStrategy(label){
+    return label;
+
     let labels_straight = [];
     let labels_kinked = [];
     let best_straight_fitness = Infinity;

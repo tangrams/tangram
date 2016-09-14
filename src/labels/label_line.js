@@ -47,7 +47,12 @@ export default class LabelLine {
         let result = getStartingPositions(lines, spacing + this.total_length, layout.units_per_pixel);
         let label_positions = result.positions;
         let indices = result.indices;
-        debugger
+
+        if (label_positions.length === 0){
+            this.throw_away = true;
+            return;
+        }
+
         for (let i = 0; i < label_positions.length; i++){
             // only do first one for now
             if (i !== 0 ) return;
@@ -61,18 +66,11 @@ export default class LabelLine {
                 label_position[1] - line_position[1]
             ];
 
-            // todo: offsets
-            debugger
-            let result1 = placeAtPosition.call(this, lines, this.line_lengths, this.size, index, offset);
-            let positions = result1.positions
-            let angles = result1.angles
-            let widths = result1.widths;
-
-            let result2 = createBoundingBoxes(positions, angles, widths);
-            let obbs = result2.obbs;
-            let aabbs = result2.aabbs;
+            let {positions, offsets, angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.size, index, offset);
+            let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths);
 
             this.position = positions;
+            this.offsets = offsets;
             this.angle = angles;
             this.obbs = obbs;
             this.aabbs = aabbs;
@@ -578,8 +576,8 @@ function getStartingPositions(line, spacing, upp){
     let num_labels = Math.floor(length / spacing);
     let remainder = length - (num_labels - 1) * spacing;
 
-    var positions = [];
-    var indices = [];
+    let positions = [];
+    let indices = [];
 
     let distance = 0.5 * remainder;
     for (let i = 0; i < num_labels; i++){
@@ -637,20 +635,21 @@ function interpolate2d(x, y, t){
      ];
 }
 
-function placeAtPosition(line, line_lengths, sizes, index, offset){
-    var positions = [];
-    var angles = [];
-    var widths = [];
+function placeAtPosition(line, line_lengths, sizes, index, index_offset){
+    let positions = [];
+    let offsets = [];
+    let angles = [];
+    let widths = [];
 
     let position = [
-        line[index][0] + offset[0],
-        line[index][1] + offset[1]
+        line[index][0] + index_offset[0],
+        line[index][1] + index_offset[1]
     ];
+
+    let offset = [0, 0];
 
     let length = Math.sqrt(offset[0]*offset[0] + offset[1]*offset[1]);
     let segment_length = line_lengths[index];
-
-    debugger
 
     for (let i = 0; i < sizes.length; i++){
         while (length > segment_length){
@@ -665,8 +664,10 @@ function placeAtPosition(line, line_lengths, sizes, index, offset){
         let segment_offset = Vector.rot([0.5 * segment_width, 0], angle);
 
         position = Vector.add(position, segment_offset);
+        offset = Vector.add(offset, segment_offset);
 
         positions.push(position);
+        offsets.push(offset);
         angles.push(angle);
         widths.push(segment_width);
 
@@ -674,7 +675,7 @@ function placeAtPosition(line, line_lengths, sizes, index, offset){
         length += segment_length;
     }
 
-    return {positions, angles, widths};
+    return {positions, offsets, angles, widths};
 }
 
 function createBoundingBoxes(positions, angles, widths, height){
