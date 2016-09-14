@@ -103,11 +103,11 @@ export default class Scene {
             .then(() => {
                 this.resetFeatureSelection();
 
-                // Scene loaded from a JS object may contain functions which need to be serialized,
-                // while one loaded from a URL does not
-                return this.updateConfig({
-                    serialize_funcs: (typeof this.config_source === 'object')
-                });
+                // Scene loaded from a JS object, or modified by a `load` event, may contain compiled JS functions
+                // which need to be serialized, while one loaded only from a URL does not.
+                const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
+
+                return this.updateConfig({ serialize_funcs });
             }).then(() => {
                 this.updating--;
                 this.initializing = null;
