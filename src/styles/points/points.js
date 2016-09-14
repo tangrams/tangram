@@ -43,6 +43,7 @@ Object.assign(Points, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_pre_angle', size: 1, type: gl.SHORT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
@@ -561,10 +562,12 @@ Object.assign(Points, {
             this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
         }
 
+        this.fillVertexTemplate('a_pre_angle', 0, { size: 1 });
+
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, sampler, offset, texcoord_scale, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, pre_angle, sampler, offset, texcoord_scale, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -573,13 +576,15 @@ Object.assign(Points, {
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 position_index: this.vertex_layout.index.a_position,
                 shape_index: this.vertex_layout.index.a_shape,
-                offset_index: this.vertex_layout.index.a_offset
+                offset_index: this.vertex_layout.index.a_offset,
+                pre_angle_index: this.vertex_layout.index.pre_angle
             },
             {
                 quad: size,
                 quad_normalize: 256,    // values have an 8-bit fraction
                 offset,
                 angle: angle * 4096,    // values have a 12-bit fraction
+                pre_angle: pre_angle * 4096,
                 shape_w: sampler,
                 texcoord_scale,
                 texcoord_normalize: 65535
@@ -606,6 +611,7 @@ Object.assign(Points, {
             [label.position],               // position
             style.size,                     // size in pixels
             angle,                          // angle in radians
+            style.angle,                    // angle in radians
             style.sampler,                  // texture sampler to use
             label.offset,                   // offset from center in pixels
             style.texcoords,                // texture UVs
@@ -621,11 +627,13 @@ Object.assign(Points, {
             let size = style.size[i];
             let offset = label.offsets[i];
             let texcoord = style.texcoords[i];
+            let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 
             this.buildQuad(
                 [label.position],               // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
+                pre_angle,                      // pre-angle in radians
                 style.sampler,                  // texture sampler to use
                 offset,                         // offset from center in pixels
                 texcoord,                       // texture UVs

@@ -16,6 +16,7 @@ uniform mat3 u_inverseNormalMatrix;
 
 attribute vec4 a_position;
 attribute vec4 a_shape;
+attribute float a_pre_angle;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
@@ -55,13 +56,14 @@ void main() {
     vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
     float theta = a_shape.z / 4096.;                // values have a 12-bit fraction
+    float pre_theta = a_pre_angle / 4096.;
 
     #ifdef TANGRAM_MULTI_SAMPLER
     v_sampler = a_shape.w; // texture sampler
     #endif
 
-    shape = rotate2D(shape, theta);     // apply rotation to vertex
-    shape += rotate2D(offset, theta);   // apply offset on rotated axis (e.g. so line labels follow text axis)
+    shape = rotate2D(shape, pre_theta);
+    shape = rotate2D(shape + offset, theta);     // apply rotation to vertex
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * position;
