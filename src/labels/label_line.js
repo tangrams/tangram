@@ -48,7 +48,7 @@ export default class LabelLine {
         let label_positions = result.positions;
         let indices = result.indices;
 
-        if (label_positions.length === 0){
+        if (label_positions.length === 0 || size.length === 0){
             this.throw_away = true;
             return;
         }
@@ -69,7 +69,7 @@ export default class LabelLine {
             let {positions, offsets, angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.size, index, offset);
             let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths);
 
-            this.position = positions;
+            this.position = label_position;
             this.offsets = offsets;
             this.angle = angles;
             this.obbs = obbs;
@@ -581,9 +581,7 @@ function getStartingPositions(line, spacing, upp){
 
     let distance = 0.5 * remainder;
     for (let i = 0; i < num_labels; i++){
-        let result = interpolateLine(line, distance);
-        let position = result.position;
-        let index = result.index;
+        let {position, index} = interpolateLine(line, distance);
 
         positions.push(position);
         indices.push(index);
@@ -613,9 +611,14 @@ function interpolateLine(line, distance){
 }
 
 function interpolateAngle(index, ratio){
-    let angle1 = this.line_angles[index];
-    let angle2 = this.line_angles[index + 1];
-    return interpolate1d(angle1, angle2, ratio);
+    if (this.line_angles[index + 1]){
+        let angle1 = this.line_angles[index];
+        let angle2 = this.line_angles[index + 1];
+        return interpolate1d(angle1, angle2, ratio);
+    }
+    else {
+        return this.line_angles[index];
+    }
 }
 
 function interpolateSegment(p, q, distance){
@@ -652,7 +655,7 @@ function placeAtPosition(line, line_lengths, sizes, index, index_offset){
     let segment_length = line_lengths[index];
 
     for (let i = 0; i < sizes.length; i++){
-        while (length > segment_length){
+        while (index < line_lengths.length && length > segment_length){
             index++;
             length = length - segment_length;
             segment_length = line_lengths[index];
@@ -672,7 +675,7 @@ function placeAtPosition(line, line_lengths, sizes, index, index_offset){
         widths.push(segment_width);
 
         position = Vector.add(position, segment_offset);
-        length += segment_length;
+        length += segment_width;
     }
 
     return {positions, offsets, angles, widths};
@@ -696,7 +699,7 @@ function getLineAngles(line){
     for (let i = 0; i < line.length - 1; i++){
         let p = line[i];
         let q = line[i+1];
-        let angle = Math.atan2(q[0] - p[0], q[1] - p[1]);
+        let angle = getAngleFromSegment(p, q);
         angles.push(angle);
     }
     return angles;
