@@ -72,7 +72,7 @@ export default TextSettings = {
         style.size = draw.font.size || this.defaults.size;
 
         // calculated pixel size
-        style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) || this.defaults.px_size;
+        style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context);
 
         // Use stroke if specified
         if (draw.font.stroke && draw.font.stroke.color) {
