@@ -254,11 +254,11 @@ export default class TileManager {
         this.checkBuildQueue();
     }
 
-    buildTile(tile) {
+    buildTile(tile, options) {
         this.tileBuildStart(tile.key);
         this.updateVisibility(tile);
         tile.update();
-        tile.build(this.scene.generation);
+        tile.build(this.scene.generation, options);
     }
 
     // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)

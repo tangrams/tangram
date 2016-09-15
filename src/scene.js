@@ -107,7 +107,7 @@ export default class Scene {
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
 
-                return this.updateConfig({ serialize_funcs });
+                return this.updateConfig({ serialize_funcs, fade_in: true });
             }).then(() => {
                 this.updating--;
                 this.initializing = null;
@@ -536,7 +536,6 @@ export default class Scene {
                 program.use();
                 this.styles[style].setup();
 
-                // TODO: don't set uniforms when they haven't changed
                 program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
                 this.view.setupProgram(program);
                 for (let i in this.lights) {
@@ -674,7 +673,7 @@ export default class Scene {
     // Rebuild all tiles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuildGeometry({ sync = true, sources = null, serialize_funcs, profile = false } = {}) {
+    rebuildGeometry({ sync = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -711,7 +710,7 @@ export default class Scene {
             this.tile_manager.pruneToVisibleTiles();
             this.tile_manager.forEachTile(tile => {
                 if (!sources || sources.indexOf(tile.source.name) > -1) {
-                    this.tile_manager.buildTile(tile);
+                    this.tile_manager.buildTile(tile, { fade_in });
                 }
             });
             this.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
@@ -976,7 +975,7 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ rebuild = true, serialize_funcs } = {}) {
+    updateConfig({ rebuild = true, serialize_funcs, fade_in = false } = {}) {
         this.generation = ++Scene.generation;
         this.updating++;
 
@@ -993,7 +992,7 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuild(Object.assign({ serialize_funcs }, typeof rebuild === 'object' && rebuild)) :
+            this.rebuild(Object.assign({ serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
             this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
