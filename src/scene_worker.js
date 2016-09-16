@@ -77,7 +77,7 @@ Object.assign(self, {
         });
 
         // Parse each top-level layer as a separate tree
-        self.layers = parseLayers(config.layers);
+        self.layers = parseLayers(config.layers, self.style_manager.styles);
 
         // Sync tetxure info from main thread
         self.syncing_textures = self.syncTextures(config.textures);

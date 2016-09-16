@@ -1,4 +1,3 @@
-import {Styles} from './style_manager';
 import {StyleParser} from './style_parser';
 import Utils from '../utils/utils';
 import log from '../utils/log';
@@ -371,7 +370,7 @@ export function calculateDraw(layer) {
     return draw;
 }
 
-export function parseLayerTree(name, layer, parent) {
+export function parseLayerTree(name, layer, parent, styles) {
 
     let properties = { name, layer, parent };
     let [whiteListed, nonWhiteListed] = groupProps(layer);
@@ -394,15 +393,15 @@ export function parseLayerTree(name, layer, parent) {
         for (let key in nonWhiteListed) {
             let property = nonWhiteListed[key];
             if (typeof property === 'object' && !Array.isArray(property)) {
-                parseLayerTree(key, property, r);
+                parseLayerTree(key, property, r, styles);
             } else {
                 // Invalid layer
                 let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(property)}'`;
                 msg += `, under parent layer '${r.full_name}'.`;
 
                 // If the parent is a style name, this may be an incorrectly nested layer
-                if (Styles[r.name]) {
-                    msg += ` The parent '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
+                if (styles[r.name]) {
+                    msg += ` The parent name '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
                     if (parent) {
                         msg += ` under '${parent.name}'`;
                     }
@@ -418,13 +417,13 @@ export function parseLayerTree(name, layer, parent) {
 }
 
 
-export function parseLayers (layers) {
+export function parseLayers (layers, styles) {
     let layer_trees = {};
 
     for (let key in layers) {
         let layer = layers[key];
         if (layer) {
-            layer_trees[key] = parseLayerTree(key, layer);
+            layer_trees[key] = parseLayerTree(key, layer, null, styles);
         }
     }
 
