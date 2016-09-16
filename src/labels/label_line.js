@@ -60,12 +60,9 @@ export default class LabelLine {
             let line_position = lines[index];
             let label_position = label_positions[i];
 
-            let offset = [
-                label_position[0] - line_position[0],
-                label_position[1] - line_position[1]
-            ];
+            let offset = Math.sqrt(label_position[0] * label_position[0] + label_position[1] * label_position[1]);
 
-            let {positions, offsets, angles, pre_angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.size, index, offset, layout.units_per_pixel);
+            let {positions, offsets, angles, pre_angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.size, index, offset, layout.units_per_pixel);
             let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths);
 
             this.position = label_position;
@@ -638,49 +635,63 @@ function interpolate2d(x, y, t){
      ];
 }
 
-function placeAtPosition(line, line_lengths, sizes, index, index_offset, upp){
+function placeAtPosition(line, line_lengths, line_angles, label_sizes, index, line_offset, upp){
     let positions = [];
     let offsets = [];
     let angles = [];
     let widths = [];
     let pre_angles = [];
 
-    let position = [
-        line[index][0] + index_offset[0],
-        line[index][1] + index_offset[1]
-    ];
-
-    let offset = [0, 0];
-
-    let length = 0;
     let segment_length = line_lengths[index];
 
-    for (let i = 0; i < sizes.length; i++){
-        while (index < line_lengths.length && length > segment_length){
-            index++;
-            length = length - segment_length;
-            segment_length = line_lengths[index];
+    // places label at length offset from index. Finds next index and length offset
+    function getNextPlacement(index, offset, label_length, next_label_length){
+        let line_length = line_lengths[index];
+        let distance = 0.5 * upp * (label_length + next_label_length);
+        offset += distance;
+
+        while (offset > line_length){
+            offset -= line_length;
+            line_length = line_lengths[++index];
         }
 
-        let ratio = length / segment_length;
-        let angle = interpolateAngle.call(this, index, ratio);
-        let segment_width = sizes[i][0];
-        let segment_offset = Vector.rot([segment_width, 0], angle);
+        return [index, offset];
+    }
 
-        position = Vector.add(position, segment_offset);
-        offset = Vector.add(offset, segment_offset);
+    let line_offset2d = Vector.rot([line_offset, 0], line_angles[0]);
 
-        let offset_angle = Math.atan2(offset[1], offset[0]);
+    let startPosition = [
+        line[index][0] + line_offset2d[0],
+        line[index][1] + line_offset2d[1]
+    ]
+
+    for (let i = 0; i < label_sizes.length; i++){
+        if (index > line.length - 1) return;
+
+        let position = [
+            line[index][0] + line_offset2d[0],
+            line[index][1] + line_offset2d[1]
+        ];
+
+        let angle = line_angles[i];
+        let label_length = label_sizes[i][0];
+
+        let label_offset2d = Vector.rot([0.5 * label_length, 0], angle);
+
+        position = Vector.add(position, label_offset2d);
+
+        let delta = Vector.sub(position, startPosition);
+        let offset_angle = Math.atan2(delta[1], delta[0]);
         let pre_angle = angle - offset_angle;
+        let offset = Math.sqrt(delta[0]*delta[0] + delta[1]*delta[1]);
 
         positions.push(position);
-        offsets.push([length, 0]);
-        angles.push(angle);
+        offsets.push([offset, 0]);
+        angles.push(0*angle);
         pre_angles.push(pre_angle);
-        widths.push(segment_width);
+        widths.push(label_length);
 
-        // position = Vector.add(position, segment_offset);
-        length += segment_width;
+        [index, line_offset2d] = getNextPlacement(index, line_offset, label_length, label_sizes[i+1]);
     }
 
     return {positions, offsets, angles, widths};
