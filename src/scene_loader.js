@@ -177,26 +177,44 @@ export default SceneLoader = {
     // Substitutes global scene properties (those defined in the `config.global` object) for any style values
     // of the form `global.`, for example `color: global.park_color` would be replaced with the value (if any)
     // defined for the `park_color` property in `config.global.park_color`.
-    applyGlobalProperties(config) {
+    applyGlobalProperties(config, applied) {
         if (!config.global || Object.keys(config.global).length === 0) {
             return config; // no global properties to transform
         }
 
+        // Parse properties from globals
         const separator = ':';
         const props = flattenProperties(config.global, separator);
 
-        function applyProps (obj) {
+        // Re-apply previously applied properties
+        // NB: a current shortcoming here is that you cannot "un-link" a target property from a global
+        // at run-time. Once a global property substitution has been recorderd, it will always be re-applied
+        // on subsequent scene updates, even if the target property was updated to another literal value.
+        // This is unlikely to be a common occurrence an acceptable limitation for now.
+        applied.forEach(({ prop, target, key }) => {
+            if (target && props[prop]) {
+                target[key] = props[prop];
+                // log('info', `Re-applying ${prop} with value ${props[prop]} to key ${key} in`, target);
+            }
+        });
+
+        // Find and apply new properties
+        function applyProps (obj, target, key) {
             // Convert string
             if (typeof obj === 'string') {
-                let key = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
-                if (key && props[key] !== undefined) {
-                    obj = props[key];
+                const prop = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
+                if (prop && props[prop] !== undefined) {
+                    // Save record of where property is applied
+                    applied.push({ prop, target, key });
+
+                    // Apply property
+                    obj = props[prop];
                 }
             }
             // Loop through object properties
             else if (typeof obj === 'object') {
                 for (let p in obj) {
-                    obj[p] = applyProps(obj[p]);
+                    obj[p] = applyProps(obj[p], obj, p);
                 }
             }
             return obj;
@@ -218,9 +236,6 @@ export default SceneLoader = {
         config.styles = config.styles || {};
         config.layers = config.layers || {};
 
-        // Replace global scene properties
-        config = this.applyGlobalProperties(config);
-
         // Assign ids to data sources
         let source_id = 0;
         for (let source in config.sources) {
@@ -235,19 +250,6 @@ export default SceneLoader = {
         // If no cameras specified, create one
         if (Object.keys(config.cameras).length === 0) {
             config.cameras.default = {};
-        }
-
-        // If no camera set as active, use first one
-        let active = false;
-        for (let camera of Utils.values(config.cameras)) {
-            if (camera.active) {
-                active = true;
-                break;
-            }
-        }
-
-        if (!active) {
-            config.cameras[Object.keys(config.cameras)[0]].active = true;
         }
 
         // If no lights specified, create default

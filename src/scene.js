@@ -748,6 +748,7 @@ export default class Scene {
     */
     loadScene(config_source = null, config_path = null) {
         this.config_source = config_source || this.config_source;
+        this.config_globals_applied = [];
 
         if (typeof this.config_source === 'string') {
             this.config_path = Utils.pathForURL(config_path || this.config_source);
@@ -979,6 +980,7 @@ export default class Scene {
         this.generation = ++Scene.generation;
         this.updating++;
 
+        this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
         this.style_manager.init();
         this.view.reset();
         this.createLights();
