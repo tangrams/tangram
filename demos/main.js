@@ -140,7 +140,7 @@ Enjoy!
 
         rS = new rStats({
             values: {
-                frame: { caption: 'Total frame time (ms)', over: 5 },
+                frame: { caption: 'Total frame time (ms)', over: 10 },
                 raf: { caption: 'Time since last rAF (ms)' },
                 fps: { caption: 'Framerate (FPS)', below: 30 },
                 rendertiles: { caption: 'Rendered tiles' },
