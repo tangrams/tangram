@@ -192,7 +192,7 @@ export default SceneLoader = {
         // on subsequent scene updates, even if the target property was updated to another literal value.
         // This is unlikely to be a common occurrence an acceptable limitation for now.
         applied.forEach(({ prop, target, key }) => {
-            if (target && props[prop]) {
+            if (target) {
                 target[key] = props[prop];
                 // log('info', `Re-applying ${prop} with value ${props[prop]} to key ${key} in`, target);
             }
