@@ -577,7 +577,7 @@ Object.assign(Points, {
                 position_index: this.vertex_layout.index.a_position,
                 shape_index: this.vertex_layout.index.a_shape,
                 offset_index: this.vertex_layout.index.a_offset,
-                pre_angle_index: this.vertex_layout.index.pre_angle
+                pre_angle_index: this.vertex_layout.index.a_pre_angle
             },
             {
                 quad: size,
