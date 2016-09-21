@@ -273,7 +273,6 @@ export default class TileManager {
         else if (tile.generation !== this.scene.generation) {
             log('debug', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` +
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
-            this.forgetTile(tile.key);
             Tile.abortBuild(tile);
             this.updateTileStates();
         }
