@@ -469,8 +469,10 @@ export default class Scene {
             this.render_count_changed = true;
 
             this.getFeatureSelectionMapSize().then(size => {
-                log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
-            }, () => {}); // no op when promise rejects (only print last response)
+                if (size) { // returns undefined if previous request pending
+                    log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
+                }
+            });
         }
         this.last_render_count = this.render_count;
 
@@ -1058,7 +1060,7 @@ export default class Scene {
     // Gets the current feature selection map size across all workers. Returns a promise.
     getFeatureSelectionMapSize() {
         if (this.fetching_selection_map) {
-            return Promise.reject();
+            return Promise.resolve(); // return undefined if already pending
         }
         this.fetching_selection_map = true;
 
