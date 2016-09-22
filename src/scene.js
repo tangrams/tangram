@@ -623,6 +623,27 @@ export default class Scene {
         program.use();
         style.setup();
 
+        // if (this.last_selection && this.last_selection.selection_color) {
+        //     program.uniform('4f', 'u_selection_color', this.last_selection.selection_color.map(c => c / 255));
+        // }
+        // else {
+        //     program.uniform('4f', 'u_selection_color', [0, 0, 0, 0]);
+        // }
+
+        if (this.last_selection_hover && this.last_selection_hover.selection_color) {
+            program.uniform('4f', 'u_selection_hover', this.last_selection_hover.selection_color.map(c => c / 255));
+        }
+        else {
+            program.uniform('4f', 'u_selection_hover', [0, 0, 0, 0]);
+        }
+
+        if (this.last_selection_click && this.last_selection_click.selection_color) {
+            program.uniform('4f', 'u_selection_click', this.last_selection_click.selection_color.map(c => c / 255));
+        }
+        else {
+            program.uniform('4f', 'u_selection_click', [0, 0, 0, 0]);
+        }
+
         program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
         this.view.setupProgram(program);
         for (let i in this.lights) {
@@ -723,7 +744,11 @@ export default class Scene {
         };
 
         return this.selection.getFeatureAt(point).
-            then(selection => Object.assign(selection, { pixel })).
+            then(selection => {
+                Object.assign(selection, { pixel });
+                this.last_selection = selection;
+                return selection;
+            }).
             catch(error => Promise.resolve({ error }));
     }
 

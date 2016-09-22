@@ -72,6 +72,14 @@ styles:
                     // Shade by building height
                     color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
 
+                    if (u_selection_click == v_selection_color) {
+                        color.rgb = vec3(.8, 0., 0.);
+                    }
+                    else if (u_selection_hover == v_selection_color) {
+                        color.rgb = vec3(.8, .8, 0.);
+                    }
+
+
     icons:
         base: points
         texture: icons
@@ -473,7 +481,7 @@ layers:
 
         # turn interactive feature selection on for buildings with names
         interactive:
-            filter: { name: true }
+            # filter: { name: true }
             draw: { polygons: { interactive: true } }
 
         # extrude 3d buildings

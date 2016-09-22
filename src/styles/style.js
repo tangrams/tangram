@@ -323,6 +323,8 @@ export var Style = {
         // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
         var defines = this.buildDefineList();
         if (this.selection) {
+            defines.TANGRAM_FEATURE_SELECTABLE = true;
+
             var selection_defines = Object.assign({}, defines);
             selection_defines.TANGRAM_FEATURE_SELECTION = true;
         }

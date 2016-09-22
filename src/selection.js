@@ -139,6 +139,7 @@ export default class FeatureSelection {
                     Math.floor((1 - request.point.y) * this.fbo_size.height),
                     1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
                 var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
+                // use pixel32?
 
                 // If feature found, ask appropriate web worker to lookup feature
                 var worker_id = this.pixel[3];
@@ -149,7 +150,7 @@ export default class FeatureSelection {
                             'self.getFeatureSelection',
                             { id: request.id, key: feature_key })
                         .then(message => {
-                            this.finishRead(message);
+                            this.finishRead(Object.assign(message, { selection_color: Array.from(this.pixel) }))
                         });
                     }
                 }
@@ -168,14 +169,14 @@ export default class FeatureSelection {
 
     // Called on main thread when a web worker finds a feature in the selection buffer
     finishRead (message) {
-        var request = this.requests[message.id];
+        const request = this.requests[message.id];
         if (!request) {
             log('error', "FeatureSelection.finishRead(): could not find message", message);
             return; // request was cleared before it returned
         }
 
-        var feature = message.feature;
-        var changed = false;
+        const feature = message.feature;
+        let changed = false;
         if ((feature != null && this.feature == null) ||
             (feature == null && this.feature != null) ||
             (feature != null && this.feature != null &&
@@ -186,7 +187,7 @@ export default class FeatureSelection {
         this.feature = feature; // store the most recently selected feature
 
         // Resolve the request
-        request.resolve({ feature, changed, request });
+        request.resolve({ feature, changed, request, selection_color: message.selection_color });
         delete this.requests[message.id]; // done processing this request
     }
 

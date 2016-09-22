@@ -5,6 +5,10 @@ uniform vec4 u_tile_origin;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 
+uniform vec4 u_selection_color;
+uniform vec4 u_selection_hover;
+uniform vec4 u_selection_click;
+
 uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
 
