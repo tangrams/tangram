@@ -166,8 +166,18 @@ export class GeoJSONSource extends NetworkSource {
 
     // Detect single or multiple layers in returned data
     getLayers (data) {
-        if (data.type === 'Feature' || data.type === 'FeatureCollection') {
-            return { _default: data };
+        if (data.type === 'Feature') {
+            return {
+                _default: {
+                    type: 'FeatureCollection',
+                    features: [data]
+                }
+            };
+        }
+        else if (data.type === 'FeatureCollection') {
+            return {
+                _default: data
+            };
         }
         else {
             return data;
