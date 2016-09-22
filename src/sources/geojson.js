@@ -1,3 +1,4 @@
+import log from '../utils/log';
 import DataSource, {NetworkSource, NetworkTileSource} from './data_source';
 import {decodeMultiPolygon} from './mvt';
 import Geo from '../geo';
@@ -24,6 +25,11 @@ export class GeoJSONSource extends NetworkSource {
     _load(dest) {
         if (!this.load_data) {
             this.load_data = super._load({ source_data: { layers: {} } }).then(data => {
+                // Warn and continue on data source error
+                if (data.source_data.error) {
+                    log('warn', `data source load error(s) for source '${this.name}', URL '${this.url}': ${data.source_data.error}`);
+                }
+
                 let layers = data.source_data.layers;
                 for (let layer_name in layers) {
                     this.tile_indexes[layer_name] = geojsonvt(layers[layer_name], {
