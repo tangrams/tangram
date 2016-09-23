@@ -72,12 +72,25 @@ export default class LabelLine {
             let {positions, offsets, angles, pre_angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.line_angles_segments, this.size, index, offset, layout.units_per_pixel);
             let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths, height);
 
+            let N = angles.length;
+            let weighted_angles = [];
+            let weighted_pre_angles = [];
+
+            weighted_angles[0] = (2*angles[0] + angles[1])/3;
+            weighted_pre_angles[0] = (2*pre_angles[0] + pre_angles[1])/3;
+            for (var i = 1; i < angles.length-1; i++){
+                weighted_angles[i] = (angles[i-1] + 2*angles[i] + angles[i+1]) / 4;
+                weighted_pre_angles[i] = (pre_angles[i-1] + 2*pre_angles[i] + pre_angles[i+1]) / 4;
+            }
+            weighted_angles[N-1] = (angles[N-2] + 2*angles[N-1])/3;
+            weighted_pre_angles[N-1] = (pre_angles[N-2] + 2*pre_angles[N-1])/3;
+
             this.position = label_position;
             this.offsets = offsets;
-            this.angle = angles;
+            this.angle = weighted_angles;
             this.obbs = obbs;
             this.aabbs = aabbs;
-            this.pre_angles = pre_angles;
+            this.pre_angles = weighted_pre_angles;
         }
 
         // First fitting segment
@@ -685,9 +698,6 @@ function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, 
 
         let label_length = label_sizes[label_index][0] * upp;
         let line_offset2d = Vector.rot([line_offset, 0], angle_segment);
-
-        let n = Vector.normalize(Vector.sub(line[line_index], line[line_index + 1]));
-        let line_offset3d = Vector.mult(n, line_offset);
 
         let position = [
             line[line_index][0] + line_offset2d[0],
