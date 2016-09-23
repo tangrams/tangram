@@ -30,6 +30,7 @@ export default class LabelLine {
 
         this.line_lengths = getLineLengths(lines);
         this.line_angles = getLineAngles(lines);
+        this.line_angles_segments = getLineAnglesForSegments(lines);
         this.pre_angles = [];
 
         // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
@@ -68,7 +69,7 @@ export default class LabelLine {
             let offset = Math.sqrt(offset2d[0] * offset2d[0] + offset2d[1] * offset2d[1]);
 
             let height = size[0][1];
-            let {positions, offsets, angles, pre_angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.size, index, offset, layout.units_per_pixel);
+            let {positions, offsets, angles, pre_angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.line_angles_segments, this.size, index, offset, layout.units_per_pixel);
             let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths, height);
 
             this.position = label_position;
@@ -535,21 +536,22 @@ function getOBB(position, width, height, angle, offset, upp) {
 // Private method to calculate the angle of a segment.
 // Transforms the angle to lie within the range [0, PI/2] and [3*PI/2, 2*PI] (1st or 4th quadrants)
 // as other ranges produce "upside down" labels
+// TODO: is this quivalent to simply using Math.atan(p/q)?
 function getAngleFromSegment(pt1, pt2) {
     let PI = Math.PI;
     let PI_2 = PI / 2;
     let p1p2 = Vector.sub(pt1, pt2);
     let theta = Math.atan2(p1p2[0], p1p2[1]) + PI_2;
 
-    if (theta > PI_2) {
-        // If in 2nd quadrant, move to 4th quadrant
-        theta += PI;
-        theta %= 2 * Math.PI;
-    }
-    else if (theta < 0) {
-        // If in 4th quadrant, make a positive angle
-        theta += 2 * PI;
-    }
+    // if (theta > PI_2) {
+    //     // If in 2nd quadrant, move to 4th quadrant
+    //     theta += PI;
+    //     theta %= 2 * Math.PI;
+    // }
+    // else if (theta < 0) {
+    //     // If in 4th quadrant, make a positive angle
+    //     theta += 2 * PI;
+    // }
 
     return theta;
 }
@@ -641,7 +643,7 @@ function interpolate2d(x, y, t){
      ];
 }
 
-function placeAtPosition(line, line_lengths, line_angles, label_sizes, line_index, line_offset, upp){
+function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, label_sizes, line_index, line_offset, upp){
     let positions = [];
     let offsets = [];
     let angles = [];
@@ -651,43 +653,53 @@ function placeAtPosition(line, line_lengths, line_angles, label_sizes, line_inde
     let segment_length = line_lengths[line_index];
 
     // places label at length offset from index. Finds next index and length offset
-    function getNextPlacement(line_index, line_offset, label_length, next_label_length){
+    function getNextPlacement(line_index, line_offset, label_length){
         let line_length = line_lengths[line_index];
-        let distance = 0.5 * (label_length + next_label_length);
+        let distance = label_length;
         line_offset += distance;
 
-        while (line_offset > line_length){
-            line_offset -= line_length;
-            line_length = line_lengths[++line_index];
+        if (line_offset > line_length && line_index < line_lengths.length - 1){
+            // line_offset = line_offset - distance - line_length;
+            line_offset = line_offset - line_length;
+            line_index = line_index + 1;
         }
+
+        // while (line_offset > line_length){
+        //     line_offset = line_offset - (line_length + distance);
+        //     line_length = line_lengths[++line_index];
+        // }
 
         return [line_index, line_offset];
     }
 
     let startPosition = Vector.add(
         line[line_index],
-        Vector.rot([line_offset, 0], line_angles[0])
+        Vector.rot([line_offset, 0], line_angles_segments[0])
     );
 
     for (let label_index = 0; label_index < label_sizes.length; label_index++){
         if (line_index > line.length - 1) break;
 
         let angle = line_angles[line_index];
+        let angle_segment = line_angles_segments[line_index];
+
         let label_length = label_sizes[label_index][0] * upp;
-        let line_offset2d = Vector.rot([line_offset, 0], angle);
+        let line_offset2d = Vector.rot([line_offset, 0], angle_segment);
+
+        let n = Vector.normalize(Vector.sub(line[line_index], line[line_index + 1]));
+        let line_offset3d = Vector.mult(n, line_offset);
 
         let position = [
             line[line_index][0] + line_offset2d[0],
             line[line_index][1] + line_offset2d[1]
         ];
 
-        let label_offset2d = Vector.rot([0.5 * label_length, 0], angle);
+        let label_offset2d = Vector.rot([0.5 * label_length, 0], angle_segment);
 
         position = Vector.add(position, label_offset2d);
 
-        // let delta = Vector.sub(startPosition, position);
         let delta = Vector.sub(position, startPosition);
-        let offset_angle = Math.atan2(delta[1], delta[0]);
+        let offset_angle = -Vector.angle(delta);
         let pre_angle = angle - offset_angle;
         let offset = Math.sqrt(delta[0]*delta[0] + delta[1]*delta[1]);
 
@@ -697,10 +709,7 @@ function placeAtPosition(line, line_lengths, line_angles, label_sizes, line_inde
         pre_angles.push(pre_angle);
         widths.push(label_length);
 
-        if (label_index < label_sizes.length - 1){
-            let next_label_length = label_sizes[label_index+1][0] * upp;
-            [line_index, line_offset] = getNextPlacement(line_index, line_offset, label_length, next_label_length);
-        }
+        [line_index, line_offset] = getNextPlacement(line_index, line_offset, label_length);
     }
 
     return {positions, offsets, angles, pre_angles, widths};
@@ -725,6 +734,18 @@ function getLineAngles(line){
         let p = line[i];
         let q = line[i+1];
         let angle = getAngleFromSegment(p, q);
+        angles.push(angle);
+    }
+    return angles;
+}
+
+function getLineAnglesForSegments(line){
+    let angles = [];
+    for (let i = 0; i < line.length - 1; i++){
+        let p = line[i];
+        let q = line[i+1];
+        let pq = Vector.sub(q,p);
+        let angle = Math.atan2(pq[1], pq[0]);
         angles.push(angle);
     }
     return angles;
