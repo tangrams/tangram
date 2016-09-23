@@ -86,8 +86,17 @@ class Layer {
         // Denormalize layer name to draw groups
         if (this.draw) {
             for (let group in this.draw) {
-                this.draw[group] = this.draw[group] || {};
-                this.draw[group].layer_name = this.full_name;
+                if (this.draw[group] == null || typeof this.draw[group] !== 'object') {
+                    // Invalid draw group
+                    let msg = `Draw group '${group}' for layer ${this.full_name} is invalid, must be an object, `;
+                    msg += `but was set to \`${group}: ${this.draw[group]}\` instead`;
+                    log('warn', msg); // TODO: fire external event that clients to subscribe to
+
+                    delete this.draw[group];
+                }
+                else {
+                    this.draw[group].layer_name = this.full_name;
+                }
             }
         }
     }
@@ -113,7 +122,7 @@ class Layer {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, filter value must be an object or function, `;
             msg += `but was set to \`filter: ${this.filter}\` instead`;
-            log('warn', msg);
+            log('warn', msg); // TODO: fire external event that clients to subscribe to
             return;
         }
 
@@ -131,7 +140,7 @@ class Layer {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, \`filter: ${JSON.stringify(this.filter)}\` `;
             msg += `failed with error '${e.message}', stack trace: ${e.stack}`;
-            log('warn', msg);
+            log('warn', msg); // TODO: fire external event that clients to subscribe to
         }
     }
 
@@ -407,7 +416,7 @@ export function parseLayerTree(name, layer, parent, styles) {
                     }
                     msg += ` instead?`;
                 }
-                log('warn', msg);
+                log('warn', msg); // TODO: fire external event that clients to subscribe to
             }
         }
 
