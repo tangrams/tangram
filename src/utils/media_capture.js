@@ -77,11 +77,13 @@ export default class MediaCapture {
                     let url = Utils.createObjectURL(blob);
 
                     // Explicitly remove all stream tracks, and set objects to null
-                    let tracks = cap.stream.getTracks();
-                    tracks.forEach(track => {
-                        track.stop();
-                        cap.stream.removeTrack(track);
-                    });
+                    if (cap.stream) {
+                        let tracks = cap.stream.getTracks() || [];
+                        tracks.forEach(track => {
+                            track.stop();
+                            cap.stream.removeTrack(track);
+                        });
+                    }
                     cap.stream = null;
                     cap.media_recorder = null;
                     this.video_capture = null;
