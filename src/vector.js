@@ -1,4 +1,4 @@
-/*** Vector functions - vectors provided as [x, y, z] arrays ***/
+/*** Vector functions - vectors provided as [x, y] or [x, y, z] arrays ***/
 
 var Vector;
 export default Vector = {};
@@ -16,7 +16,7 @@ Vector.neg = function (v) {
     var V = [];
     var lim = v.length;
     for (var i = 0; i < lim; i++) {
-        V[i] = v[i] * -1;
+        V[i] = -v[i];
     }
     return V;
 };
@@ -46,7 +46,7 @@ Vector.signed_area = function (v1, v2, v3) {
     return (v2[0]-v1[0])*(v3[1]-v1[1]) - (v3[0]-v1[0])*(v2[1]-v1[1]);
 };
 
-// Multiplication of two vectors
+// Multiplication of two vectors, or a vector and a scalar
 Vector.mult = function (v1, v2) {
     var v = [],
         len = v1.length,
@@ -89,29 +89,35 @@ Vector.div = function (v1, v2) {
 
 // Get 2D perpendicular
 Vector.perp = function (v1, v2) {
-    return [ v2[1] - v1[1],
-             v1[0] - v2[0] ];
+    return [
+        v2[1] - v1[1],
+        v1[0] - v2[0]
+    ];
 };
 
 // Get 2D vector rotated
 Vector.rot = function (v, a) {
     var c = Math.cos(a);
     var s = Math.sin(a);
-    return [v[0] * c - v[1] * s,
-            v[0] * s + v[1] * c];
+    return [
+        v[0] * c - v[1] * s,
+        v[0] * s + v[1] * c
+    ];
 };
 
-// Get 2D heading angle
+// Get 2D counter-clockwise angle
+// Angles in quadrant I and II are mapped to [0, PI)
+// Angles in quadrant III and IV are mapped to [-PI, 0]
 Vector.angle = function ([x, y]) {
     return Math.atan2(y,x);
 };
 
 // Get angle between two vectors
 Vector.angleBetween = function(A, B){
-    var delta = Vector.dot(A, B);
-    if (delta < -1) {
-        delta = -1;
-    }
+    var delta = Vector.dot(
+        Vector.normalize(A),
+        Vector.normalize(B)
+    );
     return Math.acos(delta);
 };
 
@@ -147,6 +153,9 @@ Vector.normalize = function (v) {
     var d;
     if (v.length === 2) {
         d = v[0]*v[0] + v[1]*v[1];
+
+        if (d === 1) return v;
+
         d = Math.sqrt(d);
 
         if (d !== 0) {
@@ -155,6 +164,9 @@ Vector.normalize = function (v) {
         return [0, 0];
     } else if (v.length >= 3) {
         d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+
+        if (d === 1) return v;
+
         d = Math.sqrt(d);
 
         if (d !== 0) {
@@ -166,11 +178,16 @@ Vector.normalize = function (v) {
 
 // Cross product of two vectors
 Vector.cross  = function (v1, v2) {
-    return [
-        (v1[1] * v2[2]) - (v1[2] * v2[1]),
-        (v1[2] * v2[0]) - (v1[0] * v2[2]),
-        (v1[0] * v2[1]) - (v1[1] * v2[0])
-    ];
+    if (v1.length === 2){
+        return v1[0] * v2[1] - v1[1] * v2[0];
+    }
+    else if (v1.length === 3){
+        return [
+            (v1[1] * v2[2]) - (v1[2] * v2[1]),
+            (v1[2] * v2[0]) - (v1[0] * v2[2]),
+            (v1[0] * v2[1]) - (v1[1] * v2[0])
+        ];
+    }
 };
 
 // Dot product of two vectors
