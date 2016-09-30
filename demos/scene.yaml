@@ -29,6 +29,7 @@ cameras:
         active: false
 
 scene:
+    animated: true
     background:
         color: '#f0ebeb'
 
@@ -303,6 +304,7 @@ layers:
             draw:
                 lines:
                     cap: round
+                    join: round
 
         highway:
             filter: { kind: highway }
