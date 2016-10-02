@@ -1160,7 +1160,7 @@ export default class Scene {
                 let style_counts = scene.debug.geometryCountByStyle();
                 let counts = {};
                 for (let style in style_counts) {
-                    let base = scene.styles[style].built_in ? style : scene.styles[style].base;
+                    let base = scene.styles[style].baseStyle();
                     counts[base] = counts[base] || 0;
                     counts[base] += style_counts[style];
                 }

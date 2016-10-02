@@ -71,7 +71,7 @@ export class StyleManager {
             if (style.gl === gl) {
                 log('trace', `StyleManager.destroy: destroying render style ${style.name}`);
 
-                if (!style.isBuiltIn()) {
+                if (style.base) {
                     this.remove(style.name);
                 }
                 style.destroy();
@@ -281,6 +281,9 @@ export class StyleManager {
         // Others are intermediary/abstract, used during style composition but not execution
         if (style.base && this.base_styles[style.base]) {
             this.styles[name] = style = Object.assign(Object.create(this.base_styles[style.base]), style);
+        }
+        else {
+            style.base = null; // null out invalid base style
         }
 
         return style;
