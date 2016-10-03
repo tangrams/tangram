@@ -203,7 +203,7 @@ layers:
                     polygons:
                         color: '#bddec5'
             park-detail:
-                filter: { kind: [pitch, wood, grass] }
+                filter: { kind: [pitch, wood, natural_wood, grass] }
                 draw:
                     polygons:
                         color: '#9dbea5'
@@ -213,28 +213,10 @@ layers:
                     polygons:
                         color: '#C0CDCD'
             civic:
-                filter: { kind: [university] }
+                filter: { kind: university }
                 draw:
                     polygons:
                         color: '#D9CFC3'
-
-        labels:
-            filter:
-                label_placement: true
-                kind: [park, forest, cemetery, graveyard]
-            draw:
-                icons:
-                    sprite: tree
-                    priority: 2
-                    size: 16px
-                    text:
-                        text_source: global.language_text_source
-                        font:
-                            family: Lucida Grande
-                            size: 10pt
-                            style: italic
-                            fill: darkgreen
-                            stroke: { color: white, width: 3 }
 
     water:
         data: { source: mapzen }
@@ -246,8 +228,7 @@ layers:
 
     roads:
         data: { source: mapzen }
-        filter:
-            not: { kind: rail }
+        filter: { not: { kind: rail } }
         draw:
             lines:
                 color: white
@@ -346,63 +327,66 @@ layers:
                             color: orange
                             width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
 
-    road_labels:
-        data: { source: mapzen, layer: roads }
-        filter:
-            $zoom: { min: 7 }
-            any: [name: true, ref: true]
-            tunnel: false
-            railway: false
-            not: { kind: [rail, aeroway] }
+        labels:
+            filter:
+                # $zoom: { min: 7 }
+                name: true
+                not: { kind: [rail, aeroway] }
 
-        highway:
-            filter: { kind: highway, $zoom: { min: 7 } }
-            draw:
-                text:
-                    text_source: global.language_text_source
-                    priority: 2
-                    font:
-                        fill: '#666'
-                        family: Helvetica
-                        size: 12px
-                        stroke: { color: white, width: 4 }
-
-        not_highway:
-            filter: { not: { kind: highway }, $zoom: { min: 13 } }
-            draw:
-                text:
-                    text_source: global.language_text_source
-                    priority: 5
-                    font:
-                        fill: '#666'
-                        stroke: { color: white, width: 4 }
-                        family: Helvetica
-                        size: 12px
-
-            major_road:
-                filter: { kind: major_road, $zoom: { min: 14 } }
+            highway:
+                filter: { kind: highway }
                 draw:
                     text:
-                        priority: 3
+                        text_source: global.language_text_source
+                        priority: 2
                         font:
+                            fill: '#666'
                             family: Helvetica
-                            size: 14px
+                            size: 12px
                             stroke: { color: white, width: 4 }
 
-            ferry:
-                filter: { kind: ferry }
+            not_highway:
+                filter:
+                    not: { kind: highway }
+                    $zoom: { min: 13 }
                 draw:
                     text:
-                        text_wrap: 20
+                        text_source: global.language_text_source
+                        priority: 5
                         font:
-                            fill: '#8db3ce'
-                            stroke: { color: white, width: 4px }
-                            style: italic
+                            fill: '#666'
+                            stroke: { color: white, width: 4 }
+                            family: Helvetica
                             size: 12px
 
-            small:
-                filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
-                visible: false
+                major_road:
+                    filter:
+                        kind: major_road
+                        $zoom: { min: 14 }
+                    draw:
+                        text:
+                            priority: 3
+                            font:
+                                family: Helvetica
+                                size: 14px
+                                stroke: { color: white, width: 4 }
+
+                ferry:
+                    filter: { kind: ferry }
+                    draw:
+                        text:
+                            text_wrap: 20
+                            font:
+                                fill: '#8db3ce'
+                                stroke: { color: white, width: 4px }
+                                style: italic
+                                size: 12px
+
+                small:
+                    filter:
+                        kind_detail: [residential, unclassified]
+                        $zoom: { max: 15 }
+                    visible: false
 
         shields:
             filter:
@@ -470,61 +454,88 @@ layers:
 
     pois:
         data: { source: mapzen }
-        filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
-        draw:
-            icons:
-                size: [[13, 12px], [15, 18px]]
-                interactive: true
-                priority: 6
 
-        # add text label at higher zoom
-        labels:
+        landuse:
             filter:
-                - { $zoom: { min: 17 } }
-                - { $zoom: { min: 16 }, kind: station }
+                name: true
+                kind: [park, forest, cemetery, graveyard]
+                any:
+                    - { $zoom: { min: 16 } }
+                    - { area: { min: 500px2 } }
             draw:
                 icons:
+                    sprite: tree
+                    priority: 2
+                    size: 16px
                     text:
                         text_source: global.language_text_source
                         font:
-                            family: Montserrat
-                            size: 12px
-                            fill: black
+                            family: Lucida Grande
+                            size: 10pt
+                            style: italic
+                            fill: darkgreen
+                            stroke: { color: white, width: 3 }
 
-        # add generic icon at high zoom
-        generic:
-            filter: { $zoom: { min: 18 } }
-            draw: { icons: { sprite: info } }
+        not_landuse:
+            filter:
+                name: true
+                not:
+                    kind: [peak, viewpoint, bicycle_rental, car_sharing, park, forest, cemetery, graveyard]
+                $zoom: { min: 15 }
+            draw:
+                icons:
+                    size: [[13, 12px], [15, 18px]]
+                    interactive: true
+                    priority: 6
 
-        # examples of different icons mapped to feature properties
-        icons:
-            restaurant:
-                filter: { kind: [restaurant] }
-                draw: { icons: { sprite: restaurant } }
-            cafe:
-                filter: { kind: [cafe, convenience] }
-                draw: { icons: { sprite: cafe } }
-            bar:
-                filter: { kind: [bar, pub] }
-                draw: { icons: { sprite: bar } }
-            culture:
-                filter: { kind: [museum, library, church, place_of_worship, bank] }
-                draw: { icons: { sprite: museum } }
-            station:
-                filter: { kind: [station] }
-                draw: { icons: { sprite: train, priority: 2, required: false } }
-            hospital:
-                filter: { kind: [hospital, pharmacy] }
-                draw: { icons: { sprite: hospital } }
-            hotel:
-                filter: { kind: [hotel, hostel] }
-                draw: { icons: { sprite: hotel } }
-            bus_stop:
-                filter: { kind: [bus_stop] }
-                draw: { icons: { sprite: bus } }
-            bookstore:
-                filter: { kind: [bookstore] }
-                draw: { icons: { sprite: bookstore } }
+            # add text label at higher zoom
+            labels:
+                filter:
+                    - { $zoom: { min: 17 } }
+                    - { $zoom: { min: 16 }, kind: station }
+                draw:
+                    icons:
+                        text:
+                            text_source: global.language_text_source
+                            font:
+                                family: Montserrat
+                                size: 12px
+                                fill: black
+
+            # add generic icon at high zoom
+            generic:
+                filter: { $zoom: { min: 18 } }
+                draw: { icons: { sprite: info } }
+
+            # examples of different icons mapped to feature properties
+            icons:
+                restaurant:
+                    filter: { kind: [restaurant] }
+                    draw: { icons: { sprite: restaurant } }
+                cafe:
+                    filter: { kind: [cafe, convenience] }
+                    draw: { icons: { sprite: cafe } }
+                bar:
+                    filter: { kind: [bar, pub] }
+                    draw: { icons: { sprite: bar } }
+                culture:
+                    filter: { kind: [museum, library, church, place_of_worship, bank] }
+                    draw: { icons: { sprite: museum } }
+                station:
+                    filter: { kind: [station] }
+                    draw: { icons: { sprite: train, priority: 2, required: false } }
+                hospital:
+                    filter: { kind: [hospital, pharmacy] }
+                    draw: { icons: { sprite: hospital } }
+                hotel:
+                    filter: { kind: [hotel, hostel] }
+                    draw: { icons: { sprite: hotel } }
+                bus_stop:
+                    filter: { kind: [bus_stop] }
+                    draw: { icons: { sprite: bus } }
+                bookstore:
+                    filter: { kind: [bookstore] }
+                    draw: { icons: { sprite: bookstore } }
 
     places:
         data: { source: mapzen }
