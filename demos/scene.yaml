@@ -1,17 +1,17 @@
-import:
+﻿import:
     - styles/halftone.yaml
     - styles/windows.yaml
     - styles/water.yaml
     - styles/popup.yaml
 
 global:
-    language: en # OSM language code
+    language: en # ISO 2-char code
     language_text_source: |
         function() {
             // Use preferred language label if available
             return (global.language && feature['name:'+global.language]) || feature.name;
         }
-    feature_order: function () { return feature.sort_key; }
+    feature_order: function () { return feature.sort_rank; }
 
 cameras:
     perspective:
@@ -130,9 +130,11 @@ styles:
 sources:
     mapzen:
         type: TopoJSON
-        url: https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson
-        url_params:
-            api_key: vector-tiles-HqUVidw
+        # url: https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson
+        # url: https://tile.mapzen.com/vector/v1/all/{z}/{x}/{y}.topojson
+        # url_params:
+        #     api_key: vector-tiles-HqUVidw
+        url: http://tile.dev.mapzen.com/vector/v1/all/{z}/{x}/{y}.topojson
         max_zoom: 16
         # # Data filtering demo with 'scripts' and 'transform' properties:
         # # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
@@ -218,7 +220,7 @@ layers:
 
         labels:
             filter:
-                label_placement: yes
+                label_placement: true
                 kind: [park, forest, cemetery, graveyard]
             draw:
                 icons:
@@ -245,7 +247,7 @@ layers:
     roads:
         data: { source: mapzen }
         filter:
-            not: { kind: [rail] }
+            not: { kind: rail }
         draw:
             lines:
                 color: white
@@ -263,7 +265,7 @@ layers:
                     cap: round
 
         highway:
-            filter: { kind: [highway, Road] } # TODO: remove Natural Earth Road value for mapzen vector tiles 1.0
+            filter: { kind: highway }
             draw:
                 lines:
                     color: '#D16768'
@@ -271,7 +273,7 @@ layers:
                     outline:
                         width: [[14, 0], [15, 2]]
             link:
-                filter: { is_link: yes }
+                filter: { is_link: true }
                 draw:
                     lines:
                         color: '#aaa'
@@ -320,7 +322,7 @@ layers:
                     outline:
                         width: 0
         airports:
-            filter: { aeroway: true }
+            filter: { kind: aeroway }
             draw:
                 lines:
                     color: '#ddd'
@@ -328,13 +330,13 @@ layers:
                         width: 0
 
             taxiways:
-                filter: { aeroway: taxiway }
+                filter: { kind_detail: taxiway }
                 draw:
                     lines:
                         width: [[13, 0px], [14, 2px], [17, 10px]]
 
             runways:
-                filter: { aeroway: runway }
+                filter: { kind_detail: runway }
                 draw:
                     lines:
                         color: [[13, '#FFE4B5'], [16, white]]
@@ -349,10 +351,9 @@ layers:
         filter:
             $zoom: { min: 7 }
             any: [name: true, ref: true]
-            aeroway: false
             tunnel: false
             railway: false
-            not: { kind: rail }
+            not: { kind: [rail, aeroway] }
 
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
@@ -405,23 +406,19 @@ layers:
 
         shields:
             filter:
-                network: 'US:I' # US interstates
-                ref: true # some roads don't have shield text
+                network: 'US:I' # US interstates only in this demo
+                shield_text: true
             draw:
                 icons:
                     sprite: shield
+                    # sprite: function() { return feature.network }
                     priority: 2
                     color: white
                     size: 24px
                     cull_from_tile: true
                     text:
                         anchor: center
-                        text_source: |
-                            function() {
-                                // Extract shield text
-                                var m = feature.ref.match(/\d+/);
-                                return m && m[0];
-                            }
+                        text_source: shield_text
                         font:
                             family: Helvetica
                             size: 11px
