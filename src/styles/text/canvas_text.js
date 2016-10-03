@@ -455,7 +455,7 @@ function splitLabelText(text){
     // let words = text.split(' ');
     let words = [text];
     let segments = [];
-    let codon = 3;
+    let codon = 1;
     let space_indices = [];
     let space_index = 0;
 
@@ -463,8 +463,8 @@ function splitLabelText(text){
         let word = words[i];
         if (word.length > codon){
             while (word.length > codon){
-                segments.push(word.substring(0,3));
-                word = word.substring(3);
+                segments.push(word.substring(0,codon));
+                word = word.substring(codon);
                 space_index++;
             }
             if (word.length > 0){

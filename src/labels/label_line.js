@@ -549,21 +549,20 @@ function getOBB(position, width, height, angle, offset, upp) {
 // Private method to calculate the angle of a segment.
 // Transforms the angle to lie within the range [0, PI/2] and [3*PI/2, 2*PI] (1st or 4th quadrants)
 // as other ranges produce "upside down" labels
-// TODO: is this quivalent to simply using Math.atan(p/q)?
 function getAngleFromSegment(pt1, pt2) {
-    let PI = Math.PI;
-    let PI_2 = PI / 2;
     let p1p2 = Vector.sub(pt1, pt2);
-    let theta = Math.atan2(p1p2[0], p1p2[1]) + PI_2;
+    let theta = Math.atan2(p1p2[0], p1p2[1]) + Math.PI/2;
+    // let theta = Math.PI - Math.atan2(p1p2[1], p1p2[0]);
+    // console.log(theta, Math.PI - Math.atan2(p1p2[1], p1p2[0]))
 
-    // if (theta > PI_2) {
+    // if (theta > Math.PI/2) {
     //     // If in 2nd quadrant, move to 4th quadrant
-    //     theta += PI;
+    //     theta += Math.PI;
     //     theta %= 2 * Math.PI;
     // }
     // else if (theta < 0) {
     //     // If in 4th quadrant, make a positive angle
-    //     theta += 2 * PI;
+    //     theta += 2 * Math.PI;
     // }
 
     return theta;
@@ -711,7 +710,7 @@ function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, 
         let delta = Vector.sub(position, startPosition);
         let offset_angle = -Vector.angle(delta);
         let pre_angle = angle - offset_angle;
-        let offset = Math.sqrt(delta[0]*delta[0] + delta[1]*delta[1]);
+        let offset = Vector.length(delta);
 
         positions.push(position);
         offsets.push([offset / upp, 0]);
@@ -755,7 +754,7 @@ function getLineAnglesForSegments(line){
         let p = line[i];
         let q = line[i+1];
         let pq = Vector.sub(q,p);
-        let angle = Math.atan2(pq[1], pq[0]);
+        let angle = Vector.angle(pq);
         angles.push(angle);
     }
     return angles;
