@@ -36,11 +36,11 @@ export default class Tile {
         this.error = null;
         this.debug = {};
 
-        this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
         this.style_zoom = style_zoom; // zoom level to be used for styling
+        this.coords = Tile.normalizedCoordinate(coords, this.source, this.style_zoom);
+        this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
         this.overzoom2 = Math.pow(2, this.overzoom);
-        this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
@@ -67,14 +67,24 @@ export default class Tile {
     }
 
     static key (coords, source, style_zoom) {
-        coords = Tile.coordinateWithMaxZoom(coords, source.max_zoom);
         if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
             return; // cull tiles out of range (x will wrap)
         }
         return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
     }
 
-    static coordinateAtZoom({x, y, z, key}, zoom) {
+    static normalizedKey (coords, source, style_zoom) {
+        return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source, style_zoom);
+    }
+
+    static normalizedCoordinate (coords, source, style_zoom) {
+        if (source.zoom_bias) {
+            coords = Tile.coordinateAtZoom(coords, coords.z - source.zoom_bias); // TODO: what about z0?
+        }
+        return Tile.coordinateWithMaxZoom(coords, source.max_zoom);
+    }
+
+    static coordinateAtZoom({x, y, z}, zoom) {
         if (z !== zoom) {
             let zscale = Math.pow(2, z - zoom);
             x = Math.floor(x / zscale);
