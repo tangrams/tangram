@@ -82,10 +82,10 @@ export default class TilePyramid {
         }
 
         // First check overzoomed tiles at same coordinate zoom
-        if (style_zoom > source.max_zoom) {
+        if (style_zoom > source.max_coord_zoom) {
             let source_tiles = this.sourceTiles(coords, source);
             if (source_tiles) {
-                for (let z = style_zoom - 1; z >= source.max_zoom; z--) {
+                for (let z = style_zoom - 1; z >= source.max_coord_zoom; z--) {
                     if (source_tiles[z] && source_tiles[z].loaded) {
                         return source_tiles[z];
                     }
@@ -95,7 +95,7 @@ export default class TilePyramid {
                     }
                 }
             }
-            style_zoom = source.max_zoom;
+            style_zoom = source.max_coord_zoom;
         }
 
         // Check tiles at next zoom up
@@ -115,7 +115,7 @@ export default class TilePyramid {
         let descendants = [];
 
         // First check overzoomed tiles at same coordinate zoom
-        if (style_zoom >= source.max_zoom) {
+        if (style_zoom >= source.max_coord_zoom) {
             let source_tiles = this.sourceTiles(coords, source);
             if (source_tiles) {
                 let search_max_zoom = Math.max(Geo.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
@@ -140,7 +140,7 @@ export default class TilePyramid {
                     descendants.push(child_tiles[style_zoom]);
                 }
                 // didn't find child, try next level
-                else if (level <= this.max_proxy_descendant_depth && child.z <= source.max_zoom) {
+                else if (level <= this.max_proxy_descendant_depth && child.z <= source.max_coord_zoom) {
                     descendants.push(...this.getDescendants({ coords: child, source, style_zoom }, level + 1));
                 }
             }
