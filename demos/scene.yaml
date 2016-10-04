@@ -407,6 +407,15 @@ layers:
                             family: Helvetica
                             size: 11px
 
+            # thin-out shields at low-zoom
+            thinning:
+                filter: { $zoom: { max: 10 } }
+                draw:
+                    icons:
+                        text:
+                            repeat_group: shields
+                            repeat_distance: 75px
+
     buildings:
         data: { source: mapzen }
         filter: { $zoom: { min: 14 } }
