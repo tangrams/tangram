@@ -17,6 +17,7 @@ uniform mat3 u_inverseNormalMatrix;
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute float a_pre_angle;
+attribute float a_angle2;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
@@ -55,7 +56,14 @@ void main() {
     // Apply positioning and scaling in screen space
     vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
-    float theta = a_shape.z / 4096.;                // values have a 12-bit fraction
+    // offset *= (1. + fract(u_map_position.z));
+
+    float theta = a_shape.z / 4096.;
+
+    if (fract(u_map_position.z) > .5){
+        theta = a_angle2 / 4096.;
+    }
+
     float pre_theta = a_pre_angle / 4096.;
 
     #ifdef TANGRAM_MULTI_SAMPLER
