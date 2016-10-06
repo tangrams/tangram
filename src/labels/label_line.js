@@ -56,53 +56,52 @@ export default class LabelLine {
             return;
         }
 
-        // only do first one for now
-        for (let i = 0; i < 1; i++){
-            let index = indices[i];
-            let line_position = lines[index];
-            let label_position = label_positions[i];
+        let total_line_length = this.line_lengths.reduce(function(prev, next){ return prev + next; });
+        let total_label_length = size.reduce(function(prev, next){ return prev + next[0] * layout.units_per_pixel; }, 0);
 
-            let offset2d = [
-                line_position[0] - label_position[0],
-                line_position[1] - label_position[1]
-            ];
-
-            let offset = Math.sqrt(offset2d[0] * offset2d[0] + offset2d[1] * offset2d[1]);
-
-            let height = size[0][1];
-            let {positions, offsets, angles, pre_angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.line_angles_segments, this.size, index, offset, layout.units_per_pixel);
-            let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths, height);
-
-            let smoothing = false;
-            if (smoothing){
-                let N = angles.length;
-                let weighted_angles = [];
-                let weighted_pre_angles = [];
-
-                weighted_angles[0] = (2*angles[0] + angles[1])/3;
-                weighted_pre_angles[0] = (2*pre_angles[0] + pre_angles[1])/3;
-                for (var i = 1; i < angles.length-1; i++){
-                    weighted_angles[i] = (angles[i-1] + 2*angles[i] + angles[i+1]) / 4;
-                    weighted_pre_angles[i] = (pre_angles[i-1] + 2*pre_angles[i] + pre_angles[i+1]) / 4;
-                }
-                weighted_angles[N-1] = (angles[N-2] + 2*angles[N-1])/3;
-                weighted_pre_angles[N-1] = (pre_angles[N-2] + 2*pre_angles[N-1])/3;
-
-                this.angle = weighted_angles;
-                this.pre_angles = weighted_pre_angles;
-            }
-            else {
-                this.angle = angles;
-                this.pre_angles = pre_angles;
-            }
-
-            this.position = label_position;
-            this.positions = positions;
-            this.offsets = offsets;
-            this.obbs = obbs;
-            this.aabbs = aabbs;
-
+        if (total_label_length > total_line_length){
+            this.throw_away = true;
+            return;
         }
+
+        // only do first one for now
+        let offset = 0;
+        let index = 0;
+        let line_position = lines[index];
+        let label_position = lines[index];
+
+        let height = size[0][1];
+        let {positions, offsets, angles, pre_angles, widths} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.line_angles_segments, this.size, index, offset, layout.units_per_pixel);
+        let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths, height);
+
+        let smoothing = false;
+        if (smoothing){
+            let N = angles.length;
+            let weighted_angles = [];
+            let weighted_pre_angles = [];
+
+            weighted_angles[0] = (2*angles[0] + angles[1])/3;
+            weighted_pre_angles[0] = (2*pre_angles[0] + pre_angles[1])/3;
+            for (var i = 1; i < angles.length-1; i++){
+                weighted_angles[i] = (angles[i-1] + 2*angles[i] + angles[i+1]) / 4;
+                weighted_pre_angles[i] = (pre_angles[i-1] + 2*pre_angles[i] + pre_angles[i+1]) / 4;
+            }
+            weighted_angles[N-1] = (angles[N-2] + 2*angles[N-1])/3;
+            weighted_pre_angles[N-1] = (pre_angles[N-2] + 2*pre_angles[N-1])/3;
+
+            this.angle = weighted_angles;
+            this.pre_angles = weighted_pre_angles;
+        }
+        else {
+            this.angle = angles;
+            this.pre_angles = pre_angles;
+        }
+
+        this.position = label_position;
+        this.positions = positions;
+        this.offsets = offsets;
+        this.obbs = obbs;
+        this.aabbs = aabbs;
 
         // First fitting segment
         // let segment = this.getNextFittingSegment(this.getCurrentSegment());
@@ -569,28 +568,6 @@ function getOBB(position, width, height, angle, offset, upp) {
     return new OBB(p0, p1, -angle, width, height);
 }
 
-// Private method to calculate the angle of a segment.
-// Transforms the angle to lie within the range [0, PI/2] and [3*PI/2, 2*PI] (1st or 4th quadrants)
-// as other ranges produce "upside down" labels
-function getAngleFromSegment(pt1, pt2) {
-    let p1p2 = Vector.sub(pt1, pt2);
-    let theta = Math.atan2(p1p2[0], p1p2[1]) + Math.PI/2;
-    // let theta = Math.PI - Math.atan2(p1p2[1], p1p2[0]);
-    // console.log(theta, Math.PI - Math.atan2(p1p2[1], p1p2[0]))
-
-    // if (theta > Math.PI/2) {
-    //     // If in 2nd quadrant, move to 4th quadrant
-    //     theta += Math.PI;
-    //     theta %= 2 * Math.PI;
-    // }
-    // else if (theta < 0) {
-    //     // If in 4th quadrant, make a positive angle
-    //     theta += 2 * Math.PI;
-    // }
-
-    return theta;
-}
-
 function calcFitness(line_length, label_length) {
     return 1 - line_length / label_length;
 }
@@ -690,10 +667,6 @@ function placeAtAnchor(line_index, line_offset, line_lengths, label_lengths){
     let line_length = line_lengths[line_index];
     let label_length = label_lengths[label_index];
 
-    console.log(line_index)
-
-    // if (label_length + line_offset > line_length) debugger;
-
     while (label_index < num_labels && line_index < num_segments){
         while (label_index < num_labels && line_offset < line_length){
             offsets.push(line_offset + 0.5 * label_length);
@@ -709,17 +682,8 @@ function placeAtAnchor(line_index, line_offset, line_lengths, label_lengths){
         line_length = line_lengths[line_index];
     }
 
-    // BUG HERE
-    // if (label_index !== num_labels) debugger
-
     return [indices, offsets];
 }
-
-// test
-// var line_lengths = [100,200,300,400];
-// var label_lengths = [50,60,70,80,90,100,150,50];
-
-// var result = placeAtAnchor(0, 0, line_lengths, label_lengths);
 
 function getPositionsFromIndicesAndOffsets(line, indices, offsets){
     let positions = [];
@@ -776,12 +740,6 @@ function getNextPlacement(line_index, line_offset, label_length, line_lengths){
 }
 
 function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, label_sizes, line_index, line_offset, upp){
-    // let positions = [];
-    // let offsets = [];
-    // let angles = [];
-    // let pre_angles = [];
-    // let widths = [];
-
     let widths = label_sizes.map(function(size){
         return size[0] * upp;
     });
@@ -796,41 +754,10 @@ function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, 
 
     let [offsets, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
 
-    // let segment_length = line_lengths[line_index];
-
-    // for (let label_index = 0; label_index < label_sizes.length; label_index++){
-    //     if (line_index > line.length - 1) break;
-
-    //     let angle = line_angles[line_index];
-    //     let angle_segment = line_angles_segments[line_index];
-
-    //     let label_length = label_sizes[label_index][0] * upp;
-    //     let line_offset2d = Vector.rot([line_offset, 0], angle_segment);
-
-    //     let position = [
-    //         line[line_index][0] + line_offset2d[0],
-    //         line[line_index][1] + line_offset2d[1]
-    //     ];
-
-    //     let label_offset2d = Vector.rot([0.5 * label_length, 0], angle_segment);
-
-    //     position = Vector.add(position, label_offset2d);
-
-    //     let delta = Vector.sub(position, startPosition);
-    //     let offset_angle = -Vector.angle(delta);
-    //     let pre_angle = angle - offset_angle;
-    //     let offset = Vector.length(delta);
-
-    //     positions.push(position);
-    //     offsets.push([offset / upp, 0]);
-    //     angles.push(offset_angle);
-    //     pre_angles.push(pre_angle);
-    //     widths.push(label_length);
-
-    //     [line_index, line_offset] = getNextPlacement(line_index, line_offset, label_length, line_lengths);
-    // }
-
-    console.log(offsets)
+    offsets = offsets.map(function(offset){
+        return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
+        // return [offset[0] / upp, offset[1] / upp];
+    });
 
     return {positions, offsets, angles, pre_angles, widths};
 }
@@ -873,6 +800,28 @@ function getLineAnglesForSegments(line){
 function getAngleForSegment(p, q){
     let pq = Vector.sub(q,p);
     return Vector.angle(pq);
+}
+
+// Private method to calculate the angle of a segment.
+// Transforms the angle to lie within the range [0, PI/2] and [3*PI/2, 2*PI] (1st or 4th quadrants)
+// as other ranges produce "upside down" labels
+function getAngleFromSegment(pt1, pt2) {
+    let p1p2 = Vector.sub(pt1, pt2);
+    let theta = Math.atan2(p1p2[0], p1p2[1]) + Math.PI/2;
+    // let theta = Math.PI - Math.atan2(p1p2[1], p1p2[0]);
+    // console.log(theta, Math.PI - Math.atan2(p1p2[1], p1p2[0]))
+
+    // if (theta > Math.PI/2) {
+    //     // If in 2nd quadrant, move to 4th quadrant
+    //     theta += Math.PI;
+    //     theta %= 2 * Math.PI;
+    // }
+    // else if (theta < 0) {
+    //     // If in 4th quadrant, make a positive angle
+    //     theta += 2 * Math.PI;
+    // }
+
+    return theta;
 }
 
 function getLineLengths(line){
