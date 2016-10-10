@@ -57,22 +57,22 @@ void main() {
     // Apply positioning and scaling in screen space
     vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
-    // offset *= (1. + fract(u_map_position.z));
 
     float zoom = fract(u_map_position.z);
     float theta = a_shape.z / 4096.;
+    float w;
 
     if (zoom < a_stops[0]){
-        theta = a_angles[0] / 4096.;
+        w = zoom / a_stops[0];
+        theta = ((1. - w) * a_angles[0] + w * a_angles[1]) / 4096.;
     }
     else if (zoom < a_stops[1]){
-        theta = a_angles[1] / 4096.;
+        w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
+        theta = ((1. - w) * a_angles[1] + w * a_angles[2]) / 4096.;
     }
-    else if (zoom < a_stops[2]){
-        theta = a_angles[2] / 4096.;
-    }
-    else {
-        theta = a_angles[3] / 4096.;
+    else if (zoom <= a_stops[2]){
+        w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
+        theta = ((1. - w) * a_angles[2] + w * a_angles[3]) / 4096.;
     }
 
     float pre_theta = a_pre_angle / 4096.;
