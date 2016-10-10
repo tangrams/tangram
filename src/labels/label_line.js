@@ -821,8 +821,6 @@ function getAnglesAndStops(angles, angle_ranges){
     for (let i = 0; i < angles.length; i++){
         let stop_array = angle_ranges[i].concat(ones).splice(0, max_angles - 1);
         let angle_array = unique_angles.slice(0, angle_ranges[i].length + 1).reverse().concat(zeros).splice(0, max_angles);
-
-        console.log(stop_array, angle_array);
         angle_info[i] = {stop_array, angle_array};
     }
 

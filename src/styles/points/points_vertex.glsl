@@ -17,7 +17,8 @@ uniform mat3 u_inverseNormalMatrix;
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute float a_pre_angle;
-attribute float a_angle2;
+attribute vec4 a_angles;
+attribute vec3 a_stops;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
@@ -58,10 +59,20 @@ void main() {
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
     // offset *= (1. + fract(u_map_position.z));
 
+    float zoom = fract(u_map_position.z);
     float theta = a_shape.z / 4096.;
 
-    if (fract(u_map_position.z) > .5){
-        theta = a_angle2 / 4096.;
+    if (zoom < a_stops[0]){
+        theta = a_angles[0] / 4096.;
+    }
+    else if (zoom < a_stops[1]){
+        theta = a_angles[1] / 4096.;
+    }
+    else if (zoom < a_stops[2]){
+        theta = a_angles[2] / 4096.;
+    }
+    else {
+        theta = a_angles[3] / 4096.;
     }
 
     float pre_theta = a_pre_angle / 4096.;

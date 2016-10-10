@@ -5,8 +5,8 @@ import { default_uvs } from './common';
 // properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
 // of a sprite between two zoom levels.
 export function buildQuadsForPoints (points, vertex_data, vertex_template,
-    { texcoord_index, position_index, shape_index, offset_index, pre_angle_index, angle2_index },
-    { quad, quad_normalize, offset, pre_angle, angle, angle2, shape_w, texcoord_scale, texcoord_normalize }) {
+    { texcoord_index, position_index, shape_index, offset_index, pre_angle_index, angles_index, stops_index },
+    { quad, quad_normalize, offset, pre_angle, angle, angles, stops, shape_w, texcoord_scale, texcoord_normalize }) {
     quad_normalize = quad_normalize || 1;
     let w2 = quad[0] / 2 * quad_normalize;
     let h2 = quad[1] / 2 * quad_normalize;
@@ -54,7 +54,15 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
 
 
             vertex_template[pre_angle_index] = pre_angle;
-            vertex_template[angle2_index] = angle2;
+
+            vertex_template[angles_index + 0] = angles[0];
+            vertex_template[angles_index + 1] = angles[1];
+            vertex_template[angles_index + 2] = angles[2];
+            vertex_template[angles_index + 3] = angles[3];
+
+            vertex_template[stops_index + 0] = stops[0];
+            vertex_template[stops_index + 1] = stops[1];
+            vertex_template[stops_index + 2] = stops[2];
 
             vertex_template[offset_index + 0] = offset[0];
             vertex_template[offset_index + 1] = offset[1];
