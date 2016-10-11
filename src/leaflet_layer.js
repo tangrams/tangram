@@ -1,5 +1,4 @@
 import Thread from './utils/thread';
-import Utils from './utils/utils';
 import Scene from './scene';
 import Geo from './geo';
 
@@ -47,7 +46,6 @@ function extendLeaflet(options) {
             initialize: function (options) {
                 // Defaults
                 options.showDebug = (!options.showDebug ? false : true);
-                options.wheelDebounceTime = options.wheelDebounceTime || 40;
 
                 L.setOptions(this, options);
                 this.createScene();
@@ -56,11 +54,6 @@ function extendLeaflet(options) {
 
                 // Force leaflet zoom animations off
                 this._zoomAnimated = false;
-
-                this.debounceViewReset = Utils.debounce(() => {
-                    this._map.fire('zoomend');
-                    this._map.fire('moveend');
-                }, this.options.wheelDebounceTime);
             },
 
             createScene: function () {
@@ -217,14 +210,40 @@ function extendLeaflet(options) {
                 return div;
             },
 
-            // Modify leaflet's default scroll wheel behavior to have a much more sensitve/continuous zoom
-            // Note: this should be deprecated once leaflet continuous zoom is more widely used and the
-            // default behavior is presumably improved
+            // Modify leaflet's default scroll wheel behavior to render frames more frequently
+            // (should generally lead to smoother scroll with Tangram frame re-render)
             modifyScrollWheelBehavior: function (map) {
                 if (this.scene.view.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
                     map.options.zoomSnap = 0;
-                    map.options.wheelPxPerZoomLevel = 1000;
-                    map.options.wheelDebounceTime = 10;
+                    map.scrollWheelZoom.removeHooks();
+
+                    map.scrollWheelZoom._onWheelScroll = function (e) {
+                        var delta = L.DomEvent.getWheelDelta(e);
+                        this._delta += delta;
+                        this._lastMousePos = this._map.mouseEventToContainerPoint(e);
+                        this._performZoom();
+                        L.DomEvent.stop(e);
+                    };
+
+                    map.scrollWheelZoom._performZoom = function () {
+                        var map = this._map,
+                            zoom = map.getZoom();
+
+                        map._stop(); // stop panning and fly animations if any
+
+                        var delta = this._delta / (this._map.options.wheelPxPerZoomLevel * 4);
+                        this._delta = 0;
+
+                        if (!delta || (zoom + delta) >= this._map.getMaxZoom()) { return; }
+
+                        if (map.options.scrollWheelZoom === 'center') {
+                            map.setZoom(zoom + delta);
+                        } else {
+                            map.setZoomAround(this._lastMousePos, zoom + delta);
+                        }
+                    };
+
+                    map.scrollWheelZoom.addHooks();
                 }
             },
 
