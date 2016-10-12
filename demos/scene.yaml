@@ -453,12 +453,10 @@ layers:
 
             # thin-out shields at low-zoom
             thinning:
-                filter: { $zoom: { max: 10 } }
+                filter: { $zoom: { max: 11 } }
                 draw:
                     icons:
-                        text:
-                            repeat_group: shields
-                            repeat_distance: 150px
+                        repeat_distance: 75px
 
     buildings:
         data: { source: mapzen }
