@@ -22,6 +22,7 @@ attribute vec3 a_stops;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
+attribute vec4 a_offsets;
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
@@ -60,22 +61,31 @@ void main() {
 
     float zoom = fract(u_map_position.z);
     float theta = a_shape.z / 4096.;
+    float pre_theta = a_pre_angle / 4096.;
     float w;
 
-    if (zoom < a_stops[0]){
-        w = zoom / a_stops[0];
-        theta = ((1. - w) * a_angles[0] + w * a_angles[1]) / 4096.;
+    if (zoom < .3){
+        // w = zoom / a_stops[0];
+        // theta = ((1. - w) * a_angles[0] + w * a_angles[1]) / 4096.;
+        theta = a_angles[0] / 4096.;
+        offset.x = a_offsets[0];
     }
-    else if (zoom < a_stops[1]){
-        w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
-        theta = ((1. - w) * a_angles[1] + w * a_angles[2]) / 4096.;
+    else if (zoom < .6){
+        // w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
+        // theta = ((1. - w) * a_angles[1] + w * a_angles[2]) / 4096.;
+        theta = a_angles[1] / 4096.;
+        offset.x = a_offsets[1];
     }
-    else if (zoom <= a_stops[2]){
-        w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
-        theta = ((1. - w) * a_angles[2] + w * a_angles[3]) / 4096.;
+    else if (zoom < .9){
+        // w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
+        // theta = ((1. - w) * a_angles[2] + w * a_angles[3]) / 4096.;
+        theta = a_angles[2] / 4096.;
+        offset.x = a_offsets[2];
     }
-
-    float pre_theta = a_pre_angle / 4096.;
+    else {
+        theta = a_angles[3] / 4096.;
+        offset.x = a_offsets[3];
+    }
 
     #ifdef TANGRAM_MULTI_SAMPLER
     v_sampler = a_shape.w; // texture sampler
