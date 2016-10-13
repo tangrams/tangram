@@ -129,8 +129,9 @@ function extendLeaflet(options) {
                 // Force leaflet zoom animations off
                 map._zoomAnimated = false;
 
-                // Modify default leaflet scroll wheel behavior
+                // Modify default Leaflet behaviors
                 this.modifyScrollWheelBehavior(map);
+                this.modifyDoubleClickZoom(map);
 
                 // Setup feature selection
                 this.setupSelectionEventHandlers(map);
@@ -215,7 +216,7 @@ function extendLeaflet(options) {
             modifyScrollWheelBehavior: function (map) {
                 if (this.scene.view.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
                     map.options.zoomSnap = 0;
-                    map.scrollWheelZoom.removeHooks();
+                    map.scrollWheelZoom.disable();
 
                     map.scrollWheelZoom._onWheelScroll = function (e) {
                         var delta = L.DomEvent.getWheelDelta(e);
@@ -234,7 +235,11 @@ function extendLeaflet(options) {
                         var delta = this._delta / (this._map.options.wheelPxPerZoomLevel * 4);
                         this._delta = 0;
 
-                        if (!delta || (zoom + delta) >= this._map.getMaxZoom()) { return; }
+                        if ((zoom + delta) >= this._map.getMaxZoom()) {
+                            delta = this._map.getMaxZoom() - zoom; // don't go past max zoom
+                        }
+
+                        if (!delta) { return; }
 
                         if (map.options.scrollWheelZoom === 'center') {
                             map.setZoom(zoom + delta);
@@ -243,7 +248,87 @@ function extendLeaflet(options) {
                         }
                     };
 
-                    map.scrollWheelZoom.addHooks();
+                    map.scrollWheelZoom.enable();
+                }
+            },
+
+            // Modify leaflet's default double-click zoom behavior, to match typical vector basemap products
+            modifyDoubleClickZoom: function (map) {
+                if (this.scene.view.continuous_zoom && map.doubleClickZoom && this.options.modifyDoubleClickZoom !== false) {
+
+                    // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
+                    function setZoomAroundNoMoveEnd (map, latlng, zoom, options) {
+                        var scale = map.getZoomScale(zoom),
+                            viewHalf = map.getSize().divideBy(2),
+                            containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
+
+                            centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
+                            newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
+
+                        return map._move(newCenter, zoom, { flyTo: true });
+                    }
+
+                    // Simplified version of Leaflet's flyTo, for short animations zooming around a point
+                    function flyAround (map, targetCenter, targetZoom, options) {
+                        options = options || {};
+                        if (options.animate === false || !L.Browser.any3d) {
+                            return map.setView(targetCenter, targetZoom, options);
+                        }
+
+                        map._stop();
+
+                        var startCenter = map.getCenter();
+                        var startZoom = map._zoom;
+
+                        targetCenter = L.latLng(targetCenter);
+                        targetZoom = targetZoom === undefined ? startZoom : targetZoom;
+
+                        var from = map.project(map.getCenter(), startZoom),
+                            to = map.project(targetCenter, startZoom);
+
+                        var start = Date.now(),
+                            duration = options.duration ? 1000 * options.duration : 75;
+
+                        function frame() {
+                            var t = (Date.now() - start) / duration;
+
+                            if (t <= 1) {
+                                // reuse internal flyTo frame to ensure these animations are canceled like others
+                                map._flyToFrame = L.Util.requestAnimFrame(frame, map);
+
+                                var center = from.add(to.subtract(from).multiplyBy(t));
+                                center = [center.x, center.y];
+                                center = Geo.metersToLatLng(center);
+                                setZoomAroundNoMoveEnd(map, targetCenter, startZoom + (targetZoom - startZoom) * t);
+                            } else {
+                                setZoomAroundNoMoveEnd(map, targetCenter, targetZoom)
+                                    ._moveEnd(true);
+                            }
+                        }
+
+                        map._moveStart(true);
+
+                        frame.call(map);
+                        return map;
+                    }
+
+                    // Modify the double-click zoom handler to do a short zoom animation
+                    map.doubleClickZoom.disable();
+
+                    map.doubleClickZoom._onDoubleClick = function (e) {
+                        var map = this._map,
+                            oldZoom = map.getZoom(),
+                            delta = map.options.zoomDelta,
+                            zoom = e.originalEvent.shiftKey ? oldZoom - delta : oldZoom + delta;
+
+                        if (map.options.doubleClickZoom === 'center') {
+                            flyAround(map, map.getCenter(), zoom);
+                        } else {
+                            flyAround(map, map.containerPointToLatLng(e.containerPoint), zoom);
+                        }
+                    };
+
+                    map.doubleClickZoom.enable();
                 }
             },
 
