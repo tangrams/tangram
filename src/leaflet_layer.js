@@ -257,7 +257,7 @@ function extendLeaflet(options) {
                 if (this.scene.view.continuous_zoom && map.doubleClickZoom && this.options.modifyDoubleClickZoom !== false) {
 
                     // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
-                    function setZoomAroundNoMoveEnd (map, latlng, zoom, options) {
+                    const setZoomAroundNoMoveEnd = function (map, latlng, zoom, options) {
                         var scale = map.getZoomScale(zoom),
                             viewHalf = map.getSize().divideBy(2),
                             containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
@@ -266,10 +266,10 @@ function extendLeaflet(options) {
                             newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
 
                         return map._move(newCenter, zoom, { flyTo: true });
-                    }
+                    };
 
                     // Simplified version of Leaflet's flyTo, for short animations zooming around a point
-                    function flyAround (map, targetCenter, targetZoom, options) {
+                    const flyAround = function (map, targetCenter, targetZoom, options) {
                         options = options || {};
                         if (options.animate === false || !L.Browser.any3d) {
                             return map.setView(targetCenter, targetZoom, options);
@@ -277,7 +277,6 @@ function extendLeaflet(options) {
 
                         map._stop();
 
-                        var startCenter = map.getCenter();
                         var startZoom = map._zoom;
 
                         targetCenter = L.latLng(targetCenter);
@@ -310,7 +309,7 @@ function extendLeaflet(options) {
 
                         frame.call(map);
                         return map;
-                    }
+                    };
 
                     // Modify the double-click zoom handler to do a short zoom animation
                     map.doubleClickZoom.disable();
