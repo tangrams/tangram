@@ -455,7 +455,7 @@ function splitLabelText(text){
     // let words = text.split(' ');
     let words = [text];
     let segments = [];
-    let codon = 1;
+    let codon = 2;
     let space_indices = [];
     let space_index = 0;
 

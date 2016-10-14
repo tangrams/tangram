@@ -71,7 +71,7 @@ export default class LabelLine {
         let label_position = lines[index];
 
         let height = size[0][1];
-        let {positions, offsets, angles, pre_angles, widths, angle_info} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.line_angles_segments, this.size, index, offset, layout.units_per_pixel);
+        let {positions, offsets, offset_info, angles, pre_angles, widths, angle_info} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.line_angles_segments, this.size, index, offset, layout.units_per_pixel);
         let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths, height);
 
         let smoothing = false;
@@ -799,7 +799,30 @@ function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, 
     let angle_ranges = getAngleRanges(line_lengths, widths, indices);
     let angle_info = getAnglesAndStops(angles, angle_ranges);
 
+    for (let i = 0; i < angle_info.length; i++){
+        angle_info[i].offsets = [];
+        angle_info[i].stop_array.forEach(function(zoom){
+            let offset = getRangeOffsets(zoom, i, anchor, line, line_lengths, widths);
+            offset = Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp;
+            angle_info[i].offsets.unshift(offset);
+        });
+        angle_info[i].offsets.unshift(offsets[i][0]);
+    }
+
     return {positions, offsets, angles, pre_angles, widths, angle_info};
+}
+
+function getRangeOffsets(zoom, index, anchor, line, line_lengths, label_lengths){
+    let zoomed_line_lengths = line_lengths.map(function(len){
+        return (1 + zoom) * len;
+    });
+
+    let [indices, relative_offsets] = placeAtAnchor(0, 0, zoomed_line_lengths, label_lengths);
+    let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
+
+    let [offsets, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
+
+    return offsets[index];
 }
 
 function getAnglesAndStops(angles, angle_ranges){
@@ -817,6 +840,7 @@ function getAnglesAndStops(angles, angle_ranges){
     let max_angles = 4;
     let ones = [1,1,1,1];
     let zeros = [0,0,0,0];
+
 
     for (let i = 0; i < angles.length; i++){
         let stop_array = angle_ranges[i].concat(ones).splice(0, max_angles - 1);
