@@ -281,6 +281,7 @@ function extendLeaflet(options) {
 
                         targetCenter = L.latLng(targetCenter);
                         targetZoom = targetZoom === undefined ? startZoom : targetZoom;
+                        targetZoom = Math.min(targetZoom, map.getMaxZoom()); // don't go past max zoom
 
                         var from = map.project(map.getCenter(), startZoom),
                             to = map.project(targetCenter, startZoom);
