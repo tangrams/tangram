@@ -408,20 +408,19 @@ Object.assign(Points, {
 
         // repeat minimum distance
         layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
-        if (layout.repeat_distance == null) {
-            layout.repeat_distance = Geo.tile_size;
-        }
         layout.repeat_distance *= layout.units_per_pixel;
 
-        // repeat group key
-        if (typeof draw.repeat_group === 'function') {
-            layout.repeat_group = draw.repeat_group(context);
-        }
-        else if (typeof draw.repeat_group === 'string') {
-            layout.repeat_group = draw.repeat_group;
-        }
-        else {
-            layout.repeat_group = draw.key; // default to unique set of matching layers
+        // repeat group key - only needed if a non-zero repeat distance
+        if (layout.repeat_distance) {
+            if (typeof draw.repeat_group === 'function') {
+                layout.repeat_group = draw.repeat_group(context);
+            }
+            else if (typeof draw.repeat_group === 'string') {
+                layout.repeat_group = draw.repeat_group;
+            }
+            else {
+                layout.repeat_group = draw.key; // default to unique set of matching layers
+            }
         }
 
         // label priority (lower is higher)
