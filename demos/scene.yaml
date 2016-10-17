@@ -446,13 +446,14 @@ layers:
             small:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
+
         arrows:
             filter: { oneway: yes, $zoom: { min: 17 } }
             draw:
                 icons:
                     sprite: arrow
                     size: [[17, 18px], [18, 20px], [20, 32px]]
-                    spacing: [[17, 70px], [20, 175px]]
+                    placement_spacing: [[17, 70px], [20, 175px]]
                     angle: auto
 
         shields:
@@ -465,7 +466,7 @@ layers:
                     priority: .1
                     color: white
                     size: 24px
-                    spacing: 100px
+                    placement_spacing: 100px
                     cull_from_tile: true
                     repeat_distance: 100px
                     repeat_group: hwy
