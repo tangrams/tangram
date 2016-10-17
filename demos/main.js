@@ -426,20 +426,12 @@ Enjoy!
         gui.add(style_options, 'effect', style_options.options).
             onChange(style_options.setup.bind(style_options));
 
-        // Link to edit in OSM - hold 'e' and click
+        // Link to edit in OSM - alt-click
         window.addEventListener('click', function () {
-            // if (key.isPressed('e')) {
-            if (key.shift) {
+            if (key.alt) {
                 var url = 'https://www.openstreetmap.org/edit?';
-
-                if (scene.selection.feature && scene.selection.feature.id) {
-                    url += 'way=' + scene.selection.feature.id;
-                }
-
-                if (scene.center) {
-                    url += '#map=' + scene.baseZoom(scene.zoom) + '/' + scene.center.lat + '/' + scene.center.lng;
-                }
-
+                var center = map.getCenter();
+                url += '#map=' + map.getZoom() + '/' + center.lat + '/' + center.lng;
                 window.open(url, '_blank');
             }
         });
