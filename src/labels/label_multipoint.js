@@ -12,7 +12,7 @@ export default function fitToLine (line, size, options) {
     let labels = [];
     let strategy;
 
-    if (options.spacing){
+    if (options.placement_spacing){
         strategy = PLACEMENT.SPACED;
     }
     else {
@@ -66,7 +66,7 @@ export default function fitToLine (line, size, options) {
 
 function getPositionsAndAngles(line, options){
     let upp = options.units_per_pixel;
-    let spacing = (options.spacing || default_spacing) * upp;
+    let spacing = (options.placement_spacing || default_spacing) * upp;
 
     let length = getLineLength(line);
     let num_labels = Math.floor(length / spacing);
