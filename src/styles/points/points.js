@@ -343,6 +343,9 @@ Object.assign(Points, {
         // Buffer (1d value or 2d array, expand 1d to 2d)
         draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
+        // Repeat rules
+        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
+
         // Optional text styling
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
         if (draw.text) {
@@ -396,6 +399,23 @@ Object.assign(Points, {
             priority = -1 >>> 0; // default to max priority value if none set
         }
         layout.priority = priority;
+
+        // repeat minimum distance
+        layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
+        layout.repeat_distance *= layout.units_per_pixel;
+
+        // repeat group key - only needed if a non-zero repeat distance
+        if (layout.repeat_distance) {
+            if (typeof draw.repeat_group === 'function') {
+                layout.repeat_group = draw.repeat_group(context);
+            }
+            else if (typeof draw.repeat_group === 'string') {
+                layout.repeat_group = draw.repeat_group;
+            }
+            else {
+                layout.repeat_group = draw.key; // default to unique set of matching layers
+            }
+        }
 
         return layout;
     },
