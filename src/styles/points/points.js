@@ -362,7 +362,8 @@ Object.assign(Points, {
         draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance || 0, parseFloat);
 
         // Spacing
-        draw.placement_spacing = StyleParser.createPropertyCache(draw.placement_spacing || 80, parseFloat);
+        draw.placement_spacing = draw.placement_spacing != null ? draw.placement_spacing : 80; // default spacing
+        draw.placement_spacing = StyleParser.createPropertyCache(draw.placement_spacing, parseFloat);
 
         // Optional text styling
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
