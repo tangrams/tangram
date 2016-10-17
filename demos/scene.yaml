@@ -65,8 +65,7 @@ textures:
             hotel: [0, 259, 32, 32]
             bookstore: [0, 333, 32, 32]
             shield: [0, 1142, 32, 32]
-    arrow:
-        url: images/arrow.png
+            arrow: [0, 1175, 22, 22]
 
 styles:
     rainbow:
@@ -135,10 +134,6 @@ styles:
     icons:
         base: points
         texture: pois
-
-    arrow:
-        base: points
-        texture: arrow
 
     grid:
         base: polygons
@@ -452,12 +447,12 @@ layers:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
         arrows:
-            filter: { $zoom: {min: 17} }
+            filter: { oneway: yes, $zoom: { min: 17 } }
             draw:
-                arrow:
-                    size: 8px
-                    priority: 1000000000000
-                    spacing: 40px
+                icons:
+                    sprite: arrow
+                    size: [[17, 18px], [18, 20px], [20, 32px]]
+                    spacing: [[17, 70px], [20, 175px]]
                     angle: auto
 
         shields:
