@@ -127,25 +127,23 @@ Vector.isEqual = function (v1, v2) {
 };
 
 // Vector length squared
-Vector.lengthSq = function (v)
-{
+Vector.lengthSq = function (v) {
     if (v.length === 2) {
         return (v[0]*v[0] + v[1]*v[1]);
     }
-    else {
+    else if (v.length >= 3) {
         return (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
     }
+    return 0;
 };
 
 // Vector length
-Vector.length = function (v)
-{
+Vector.length = function (v) {
     return Math.sqrt(Vector.lengthSq(v));
 };
 
 // Normalize a vector
-Vector.normalize = function (v)
-{
+Vector.normalize = function (v) {
     var d;
     if (v.length === 2) {
         d = v[0]*v[0] + v[1]*v[1];
@@ -155,15 +153,15 @@ Vector.normalize = function (v)
             return [v[0] / d, v[1] / d];
         }
         return [0, 0];
-    } else {
+    } else if (v.length >= 3) {
         d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
         d = Math.sqrt(d);
 
         if (d !== 0) {
             return [v[0] / d, v[1] / d, v[2] / d];
         }
-        return [0, 0, 0];
     }
+    return [0, 0, 0];
 };
 
 // Cross product of two vectors

@@ -177,26 +177,44 @@ export default SceneLoader = {
     // Substitutes global scene properties (those defined in the `config.global` object) for any style values
     // of the form `global.`, for example `color: global.park_color` would be replaced with the value (if any)
     // defined for the `park_color` property in `config.global.park_color`.
-    applyGlobalProperties(config) {
+    applyGlobalProperties(config, applied) {
         if (!config.global || Object.keys(config.global).length === 0) {
             return config; // no global properties to transform
         }
 
+        // Parse properties from globals
         const separator = ':';
         const props = flattenProperties(config.global, separator);
 
-        function applyProps (obj) {
+        // Re-apply previously applied properties
+        // NB: a current shortcoming here is that you cannot "un-link" a target property from a global
+        // at run-time. Once a global property substitution has been recorderd, it will always be re-applied
+        // on subsequent scene updates, even if the target property was updated to another literal value.
+        // This is unlikely to be a common occurrence an acceptable limitation for now.
+        applied.forEach(({ prop, target, key }) => {
+            if (target) {
+                target[key] = props[prop];
+                // log('info', `Re-applying ${prop} with value ${props[prop]} to key ${key} in`, target);
+            }
+        });
+
+        // Find and apply new properties
+        function applyProps (obj, target, key) {
             // Convert string
             if (typeof obj === 'string') {
-                let key = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
-                if (key && props[key] !== undefined) {
-                    obj = props[key];
+                const prop = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
+                if (prop && props[prop] !== undefined) {
+                    // Save record of where property is applied
+                    applied.push({ prop, target, key });
+
+                    // Apply property
+                    obj = props[prop];
                 }
             }
             // Loop through object properties
             else if (typeof obj === 'object') {
                 for (let p in obj) {
-                    obj[p] = applyProps(obj[p]);
+                    obj[p] = applyProps(obj[p], obj, p);
                 }
             }
             return obj;
@@ -211,8 +229,12 @@ export default SceneLoader = {
             return;
         }
 
-        // Replace global scene properties
-        config = this.applyGlobalProperties(config);
+        // Ensure top-level properties
+        config.scene = config.scene || {};
+        config.cameras = config.cameras || {};
+        config.lights = config.lights || {};
+        config.styles = config.styles || {};
+        config.layers = config.layers || {};
 
         // Assign ids to data sources
         let source_id = 0;
@@ -221,7 +243,6 @@ export default SceneLoader = {
         }
 
         // If only one camera specified, set it as default
-        config.cameras = config.cameras || {};
         if (config.camera) {
             config.cameras.default = config.camera;
         }
@@ -231,23 +252,13 @@ export default SceneLoader = {
             config.cameras.default = {};
         }
 
-        // If no camera set as active, use first one
-        let active = false;
-        for (let camera of Utils.values(config.cameras)) {
-            if (camera.active) {
-                active = true;
-                break;
-            }
+        // If no lights specified, create default
+        if (Object.keys(config.lights).length === 0 ||
+            Object.keys(config.lights).every(i => config.lights[i].visible === false)) {
+            config.lights.default_light = {
+                type: 'directional'
+            };
         }
-
-        if (!active) {
-            config.cameras[Object.keys(config.cameras)[0]].active = true;
-        }
-
-        // Ensure top-level properties
-        config.lights = config.lights || {};
-        config.styles = config.styles || {};
-        config.layers = config.layers || {};
 
         return config;
     }

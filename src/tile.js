@@ -27,6 +27,7 @@ export default class Tile {
         this.proxy_for = null;
         this.proxy_depth = 0;
         this.proxied_as = null;
+        this.fade_in = true;
         this.loading = false;
         this.loaded = false;
         this.built = false;
@@ -51,6 +52,8 @@ export default class Tile {
 
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.textures = []; // textures that the tile owns (labels, etc.)
+        this.previous_textures = []; // textures retained by the tile in the previous build generation
+        this.new_mesh_styles = []; // meshes that have been built so far in current build generation
     }
 
     static create(spec) {
@@ -122,20 +125,16 @@ export default class Tile {
 
     // Free resources owned by tile
     freeResources () {
-        if (this.meshes) {
-            for (let m in this.meshes) {
-                this.meshes[m].destroy();
-            }
+        for (let m in this.meshes) {
+            this.meshes[m].destroy();
         }
-
-        if (this.textures) {
-            for (let t of this.textures) {
-                Texture.release(t);
-            }
-        }
-
         this.meshes = {};
+
+        this.textures.forEach(t => Texture.release(t));
         this.textures = [];
+
+        this.previous_textures.forEach(t => Texture.release(t));
+        this.previous_textures = [];
     }
 
     destroy() {
@@ -167,8 +166,9 @@ export default class Tile {
         return WorkerBroker.postMessage(this.worker, ...message);
     }
 
-    build(generation) {
+    build(generation, { fade_in = true } = {}) {
         this.generation = generation;
+        this.fade_in = fade_in;
         if (!this.loaded) {
             this.loading = true;
             this.built = false;
@@ -423,30 +423,44 @@ export default class Tile {
                 // texture may be added to the tile's texture list more than once, which ensures
                 // that it is properly released (to match its retain count).
                 if (mesh_data[s].textures) {
-                    mesh_data[s].textures.forEach(t => {
-                        textures.push(t);
-                    });
+                    textures.push(...mesh_data[s].textures);
                 }
             }
         }
-        delete this.mesh_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
+        delete this.mesh_data;
 
-        // Add new tile data
+        // Initialize tracking for this tile generation
         if (progress.start) {
-            this.freeResources();
-            this.meshes = meshes;
-            this.textures = textures;
+            this.new_mesh_styles = []; // keep track of which meshes were built as part of current generation
+            this.previous_textures = [...this.textures]; // copy old list of textures
+            this.textures = [];
         }
-        else {
-            this.meshes = Object.assign(this.meshes, meshes);
-            textures.forEach(t => {
-                if (this.textures.indexOf(t) === -1) {
-                    this.textures.push(t);
-                }
-            });
+
+        // New meshes
+        for (let m in meshes) {
+            if (this.meshes[m]) {
+                this.meshes[m].destroy(); // free old mesh
+            }
+            this.meshes[m] = meshes[m]; // set new mesh
+            this.new_mesh_styles.push(m);
         }
+
+        // New textures
+        this.textures.push(...textures);
 
         if (progress.done) {
+            // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
+            for (let m in this.meshes) {
+                if (this.new_mesh_styles.indexOf(m) === -1) {
+                    this.meshes[m].destroy();
+                }
+            }
+            this.new_mesh_styles = [];
+
+            // Release old textures
+            this.previous_textures.forEach(t => Texture.release(t));
+            this.previous_textures = [];
+
             this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
             this.printDebug();
         }
@@ -458,6 +472,7 @@ export default class Tile {
         Static method because the tile object no longer exists (the tile data returned by the worker is passed instead).
     */
     static abortBuild (tile) {
+        // Releases meshes
         if (tile.mesh_data) {
             for (let s in tile.mesh_data) {
                 let textures = tile.mesh_data[s].textures;
@@ -521,7 +536,7 @@ export default class Tile {
 
         // Fade in labels according to proxy status, avoiding "flickering" where
         // labels quickly go from invisible back to visible
-        program.uniform('1i', 'u_fade_in', this.proxied_as !== 'child');
+        program.uniform('1i', 'u_fade_in', this.fade_in && this.proxied_as !== 'child');
     }
 
     // Slice a subset of keys out of a tile

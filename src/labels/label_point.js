@@ -11,6 +11,13 @@ export default class LabelPoint extends Label {
         this.position = [position[0], position[1]];
         this.parent = this.layout.parent;
         this.update();
+
+        if (this.layout.anchor) {
+            this.start_anchor_index = 1;
+        }
+
+        let hasNext = this.getNextFit();
+        this.throw_away = !hasNext;
     }
 
     update() {
@@ -84,7 +91,35 @@ export default class LabelPoint extends Label {
             this.updateBBoxes();
         }
 
-        return this.inTileBounds();
+        return updated;
+    }
+
+    getNextFit() {
+        if (!this.layout.cull_from_tile || this.inTileBounds()) {
+            return true;
+        }
+
+        if (this.layout.move_into_tile) {
+            this.moveIntoTile();
+            return true;
+        }
+        else {
+            if (Array.isArray(this.layout.anchor)) {
+                // Start on second anchor (first anchor was set on creation)
+                for (let i = 1; i < this.layout.anchor.length; i++) {
+                    this.anchor = this.layout.anchor[i];
+                    this.update();
+
+                    this.start_anchor_index = i;
+
+                    if (this.inTileBounds()) {
+                        return true;
+                    }
+                }
+            }
+            // no anchors result in fit
+            return false;
+        }
     }
 
     discard (bboxes, exclude = null) {
@@ -92,7 +127,7 @@ export default class LabelPoint extends Label {
             // If more than one anchor specified, try them in order
             if (Array.isArray(this.layout.anchor)) {
                 // Start on second anchor (first anchor was set on creation)
-                for (let i=1; i < this.layout.anchor.length; i++) {
+                for (let i=this.start_anchor_index; i < this.layout.anchor.length; i++) {
                     this.anchor = this.layout.anchor[i];
                     this.update();
 

@@ -218,7 +218,7 @@ export class NetworkSource extends DataSource {
                 dest.debug.parsing = +new Date() - dest.debug.parsing;
                 resolve(dest);
             }).catch((error) => {
-                source_data.error = error.toString();
+                source_data.error = error.stack;
                 resolve(dest); // resolve request but pass along error
             });
         });

@@ -60,6 +60,10 @@ export default class View {
                     return name;
                 }
             }
+
+            // If no camera set as active, use first one
+            let keys = Object.keys(this.scene.config.cameras);
+            return keys.length && keys[0];
         }
     }
 

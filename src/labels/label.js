@@ -12,8 +12,11 @@ export default class Label {
         this.position = null;
         this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
         this.placed = null;
+        this.offset = layout.offset;
         this.aabb = null;
         this.obb = null;
+        this.align = 'center';
+        this.throw_away = false;    // if label does not fit (exceeds tile boundary, etc) this boolean will be true
     }
 
     update () {
@@ -76,25 +79,10 @@ export default class Label {
 
     // Whether the label should be discarded
     // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
-    // `exclude` is an optional label to exclude from collisions with this label
-    // (e.g. useful for linked objects that shouldn't affect each other's placement)
-    discard (bboxes, exclude = null) {
-        // Should the label be culled if it can't fit inside the tile bounds?
-        if (this.layout.cull_from_tile) {
-            let in_tile = this.inTileBounds();
-
-            // If it doesn't fit, should we try to move it into the tile bounds?
-            if (!in_tile && this.layout.move_into_tile) {
-                // Can we fit the label into the tile?
-                if (!this.moveIntoTile()) {
-                    return true; // can't fit in tile, discard
-                }
-            } else if (!in_tile) {
-                return true; // out of tile bounds, discard
-            }
+    discard(bboxes, exclude = null) {
+        if (this.throw_away) {
+            return true;
         }
-
-        // If the label hasn't been discarded yet, check to see if it's occluded by other labels
         return this.occluded(bboxes, exclude);
     }
 }

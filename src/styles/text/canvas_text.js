@@ -9,7 +9,8 @@ export default class CanvasText {
         this.canvas = document.createElement('canvas');
         this.canvas.style.backgroundColor = 'transparent'; // render text on transparent background
         this.context = this.canvas.getContext('2d');
-        this.text_buffer = 8; // pixel padding around text
+        this.vertical_text_buffer = 8; // vertical pixel padding around text
+        this.horizontal_text_buffer = 4; // text styling such as italic emphasis is not measured by the Canvas API, so padding is necessary
     }
 
     resize (width, height) {
@@ -22,10 +23,11 @@ export default class CanvasText {
     setFont ({ font_css, fill, stroke, stroke_width, px_size }) {
         this.px_size = px_size;
         let ctx = this.context;
+        let dpr = Utils.device_pixel_ratio;
 
         if (stroke && stroke_width > 0) {
             ctx.strokeStyle = stroke;
-            ctx.lineWidth = stroke_width;
+            ctx.lineWidth = stroke_width * dpr;
         }
         ctx.fillStyle = fill;
 
@@ -34,31 +36,57 @@ export default class CanvasText {
     }
 
     textSizes (texts) {
+        let dpr = Utils.device_pixel_ratio;
         return FontManager.loadFonts().then(() => {
             for (let style in texts) {
+                CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+
                 let text_infos = texts[style];
                 let first = true;
+                let space_width;
 
                 for (let text in text_infos) {
-                    // Use cached size, or compute via canvas
-                    if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
-                        let text_settings = text_infos[text].text_settings;
-                        if (first) {
-                            this.setFont(text_settings);
-                            first = false;
-                        }
+                    let text_info = text_infos[text];
+                    let text_settings = text_info.text_settings;
 
-                        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
-                        CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
-                        CanvasText.cache_stats.misses++;
+                    if (first) {
+                        this.setFont(text_settings);
+                        space_width = this.context.measureText(' ').width / dpr;
+                        first = false;
+                    }
+
+                    text_info.space_width = space_width;
+
+                    if (text_settings.can_articulate){
+                        let segments = splitLabelText(text);
+
+                        text_info.segments = segments;
+                        text_info.size = [];
+
+                        for (let i = 0; i < segments.length; i++){
+                            let segment = segments[i];
+                            if (!CanvasText.text_cache[style][segment]) {
+                                CanvasText.text_cache[style][segment] = this.textSize(segment, text_settings);
+                                CanvasText.cache_stats.misses++;
+                            }
+                            else {
+                                CanvasText.cache_stats.hits++;
+                            }
+                            text_info.size.push(CanvasText.text_cache[style][segment].size);
+                        }
                     }
                     else {
-                        CanvasText.cache_stats.hits++;
+                        if (!CanvasText.text_cache[style][text]) {
+                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
+                            CanvasText.cache_stats.misses++;
+                        }
+                        else {
+                            CanvasText.cache_stats.hits++;
+                        }
+                        // Only send text sizes back to worker (keep computed text line info
+                        // on main thread, for future rendering)
+                        text_info.size = CanvasText.text_cache[style][text].size;
                     }
-
-                    // Only send text sizes back to worker (keep computed text line info
-                    // on main thread, for future rendering)
-                    text_infos[text].size = CanvasText.text_cache[style][text].size;
                 }
             }
 
@@ -68,11 +96,13 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, {transform, text_wrap, max_lines}) {
+    textSize (text, {transform, text_wrap, max_lines, stroke_width = 0}) {
+        let dpr = Utils.device_pixel_ratio;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
-        let leading = 2 * Utils.device_pixel_ratio; // make configurable and/or use Canvas TextMetrics when available
+        let vertical_buffer = this.vertical_text_buffer * dpr;
+        let horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
+        let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
         let line_height = this.px_size + leading; // px_size already in device pixels
 
         // Parse string into series of lines if it exceeds the text wrapping value or contains line breaks
@@ -84,16 +114,19 @@ export default class CanvasText {
         let lines = multiline.lines;
 
         let collision_size = [
-            width / Utils.device_pixel_ratio,
-            height / Utils.device_pixel_ratio
+            width / dpr,
+            height / dpr
         ];
 
         let texture_size = [
-            width + buffer * 2,
-            height + buffer * 2
+            width + 2 * horizontal_buffer,
+            height + 2 * vertical_buffer
         ];
 
-        let logical_size = texture_size.map(v => v / Utils.device_pixel_ratio);
+        let logical_size = [
+            texture_size[0] / dpr,
+            texture_size[1] / dpr,
+        ];
 
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
@@ -102,37 +135,14 @@ export default class CanvasText {
         };
     }
 
-    // Draw one or more lines of text at specified location, adjusting for buffer and baseline
-    drawText (lines, [x, y], size, { stroke, stroke_width, transform, align }) {
-        align = align || 'center';
-
+    // Draw multiple lines of text
+    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, transform, align }) {
+        let line_height = size.line_height;
+        let height = y;
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
-            let str = this.applyTextTransform(line.text, transform);
-            let buffer = this.text_buffer * Utils.device_pixel_ratio;
-            let texture_size = size.texture_size;
-            let line_height = size.line_height;
-
-            // Text alignment
-            let tx;
-            if (align === 'left') {
-                tx = x + buffer;
-            }
-            else if (align === 'center') {
-                tx = x + texture_size[0]/2 - line.width/2;
-            }
-            else if (align === 'right') {
-                tx = x + texture_size[0] - line.width - buffer;
-            }
-
-            // In the absence of better Canvas TextMetrics (not supported by browsers yet),
-            // 0.75 buffer produces a better approximate vertical centering of text
-            let ty = y + buffer * 0.75 + (line_num + 1) * line_height;
-
-            if (stroke && stroke_width > 0) {
-                this.context.strokeText(str, tx, ty);
-            }
-            this.context.fillText(str, tx, ty);
+            this.drawTextLine(line, [x, height], size, { stroke, stroke_width, transform, align });
+            height += line_height;
         }
 
         // Draw bounding boxes for debugging
@@ -140,13 +150,14 @@ export default class CanvasText {
             this.context.save();
 
             let dpr = Utils.device_pixel_ratio;
-            let buffer = dpr * this.text_buffer;
+            let horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
+            let vertical_buffer = dpr * this.vertical_text_buffer;
             let collision_size = size.collision_size;
             let lineWidth = 2;
 
             this.context.strokeStyle = 'blue';
             this.context.lineWidth = lineWidth;
-            this.context.strokeRect(x + buffer, y + buffer, dpr * collision_size[0], dpr * collision_size[1]);
+            this.context.strokeRect(x + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
 
             this.context.restore();
         }
@@ -166,84 +177,187 @@ export default class CanvasText {
         }
     }
 
-    rasterize (texts, texture_size) {
+    // Draw single line of text at specified location, adjusting for buffer and baseline
+    drawTextLine (line, [x, y], size, { stroke, stroke_width = 0, transform, align }) {
+        let dpr = Utils.device_pixel_ratio;
+        align = align || 'center';
+
+        let vertical_buffer = this.vertical_text_buffer * dpr;
+        let texture_size = size.texture_size;
+        let line_height = size.line_height;
+        let horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
+
+        let str = this.applyTextTransform(line.text, transform);
+
+        // Text alignment
+        let tx;
+        if (align === 'left') {
+            tx = x + horizontal_buffer;
+        }
+        else if (align === 'center') {
+            tx = x + texture_size[0]/2 - line.width/2;
+        }
+        else if (align === 'right') {
+            tx = x + texture_size[0] - line.width - horizontal_buffer;
+        }
+
+        // In the absence of better Canvas TextMetrics (not supported by browsers yet),
+        // 0.75 buffer produces a better approximate vertical centering of text
+        let ty = y + vertical_buffer * 0.75 + line_height;
+
+        if (stroke && stroke_width > 0) {
+            this.context.strokeText(str, tx, ty);
+        }
+        this.context.fillText(str, tx, ty);
+    }
+
+    rasterize (texts, texture_size, tile_key) {
         for (let style in texts) {
             let text_infos = texts[style];
             let first = true;
 
             for (let text in text_infos) {
-                let info = text_infos[text];
-                let text_settings = info.text_settings;
-                let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
+                let text_info = text_infos[text];
+                let text_settings = text_info.text_settings;
 
+                // set font on first occurence of new font style
                 if (first) {
                     this.setFont(text_settings);
                     first = false;
                 }
 
-                // each alignment needs to be rendered separately
-                for (let align in info.align) {
-                    this.drawText(lines, info.align[align].texture_position, info.size, {
-                        stroke: text_settings.stroke,
-                        stroke_width: text_settings.stroke_width,
-                        transform: text_settings.transform,
-                        align: align
-                    });
+                if (text_settings.can_articulate){
+                    let words = text_info.segments;
+                    text_info.texcoords = [];
 
-                    info.align[align].texcoords = Texture.getTexcoordsForSprite(
-                        info.align[align].texture_position,
-                        info.size.texture_size,
-                        texture_size
-                    );
+                    for (let i = 0; i < words.length; i++){
+                        let word = words[i];
+                        let texcoord;
+
+                        if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
+                            texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
+                        }
+                        else {
+                            let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
+                            let size = CanvasText.text_cache[style][word].size;
+                            let line = CanvasText.text_cache[style][word].lines;
+
+                            this.drawTextMultiLine(line, texture_position, size, text_settings);
+
+                            texcoord = Texture.getTexcoordsForSprite(
+                                texture_position,
+                                size.texture_size,
+                                texture_size
+                            );
+
+                            CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
+                        }
+
+                        text_info.texcoords.push(texcoord);
+                    }
+                }
+                else {
+                    let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
+                    for (let align in text_info.align) {
+                        this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, {
+                            stroke: text_settings.stroke,
+                            stroke_width: text_settings.stroke_width,
+                            transform: text_settings.transform,
+                            align: align
+                        });
+
+                        text_info.align[align].texcoords = Texture.getTexcoordsForSprite(
+                            text_info.align[align].texture_position,
+                            text_info.size.texture_size,
+                            texture_size
+                        );
+                    }
                 }
             }
         }
     }
 
     // Place text labels within an atlas of the given max size
-    setTextureTextPositions (texts, max_texture_size) {
-        // Find widest label
-        let widest = 0;
-        for (let style in texts) {
-            let text_infos = texts[style];
-            for (let text in text_infos) {
-                let size = text_infos[text].size.texture_size;
-                if (size[0] > widest) {
-                    widest = size[0];
-                }
-            }
+    setTextureTextPositions (texts, max_texture_size, tile_key) {
+        if (!CanvasText.texcoord_cache[tile_key]) {
+            CanvasText.texcoord_cache[tile_key] = {};
         }
+
+        // Keep track of column width
+        let column_width = 0;
 
         // Layout labels, stacked in columns
         let cx = 0, cy = 0; // current x/y position in atlas
         let height = 0;     // overall atlas height
         for (let style in texts) {
+            if (!CanvasText.texcoord_cache[tile_key][style]) {
+               CanvasText.texcoord_cache[tile_key][style] = {};
+            }
+
             let text_infos = texts[style];
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
-                // rendered size is same for all alignments
-                let size = text_info.size.texture_size;
 
-                // but each alignment needs to be rendered separately
-                for (let align in text_info.align) {
-                    if (cy + size[1] < max_texture_size) {
-                        text_info.align[align].texture_position = [cx, cy]; // add label to current column
-                        cy += size[1];
-                        if (cy > height) {
-                            height = cy;
+                if (text_info.text_settings.can_articulate){
+                    let texture_position;
+                    for (let i = 0; i < text_info.size.length; i++) {
+                        let word = text_info.segments[i];
+
+                        if (!CanvasText.texcoord_cache[tile_key][style][word]) {
+                            let size = text_info.size[i].texture_size;
+                            if (size[0] > column_width) {
+                                column_width = size[0];
+                            }
+                            if (cy + size[1] < max_texture_size) {
+                                texture_position = [cx, cy];
+
+                                cy += size[1];
+                                if (cy > height) {
+                                    height = cy;
+                                }
+                            }
+                            else { // start new column if taller than texture
+                                cx += column_width;
+                                column_width = 0;
+                                cy = 0;
+                                texture_position = [cx, cy];
+                            }
+
+                            CanvasText.texcoord_cache[tile_key][style][word] = {
+                                texture_position: texture_position
+                            };
                         }
                     }
-                    else { // start new column if taller than texture
-                        cx += widest;
-                        cy = 0;
-                        text_info.align[align].texture_position = [cx, cy];
+                }
+                else {
+                    // rendered size is same for all alignments
+                    let size = text_info.size.texture_size;
+                    if (size[0] > column_width) {
+                        column_width = size[0];
+                    }
+
+                    // but each alignment needs to be rendered separately
+                    for (let align in text_info.align) {
+                        if (cy + size[1] < max_texture_size) {
+                            text_info.align[align].texture_position = [cx, cy]; // add label to current column
+                            cy += size[1];
+                            if (cy > height) {
+                                height = cy;
+                            }
+                        }
+                        else { // start new column if taller than texture
+                            cx += column_width;
+                            column_width = 0;
+                            cy = 0;
+                            text_info.align[align].texture_position = [cx, cy];
+                        }
                     }
                 }
             }
         }
 
-        return [cx + widest, height]; // overall atlas size
+        return [cx + column_width, height]; // overall atlas size
     }
 
     // Called before rasterization
@@ -286,6 +400,10 @@ export default class CanvasText {
         return px_size;
     }
 
+    clearTexcoordCache (tile_key) {
+        CanvasText.texcoord_cache[tile_key] = {};
+    }
+
 }
 
 // Extract font size and units
@@ -294,6 +412,49 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
+CanvasText.texcoord_cache = {};
+
+// Right-to-left / bi-directional text handling
+// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
+function isRTL(s){
+    var weakChars       = '\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF',
+        rtlChars        = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC',
+        rtlDirCheck     = new RegExp('^['+weakChars+']*['+rtlChars+']');
+
+    return rtlDirCheck.test(s);
+}
+
+function reorderWordsLTR(words) {
+    let words_LTR = [];
+    let words_RTL = [];
+
+    // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
+    for (var i = 0; i < words.length; i++){
+        var str = words[i];
+        var rtl = isRTL(str);
+        if (rtl){
+            words_RTL.push(str);
+        }
+        else {
+            while (words_RTL.length > 0){
+                words_LTR.push(words_RTL.pop());
+            }
+            words_LTR.push(str);
+        }
+    }
+
+    while (words_RTL.length > 0){
+        words_LTR.push(words_RTL.pop());
+    }
+
+    return words_LTR;
+}
+
+// Splitting strategy for chopping a label into segments
+function splitLabelText(text){
+    let words = text.split(' ');
+    return reorderWordsLTR(words);
+}
 
 // Private class to arrange text labels into multiple lines based on
 // "text wrap" and "max line" values

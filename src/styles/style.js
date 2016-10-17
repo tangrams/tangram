@@ -20,10 +20,6 @@ const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.gl
 
 export var Style = {
     init ({ generation, styles, sources = {}, introspection } = {}) {
-        if (!this.isBuiltIn()) {
-            this.built_in = false; // explicitly set to false to avoid any confusion
-        }
-
         this.generation = generation;               // scene generation id this style was created for
         this.styles = styles;                       // styles for scene
         this.sources = sources;                     // data sources for scene
@@ -91,8 +87,8 @@ export var Style = {
     reset () {
     },
 
-    isBuiltIn () {
-        return this.hasOwnProperty('built_in') && this.built_in;
+    baseStyle () {
+        return this.base || this.name;
     },
 
     fillVertexTemplate(attribute, value, { size, offset }) {

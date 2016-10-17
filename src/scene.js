@@ -16,6 +16,7 @@ import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
 import FontManager from './styles/text/font_manager';
+import MediaCapture from './utils/media_capture';
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
@@ -61,7 +62,7 @@ export default class Scene {
         this.last_render_count = 0;
         this.render_count_changed = false;
         this.frame = 0;
-        this.queue_screenshot = null;
+        this.media_capture = new MediaCapture();
         this.selection = null;
         this.introspection = false;
         this.resetTime();
@@ -102,11 +103,11 @@ export default class Scene {
             .then(() => {
                 this.resetFeatureSelection();
 
-                // Scene loaded from a JS object may contain functions which need to be serialized,
-                // while one loaded from a URL does not
-                return this.updateConfig({
-                    serialize_funcs: (typeof this.config_source === 'object')
-                });
+                // Scene loaded from a JS object, or modified by a `load` event, may contain compiled JS functions
+                // which need to be serialized, while one loaded only from a URL does not.
+                const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
+
+                return this.updateConfig({ serialize_funcs, fade_in: true });
             }).then(() => {
                 this.updating--;
                 this.initializing = null;
@@ -221,6 +222,7 @@ export default class Scene {
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
         this.render_states = new RenderStateManager(this.gl);
+        this.media_capture.setCanvas(this.canvas);
     }
 
     // Get the URL to load the web worker from
@@ -412,7 +414,7 @@ export default class Scene {
         this.updateDevicePixelRatio();
         this.render();
         this.updateViewComplete(); // fires event when rendered tile set or style changes
-        this.completeScreenshot(); // completes screenshot capture if requested
+        this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
         // Post-render loop hook
         if (typeof this.postUpdate === 'function') {
@@ -467,8 +469,10 @@ export default class Scene {
             this.render_count_changed = true;
 
             this.getFeatureSelectionMapSize().then(size => {
-                log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
-            }, () => {}); // no op when promise rejects (only print last response)
+                if (size) { // returns undefined if previous request pending
+                    log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
+                }
+            });
         }
         this.last_render_count = this.render_count;
 
@@ -534,7 +538,6 @@ export default class Scene {
                 program.use();
                 this.styles[style].setup();
 
-                // TODO: don't set uniforms when they haven't changed
                 program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
                 this.view.setupProgram(program);
                 for (let i in this.lights) {
@@ -672,7 +675,7 @@ export default class Scene {
     // Rebuild all tiles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuildGeometry({ sync = true, sources = null, serialize_funcs, profile = false } = {}) {
+    rebuildGeometry({ sync = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -709,7 +712,7 @@ export default class Scene {
             this.tile_manager.pruneToVisibleTiles();
             this.tile_manager.forEachTile(tile => {
                 if (!sources || sources.indexOf(tile.source.name) > -1) {
-                    this.tile_manager.buildTile(tile);
+                    this.tile_manager.buildTile(tile, { fade_in });
                 }
             });
             this.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
@@ -747,6 +750,7 @@ export default class Scene {
     */
     loadScene(config_source = null, config_path = null) {
         this.config_source = config_source || this.config_source;
+        this.config_globals_applied = [];
 
         if (typeof this.config_source === 'string') {
             this.config_path = Utils.pathForURL(config_path || this.config_source);
@@ -974,11 +978,11 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ rebuild = true, serialize_funcs } = {}) {
+    updateConfig({ rebuild = true, serialize_funcs, fade_in = false } = {}) {
         this.generation = ++Scene.generation;
         this.updating++;
-        this.config.scene = this.config.scene || {};
 
+        this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
         this.style_manager.init();
         this.view.reset();
         this.createLights();
@@ -992,7 +996,7 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuild(Object.assign({ serialize_funcs }, typeof rebuild === 'object' && rebuild)) :
+            this.rebuild(Object.assign({ serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
             this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
@@ -1056,7 +1060,7 @@ export default class Scene {
     // Gets the current feature selection map size across all workers. Returns a promise.
     getFeatureSelectionMapSize() {
         if (this.fetching_selection_map) {
-            return Promise.reject();
+            return Promise.resolve(); // return undefined if already pending
         }
         this.fetching_selection_map = true;
 
@@ -1089,39 +1093,17 @@ export default class Scene {
     // Asynchronous because we have to wait for next render to capture buffer
     // Returns a promise
     screenshot () {
-        if (this.queue_screenshot != null) {
-            return this.queue_screenshot.promise; // only capture one screenshot at a time
-        }
-
         this.requestRedraw();
-
-        // Will resolve once rendering is complete and render buffer is captured
-        this.queue_screenshot = {};
-        this.queue_screenshot.promise = new Promise((resolve, reject) => {
-            this.queue_screenshot.resolve = resolve;
-            this.queue_screenshot.reject = reject;
-        });
-        return this.queue_screenshot.promise;
+        return this.media_capture.screenshot();
     }
 
-    // Called after rendering, captures render buffer and resolves promise with image data
-    completeScreenshot () {
-        if (this.queue_screenshot != null) {
-            // Get data URL, convert to blob
-            // Strip host/mimetype/etc., convert base64 to binary without UTF-8 mangling
-            // Adapted from: https://gist.github.com/unconed/4370822
-            var url = this.canvas.toDataURL('image/png');
-            var data = atob(url.slice(22));
-            var buffer = new Uint8Array(data.length);
-            for (var i = 0; i < data.length; ++i) {
-                buffer[i] = data.charCodeAt(i);
-            }
-            var blob = new Blob([buffer], { type: 'image/png' });
+    startVideoCapture () {
+        this.requestRedraw();
+        return this.media_capture.startVideoCapture();
+    }
 
-            // Resolve with screenshot data
-            this.queue_screenshot.resolve({ url, blob });
-            this.queue_screenshot = null;
-        }
+    stopVideoCapture () {
+        return this.media_capture.stopVideoCapture();
     }
 
 
@@ -1178,7 +1160,7 @@ export default class Scene {
                 let style_counts = scene.debug.geometryCountByStyle();
                 let counts = {};
                 for (let style in style_counts) {
-                    let base = scene.styles[style].built_in ? style : scene.styles[style].base;
+                    let base = scene.styles[style].baseStyle();
                     counts[base] = counts[base] || 0;
                     counts[base] += style_counts[style];
                 }

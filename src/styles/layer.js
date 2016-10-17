@@ -1,4 +1,3 @@
-import {Styles} from './style_manager';
 import {StyleParser} from './style_parser';
 import Utils from '../utils/utils';
 import log from '../utils/log';
@@ -87,8 +86,17 @@ class Layer {
         // Denormalize layer name to draw groups
         if (this.draw) {
             for (let group in this.draw) {
-                this.draw[group] = this.draw[group] || {};
-                this.draw[group].layer_name = this.full_name;
+                if (this.draw[group] == null || typeof this.draw[group] !== 'object') {
+                    // Invalid draw group
+                    let msg = `Draw group '${group}' for layer ${this.full_name} is invalid, must be an object, `;
+                    msg += `but was set to \`${group}: ${this.draw[group]}\` instead`;
+                    log('warn', msg); // TODO: fire external event that clients to subscribe to
+
+                    delete this.draw[group];
+                }
+                else {
+                    this.draw[group].layer_name = this.full_name;
+                }
             }
         }
     }
@@ -114,7 +122,7 @@ class Layer {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, filter value must be an object or function, `;
             msg += `but was set to \`filter: ${this.filter}\` instead`;
-            log('warn', msg);
+            log('warn', msg); // TODO: fire external event that clients to subscribe to
             return;
         }
 
@@ -132,7 +140,7 @@ class Layer {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, \`filter: ${JSON.stringify(this.filter)}\` `;
             msg += `failed with error '${e.message}', stack trace: ${e.stack}`;
-            log('warn', msg);
+            log('warn', msg); // TODO: fire external event that clients to subscribe to
         }
     }
 
@@ -371,7 +379,7 @@ export function calculateDraw(layer) {
     return draw;
 }
 
-export function parseLayerTree(name, layer, parent) {
+export function parseLayerTree(name, layer, parent, styles) {
 
     let properties = { name, layer, parent };
     let [whiteListed, nonWhiteListed] = groupProps(layer);
@@ -394,21 +402,21 @@ export function parseLayerTree(name, layer, parent) {
         for (let key in nonWhiteListed) {
             let property = nonWhiteListed[key];
             if (typeof property === 'object' && !Array.isArray(property)) {
-                parseLayerTree(key, property, r);
+                parseLayerTree(key, property, r, styles);
             } else {
                 // Invalid layer
                 let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(property)}'`;
                 msg += `, under parent layer '${r.full_name}'.`;
 
                 // If the parent is a style name, this may be an incorrectly nested layer
-                if (Styles[r.name]) {
-                    msg += ` The parent '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
+                if (styles[r.name]) {
+                    msg += ` The parent name '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
                     if (parent) {
                         msg += ` under '${parent.name}'`;
                     }
                     msg += ` instead?`;
                 }
-                log('warn', msg);
+                log('warn', msg); // TODO: fire external event that clients to subscribe to
             }
         }
 
@@ -418,13 +426,13 @@ export function parseLayerTree(name, layer, parent) {
 }
 
 
-export function parseLayers (layers) {
+export function parseLayers (layers, styles) {
     let layer_trees = {};
 
     for (let key in layers) {
         let layer = layers[key];
         if (layer) {
-            layer_trees[key] = parseLayerTree(key, layer);
+            layer_trees[key] = parseLayerTree(key, layer, null, styles);
         }
     }
 

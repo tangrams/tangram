@@ -220,8 +220,13 @@ GLSL.isSymbolReferenced = function (name, source) {
 */
 GLSL.expandVec3 = function (v, z = 1) {
     let x;
-    if (Array.isArray(v) && v.length === 2) {
-        x = [...v, z].map(parseFloat);
+    if (Array.isArray(v)) {
+        if (v.length === 2) {
+            x = [...v, z].map(parseFloat);
+        }
+        else {
+            return v;
+        }
     }
     else {
         x = [v, v, v].map(parseFloat);
@@ -239,8 +244,13 @@ GLSL.expandVec3 = function (v, z = 1) {
 */
 GLSL.expandVec4 = function (v, w = 1) {
     let x;
-    if (Array.isArray(v) && v.length === 3) {
-        x = [...v, w].map(parseFloat);
+    if (Array.isArray(v)) {
+        if (v.length === 3) {
+            x = [...v, w].map(parseFloat);
+        }
+        else {
+            return v;
+        }
     }
     else {
         x = [v, v, v, w].map(parseFloat);

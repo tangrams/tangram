@@ -254,11 +254,11 @@ export default class TileManager {
         this.checkBuildQueue();
     }
 
-    buildTile(tile) {
+    buildTile(tile, options) {
         this.tileBuildStart(tile.key);
         this.updateVisibility(tile);
         tile.update();
-        tile.build(this.scene.generation);
+        tile.build(this.scene.generation, options);
     }
 
     // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
@@ -273,7 +273,6 @@ export default class TileManager {
         else if (tile.generation !== this.scene.generation) {
             log('debug', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` +
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
-            this.forgetTile(tile.key);
             Tile.abortBuild(tile);
             this.updateTileStates();
         }

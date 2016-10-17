@@ -77,7 +77,7 @@ Object.assign(self, {
         });
 
         // Parse each top-level layer as a separate tree
-        self.layers = parseLayers(config.layers);
+        self.layers = parseLayers(config.layers, self.style_manager.styles);
 
         // Sync tetxure info from main thread
         self.syncing_textures = self.syncTextures(config.textures);
@@ -166,7 +166,7 @@ Object.assign(self, {
 
                     // Warn and continue on data source error
                     if (tile.source_data.error) {
-                        log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
+                        log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error.stack}`);
                     }
 
                     tile.loading = false;
@@ -175,8 +175,8 @@ Object.assign(self, {
                 }).catch((error) => {
                     tile.loading = false;
                     tile.loaded = false;
-                    tile.error = error.toString();
-                    log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
+                    tile.error = error.stack;
+                    log('error', `tile load error for ${tile.key}: ${tile.error}`);
 
                     // Send error to main thread
                     WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, Tile.slice(tile));
