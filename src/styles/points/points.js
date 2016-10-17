@@ -185,7 +185,7 @@ Object.assign(Points, {
 
         // Spacing parameter (in pixels) to equally space points along a line
         if (draw.spacing) {
-            style.spacing = parseInt(draw.spacing);
+            style.spacing = StyleParser.evalCachedProperty(draw.spacing, context);
         }
 
         // Angle parameter (can be a number or the string "auto")
@@ -360,6 +360,9 @@ Object.assign(Points, {
 
         // Repeat rules
         draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance || 0, parseFloat);
+
+        // Spacing
+        draw.spacing = StyleParser.createPropertyCache(draw.spacing || 80, parseFloat);
 
         // Optional text styling
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
