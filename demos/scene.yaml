@@ -65,7 +65,7 @@ textures:
             hotel: [0, 259, 32, 32]
             bookstore: [0, 333, 32, 32]
             shield: [0, 1142, 32, 32]
-            arrow: [0, 1175, 22, 22]
+            arrow: [1, 1175, 22, 22]
 
 styles:
     rainbow:

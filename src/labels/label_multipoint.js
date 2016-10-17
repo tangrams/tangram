@@ -87,7 +87,7 @@ function getPositionsAndAngles(line, options){
 }
 
 function getAngle(p, q, angle = 0){
-    return (angle === 'auto') ? Math.atan2(q[0] - p[0], q[1] - p[1]) + Math.PI/2 : angle;
+    return (angle === 'auto') ? Math.atan2(q[0] - p[0], q[1] - p[1]) : angle;
 }
 
 function getLineLength(line){
