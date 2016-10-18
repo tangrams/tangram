@@ -726,8 +726,8 @@ function placeAtAnchor(line_index, line_offset, line_lengths, label_lengths){
     return [indices, offsets];
 }
 
-function getAngleRanges(line_lengths, label_lengths, angle_indices){
-    var angle_ranges = [];
+function getAngleRanges(line_lengths, label_lengths){
+    var angle_ranges = [[]];
 
     var cumulate_label_lengths = [];
     label_lengths.reduce(function(a,b,i) { return cumulate_label_lengths[i] = a+b; }, 0);
@@ -735,28 +735,23 @@ function getAngleRanges(line_lengths, label_lengths, angle_indices){
     var cumulate_line_lengths = [];
     line_lengths.reduce(function(a,b,i) { return cumulate_line_lengths[i] = a+b; }, 0);
 
-    for (var index = 0; index < angle_indices.length; index++){
-        let angle_index = angle_indices[index];
-        if (angle_index === 0) {
-            angle_ranges[index] = [];
-            continue;
-        }
-
+    for (var label_index = 1; label_index < label_lengths.length; label_index++){
+        let line_index = 0;
+        let prev_cumulate_label_length = cumulate_label_lengths[label_index - 1];
+        let cumulate_label_length = cumulate_label_lengths[label_index];
+        let cumulate_line_length = cumulate_line_lengths[line_index];
         let stops = [];
-        let stop;
-        while (angle_index > 0){
-            stop = 0.5 * cumulate_label_lengths[index] / cumulate_line_lengths[angle_index];
-            if (stop <= 1) {
-                stops.push(stop);
-                angle_index--;
-            }
-            else {
-                break;
-            }
 
+        while (prev_cumulate_label_length > cumulate_line_length){
+            let stop = 0.5 * prev_cumulate_label_length / cumulate_line_length;
+            if (stop <= 1) {
+                stops.unshift(stop);
+            }
+            line_index++;
+            cumulate_line_length = cumulate_line_lengths[line_index];
         }
 
-        angle_ranges[index] = stops;
+        angle_ranges[label_index] = stops;
     }
 
     return angle_ranges;
@@ -781,23 +776,30 @@ function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, 
         return size[0] * upp;
     });
 
+    // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
     let [indices, relative_offsets] = placeAtAnchor(line_index, line_offset, line_lengths, widths);
+
+    // get 2D positions based on "flat" indices and offsets
     let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
 
+    // starting position
     let anchor = Vector.add(
         line[line_index],
         Vector.rot([line_offset, 0], line_angles_segments[0])
     );
 
+    // get 2d offsets, angles and pre_angles relative to anchor
     let [offsets, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
 
+    // map offsets to distance
     offsets = offsets.map(function(offset){
         return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
         // return [offset[0] / upp, offset[1] / upp];
     });
 
-    let angle_ranges = getAngleRanges(line_lengths, widths, indices);
-    let angle_info = getAnglesAndStops(angles, angle_ranges);
+    // stops per label
+    let stops = getAngleRanges(line_lengths, widths);
+    let angle_info = getAnglesAndStops(angles, stops);
 
     for (let i = 0; i < angle_info.length; i++){
         angle_info[i].offsets = [];
