@@ -358,8 +358,8 @@ Object.assign(Points, {
         // Buffer (1d value or 2d array, expand 1d to 2d)
         draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
-        // Repeat rules
-        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance || 0, parseFloat);
+        // Repeat rules - no repeat limitation for points by default
+        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
 
         // Spacing
         draw.placement_spacing = draw.placement_spacing != null ? draw.placement_spacing : 80; // default spacing
@@ -407,12 +407,11 @@ Object.assign(Points, {
         layout.offset = StyleParser.evalCachedProperty(draw.offset, context) || StyleParser.zeroPair;
         layout.buffer = StyleParser.evalCachedProperty(draw.buffer, context) || StyleParser.zeroPair;
 
-        // repeat minimum distance
+        // repeat rules
         layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
-        layout.repeat_distance *= layout.units_per_pixel;
-
-        // repeat group key - only needed if a non-zero repeat distance
         if (layout.repeat_distance) {
+            layout.repeat_distance *= layout.units_per_pixel;
+
             if (typeof draw.repeat_group === 'function') {
                 layout.repeat_group = draw.repeat_group(context);
             }
