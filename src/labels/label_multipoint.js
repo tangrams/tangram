@@ -22,7 +22,14 @@ export default function fitToLine (line, size, options) {
 
     switch (strategy){
         case PLACEMENT.SPACED:
-            let {positions, angles} = getPositionsAndAngles(line, options);
+            let result = getPositionsAndAngles(line, options);
+            // false will be returned if line have no length
+            if (!result) {
+                return [];
+            }
+
+            let positions = result.positions;
+            let angles = result.angles;
             for (let i = 0; i < positions.length; i++){
                 let position = positions[i];
                 let angle = angles[i];
@@ -69,7 +76,12 @@ function getPositionsAndAngles(line, options){
     let spacing = (options.placement_spacing || default_spacing) * upp;
 
     let length = getLineLength(line);
-    let num_labels = Math.floor(length / spacing);
+
+    if (length === 0){
+        return false;
+    }
+
+    let num_labels = Math.max(Math.floor(length / spacing), 1);
     let remainder = length - (num_labels - 1) * spacing;
 
     let positions = [];
@@ -104,6 +116,7 @@ function norm(p, q){
 
 function interpolateLine(line, distance, options){
     let sum = 0;
+    let position, angle;
     for (let i = 0; i < line.length-1; i++){
         let p = line[i];
         let q = line[i+1];
@@ -111,11 +124,12 @@ function interpolateLine(line, distance, options){
         sum += norm(p, q);
 
         if (sum > distance){
-            let position = interpolateSegment(p, q, sum - distance);
-            let angle = getAngle(p, q, options.angle);
-            return {position, angle};
+            position = interpolateSegment(p, q, sum - distance);
+            angle = getAngle(p, q, options.angle);
+            break;
         }
     }
+    return {position, angle};
 }
 
 function interpolateSegment(p, q, distance){
