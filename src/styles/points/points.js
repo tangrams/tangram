@@ -11,7 +11,7 @@ import Geo from '../../geo';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
-import placePointsOnLine from '../../labels/label_multipoint';
+import placePointsOnLine from '../../labels/point_placement';
 import {TextLabels} from '../text/text_labels';
 import debugSettings from '../../utils/debug_settings';
 

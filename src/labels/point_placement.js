@@ -1,3 +1,5 @@
+// Logic for placing point labels along a line geometry
+
 import LabelPoint from './label_point';
 import {isCoordOutsideTile} from '../builders/common';
 
