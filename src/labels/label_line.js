@@ -295,6 +295,9 @@ export default class LabelLine {
         this.obbs = [];
         this.aabbs = [];
 
+        // fudge width value as text may overflow bounding box if it has italic, bold, etc style
+        let italics_buffer = (this.layout.italic) ? 5 * upp : 0;
+
         switch (this.placement) {
             case PLACEMENT.CORNER:
                 let angle0 = this.angle[this.kink_index - 1]; // angle before kink
@@ -318,7 +321,7 @@ export default class LabelLine {
                     let offset = Vector.rot([nudge * upp, 0], -angle);
                     let position = Vector.add(this.position, offset);
 
-                    let obb = getOBB(position, width, height, angle, this.offset, upp);
+                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
                     let aabb = obb.getExtent();
 
                     this.obbs.push(obb);
@@ -346,7 +349,7 @@ export default class LabelLine {
                     let offset = Vector.rot([nudge * upp, 0], -angle);
                     let position = Vector.add(this.position, offset);
 
-                    let obb = getOBB(position, width, height, angle, this.offset, upp);
+                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
                     let aabb = obb.getExtent();
 
                     this.obbs.push(obb);
@@ -373,7 +376,7 @@ export default class LabelLine {
                     let offset = Vector.rot([shift * upp, 0], -angle);
                     let position = Vector.add(this.position, offset);
 
-                    let obb = getOBB(position, width, height, angle, this.offset, upp);
+                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
                     let aabb = obb.getExtent();
 
                     this.obbs.push(obb);
