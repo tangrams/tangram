@@ -1,4 +1,5 @@
 import LabelPoint from './label_point';
+import {isCoordOutsideTile} from '../builders/common';
 
 const PLACEMENT = LabelPoint.PLACEMENT;
 const default_spacing = 50; // spacing of points along line in pixels
@@ -20,10 +21,11 @@ export default function placePointsOnLine (line, size, options) {
             for (let i = 0; i < positions.length; i++){
                 let position = positions[i];
                 let angle = angles[i];
-
-                let label = new LabelPoint(position, size, options);
-                label.angle = angle;
-                labels.push(label);
+                if (options.tile_edges === true || !isCoordOutsideTile(position)) {
+                    let label = new LabelPoint(position, size, options);
+                    label.angle = angle;
+                    labels.push(label);
+                }
             }
             break;
         case PLACEMENT.VERTEX:
@@ -31,9 +33,11 @@ export default function placePointsOnLine (line, size, options) {
             for (let i = 0; i < line.length - 1; i++){
                 p = line[i];
                 q = line[i + 1];
-                label = new LabelPoint(p, size, options);
-                label.angle = getAngle(p, q, options.angle);
-                labels.push(label);
+                if (options.tile_edges === true || !isCoordOutsideTile(p)) {
+                    label = new LabelPoint(p, size, options);
+                    label.angle = getAngle(p, q, options.angle);
+                    labels.push(label);
+                }
             }
 
             // add last endpoint
@@ -49,9 +53,11 @@ export default function placePointsOnLine (line, size, options) {
                     0.5 * (p[0] + q[0]),
                     0.5 * (p[1] + q[1])
                 ];
-                let label = new LabelPoint(position, size, options);
-                label.angle = getAngle(p, q, options.angle);
-                labels.push(label);
+                if (options.tile_edges === true || !isCoordOutsideTile(position)) {
+                    let label = new LabelPoint(position, size, options);
+                    label.angle = getAngle(p, q, options.angle);
+                    labels.push(label);
+                }
             }
             break;
     }

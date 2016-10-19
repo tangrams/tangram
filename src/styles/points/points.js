@@ -196,6 +196,8 @@ Object.assign(Points, {
         // Angle parameter (can be a number or the string "auto")
         style.angle = StyleParser.evalProperty(draw.angle, context);
 
+        style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
+
         style.sampler = 0; // 0 = sprites
 
         this.computeLayout(style, feature, draw, context, tile);
