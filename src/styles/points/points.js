@@ -364,7 +364,7 @@ Object.assign(Points, {
         // Placement strategies
         draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
         if (draw.placement == null) {
-            draw.placement = PLACEMENT.SPACED;
+            draw.placement = PLACEMENT.VERTEX;
         }
 
         draw.placement_spacing = draw.placement_spacing != null ? draw.placement_spacing : 80; // default spacing
