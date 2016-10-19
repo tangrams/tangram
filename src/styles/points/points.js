@@ -10,7 +10,7 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
-import LabelPoint, {PLACEMENT} from '../../labels/label_point';
+import LabelPoint from '../../labels/label_point';
 import placePointsOnLine from '../../labels/label_multipoint';
 import {TextLabels} from '../text/text_labels';
 import debugSettings from '../../utils/debug_settings';
@@ -18,6 +18,8 @@ import debugSettings from '../../utils/debug_settings';
 let fs = require('fs');
 const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
 const shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
+
+const PLACEMENT = LabelPoint.PLACEMENT;
 
 export var Points = Object.create(Style);
 

@@ -1,5 +1,6 @@
-import LabelPoint, {PLACEMENT} from './label_point';
+import LabelPoint from './label_point';
 
+const PLACEMENT = LabelPoint.PLACEMENT;
 const default_spacing = 50; // spacing of points along line in pixels
 
 export default function placePointsOnLine (line, size, options) {

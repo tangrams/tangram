@@ -148,7 +148,7 @@ export default class LabelPoint extends Label {
 }
 
 // Placement strategies
-export const PLACEMENT = {
+LabelPoint.PLACEMENT = {
     VERTEX: 0,          // place labels at endpoints of line segments
     MIDPOINT: 1,        // place labels at midpoints of line segments
     SPACED: 2,          // place labels equally spaced along line
