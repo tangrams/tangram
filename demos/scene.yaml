@@ -437,6 +437,7 @@ layers:
                 icons:
                     sprite: arrow
                     size: [[17, 18px], [18, 20px], [20, 32px]]
+                    placement: spaced
                     placement_spacing: [[17, 70px], [20, 175px]]
                     angle: auto
 
@@ -451,11 +452,11 @@ layers:
                     priority: 2
                     color: white
                     size: 24px
-                    placement_spacing: 100px
+                    placement: midpoint
+                    repeat_group: shields
                     cull_from_tile: true
-                    repeat_distance: 100px
-                    repeat_group: hwy
                     text:
+                        repeat_distance: 150px
                         anchor: center
                         text_source: shield_text
                         font:

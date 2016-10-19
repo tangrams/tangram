@@ -10,8 +10,8 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
-import LabelPoint from '../../labels/label_point';
-import LabelMultipoint from '../../labels/label_multipoint';
+import LabelPoint, {PLACEMENT} from '../../labels/label_point';
+import placePointsOnLine from '../../labels/label_multipoint';
 import {TextLabels} from '../text/text_labels';
 import debugSettings from '../../utils/debug_settings';
 
@@ -183,20 +183,16 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
+        // Placement strategy
+        style.placement = draw.placement;
+
         // Spacing parameter (in pixels) to equally space points along a line
-        if (draw.placement_spacing) {
+        if (style.placement === PLACEMENT.SPACED && draw.placement_spacing) {
             style.placement_spacing = StyleParser.evalCachedProperty(draw.placement_spacing, context);
         }
 
         // Angle parameter (can be a number or the string "auto")
-        let angle = StyleParser.evalProperty(draw.angle, context);
-        if (typeof angle === 'number'){
-            style.angle = angle * Math.PI / 180;
-        }
-        else {
-            // angle can be a string like "auto" (use angle of geometry)
-            style.angle = angle || 0;
-        }
+        style.angle = StyleParser.evalProperty(draw.angle, context);
 
         style.sampler = 0; // 0 = sprites
 
@@ -361,9 +357,21 @@ Object.assign(Points, {
         // Repeat rules - no repeat limitation for points by default
         draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
 
-        // Spacing
+        // Placement strategies
+        draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
+        if (draw.placement == null) {
+            draw.placement = PLACEMENT.SPACED;
+        }
+
         draw.placement_spacing = draw.placement_spacing != null ? draw.placement_spacing : 80; // default spacing
         draw.placement_spacing = StyleParser.createPropertyCache(draw.placement_spacing, parseFloat);
+
+        if (typeof draw.angle === 'number') {
+            draw.angle = draw.angle * Math.PI / 180;
+        }
+        else {
+            draw.angle = draw.angle || 0; // angle can be a string like "auto" (use angle of geometry)
+        }
 
         // Optional text styling
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
@@ -392,12 +400,6 @@ Object.assign(Points, {
         // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : false;
         layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : false;
-
-        // polygons rendering as points will render at each of the polygon's vertices by default,
-        // but can be set to render at the polygon's centroid instead
-        // TODO: change default to be centroid, and/or replace with more flexible 'placement'
-        // parameter to allow placement on vertex, along a line, or at a polygon centroid
-        layout.centroid = draw.centroid;
 
         // label anchors (point labels only)
         // label position will be adjusted in the given direction, relative to its original point
@@ -468,7 +470,7 @@ Object.assign(Points, {
         }
         else if (geometry.type === "LineString") {
             let line = geometry.coordinates;
-            let point_labels = LabelMultipoint(line, size, options);
+            let point_labels = placePointsOnLine(line, size, options);
             for (let i = 0; i < point_labels.length; ++i) {
                 labels.push(point_labels[i]);
             }
@@ -477,7 +479,7 @@ Object.assign(Points, {
             let lines = geometry.coordinates;
             for (let ln = 0; ln < lines.length; ln++) {
                 let line = lines[ln];
-                let point_labels = LabelMultipoint(line, size, options);
+                let point_labels = placePointsOnLine(line, size, options);
                 for (let i = 0; i < point_labels.length; ++i) {
                     labels.push(point_labels[i]);
                 }
@@ -485,7 +487,7 @@ Object.assign(Points, {
         }
         else if (geometry.type === "Polygon") {
             // Point at polygon centroid (of outer ring)
-            if (options.centroid) {
+            if (options.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.centroid(geometry.coordinates);
                 labels.push(new LabelPoint(centroid, size, options));
             }
@@ -493,16 +495,30 @@ Object.assign(Points, {
             else {
                 let rings = geometry.coordinates;
                 for (let ln = 0; ln < rings.length; ln++) {
-                    let points = rings[ln];
-                    for (let i = 0; i < points.length; ++i) {
-                        labels.push(new LabelPoint(points[i], size, options));
+                    let point_labels = placePointsOnLine(rings[ln], size, options);
+                    for (let i = 0; i < point_labels.length; ++i) {
+                        labels.push(point_labels[i]);
                     }
                 }
             }
         }
         else if (geometry.type === "MultiPolygon") {
-            let centroid = Geo.multiCentroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, options));
+            if (options.placement === PLACEMENT.CENTROID) {
+                let centroid = Geo.multiCentroid(geometry.coordinates);
+                labels.push(new LabelPoint(centroid, size, options));
+            }
+            else {
+                let polys = geometry.coordinates;
+                for (let p = 0; p < polys.length; p++) {
+                    let rings = polys[p];
+                    for (let ln = 0; ln < rings.length; ln++) {
+                        let point_labels = placePointsOnLine(rings[ln], size, options);
+                        for (let i = 0; i < point_labels.length; ++i) {
+                            labels.push(point_labels[i]);
+                        }
+                    }
+                }
+            }
         }
 
         return labels;

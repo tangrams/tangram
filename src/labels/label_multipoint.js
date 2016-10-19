@@ -1,24 +1,10 @@
-import LabelPoint from './label_point';
+import LabelPoint, {PLACEMENT} from './label_point';
 
 const default_spacing = 50; // spacing of points along line in pixels
 
-let PLACEMENT = {
-    ENDPOINTS: 0,       // place labels at endpoints of line segments
-    MIDPOINTS: 1,       // place labels at midpoints of line segments
-    SPACED: 2           // place labels equally spaced along line
-};
-
-export default function fitToLine (line, size, options) {
+export default function placePointsOnLine (line, size, options) {
     let labels = [];
-    let strategy;
-
-    if (options.placement_spacing){
-        strategy = PLACEMENT.SPACED;
-    }
-    else {
-        // strategy = PLACEMENT.MIDPOINTS;
-        strategy = PLACEMENT.ENDPOINTS;
-    }
+    let strategy = options.placement;
 
     switch (strategy){
         case PLACEMENT.SPACED:
@@ -39,7 +25,7 @@ export default function fitToLine (line, size, options) {
                 labels.push(label);
             }
             break;
-        case PLACEMENT.ENDPOINTS:
+        case PLACEMENT.VERTEX:
             let p, q, label;
             for (let i = 0; i < line.length - 1; i++){
                 p = line[i];
@@ -54,7 +40,7 @@ export default function fitToLine (line, size, options) {
             label.angle = getAngle(p, q, options.angle);
             labels.push(label);
             break;
-        case PLACEMENT.MIDPOINTS:
+        case PLACEMENT.MIDPOINT:
             for (let i = 0; i < line.length - 1; i++){
                 let p = line[i];
                 let q = line[i + 1];
