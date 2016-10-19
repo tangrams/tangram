@@ -369,6 +369,7 @@ Object.assign(Points, {
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
         if (draw.text) {
             draw.text.key = draw.key; // copy layer key for use as label repeat group
+            draw.text.repeat_group = draw.text.repeat_group || draw.repeat_group; // inherit repeat group by default
             draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
         }
