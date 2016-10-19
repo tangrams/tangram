@@ -40,6 +40,9 @@ export const TextLabels = {
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
 
+        // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
+        layout.italic = (text_settings.style !== 'normal');
+
         // first label in tile, or with this style?
         this.texts[tile.key] = this.texts[tile.key] || {};
         let sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};

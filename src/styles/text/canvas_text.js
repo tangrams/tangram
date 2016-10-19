@@ -56,6 +56,7 @@ export default class CanvasText {
                     }
 
                     text_info.space_width = space_width;
+                    text_info.italic = (text_settings.style !== 'normal');
 
                     if (text_settings.can_articulate){
                         let segments = splitLabelText(text);

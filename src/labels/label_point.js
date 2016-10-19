@@ -52,6 +52,11 @@ export default class LabelPoint extends Label {
         let width = (this.size[0] + this.layout.buffer[0] * 2) * this.layout.units_per_pixel * Label.epsilon;
         let height = (this.size[1] + this.layout.buffer[1] * 2) * this.layout.units_per_pixel * Label.epsilon;
 
+        // fudge width value as text may overflow bounding box if it has italic, bold, etc style
+        if (this.layout.italic){
+            width += 5 * this.layout.units_per_pixel;
+        }
+
         let p = [
             this.position[0] + (this.offset[0] * this.layout.units_per_pixel),
             this.position[1] - (this.offset[1] * this.layout.units_per_pixel)
