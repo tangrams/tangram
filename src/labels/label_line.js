@@ -688,7 +688,7 @@ function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
         let angle = getAngleFromSegment(line[index], line[index + 1]);
         let pre_angle = angle - offset_angle;
 
-        angles.push(angle);
+        angles.push(offset_angle);
         pre_angles.push(pre_angle);
         offsets.push(offset);
     }
@@ -791,11 +791,35 @@ function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, 
     // get 2d offsets, angles and pre_angles relative to anchor
     let [offsets, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
 
+
+    // tests
+    // debugger
+    // for (var index = 0; index < offsets.length; index++){
+    //     var iterate = indices[index];
+    //     var offset = offsets[index];
+    //     var pos = Vector.add(anchor, offset);
+
+    //     console.log(pos, positions[index]);
+    // }
+
     // map offsets to distance
     offsets = offsets.map(function(offset){
         return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
         // return [offset[0] / upp, offset[1] / upp];
     });
+
+    // tests
+    // for (var index = 0; index < offsets.length; index++){
+    //     var iterate = indices[index];
+    //     var offset = offsets[index];
+    //     var angle = angles[index];
+    //     var offset2D = Vector.rot([upp * offset[0], 0], -angle);
+    //     var pos = Vector.add(anchor, offset2D);
+
+    //     console.log(pos, positions[index]);
+    // }
+
+    // debugger
 
     // stops per label
     let stops = getAngleRanges(line_lengths, widths);
@@ -805,7 +829,7 @@ function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, 
         angle_info[i].offsets = [];
         angle_info[i].stop_array.forEach(function(zoom){
             let offset = getRangeOffsets(zoom, i, anchor, line, line_lengths, widths);
-            offset = Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp;
+            offset = Math.hypot(offset[0], offset[1]) / upp;
             angle_info[i].offsets.unshift(offset);
         });
         angle_info[i].offsets.unshift(offsets[i][0]);
