@@ -371,7 +371,6 @@ layers:
 
         labels:
             filter:
-                # $zoom: { min: 7 }
                 name: true
                 not: { kind: [rail, aeroway] }
 
@@ -387,10 +386,20 @@ layers:
                             size: 12px
                             stroke: { color: white, width: 4 }
 
-            not_highway:
-                filter:
-                    not: { kind: highway }
-                    $zoom: { min: 13 }
+            major_road:
+                filter: { kind: major_road, $zoom: { min: 13 } }
+                draw:
+                    text:
+                        text_source: global.language_text_source
+                        priority: 3
+                        font:
+                            fill: '#666'
+                            family: Helvetica
+                            size: 14px
+                            stroke: { color: white, width: 4 }
+
+            minor_road:
+                filter: { kind: minor_road, $zoom: { min: 15 } }
                 draw:
                     text:
                         text_source: global.language_text_source
@@ -401,34 +410,16 @@ layers:
                             family: Helvetica
                             size: 12px
 
-                major_road:
-                    filter:
-                        kind: major_road
-                        $zoom: { min: 14 }
-                    draw:
-                        text:
-                            priority: 3
-                            font:
-                                family: Helvetica
-                                size: 14px
-                                stroke: { color: white, width: 4 }
-
-                ferry:
-                    filter: { kind: ferry }
-                    draw:
-                        text:
-                            text_wrap: 20
-                            font:
-                                fill: '#8db3ce'
-                                stroke: { color: white, width: 4px }
-                                style: italic
-                                size: 12px
-
-                small:
-                    filter:
-                        kind_detail: [residential, unclassified]
-                        $zoom: { max: 15 }
-                    visible: false
+            ferry:
+                filter: { kind: ferry }
+                draw:
+                    text:
+                        text_wrap: 20
+                        font:
+                            fill: '#8db3ce'
+                            stroke: { color: white, width: 4px }
+                            style: italic
+                            size: 12px
 
         shields:
             filter:
