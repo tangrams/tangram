@@ -1,5 +1,4 @@
 // Manage rendering styles
-import Utils from '../utils/utils';
 import ShaderProgram from '../gl/shader_program';
 import mergeObjects from '../utils/merge';
 import Geo from '../geo';

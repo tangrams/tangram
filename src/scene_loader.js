@@ -1,5 +1,4 @@
 import log from './utils/log';
-import Utils from './utils/utils';
 import GLSL from './gl/glsl';
 import mergeObjects from './utils/merge';
 import subscribeMixin from './utils/subscribe';
