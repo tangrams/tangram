@@ -1,5 +1,6 @@
 import log from './utils/log';
 import Utils from './utils/utils';
+import * as URLs from './utils/urls';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
 import Context from './gl/context';
@@ -227,7 +228,7 @@ export default class Scene {
 
     // Get the URL to load the web worker from
     getWorkerUrl() {
-        let worker_url = this.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
+        let worker_url = this.worker_url || URLs.findCurrentURL('tangram.debug.js', 'tangram.min.js');
 
         if (!worker_url) {
             throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
@@ -240,7 +241,7 @@ export default class Scene {
         let urls = [...this.data_source_scripts];
         urls.push(worker_url); // load Tangram *last* (has been more reliable, though reason unknown)
         let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
-        return Utils.createObjectURL(new Blob([body], { type: 'application/javascript' }));
+        return URLs.createObjectURL(new Blob([body], { type: 'application/javascript' }));
     }
 
     // Update list of any custom data source scripts (if any)
@@ -753,10 +754,10 @@ export default class Scene {
         this.config_globals_applied = [];
 
         if (typeof this.config_source === 'string') {
-            this.config_path = Utils.pathForURL(config_path || this.config_source);
+            this.config_path = URLs.pathForURL(config_path || this.config_source);
         }
         else {
-            this.config_path = Utils.pathForURL(config_path);
+            this.config_path = URLs.pathForURL(config_path);
         }
 
         return SceneLoader.loadScene(this.config_source, this.config_path).then(config => {
@@ -789,7 +790,7 @@ export default class Scene {
         let source = this.config.sources[name] = Object.assign({}, config);
 
         if (source.data && typeof source.data === 'object') {
-            source.url = Utils.createObjectURL(new Blob([JSON.stringify(source.data)]));
+            source.url = URLs.createObjectURL(new Blob([JSON.stringify(source.data)]));
             delete source.data;
         }
 

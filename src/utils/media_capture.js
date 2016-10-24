@@ -1,6 +1,6 @@
 /* global MediaRecorder */
 import log from './log';
-import Utils from './utils';
+import {createObjectURL} from './urls';
 
 export default class MediaCapture {
 
@@ -74,7 +74,7 @@ export default class MediaCapture {
                 // Stopped recording? Create the final capture file blob
                 if (cap.resolve) {
                     let blob = new Blob(cap.chunks, { type: cap.options.mimeType });
-                    let url = Utils.createObjectURL(blob);
+                    let url = createObjectURL(blob);
 
                     // Explicitly remove all stream tracks, and set objects to null
                     if (cap.stream) {

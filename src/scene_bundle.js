@@ -1,4 +1,5 @@
 import Utils from './utils/utils';
+import * as URLs from './utils/urls';
 import JSZip from 'jszip';
 
 export class SceneBundle {
@@ -8,11 +9,11 @@ export class SceneBundle {
 
         // If a base path was provided, use it for resolving local bundle resources only if
         // the base path is absolute, or this bundle's path is relative
-        if (path && (!Utils.isRelativeURL(path) || Utils.isRelativeURL(this.url))) {
+        if (path && (!URLs.isRelativeURL(path) || URLs.isRelativeURL(this.url))) {
             this.path = path;
         }
         else {
-            this.path = Utils.pathForURL(this.url);
+            this.path = URLs.pathForURL(this.url);
         }
 
         this.path_for_parent = path || this.path; // for resolving paths relative to a parent bundle
@@ -49,18 +50,18 @@ export class SceneBundle {
     }
 
     urlFor(url) {
-        if (Utils.isRelativeURL(url) && this.container) {
+        if (URLs.isRelativeURL(url) && this.container) {
             return this.parent.urlFor(this.path_for_parent + url);
         }
-        return Utils.addBaseURL(url, this.path);
+        return URLs.addBaseURL(url, this.path);
     }
 
     pathFor(url) {
-        return Utils.pathForURL(url);
+        return URLs.pathForURL(url);
     }
 
     typeFor(url) {
-        return Utils.extensionForURL(url);
+        return URLs.extensionForURL(url);
     }
 
     isContainer() {
@@ -98,14 +99,14 @@ export class ZipSceneBundle extends SceneBundle {
     }
 
     urlFor(url) {
-        if (Utils.isRelativeURL(url)) {
-            return this.urlForZipFile(Utils.flattenRelativeURL(url));
+        if (URLs.isRelativeURL(url)) {
+            return this.urlForZipFile(URLs.flattenRelativeURL(url));
         }
         return super.urlFor(url);
     }
 
     typeFor(url) {
-        if (Utils.isRelativeURL(url)) {
+        if (URLs.isRelativeURL(url)) {
             return this.typeForZipFile(url);
         }
         return super.typeFor(url);
@@ -120,7 +121,7 @@ export class ZipSceneBundle extends SceneBundle {
         // There must be a single YAML file at the top level of the zip
         const yamls = Object.keys(this.files)
             .filter(path => this.files[path].depth === 0)
-            .filter(path => Utils.extensionForURL(path) === 'yaml');
+            .filter(path => URLs.extensionForURL(path) === 'yaml');
 
         if (yamls.length === 1) {
             this.root = yamls[0];
@@ -157,7 +158,7 @@ export class ZipSceneBundle extends SceneBundle {
                 let depth = path.split('/').length - 1;
                 this.files[path] = {
                     data: data[i],
-                    type: Utils.extensionForURL(path),
+                    type: URLs.extensionForURL(path),
                     depth
                 };
             }
@@ -167,7 +168,7 @@ export class ZipSceneBundle extends SceneBundle {
     urlForZipFile(file) {
         if (this.files[file]) {
             if (!this.files[file].url) {
-                this.files[file].url = Utils.createObjectURL(new Blob([this.files[file].data]));
+                this.files[file].url = URLs.createObjectURL(new Blob([this.files[file].data]));
             }
 
             return this.files[file].url;
@@ -181,7 +182,7 @@ export class ZipSceneBundle extends SceneBundle {
 }
 
 export function createSceneBundle(url, path, parent, type = null) {
-    if (type === 'zip' || (typeof url === 'string' && Utils.extensionForURL(url) === 'zip')) {
+    if (type === 'zip' || (typeof url === 'string' && URLs.extensionForURL(url) === 'zip')) {
         return new ZipSceneBundle(url, path, parent);
     }
     return new SceneBundle(url, path, parent);

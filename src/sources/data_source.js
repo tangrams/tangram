@@ -2,6 +2,7 @@
 import Geo from '../geo';
 import {MethodNotImplemented} from '../utils/errors';
 import Utils from '../utils/utils';
+import * as URLs from '../utils/urls';
 
 export default class DataSource {
 
@@ -183,7 +184,7 @@ export class NetworkSource extends DataSource {
 
     constructor (source, sources) {
         super(source, sources);
-        this.url = Utils.addParamsToURL(source.url, source.url_params);
+        this.url = URLs.addParamsToURL(source.url, source.url_params);
         this.response_type = ""; // use to set explicit XHR type
 
         if (this.url == null) {

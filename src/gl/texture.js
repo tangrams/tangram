@@ -1,6 +1,7 @@
 // Texture management
 import log from '../utils/log';
 import Utils from '../utils/utils';
+import {addBaseURL} from '../utils/urls';
 import subscribeMixin from '../utils/subscribe';
 import WorkerBroker from '../utils/worker_broker';
 
@@ -128,7 +129,7 @@ export default class Texture {
         }
 
         if (Texture.base_url) {
-            url = Utils.addBaseURL(url, Texture.base_url);
+            url = addBaseURL(url, Texture.base_url);
         }
 
         this.url = url; // save URL reference (will be overwritten when element is loaded below)
