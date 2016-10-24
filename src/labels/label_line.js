@@ -47,9 +47,7 @@ export default class LabelLine {
         this.segment_max = layout.segment_end || this.lines.length;
 
         let spacing = 100;
-        let result = getStartingPositions(lines, spacing + this.total_length, layout.units_per_pixel);
-        let label_positions = result.positions;
-        let indices = result.indices;
+        let {label_positions, label_indices} = getStartingPositions(lines, spacing + this.total_length, layout.units_per_pixel);
 
         if (label_positions.length === 0 || size.length === 0){
             this.throw_away = true;
@@ -65,41 +63,74 @@ export default class LabelLine {
         }
 
         // only do first one for now
-        let offset = 0;
-        let index = 0;
-        let line_position = lines[index];
-        let label_position = lines[index];
+        let upp = layout.units_per_pixel;
+
+        let label_lengths = size.map(function(size){
+            return size[0] * upp;
+        });
+
+        let widths = size.map(function(size){
+            return size[0];
+        });
+
+        // starting position
+        let anchor_offset = 0;
+        let anchor_index = 0;
+        let anchor = Vector.add(
+            lines[anchor_index],
+            Vector.rot([anchor_offset, 0], this.line_angles_segments[anchor_index])
+        );
 
         let height = size[0][1];
-        let {positions, offsets, offset_info, angles, pre_angles, widths, angle_info} = placeAtPosition.call(this, lines, this.line_lengths, this.line_angles, this.line_angles_segments, this.size, index, offset, layout.units_per_pixel);
-        let {obbs, aabbs} = createBoundingBoxes(positions, angles, widths, height);
 
-        let smoothing = false;
-        if (smoothing){
-            let N = angles.length;
-            let weighted_angles = [];
-            let weighted_pre_angles = [];
+        let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, lines, this.line_lengths, this.line_angles_segments, label_lengths, upp);
 
-            weighted_angles[0] = (2*angles[0] + angles[1])/3;
-            weighted_pre_angles[0] = (2*pre_angles[0] + pre_angles[1])/3;
-            for (var i = 1; i < angles.length-1; i++){
-                weighted_angles[i] = (angles[i-1] + 2*angles[i] + angles[i+1]) / 4;
-                weighted_pre_angles[i] = (pre_angles[i-1] + 2*pre_angles[i] + pre_angles[i+1]) / 4;
+        this.position = anchor;
+        this.positions = positions.slice();
+        this.offsets = offsets.slice();
+        this.angle = angles.slice();
+        this.pre_angles = pre_angles.slice();
+
+        let {obbs, aabbs} = createBoundingBoxes(positions, pre_angles, widths, height);
+
+        let stops = getAngleRanges(this.line_lengths, label_lengths);
+
+        let angle_info = [];
+        for (var i = 0; i < stops.length; i++){
+            angle_info[i] = {
+                offsets : [],
+                angle_array : [],
+                pre_angles : [],
+                stop_array : []
+            };
+
+            let range = stops[i];
+
+            for (var j = 0; j < range.length; j++){
+                let line_lengths = (function(stop){
+                    return this.line_lengths.map(function(length){
+                        return (1 + stop) * length;
+                    })
+                }.bind(this))(range[j]);
+
+                let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, lines, line_lengths, this.line_angles_segments, label_lengths, upp);
+
+                angle_info[i].offsets.push(offsets[i][0]);
+                angle_info[i].angle_array.push(angles[i]);
+                angle_info[i].pre_angles.push(pre_angles[i]);
+                angle_info[i].stop_array.push(range[j]);
             }
-            weighted_angles[N-1] = (angles[N-2] + 2*angles[N-1])/3;
-            weighted_pre_angles[N-1] = (pre_angles[N-2] + 2*pre_angles[N-1])/3;
 
-            this.angle = weighted_angles;
-            this.pre_angles = weighted_pre_angles;
-        }
-        else {
-            this.angle = angles;
-            this.pre_angles = pre_angles;
+            for (var j = range.length; j < 4; j++){
+                angle_info[i].offsets.push(this.offsets[i][0]);
+                angle_info[i].angle_array.push(this.angle[i]);
+                angle_info[i].pre_angles.push(this.pre_angles[i]);
+                angle_info[i].stop_array.push(1);
+            }
         }
 
-        this.position = label_position;
-        this.positions = positions;
-        this.offsets = offsets;
+        this.angle = angles;
+        this.pre_angles = pre_angles;
         this.obbs = obbs;
         this.aabbs = aabbs;
         this.angle_info = angle_info;
@@ -594,19 +625,19 @@ function getStartingPositions(line, spacing, upp){
     let num_labels = Math.floor(length / spacing);
     let remainder = length - (num_labels - 1) * spacing;
 
-    let positions = [];
-    let indices = [];
+    let label_positions = [];
+    let label_indices = [];
 
     let distance = 0.5 * remainder;
     for (let i = 0; i < num_labels; i++){
         let {position, index} = interpolateLine(line, distance);
 
-        positions.push(position);
-        indices.push(index);
+        label_positions.push(position);
+        label_indices.push(index);
         distance += spacing;
     }
 
-    return {positions, indices};
+    return {label_positions, label_indices};
 }
 
 function interpolateLine(line, distance){
@@ -771,71 +802,21 @@ function getNextPlacement(line_index, line_offset, label_length, line_lengths){
     return [line_index, line_offset];
 }
 
-function placeAtPosition(line, line_lengths, line_angles, line_angles_segments, label_sizes, line_index, line_offset, upp){
-    let widths = label_sizes.map(function(size){
-        return size[0] * upp;
-    });
-
+function placeAtPosition(anchor, line, line_lengths, line_angles_segments, label_lengths, upp){
     // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
-    let [indices, relative_offsets] = placeAtAnchor(line_index, line_offset, line_lengths, widths);
+    let [indices, relative_offsets] = placeAtAnchor(0, 0, line_lengths, label_lengths);
 
     // get 2D positions based on "flat" indices and offsets
     let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
 
-    // starting position
-    let anchor = Vector.add(
-        line[line_index],
-        Vector.rot([line_offset, 0], line_angles_segments[0])
-    );
-
     // get 2d offsets, angles and pre_angles relative to anchor
-    let [offsets, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
+    let [offsets2d, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
 
-
-    // tests
-    // debugger
-    // for (var index = 0; index < offsets.length; index++){
-    //     var iterate = indices[index];
-    //     var offset = offsets[index];
-    //     var pos = Vector.add(anchor, offset);
-
-    //     console.log(pos, positions[index]);
-    // }
-
-    // map offsets to distance
-    offsets = offsets.map(function(offset){
+    let offsets = offsets2d.map(function(offset){
         return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
-        // return [offset[0] / upp, offset[1] / upp];
     });
 
-    // tests
-    // for (var index = 0; index < offsets.length; index++){
-    //     var iterate = indices[index];
-    //     var offset = offsets[index];
-    //     var angle = angles[index];
-    //     var offset2D = Vector.rot([upp * offset[0], 0], -angle);
-    //     var pos = Vector.add(anchor, offset2D);
-
-    //     console.log(pos, positions[index]);
-    // }
-
-    // debugger
-
-    // stops per label
-    let stops = getAngleRanges(line_lengths, widths);
-    let angle_info = getAnglesAndStops(angles, stops);
-
-    for (let i = 0; i < angle_info.length; i++){
-        angle_info[i].offsets = [];
-        angle_info[i].stop_array.forEach(function(zoom){
-            let offset = getRangeOffsets(zoom, i, anchor, line, line_lengths, widths);
-            offset = Math.hypot(offset[0], offset[1]) / upp;
-            angle_info[i].offsets.unshift(offset);
-        });
-        angle_info[i].offsets.unshift(offsets[i][0]);
-    }
-
-    return {positions, offsets, angles, pre_angles, widths, angle_info};
+    return {positions, offsets, angles, pre_angles, indices};
 }
 
 function getRangeOffsets(zoom, index, anchor, line, line_lengths, label_lengths){
