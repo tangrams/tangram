@@ -299,10 +299,6 @@ Utils.recurseValues = function* (obj) {
     }
 };
 
-Utils.radToDeg = function (radians) {
-    return radians * 180 / Math.PI;
-};
-
 Utils.toCSSColor = function (color) {
     if (color[3] === 1) { // full opacity
         return `rgb(${color.slice(0, 3).map(c => Math.round(c * 255)).join(', ')})`;
@@ -313,39 +309,4 @@ Utils.toCSSColor = function (color) {
 
 Utils.pointInTile = function (point) {
     return point[0] >= 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] <= 0;
-};
-
-// http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
-Utils.hashString = function(str) {
-    if (str.length === 0) {
-        return 0;
-    }
-    let hash = 0;
-
-    for (let i = 0, len = str.length; i < len; i++) {
-        let chr = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + chr;
-        hash |= 0;
-    }
-    return hash;
-};
-
-Utils.debounce = function (func, wait, immediate) {
-    let timeout;
-    return function() {
-        let context = this,
-            args = arguments;
-        let later = function() {
-            timeout = null;
-            if (!immediate) {
-                func.apply(context, args);
-            }
-        };
-        let callNow = immediate && !timeout;
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-        if (callNow) {
-            func.apply(context, args);
-        }
-    };
 };
