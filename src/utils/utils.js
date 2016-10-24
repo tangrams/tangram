@@ -253,52 +253,6 @@ Utils.interpolate = function(x, points, transform) {
     return y;
 };
 
-// Iterators (ES6 generators)
-
-// Iterator for key/value pairs of an object
-Utils.entries = function* (obj) {
-    for (var key of Object.keys(obj)) {
-        yield [key, obj[key]];
-    }
-};
-
-// Iterator for values of an object
-Utils.values = function* (obj) {
-    for (var key of Object.keys(obj)) {
-        yield obj[key];
-    }
-};
-
-// Recursive iterators for all properties of an object, no matter how deeply nested
-// TODO: fix for circular structures
-Utils.recurseEntries = function* (obj) {
-    if (!obj) {
-        return;
-    }
-    for (var key of Object.keys(obj)) {
-        if (obj[key]) {
-            yield [key, obj[key], obj];
-            if (typeof obj[key] === 'object') {
-                yield* Utils.recurseEntries(obj[key]);
-            }
-        }
-    }
-};
-
-Utils.recurseValues = function* (obj) {
-    if (!obj) {
-        return;
-    }
-    for (var key of Object.keys(obj)) {
-        if (obj[key]) {
-            yield obj[key];
-            if (typeof obj[key] === 'object') {
-                yield* Utils.recurseValues(obj[key]);
-            }
-        }
-    }
-};
-
 Utils.toCSSColor = function (color) {
     if (color[3] === 1) { // full opacity
         return `rgb(${color.slice(0, 3).map(c => Math.round(c * 255)).join(', ')})`;

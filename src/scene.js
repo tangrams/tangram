@@ -845,7 +845,8 @@ export default class Scene {
 
         // Mark sources that will generate geometry tiles
         // (all except those that are only raster sources attached to other sources)
-        for (let layer of Utils.values(this.config.layers)) {
+        for (let ln in this.config.layers) {
+            let layer = this.config.layers[ln];
             if (layer.data && this.sources[layer.data.source]) {
                 this.sources[layer.data.source].builds_geometry_tiles = true;
             }
@@ -869,8 +870,8 @@ export default class Scene {
         this.style_manager.initStyles(this);
 
         // Optionally set GL context (used when initializing or re-initializing GL resources)
-        for (var style of Utils.values(this.styles)) {
-            style.setGL(this.gl);
+        for (let style in this.styles) {
+            this.styles[style].setGL(this.gl);
         }
 
         // Find & compile active styles
@@ -886,9 +887,17 @@ export default class Scene {
         let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
         let animated = false; // is any active style animated?
-        for (let layer of Utils.recurseValues(this.config.layers)) {
-            if (layer && layer.draw) {
-                for (let [name, group] of Utils.entries(layer.draw)) {
+
+        const parseLayers = (layer) => {
+            if (!layer) {
+                return;
+            }
+
+            // Traverse draw groups
+            if (layer.draw) {
+                for (let name in layer.draw) {
+                    let group = layer.draw[name];
+
                     // TODO: warn on non-object draw group
                     if (group != null && typeof group === 'object' && group.visible !== false) {
                         let style_name = group.style || name;
@@ -911,7 +920,15 @@ export default class Scene {
                     }
                 }
             }
-        }
+
+            // Traverse sublayers
+            if (typeof layer === 'object' && !Array.isArray(layer)) {
+                for (let name in layer) {
+                    parseLayers(layer[name]);
+                }
+            }
+        };
+        parseLayers(this.config.layers);
 
         // Use explicitly set scene animation flag if defined, otherwise turn on animation
         // if there are any animated styles

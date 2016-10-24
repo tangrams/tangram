@@ -86,7 +86,8 @@ export default SceneLoader = {
     normalizeDataSources(config, bundle) {
         config.sources = config.sources || {};
 
-        for (let source of  Utils.values(config.sources)) {
+        for (let sn in config.sources) {
+            let source = config.sources[sn];
             source.url = bundle.urlFor(source.url);
 
             if (Array.isArray(source.scripts)) {
@@ -101,9 +102,15 @@ export default SceneLoader = {
     normalizeFonts(config, bundle) {
         config.fonts = config.fonts || {};
 
-        for (let val of Utils.recurseValues(config.fonts)) {
-            if (val.url) {
-                val.url = bundle.urlFor(val.url);
+        for (let family in config.fonts) {
+            if (Array.isArray(config.fonts[family])) {
+                config.fonts[family].forEach(face => {
+                    face.url = face.url && bundle.urlFor(face.url);
+                });
+            }
+            else {
+                let face = config.fonts[family];
+                face.url = face.url && bundle.urlFor(face.url);
             }
         }
 
@@ -118,7 +125,8 @@ export default SceneLoader = {
         // Only adds path for textures with relative URLs, so textures in imported scenes get the base
         // path of their immediate scene file
         if (config.textures) {
-            for (let texture of Utils.values(config.textures)) {
+            for (let tn in config.textures) {
+                let texture = config.textures[tn];
                 if (texture.url) {
                     texture.url = bundle.urlFor(texture.url);
                 }
@@ -134,7 +142,9 @@ export default SceneLoader = {
         // We first check to see if there is a texture already defined with that string name. The texture's URL
         // is expanded to include the current scene's base path.
         if (config.styles) {
-            for (let style of Utils.values(config.styles)) {
+            for (let sn in config.styles) {
+                let style = config.styles[sn];
+
                 // Style `texture`
                 let tex = style.texture;
                 if (typeof tex === 'string' && !config.textures[tex]) {

@@ -209,7 +209,8 @@ export class StyleManager {
         // Mark all shader blocks for the target style as originating with its own name
         if (style.shaders && style.shaders.blocks) {
             style.shaders.block_scopes = style.shaders.block_scopes || {};
-            for (let [k, block] of Utils.entries(style.shaders.blocks)) {
+            for (let k in style.shaders.blocks) {
+                let block = style.shaders.blocks[k];
                 style.shaders.block_scopes[k] = style.shaders.block_scopes[k] || [];
                 if (Array.isArray(block)) {
                     style.shaders.block_scopes[k].push(...block.map(() => style.name));
@@ -231,7 +232,8 @@ export class StyleManager {
             shaders.block_scopes = shaders.block_scopes || {};
             let mixed_source = {}; // scopes mixed for this source style
 
-            for (let [t, block] of Utils.entries(source.blocks)) {
+            for (let t in source.blocks) {
+                let block = source.blocks[t];
                 let block_scope = source.block_scopes[t];
 
                 shaders.blocks[t] = shaders.blocks[t] || [];
