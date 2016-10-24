@@ -131,7 +131,7 @@ export function addParamsToURL (url, params) {
 }
 
 // Polyfill (for Safari compatibility)
-let _createObjectURL = undefined;
+let _createObjectURL;
 export function createObjectURL (url) {
     if (_createObjectURL === undefined) {
         _createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);

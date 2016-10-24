@@ -2,7 +2,6 @@
 /*jshint worker: true*/
 
 import Thread from './thread';
-import log from './log';
 import Geo from '../geo';
 
 import yaml from 'js-yaml';
