@@ -256,7 +256,6 @@ export const TextLabels = {
 
         // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
-        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
 
         // repeat minimum distance
         layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);

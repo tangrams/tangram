@@ -200,10 +200,6 @@ Object.assign(Points, {
             // This can be overriden, as long as it is less than or equal to the default
             tf.layout.priority = draw.text.priority ? Math.max(tf.layout.priority, style.priority + 0.5) : (style.priority + 0.5);
 
-            // Text labels attached to points should not be moved into tile
-            // (they should stay fixed relative to the point)
-            tf.layout.move_into_tile = false;
-
             Collision.addStyle(this.collision_group_text, tile.key);
         }
 
@@ -368,7 +364,6 @@ Object.assign(Points, {
 
         // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : false;
-        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : false;
 
         // polygons rendering as points will render at each of the polygon's vertices by default,
         // but can be set to render at the polygon's centroid instead
