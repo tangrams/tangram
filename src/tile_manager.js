@@ -89,7 +89,8 @@ export default class TileManager {
         let prev_coords = Object.keys(this.visible_coords);
         this.visible_coords = {};
         let tile_coords = this.view.findVisibleTileCoordinates();
-        for (let coords of tile_coords) {
+        for (let c=0; c < tile_coords.length; c++) {
+            const coords = tile_coords[c];
             this.queueCoordinate(coords);
             this.visible_coords[coords.key] = coords;
         }
@@ -135,18 +136,18 @@ export default class TileManager {
         this.forEachTile(tile => {
             if (this.view.zoom_direction === 1) {
                 if (tile.visible && !tile.built && tile.coords.z > 0) {
-                    let p = this.pyramid.getAncestor(tile);
-                    if (p) {
-                        p.setProxyFor(tile);
+                    const parent = this.pyramid.getAncestor(tile);
+                    if (parent) {
+                        parent.setProxyFor(tile);
                         proxy = true;
                     }
                 }
             }
             else if (this.view.zoom_direction === -1) {
                 if (tile.visible && !tile.built) {
-                    let d = this.pyramid.getDescendants(tile);
-                    for (let t of d) {
-                        t.setProxyFor(tile);
+                    const descendants = this.pyramid.getDescendants(tile);
+                    for (let i=0; i < descendants.length; i++) {
+                        descendants[i].setProxyFor(tile);
                         proxy = true;
                     }
                 }

@@ -54,9 +54,9 @@ export default SceneLoader = {
 
             // Collect URLs of scenes to import
             let imports = [];
-            for (let url of config.import) {
+            config.import.forEach(url => {
                 imports.push(bundle.resourceFor(url));
-            }
+            });
             delete config.import; // don't want to merge this property
 
             return Promise.
@@ -154,7 +154,7 @@ export default SceneLoader = {
 
                 // Material
                 if (style.material) {
-                    for (let prop of ['emission', 'ambient', 'diffuse', 'specular', 'normal']) {
+                    ['emission', 'ambient', 'diffuse', 'specular', 'normal'].forEach(prop => {
                         // Material property has a texture
                         let tex = style.material[prop] != null && style.material[prop].texture;
                         if (typeof tex === 'string' && !config.textures[tex]) {
@@ -162,20 +162,19 @@ export default SceneLoader = {
                             config.textures[tex] = { url: tex };
                             style.material[prop].texture = tex;
                         }
-                    }
+                    });
                 }
 
                 // Shader uniforms
                 if (style.shaders && style.shaders.uniforms) {
-                    for (let {type, value, key, uniforms} of GLSL.parseUniforms(style.shaders.uniforms)) {
+                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({type, value, key, uniforms}) => {
                         // Texture by URL (string-named texture not referencing existing texture definition)
                         if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
                             let tex = bundle.urlFor(value);
                             config.textures[tex] = { url: tex };
                             uniforms[key] = tex;
                         }
-                    }
-
+                    });
                 }
             }
         }

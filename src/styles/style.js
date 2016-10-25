@@ -494,7 +494,7 @@ export var Style = {
                 let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
                 let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
 
-                for (let [tname, twidth, theight] of textures) {
+                textures.forEach(([tname, twidth, theight]) => {
                     let i = index[tname];
                     let raster_coords = configs[tname].coords; // tile coords of raster tile
 
@@ -519,7 +519,7 @@ export var Style = {
                     else {
                         u_offsets[i] = [0, 0, 1];
                     }
-                }
+                });
 
                 return tile_data;
             }

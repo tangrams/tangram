@@ -153,7 +153,8 @@ export default class DataSource {
         }
 
         // Limit by any dependent raster sources
-        for (let source_name of this.rasters) {
+        for (let r=0; r < this.rasters.length; r++) {
+            const source_name = this.rasters[r];
             if (this.sources[source_name] &&
                 this.sources[source_name] !== this &&
                 !this.sources[source_name].includesTile(coords, coords.z)) {

@@ -124,7 +124,9 @@ export default class TilePyramid {
         // Check tiles at next zoom down
         if (this.coords[coords.key] && this.coords[coords.key].descendants > 0) {
             style_zoom++;
-            for (let child of Tile.childrenForCoordinate(coords)) {
+            const children = Tile.childrenForCoordinate(coords);
+            for (let c=0; c < children.length; c++) {
+                const child = children[c];
                 let child_tiles = this.sourceTiles(child, source);
                 if (child_tiles && child_tiles.has(style_zoom) && child_tiles.get(style_zoom).loaded) {
                     descendants.push(child_tiles.get(style_zoom));

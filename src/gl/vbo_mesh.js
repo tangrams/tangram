@@ -110,9 +110,9 @@ export default class VBOMesh  {
         }
         this.valid = false;
 
-        for (let vao of this.vaos.values()) {
+        this.vaos.forEach(vao => {
             VertexArrayObject.destroy(this.gl, vao);
-        }
+        });
 
         log('trace', 'VBOMesh.destroy: delete buffer' + (this.vertex_data ? ` of size ${this.vertex_data.byteLength}` : ''));
 

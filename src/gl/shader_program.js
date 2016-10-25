@@ -197,10 +197,10 @@ export default class ShaderProgram {
             // shader error info
             if (error.type === 'vertex' || error.type === 'fragment') {
                 this.shader_errors = error.errors;
-                for (let e of this.shader_errors) {
+                this.shader_errors.forEach(e => {
                     e.type = error.type;
                     e.block = this.block(error.type, e.line);
-                }
+                });
             }
 
             throw(new Error(`ShaderProgram.compile(): program ${this.id} (${this.name}) error:`, error));
@@ -587,7 +587,7 @@ export default class ShaderProgram {
     // Sets internal #defines indicating availability of each requested extension
     checkExtensions() {
         let exts = [];
-        for (let name of this.extensions) {
+        this.extensions.forEach(name => {
             let ext = getExtension(this.gl, name);
             let def = `TANGRAM_EXTENSION_${name}`;
 
@@ -599,7 +599,7 @@ export default class ShaderProgram {
             else {
                 log('debug', `Could not enable extension '${name}'`);
             }
-        }
+        });
         return exts;
     }
 
@@ -640,9 +640,9 @@ ShaderProgram.buildDefineString = function (defines) {
 ShaderProgram.buildExtensionString = function (extensions) {
     extensions = extensions || [];
     let str = "";
-    for (let ext of extensions) {
+    extensions.forEach(ext => {
         str += `#ifdef GL_${ext}\n#extension GL_${ext} : enable\n#endif\n`;
-    }
+    });
     return str;
 };
 

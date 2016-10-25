@@ -477,13 +477,13 @@ export default class Tile {
             for (let s in tile.mesh_data) {
                 let textures = tile.mesh_data[s].textures;
                 if (textures) {
-                    for (let t of textures) {
+                    textures.forEach(t => {
                         let texture = Texture.textures[t];
                         if (texture) {
                             log('trace', `releasing texture ${t} for tile ${tile.key}`);
                             texture.release();
                         }
-                    }
+                    });
                 }
             }
         }
@@ -558,7 +558,8 @@ export default class Tile {
 
         // Build the tile subset
         var tile_subset = {};
-        for (let key of keep) {
+        for (let k=0; k < keep.length; k++) {
+            const key = keep[k];
             tile_subset[key] = tile[key];
         }
 

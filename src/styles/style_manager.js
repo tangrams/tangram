@@ -108,9 +108,7 @@ export class StyleManager {
             sources = sources.map(x => styles[x]).filter(x => x && x !== style); // TODO: warning on trying to mix into self
 
             // Track which styles were mixed into this one
-            for (let s of sources) {
-                style.mixed[s.name] = true;
-            }
+            sources.forEach(s => style.mixed[s.name] = true);
         }
         sources.push(style);
 
@@ -222,9 +220,9 @@ export class StyleManager {
 
         // Merge shader blocks, keeping track of which style each block originated from
         let mixed = {}; // all scopes mixed so far
-        for (let source of shader_merges) {
+        shader_merges.forEach(source => {
             if (!source.blocks) {
-                continue;
+                return;
             }
 
             shaders.blocks = shaders.blocks || {};
@@ -246,7 +244,7 @@ export class StyleManager {
                     // Skip blocks we've already mixed in from the same scope
                     // Repeating scope indicates a diamond pattern where a style is being mixed multiple times
                     if (mixed[block_scope[b]]) {
-                        continue;
+                        return;
                     }
                     mixed_source[block_scope[b]] = true;
 
@@ -258,7 +256,7 @@ export class StyleManager {
             // Add styles mixed in from this source - they could be multi-level ancestors,
             // beyond the first-level "parents" defined in this style's `mix` list
             Object.assign(mixed, mixed_source);
-        }
+        });
 
         Object.assign(style.mixed, mixed); // add all newly mixed styles
 
@@ -309,9 +307,9 @@ export class StyleManager {
 
         // Working set of styles being built
         let ws = {};
-        for (let sname of style_deps) {
+        style_deps.forEach(sname => {
             ws[sname] = this.create(sname, styles[sname], ws);
-        }
+        });
 
         return this.styles;
     }
@@ -371,7 +369,7 @@ export class StyleManager {
     // Compile all styles
     compile (keys, scene) {
         keys = keys || Object.keys(this.styles);
-        for (let key of keys) {
+        keys.forEach(key => {
             let style = this.styles[key];
             try {
                 style.compile();
@@ -387,7 +385,7 @@ export class StyleManager {
                     shader_errors: style.program && style.program.shader_errors
                 });
             }
-        }
+        });
 
         log('debug', `StyleManager.compile(): compiled all styles`);
     }

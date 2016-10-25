@@ -35,8 +35,8 @@ export default class VertexData {
         this.offset = 0;             // byte offset into currently allocated buffer
 
         this.components = [];
-        for (var component of this.vertex_layout.components) {
-            this.components.push([...component]);
+        for (let c=0; c < this.vertex_layout.components.length; c++) {
+            this.components.push([...this.vertex_layout.components[c]]);
         }
         this.vertex_count = 0;
         this.realloc_count = 0;
@@ -47,7 +47,9 @@ export default class VertexData {
     setBufferViews () {
         this.views = {};
         this.views[gl.UNSIGNED_BYTE] = this.vertex_buffer;
-        for (var attrib of this.vertex_layout.attribs) {
+        for (let a=0; a < this.vertex_layout.attribs.length; a++) {
+            const attrib = this.vertex_layout.attribs[a];
+
             // Need view for this type?
             if (this.views[attrib.type] == null) {
                 var array_type = array_types[attrib.type];
@@ -56,7 +58,8 @@ export default class VertexData {
         }
 
         // Update component buffer pointers
-        for (var component of this.components) {
+        for (let c=0; c < this.components.length; c++) {
+            const component = this.components[c];
             component[1] = this.views[component[0]];
         }
     }

@@ -17,20 +17,21 @@ export default function subscribeMixin (target) {
         },
 
         trigger(event, ...data) {
-            for (let listener of listeners) {
+            listeners.forEach(listener => {
                 if (typeof listener[event] === 'function') {
                     listener[event](...data);
                 }
-            }
+            });
         },
 
         hasSubscribersFor(event) {
-            for (let listener of listeners) {
+            let has = false;
+            listeners.forEach(listener => {
                 if (typeof listener[event] === 'function') {
-                    return true;
+                    has = true;
                 }
-            }
-            return false;
+            });
+            return has;
         }
 
     });

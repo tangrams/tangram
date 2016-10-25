@@ -67,7 +67,9 @@ export class GeoJSONSource extends NetworkSource {
                 features: []
             };
 
-            for (let feature of t.features) {
+            for (let i=0; i < t.features.length; i++) {
+                const feature = t.features[i];
+
                 // GeoJSON feature
                 let f = {
                     type: 'Feature',

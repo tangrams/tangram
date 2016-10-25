@@ -79,8 +79,8 @@ export default Collision = {
 
         // Process labels by priority, then by style
         let priorities = Object.keys(state.objects).sort((a, b) => a - b);
-        for (let priority of priorities) {
-            let style_objects = state.objects[priority];
+        for (let p=0; p < priorities.length; p++) {
+            let style_objects = state.objects[priorities[p]];
             if (!style_objects) { // no labels at this priority, skip to next
                 continue;
             }

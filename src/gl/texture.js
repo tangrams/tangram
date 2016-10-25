@@ -345,12 +345,12 @@ Texture.release = function (name) {
 // Destroy all texture instances for a given GL context
 Texture.destroy = function (gl) {
     var textures = Object.keys(Texture.textures);
-    for (var t of textures) {
+    textures.forEach(t => {
         var texture = Texture.textures[t];
         if (texture.gl === gl) {
             texture.destroy({ force: true });
         }
-    }
+    });
 };
 
 // Get sprite pixel size and UVs
@@ -464,9 +464,9 @@ Texture.getInfo = function (name) {
 Texture.syncTexturesToWorker = function (names) {
     return WorkerBroker.postMessage('Texture.getInfo', names).
         then(textures => {
-            for (var tex of textures) {
+            textures.forEach(tex => {
                 Texture.textures[tex.name] = tex;
-            }
+            });
             return Texture.textures;
         });
 };

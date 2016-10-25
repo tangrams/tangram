@@ -829,12 +829,12 @@ export default class Scene {
         }
 
         // Sources that were removed
-        for (let s of prev_source_names) {
+        prev_source_names.forEach(s => {
             if (!this.config.sources[s]) {
                 delete this.sources[s]; // TODO: remove from workers too?
                 reset.push(s);
             }
-        }
+        });
 
         // Remove tiles from sources that have changed
         if (reset.length > 0) {
@@ -1165,12 +1165,12 @@ export default class Scene {
             // Return geometry counts of visible tiles, grouped by style name
             geometryCountByStyle () {
                 let counts = {};
-                for (let tile of scene.tile_manager.getRenderableTiles()) {
+                scene.tile_manager.getRenderableTiles().forEach(tile => {
                     for (let style in tile.meshes) {
                         counts[style] = counts[style] || 0;
                         counts[style] += tile.meshes[style].geometry_count;
                     }
-                }
+                });
                 return counts;
             },
 

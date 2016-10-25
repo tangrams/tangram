@@ -163,8 +163,8 @@ export function findCurrentURL (...paths) {
         // Fallback on looping through <script> elements if document.currentScript is not supported
         var scripts = document.getElementsByTagName('script');
         for (var s=0; s < scripts.length; s++) {
-            for (var path of paths) {
-                if (scripts[s].src.indexOf(path) > -1) {
+            for (let p=0; p < paths.length; p++) {
+                if (scripts[s].src.indexOf(paths[p]) > -1) {
                    return scripts[s].src;
                 }
             }
