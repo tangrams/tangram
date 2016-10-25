@@ -49,7 +49,7 @@ export default class LabelLine {
         let spacing = 100;
         let {label_positions, label_indices} = getStartingPositions(lines, spacing + this.total_length, layout.units_per_pixel);
 
-        if (label_positions.length === 0 || size.length === 0){
+        if (label_positions.length === 0 || size.length === 0 || size.length < 4){
             this.throw_away = true;
             return;
         }
@@ -93,10 +93,10 @@ export default class LabelLine {
 
         let {obbs, aabbs} = createBoundingBoxes(positions, pre_angles, widths, height);
 
-        let stops = getAngleRanges(this.line_lengths, label_lengths);
+        let label_stops = getAngleRanges(this.line_lengths, label_lengths);
 
         let angle_info = [];
-        for (var i = 0; i < stops.length; i++){
+        for (var i = 0; i < label_stops.length; i++){
             angle_info[i] = {
                 offsets : [],
                 angle_array : [],
@@ -104,29 +104,33 @@ export default class LabelLine {
                 stop_array : []
             };
 
-            let range = stops[i];
+            let stops = label_stops[i];
 
-            for (var j = 0; j < range.length; j++){
+            for (let n = stops.length; n < 4; n++){
+                stops.unshift(0);
+            }
+
+            for (var j = 0; j < stops.length; j++){
                 let line_lengths = (function(stop){
                     return this.line_lengths.map(function(length){
                         return (1 + stop) * length;
                     })
-                }.bind(this))(range[j]);
+                }.bind(this))(stops[j]);
 
                 let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, lines, line_lengths, this.line_angles_segments, label_lengths, upp);
 
                 angle_info[i].offsets.push(offsets[i][0]);
                 angle_info[i].angle_array.push(angles[i]);
                 angle_info[i].pre_angles.push(pre_angles[i]);
-                angle_info[i].stop_array.push(range[j]);
             }
 
-            for (var j = range.length; j < 4; j++){
-                angle_info[i].offsets.push(this.offsets[i][0]);
-                angle_info[i].angle_array.push(this.angle[i]);
-                angle_info[i].pre_angles.push(this.pre_angles[i]);
-                angle_info[i].stop_array.push(1);
-            }
+            angle_info[i].stop_array = [stops[1], stops[2], stops[3]];
+        }
+
+        // test
+        for (var i = 0; i < 4; i++){
+            if (angle_info[i].angle_array[0] !== angles[i]) debugger
+            if (angle_info[i].offsets[0] !== offsets[i][0]) debugger
         }
 
         this.angle = angles;
@@ -778,6 +782,7 @@ function getAngleRanges(line_lengths, label_lengths){
             if (stop <= 1) {
                 stops.unshift(stop);
             }
+            if (stops.length === 3) break;
             line_index++;
             cumulate_line_length = cumulate_line_lengths[line_index];
         }
