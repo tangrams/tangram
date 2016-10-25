@@ -64,21 +64,24 @@ void main() {
     float pre_theta = a_pre_angle / 4096.;
     float w;
 
-    if (zoom < .3){
+    if (zoom <= a_stops[0]){
         // w = zoom / a_stops[0];
-        // theta = ((1. - w) * a_angles[0] + w * a_angles[1]) / 4096.;
+        // theta = ((1.0 - w) * a_angles[0] + w * a_angles[1]) / 4096.;
+        // offset.x = ((1.0 - w) * a_offsets[0] + w * a_offsets[1]);
         theta = a_angles[0] / 4096.;
         offset.x = a_offsets[0];
     }
-    else if (zoom < .6){
-        // w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
-        // theta = ((1. - w) * a_angles[1] + w * a_angles[2]) / 4096.;
+    else if (zoom < a_stops[1]){
+        w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
+        // theta = ((1.0 - w) * a_angles[1] + w * a_angles[2]) / 4096.;
+        // offset.x = ((1.0 - w) * a_offsets[1] + w * a_offsets[2]);
         theta = a_angles[1] / 4096.;
         offset.x = a_offsets[1];
     }
-    else if (zoom < .9){
+    else if (zoom < a_stops[2]){
         // w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
-        // theta = ((1. - w) * a_angles[2] + w * a_angles[3]) / 4096.;
+        // theta = ((1.0 - w) * a_angles[2] + w * a_angles[3]) / 4096.;
+        // offset.x = ((1.0 - w) * a_offsets[2] + w * a_offsets[3]);
         theta = a_angles[2] / 4096.;
         offset.x = a_offsets[2];
     }
