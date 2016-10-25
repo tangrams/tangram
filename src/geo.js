@@ -257,31 +257,3 @@ Geo.ringWinding = function (ring) {
     }
     // return undefined on zero area polygon
 };
-
-// Enforce winding order on outer/inner rings
-// winding: 'CW' or 'CCW'
-Geo.enforceWinding = function (geom, winding) {
-    let polys;
-    if (geom.type === 'Polygon') {
-        polys = [geom.coordinates];
-    }
-    else if (geom.type === 'MultiPolygon') {
-        polys = geom.coordinates;
-    }
-    else {
-        return geom;
-    }
-
-    for (let p=0; p < polys.length; p++) {
-        let poly = polys[p];
-
-        // If first ring winding doesn't match, reverse all rings
-        // NOTE: assumes ring winding orders already alternate as expected
-        if (Geo.ringWinding(poly[0]) !== winding) {
-            for (let ring of poly) {
-                ring.reverse();
-            }
-        }
-    }
-    return geom;
-};
