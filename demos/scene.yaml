@@ -57,6 +57,7 @@ textures:
             hotel: [0, 259, 32, 32]
             bookstore: [0, 333, 32, 32]
             shield: [0, 1142, 32, 32]
+            arrow: [1, 1175, 22, 22]
 
 styles:
     buildings:
@@ -273,6 +274,7 @@ layers:
         draw:
             lines:
                 color: white
+                # color: function() { return [Math.random(), Math.random(), Math.random()] }
                 width: 12
                 order: global.feature_order
                 outline:
@@ -290,7 +292,6 @@ layers:
             filter: { kind: highway }
             draw:
                 lines:
-                    # color: '#D16768'
                     color: [[5, '#F89595'], [7, '#D16768']]
                     width: [[5, 1px], [8, 1.5px], [14, 2px], [15, 12]]
                     outline:
@@ -421,6 +422,16 @@ layers:
                             style: italic
                             size: 12px
 
+        arrows:
+            filter: { oneway: yes, $zoom: { min: 17 } }
+            draw:
+                icons:
+                    sprite: arrow
+                    size: [[17, 18px], [18, 20px], [20, 32px]]
+                    placement: spaced
+                    placement_spacing: [[17, 70px], [20, 175px]]
+                    angle: auto
+
         shields:
             filter:
                 network: 'US:I' # US interstates only in this demo
@@ -432,8 +443,11 @@ layers:
                     priority: 2
                     color: white
                     size: 24px
+                    placement: midpoint
+                    repeat_group: shields
                     cull_from_tile: true
                     text:
+                        repeat_distance: 150px
                         anchor: center
                         text_source: shield_text
                         font:

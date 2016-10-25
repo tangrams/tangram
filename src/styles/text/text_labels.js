@@ -241,8 +241,8 @@ export const TextLabels = {
         // Buffer (1d value or or 2d array)
         draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
-        // Repeat rules
-        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
+        // Repeat rules - for text labels, defaults to tile size
+        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance || Geo.tile_size, parseFloat);
 
         return draw;
     },
@@ -257,24 +257,10 @@ export const TextLabels = {
         // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
 
-        // repeat minimum distance
-        layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
-        if (layout.repeat_distance == null) {
-            layout.repeat_distance = Geo.tile_size;
+        // repeat rules include the text
+        if (layout.repeat_distance) {
+            layout.repeat_group += '/' + text;
         }
-        layout.repeat_distance *= layout.units_per_pixel;
-
-        // repeat group key
-        if (typeof draw.repeat_group === 'function') {
-            layout.repeat_group = draw.repeat_group(context);
-        }
-        else if (typeof draw.repeat_group === 'string') {
-            layout.repeat_group = draw.repeat_group;
-        }
-        else {
-            layout.repeat_group = draw.key; // default to unique set of matching layers
-        }
-        layout.repeat_group += '/' + text;
 
         // Max number of subdivisions to try
         layout.subdiv = tile.overzoom2;

@@ -11,12 +11,15 @@ import Geo from '../../geo';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
+import placePointsOnLine from '../../labels/point_placement';
 import {TextLabels} from '../text/text_labels';
 import debugSettings from '../../utils/debug_settings';
 
 let fs = require('fs');
 const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
 const shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
+
+const PLACEMENT = LabelPoint.PLACEMENT;
 
 export var Points = Object.create(Style);
 
@@ -182,7 +185,19 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.angle = (StyleParser.evalProperty(draw.angle, context) * Math.PI / 180) || 0;
+        // Placement strategy
+        style.placement = draw.placement;
+
+        // Spacing parameter (in pixels) to equally space points along a line
+        if (style.placement === PLACEMENT.SPACED && draw.placement_spacing) {
+            style.placement_spacing = StyleParser.evalCachedProperty(draw.placement_spacing, context);
+        }
+
+        // Angle parameter (can be a number or the string "auto")
+        style.angle = StyleParser.evalProperty(draw.angle, context);
+
+        style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
+
         style.sampler = 0; // 0 = sprites
 
         this.computeLayout(style, feature, draw, context, tile);
@@ -339,10 +354,30 @@ Object.assign(Points, {
         // Buffer (1d value or 2d array, expand 1d to 2d)
         draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
+        // Repeat rules - no repeat limitation for points by default
+        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
+
+        // Placement strategies
+        draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
+        if (draw.placement == null) {
+            draw.placement = PLACEMENT.VERTEX;
+        }
+
+        draw.placement_spacing = draw.placement_spacing != null ? draw.placement_spacing : 80; // default spacing
+        draw.placement_spacing = StyleParser.createPropertyCache(draw.placement_spacing, parseFloat);
+
+        if (typeof draw.angle === 'number') {
+            draw.angle = draw.angle * Math.PI / 180;
+        }
+        else {
+            draw.angle = draw.angle || 0; // angle can be a string like "auto" (use angle of geometry)
+        }
+
         // Optional text styling
         draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
         if (draw.text) {
             draw.text.key = draw.key; // copy layer key for use as label repeat group
+            draw.text.repeat_group = draw.text.repeat_group || draw.repeat_group; // inherit repeat group by default
             draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
         }
@@ -365,12 +400,6 @@ Object.assign(Points, {
         // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : false;
 
-        // polygons rendering as points will render at each of the polygon's vertices by default,
-        // but can be set to render at the polygon's centroid instead
-        // TODO: change default to be centroid, and/or replace with more flexible 'placement'
-        // parameter to allow placement on vertex, along a line, or at a polygon centroid
-        layout.centroid = draw.centroid;
-
         // label anchors (point labels only)
         // label position will be adjusted in the given direction, relative to its original point
         // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
@@ -379,6 +408,22 @@ Object.assign(Points, {
         // label offset and buffer in pixel (applied in screen space)
         layout.offset = StyleParser.evalCachedProperty(draw.offset, context) || StyleParser.zeroPair;
         layout.buffer = StyleParser.evalCachedProperty(draw.buffer, context) || StyleParser.zeroPair;
+
+        // repeat rules
+        layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
+        if (layout.repeat_distance) {
+            layout.repeat_distance *= layout.units_per_pixel;
+
+            if (typeof draw.repeat_group === 'function') {
+                layout.repeat_group = draw.repeat_group(context);
+            }
+            else if (typeof draw.repeat_group === 'string') {
+                layout.repeat_group = draw.repeat_group;
+            }
+            else {
+                layout.repeat_group = draw.key; // default to unique set of matching layers
+            }
+        }
 
         // label priority (lower is higher)
         let priority = draw.priority;
@@ -423,25 +468,25 @@ Object.assign(Points, {
             }
         }
         else if (geometry.type === "LineString") {
-            // Point at each line vertex
-            let points = geometry.coordinates;
-            for (let i = 0; i < points.length; ++i) {
-                labels.push(new LabelPoint(points[i], size, options));
+            let line = geometry.coordinates;
+            let point_labels = placePointsOnLine(line, size, options);
+            for (let i = 0; i < point_labels.length; ++i) {
+                labels.push(point_labels[i]);
             }
         }
         else if (geometry.type === "MultiLineString") {
-            // Point at each line vertex
             let lines = geometry.coordinates;
             for (let ln = 0; ln < lines.length; ln++) {
-                let points = lines[ln];
-                for (let i = 0; i < points.length; ++i) {
-                    labels.push(new LabelPoint(points[i], size, options));
+                let line = lines[ln];
+                let point_labels = placePointsOnLine(line, size, options);
+                for (let i = 0; i < point_labels.length; ++i) {
+                    labels.push(point_labels[i]);
                 }
             }
         }
         else if (geometry.type === "Polygon") {
             // Point at polygon centroid (of outer ring)
-            if (options.centroid) {
+            if (options.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.centroid(geometry.coordinates);
                 labels.push(new LabelPoint(centroid, size, options));
             }
@@ -449,16 +494,30 @@ Object.assign(Points, {
             else {
                 let rings = geometry.coordinates;
                 for (let ln = 0; ln < rings.length; ln++) {
-                    let points = rings[ln];
-                    for (let i = 0; i < points.length; ++i) {
-                        labels.push(new LabelPoint(points[i], size, options));
+                    let point_labels = placePointsOnLine(rings[ln], size, options);
+                    for (let i = 0; i < point_labels.length; ++i) {
+                        labels.push(point_labels[i]);
                     }
                 }
             }
         }
         else if (geometry.type === "MultiPolygon") {
-            let centroid = Geo.multiCentroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, options));
+            if (options.placement === PLACEMENT.CENTROID) {
+                let centroid = Geo.multiCentroid(geometry.coordinates);
+                labels.push(new LabelPoint(centroid, size, options));
+            }
+            else {
+                let polys = geometry.coordinates;
+                for (let p = 0; p < polys.length; p++) {
+                    let rings = polys[p];
+                    for (let ln = 0; ln < rings.length; ln++) {
+                        let point_labels = placePointsOnLine(rings[ln], size, options);
+                        for (let i = 0; i < point_labels.length; ++i) {
+                            labels.push(point_labels[i]);
+                        }
+                    }
+                }
+            }
         }
 
         return labels;
@@ -533,11 +592,12 @@ Object.assign(Points, {
 
     buildLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
+        let angle = label.angle || style.angle;
 
         this.buildQuad(
             [label.position],               // position
             style.size,                     // size in pixels
-            style.angle,                    // angle in radians
+            angle,                          // angle in radians
             style.sampler,                  // texture sampler to use
             label.offset,                   // offset from center in pixels
             style.texcoords,                // texture UVs
