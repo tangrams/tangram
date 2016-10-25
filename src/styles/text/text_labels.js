@@ -36,12 +36,9 @@ export const TextLabels = {
         }
 
         // Compute text style and layout settings for this feature label
-        let layout = this.computeTextLayout({}, feature, draw, context, tile, text);
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
-
-        // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
-        layout.italic = (text_settings.style !== 'normal');
+        let layout = this.computeTextLayout({}, feature, draw, context, tile, text, text_settings);
 
         // first label in tile, or with this style?
         this.texts[tile.key] = this.texts[tile.key] || {};
@@ -251,7 +248,7 @@ export const TextLabels = {
     },
 
     // Additional text-specific layout settings
-    computeTextLayout (target, feature, draw, context, tile, text) {
+    computeTextLayout (target, feature, draw, context, tile, text, text_settings) {
         let layout = target || {};
 
         // common settings w/points
@@ -269,6 +266,9 @@ export const TextLabels = {
         layout.subdiv = tile.overzoom2;
 
         layout.align = draw.align;
+
+        // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
+        layout.italic = (text_settings.style !== 'normal');
 
         return layout;
     }

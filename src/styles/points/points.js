@@ -257,9 +257,6 @@ Object.assign(Points, {
             let feature = q.feature;
             let geometry = feature.geometry;
 
-            // used to fudge width value as text may overflow bounding box
-            style.italic = q.text_feature.layout.italic;
-
             let feature_labels = this.buildLabels(style.size, geometry, style);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];

@@ -141,7 +141,6 @@ Object.assign(TextStyle, {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
             let feature_labels;
-            fq.layout.italic = text_info.italic; // enlarge bounding box if text overflows due to style
             if (text_info.text_settings.can_articulate){
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
                 fq.layout.space_width = text_info.space_width;
