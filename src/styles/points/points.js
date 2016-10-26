@@ -215,6 +215,10 @@ Object.assign(Points, {
             // This can be overriden, as long as it is less than or equal to the default
             tf.layout.priority = draw.text.priority ? Math.max(tf.layout.priority, style.priority + 0.5) : (style.priority + 0.5);
 
+            // Text labels attached to points should not be moved into tile
+            // (they should stay fixed relative to the point)
+            tf.layout.move_into_tile = false;
+
             Collision.addStyle(this.collision_group_text, tile.key);
         }
 
@@ -399,6 +403,9 @@ Object.assign(Points, {
 
         // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : false;
+
+        // points should not move into tile if over tile boundary
+        layout.move_into_tile = false;
 
         // label anchors (point labels only)
         // label position will be adjusted in the given direction, relative to its original point

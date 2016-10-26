@@ -257,6 +257,9 @@ export const TextLabels = {
         // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
 
+        // standalone text can move into tile if specified
+        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
+
         // repeat rules include the text
         if (layout.repeat_distance) {
             layout.repeat_group += '/' + text;
