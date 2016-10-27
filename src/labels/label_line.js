@@ -104,11 +104,7 @@ export default class LabelLine {
                 stop_array : []
             };
 
-            let stops = label_stops[i];
-
-            for (let n = stops.length; n < 4; n++){
-                stops.unshift(0);
-            }
+            let stops = [0].concat(label_stops[i]);
 
             for (var j = 0; j < stops.length; j++){
                 let line_lengths = (function(stop){
@@ -119,12 +115,23 @@ export default class LabelLine {
 
                 let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, lines, line_lengths, this.line_angles_segments, label_lengths, upp);
 
+
                 angle_info[i].offsets.push(offsets[i][0]);
                 angle_info[i].angle_array.push(angles[i]);
                 angle_info[i].pre_angles.push(pre_angles[i]);
             }
 
-            angle_info[i].stop_array = [stops[1], stops[2], stops[3]];
+            var length = stops.length;
+            for (var j = length; j < 4; j++){
+                stops.push(1);
+                angle_info[i].offsets.push(angle_info[i].offsets[length-1]);
+                angle_info[i].angle_array.push(angle_info[i].angle_array[length-1]);
+                angle_info[i].pre_angles.push(angle_info[i].pre_angles[length-1]);
+            }
+
+            stops.shift();
+
+            angle_info[i].stop_array = stops;
         }
 
         // test
