@@ -216,6 +216,8 @@ function extendLeaflet(options) {
             modifyScrollWheelBehavior: function (map) {
                 if (this.scene.view.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
                     map.options.zoomSnap = 0;
+
+                    const enabled = map.scrollWheelZoom.enabled();
                     map.scrollWheelZoom.disable();
 
                     map.scrollWheelZoom._onWheelScroll = function (e) {
@@ -248,7 +250,9 @@ function extendLeaflet(options) {
                         }
                     };
 
-                    map.scrollWheelZoom.enable();
+                    if (enabled) {
+                        map.scrollWheelZoom.enable();
+                    }
                 }
             },
 
@@ -313,6 +317,7 @@ function extendLeaflet(options) {
                     };
 
                     // Modify the double-click zoom handler to do a short zoom animation
+                    const enabled = map.doubleClickZoom.enabled();
                     map.doubleClickZoom.disable();
 
                     map.doubleClickZoom._onDoubleClick = function (e) {
@@ -328,7 +333,9 @@ function extendLeaflet(options) {
                         }
                     };
 
-                    map.doubleClickZoom.enable();
+                    if (enabled) {
+                        map.doubleClickZoom.enable();
+                    }
                 }
             },
 
