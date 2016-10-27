@@ -43,12 +43,12 @@ Object.assign(Points, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_pre_angle', size: 1, type: gl.SHORT, normalized: false },
-            { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_stops', size: 3, type: gl.SHORT, normalized: false },
+            { name: 'a_pre_angle', size: 1, type: gl.FLOAT, normalized: false },
+            { name: 'a_angles', size: 4, type: gl.FLOAT, normalized: false },
+            { name: 'a_stops', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_offsets', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_offsets', size: 4, type: gl.FLOAT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -594,9 +594,9 @@ Object.assign(Points, {
                 offset,
                 offsets,
                 angle: angle * 4096,    // values have a 12-bit fraction
-                angles: angles.map(function(val){ return 4096 * val; }),    // values have a 12-bit fraction
+                angles: angles,
                 stops: stops,
-                pre_angle: pre_angle * 4096,
+                pre_angle: pre_angle,
                 shape_w: sampler,
                 texcoord_scale,
                 texcoord_normalize: 65535

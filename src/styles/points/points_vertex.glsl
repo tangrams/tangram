@@ -61,32 +61,32 @@ void main() {
 
     float zoom = fract(u_map_position.z);
     float theta = a_shape.z / 4096.;
-    float pre_theta = a_pre_angle / 4096.;
+    float pre_theta = a_pre_angle;
     float w;
 
-    if (zoom <= a_stops[0]){
-        // w = zoom / a_stops[0];
-        // theta = ((1.0 - w) * a_angles[0] + w * a_angles[1]) / 4096.;
-        // offset.x = ((1.0 - w) * a_offsets[0] + w * a_offsets[1]);
-        theta = a_angles[0] / 4096.;
-        offset.x = a_offsets[0];
+    if (zoom < a_stops[0]){
+        w = zoom / a_stops[0];
+        theta = mix(a_angles[0], a_angles[1], w);
+        offset.x = mix(a_offsets[0], a_offsets[1], w);
+        // theta = a_angles[0] / 4096.;
+        // offset.x = a_offsets[0];
     }
     else if (zoom < a_stops[1]){
         w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
-        // theta = ((1.0 - w) * a_angles[1] + w * a_angles[2]) / 4096.;
-        // offset.x = ((1.0 - w) * a_offsets[1] + w * a_offsets[2]);
-        theta = a_angles[1] / 4096.;
-        offset.x = a_offsets[1];
+        theta = mix(a_angles[1], a_angles[2], w);
+        offset.x = mix(a_offsets[1], a_offsets[2], w);
+        // theta = a_angles[1] / 4096.;
+        // offset.x = a_offsets[1];
     }
     else if (zoom < a_stops[2]){
-        // w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
-        // theta = ((1.0 - w) * a_angles[2] + w * a_angles[3]) / 4096.;
-        // offset.x = ((1.0 - w) * a_offsets[2] + w * a_offsets[3]);
-        theta = a_angles[2] / 4096.;
-        offset.x = a_offsets[2];
+        w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
+        theta = mix(a_angles[2], a_angles[3], w);
+        offset.x = mix(a_offsets[2], a_offsets[3], w);
+        // theta = a_angles[2] / 4096.;
+        // offset.x = a_offsets[2];
     }
     else {
-        theta = a_angles[3] / 4096.;
+        theta = a_angles[3];
         offset.x = a_offsets[3];
     }
 
