@@ -187,6 +187,8 @@ Object.assign(Points, {
 
         // Placement strategy
         style.placement = draw.placement;
+        style.placement_must_fit = draw.placement_must_fit;
+        style.placement_min_length_ratio = StyleParser.evalCachedProperty(draw.placement_min_length_ratio, context);
 
         // Spacing parameter (in pixels) to equally space points along a line
         if (style.placement === PLACEMENT.SPACED && draw.placement_spacing) {
@@ -369,6 +371,9 @@ Object.assign(Points, {
 
         draw.placement_spacing = draw.placement_spacing != null ? draw.placement_spacing : 80; // default spacing
         draw.placement_spacing = StyleParser.createPropertyCache(draw.placement_spacing, parseFloat);
+
+        draw.placement_min_length_ratio = draw.placement_min_length_ratio != null ? draw.placement_min_length_ratio : 1;
+        draw.placement_min_length_ratio = StyleParser.createPropertyCache(draw.placement_min_length_ratio, parseFloat);
 
         if (typeof draw.angle === 'number') {
             draw.angle = draw.angle * Math.PI / 180;

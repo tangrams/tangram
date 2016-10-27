@@ -4,15 +4,16 @@ import LabelPoint from './label_point';
 import {isCoordOutsideTile} from '../builders/common';
 
 const PLACEMENT = LabelPoint.PLACEMENT;
-const default_spacing = 50; // spacing of points along line in pixels
+const default_spacing = 80; // spacing of points along line in pixels
 
 export default function placePointsOnLine (line, size, options) {
     let labels = [];
     let strategy = options.placement;
+    let min_length = Math.max(size[0], size[1]) * options.placement_min_length_ratio * options.units_per_pixel;
 
     switch (strategy){
         case PLACEMENT.SPACED:
-            let result = getPositionsAndAngles(line, options);
+            let result = getPositionsAndAngles(line, min_length, options);
             // false will be returned if line have no length
             if (!result) {
                 return [];
@@ -56,9 +57,11 @@ export default function placePointsOnLine (line, size, options) {
                     0.5 * (p[1] + q[1])
                 ];
                 if (options.tile_edges === true || !isCoordOutsideTile(position)) {
-                    let label = new LabelPoint(position, size, options);
-                    label.angle = getAngle(p, q, options.angle);
-                    labels.push(label);
+                    if (!min_length || norm(p, q) > min_length) {
+                        let label = new LabelPoint(position, size, options);
+                        label.angle = getAngle(p, q, options.angle);
+                        labels.push(label);
+                    }
                 }
             }
             break;
@@ -66,27 +69,27 @@ export default function placePointsOnLine (line, size, options) {
     return labels;
 }
 
-function getPositionsAndAngles(line, options){
+function getPositionsAndAngles(line, min_length, options){
     let upp = options.units_per_pixel;
     let spacing = (options.placement_spacing || default_spacing) * upp;
 
     let length = getLineLength(line);
-
-    if (length === 0){
+    if (length <= min_length) {
         return false;
     }
 
     let num_labels = Math.max(Math.floor(length / spacing), 1);
     let remainder = length - (num_labels - 1) * spacing;
-
     let positions = [];
     let angles = [];
 
     let distance = 0.5 * remainder;
     for (let i = 0; i < num_labels; i++){
-        let {position, angle} = interpolateLine(line, distance, options);
-        positions.push(position);
-        angles.push(angle);
+        let {position, angle} = interpolateLine(line, distance, min_length, options);
+        if (position != null && angle != null) {
+            positions.push(position);
+            angles.push(angle);
+        }
         distance += spacing;
     }
 
@@ -109,14 +112,19 @@ function norm(p, q){
     return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
 }
 
-function interpolateLine(line, distance, options){
+function interpolateLine(line, distance, min_length, options){
     let sum = 0;
     let position, angle;
     for (let i = 0; i < line.length-1; i++){
         let p = line[i];
         let q = line[i+1];
 
-        sum += norm(p, q);
+        const length = norm(p, q);
+        sum += length;
+
+        if (length <= min_length) {
+            continue;
+        }
 
         if (sum > distance){
             position = interpolateSegment(p, q, sum - distance);
