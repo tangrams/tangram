@@ -215,7 +215,9 @@ function extendLeaflet(options) {
             modifyScrollWheelBehavior: function (map) {
                 if (this.scene.view.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
                     map.options.zoomSnap = 0;
-                    map.scrollWheelZoom.removeHooks();
+
+                    const enabled = map.scrollWheelZoom.enabled();
+                    map.scrollWheelZoom.disable();
 
                     map.scrollWheelZoom._onWheelScroll = function (e) {
                         var delta = L.DomEvent.getWheelDelta(e);
@@ -234,7 +236,11 @@ function extendLeaflet(options) {
                         var delta = this._delta / (this._map.options.wheelPxPerZoomLevel * 4);
                         this._delta = 0;
 
-                        if (!delta || (zoom + delta) >= this._map.getMaxZoom()) { return; }
+                        if ((zoom + delta) >= this._map.getMaxZoom()) {
+                            delta = this._map.getMaxZoom() - zoom; // don't go past max zoom
+                        }
+
+                        if (!delta) { return; }
 
                         if (map.options.scrollWheelZoom === 'center') {
                             map.setZoom(zoom + delta);
@@ -243,7 +249,9 @@ function extendLeaflet(options) {
                         }
                     };
 
-                    map.scrollWheelZoom.addHooks();
+                    if (enabled) {
+                        map.scrollWheelZoom.enable();
+                    }
                 }
             },
 
