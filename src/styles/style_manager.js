@@ -244,7 +244,7 @@ export class StyleManager {
                     // Skip blocks we've already mixed in from the same scope
                     // Repeating scope indicates a diamond pattern where a style is being mixed multiple times
                     if (mixed[block_scope[b]]) {
-                        return;
+                        continue;
                     }
                     mixed_source[block_scope[b]] = true;
 
