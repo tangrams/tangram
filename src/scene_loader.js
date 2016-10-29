@@ -1,5 +1,6 @@
 import log from './utils/log';
 import GLSL from './gl/glsl';
+import * as URLs from './utils/urls';
 import mergeObjects from './utils/merge';
 import subscribeMixin from './utils/subscribe';
 import {createSceneBundle} from './scene_bundle';
@@ -42,19 +43,24 @@ export default SceneLoader = {
         let bundle = createSceneBundle(url, path, parent, type);
 
         return bundle.load().then(config => {
-            // accept single-string or array
-            if (typeof config.import === 'string') {
-                config.import = [config.import];
-            }
-
-            if (!Array.isArray(config.import)) {
+            if (config.import == null) {
                 this.normalize(config, bundle);
                 return config;
+            }
+
+            // accept single entry or array
+            if (!Array.isArray(config.import)) {
+                config.import = [config.import]; // convert to array
             }
 
             // Collect URLs of scenes to import
             let imports = [];
             config.import.forEach(url => {
+                // Convert scene objects to URLs
+                if (typeof url === 'object') {
+                    url = URLs.createObjectURL(new Blob([JSON.stringify(url)]));
+                }
+
                 imports.push(bundle.resourceFor(url));
             });
             delete config.import; // don't want to merge this property
