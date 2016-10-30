@@ -62,7 +62,6 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "box-intersect": "1.0.0",
     "brfs": "1.4.3",
     "csscolorparser": "1.0.3",
     "earcut": "2.1.1",
