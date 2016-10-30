@@ -1,5 +1,5 @@
 import PointAnchor from './point_anchor';
-import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/box-intersect
+import {boxIntersectsList} from './intersect';
 import Utils from '../utils/utils';
 import OBB from '../utils/obb';
 // import log from '../utils/log';
@@ -31,7 +31,7 @@ export default class Label {
 
         // Broad phase
         if (aabbs.length > 0) {
-            boxIntersect([this.aabb], aabbs, (i, j) => {
+            boxIntersectsList(this.aabb, aabbs, (j) => {
                 // log('trace', 'collision: broad phase collide', this.layout.id, this, this.aabb, aabbs[j]);
 
                 // Skip if colliding with excluded label
