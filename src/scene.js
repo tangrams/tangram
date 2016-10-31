@@ -87,15 +87,21 @@ export default class Scene {
         return new Scene(config, options);
     }
 
-    // Load (or reload) scene config
-    // Optionally specify new scene file URL
-    load(config_source = null, config_path = null) {
+    // Load scene (or reload existing scene if no new source specified)
+    // Options:
+    //   `config_path`: base URL against which roo scene resources should be resolved (useful for Play) (default nulll)
+    load(config_source = null, options = {}) {
         if (this.initializing) {
             return this.initializing;
         }
 
         this.updating++;
         this.initialized = false;
+
+        // Backwards compatibilty for passing `config_path` string as second argument
+        // (since transitioned to using options argument to accept more parameters)
+        options = (typeof options === 'string') ? { config_path: options } : options;
+        let config_path = options.config_path;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
         this.createCanvas();
