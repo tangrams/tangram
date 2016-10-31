@@ -90,6 +90,7 @@ export default class Scene {
     // Load scene (or reload existing scene if no new source specified)
     // Options:
     //   `config_path`: base URL against which roo scene resources should be resolved (useful for Play) (default nulll)
+    //   `blocking`: should rendering block on scene load completion (default true)
     load(config_source = null, options = {}) {
         if (this.initializing) {
             return this.initializing;
@@ -103,6 +104,9 @@ export default class Scene {
         options = (typeof options === 'string') ? { config_path: options } : options;
         let config_path = options.config_path;
 
+        // Should rendering block on load (not desirable for initial load, often desired for live style-switching)
+        options.blocking = (options.blocking !== undefined) ? options.blocking : true;
+
         // Load scene definition (sources, styles, etc.), then create styles & workers
         this.createCanvas();
         this.initializing = this.loadScene(config_source, config_path)
@@ -114,7 +118,10 @@ export default class Scene {
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
 
-                return this.updateConfig({ serialize_funcs, fade_in: true });
+                const updating = this.updateConfig({ serialize_funcs, fade_in: true });
+                if (options.blocking === true) {
+                    return updating;
+                }
             }).then(() => {
                 this.updating--;
                 this.initializing = null;
@@ -1024,11 +1031,11 @@ export default class Scene {
             this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
-        return done.then(() => {
-            this.updating--;
-            this.view.updateBounds();
-            this.requestRedraw();
-        });
+        this.updating--;
+        this.view.updateBounds();
+        this.requestRedraw();
+
+        return done;
     }
 
     // Serialize config and send to worker
