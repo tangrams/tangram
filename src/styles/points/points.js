@@ -44,6 +44,7 @@ Object.assign(Points, {
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_pre_angle', size: 1, type: gl.FLOAT, normalized: false },
+            { name: 'a_pre_angles', size: 4, type: gl.FLOAT, normalized: false },
             { name: 'a_angles', size: 4, type: gl.FLOAT, normalized: false },
             { name: 'a_stops', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
@@ -566,6 +567,7 @@ Object.assign(Points, {
         }
 
         this.fillVertexTemplate('a_pre_angle', 0, { size: 1 });
+        this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
         this.fillVertexTemplate('a_offsets', 0, { size: 4 });
         this.fillVertexTemplate('a_angles', 0, { size: 4 });
         this.fillVertexTemplate('a_stops', 0, { size: 3 });
@@ -573,7 +575,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, angles, stops, pre_angle, sampler, offset, offsets, texcoord_scale, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, angles, stops, pre_angle, pre_angles, sampler, offset, offsets, texcoord_scale, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -585,6 +587,7 @@ Object.assign(Points, {
                 offset_index: this.vertex_layout.index.a_offset,
                 offsets_index: this.vertex_layout.index.a_offsets,
                 pre_angle_index: this.vertex_layout.index.a_pre_angle,
+                pre_angles_index: this.vertex_layout.index.a_pre_angles,
                 angles_index: this.vertex_layout.index.a_angles,
                 stops_index: this.vertex_layout.index.a_stops
             },
@@ -597,6 +600,7 @@ Object.assign(Points, {
                 angles: angles,
                 stops: stops,
                 pre_angle: pre_angle,
+                pre_angles: pre_angles,
                 shape_w: sampler,
                 texcoord_scale,
                 texcoord_normalize: 65535
@@ -633,6 +637,7 @@ Object.assign(Points, {
             angles,
             stops,
             0,                              // pre-angle in radians
+            [0,0,0,0],
             style.sampler,                  // texture sampler to use
             offset,                   // offset from center in pixels
             offsets,
@@ -652,16 +657,18 @@ Object.assign(Points, {
             let position = label.position;
             let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 
-            let angles, stops, offsets;
+            let angles, stops, offsets, pre_angles;
             if (label.angle_info){
                 angles = label.angle_info[i].angle_array;
                 stops = label.angle_info[i].stop_array;
                 offsets = label.angle_info[i].offsets;
+                pre_angles = label.angle_info[i].pre_angles;
             }
             else {
                 angles = [angle, angle, angle, angle];
                 stops = [1,1,1];
                 offsets = [offset[0], offset[0], offset[0], offset[0]];
+                pre_angles = [pre_angle, pre_angle, pre_angle, pre_angle];
             }
 
             this.buildQuad(
@@ -671,6 +678,7 @@ Object.assign(Points, {
                 angles,
                 stops,
                 pre_angle,                      // pre-angle in radians
+                pre_angles,
                 style.sampler,                  // texture sampler to use
                 offset,                         // offset from center in pixels
                 offsets,

@@ -17,6 +17,7 @@ uniform mat3 u_inverseNormalMatrix;
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute float a_pre_angle;
+attribute vec4 a_pre_angles;
 attribute vec4 a_angles;
 attribute vec3 a_stops;
 attribute vec4 a_color;
@@ -61,13 +62,14 @@ void main() {
 
     float zoom = fract(u_map_position.z);
     float theta = a_shape.z / 4096.;
-    float pre_theta = a_pre_angle;
+    float pre_angle = a_pre_angle;
     float w;
 
     if (zoom < a_stops[0]){
         w = zoom / a_stops[0];
         theta = mix(a_angles[0], a_angles[1], w);
         offset.x = mix(a_offsets[0], a_offsets[1], w);
+        pre_angle = mix(a_pre_angles[0], a_pre_angles[1], w);
         // theta = a_angles[0] / 4096.;
         // offset.x = a_offsets[0];
     }
@@ -75,6 +77,7 @@ void main() {
         w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
         theta = mix(a_angles[1], a_angles[2], w);
         offset.x = mix(a_offsets[1], a_offsets[2], w);
+        pre_angle = mix(a_pre_angles[1], a_pre_angles[2], w);
         // theta = a_angles[1] / 4096.;
         // offset.x = a_offsets[1];
     }
@@ -82,19 +85,21 @@ void main() {
         w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
         theta = mix(a_angles[2], a_angles[3], w);
         offset.x = mix(a_offsets[2], a_offsets[3], w);
+        pre_angle = mix(a_pre_angles[2], a_pre_angles[3], w);
         // theta = a_angles[2] / 4096.;
         // offset.x = a_offsets[2];
     }
     else {
         theta = a_angles[3];
         offset.x = a_offsets[3];
+        pre_angle = a_pre_angles[3];
     }
 
     #ifdef TANGRAM_MULTI_SAMPLER
     v_sampler = a_shape.w; // texture sampler
     #endif
 
-    shape = rotate2D(shape, pre_theta);
+    shape = rotate2D(shape, pre_angle);
     shape = rotate2D(shape + offset, theta);     // apply rotation to vertex
 
     // World coordinates for 3d procedural textures
