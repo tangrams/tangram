@@ -730,6 +730,22 @@ function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
         let angle = getAngleFromSegment(line[index], line[index + 1]);
         let pre_angle = angle - offset_angle;
 
+        // Make sure this is correct. Are modified line lengths passed in?
+        // debugger
+
+        if (i > 0){
+            let prev_angle = angles[i - 1];
+            let prev_pre_angle = pre_angles[i - 1];
+            if (Math.abs(offset_angle - prev_angle) > Math.PI) {
+                if (offset_angle > prev_angle) offset_angle -= 2 * Math.PI;
+                else offset_angle += 2 * Math.PI;
+            }
+            if (Math.abs(prev_pre_angle - pre_angle) > Math.PI) {
+                if (pre_angle > prev_pre_angle) pre_angle -= 2 * Math.PI;
+                else pre_angle += 2 * Math.PI
+            }
+        }
+
         angles.push(offset_angle);
         pre_angles.push(pre_angle);
         offsets.push(offset);
