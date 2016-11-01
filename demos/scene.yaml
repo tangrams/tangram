@@ -423,7 +423,8 @@ layers:
                             size: 12px
 
         arrows:
-            filter: { oneway: yes, $zoom: { min: 17 } }
+            # oneway arrows and shields are distinct groups!
+            filter: { oneway: yes, shield_text: false, $zoom: { min: 17 } }
             draw:
                 icons:
                     sprite: arrow
