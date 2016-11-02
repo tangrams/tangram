@@ -6,11 +6,6 @@ var Collision;
 export default Collision = {
 
     tiles: {},
-    link_id: 0,
-
-    nextLinkId() {
-        return this.link_id++;
-    },
 
     startTile (tile) {
         let state = this.tiles[tile] = {
