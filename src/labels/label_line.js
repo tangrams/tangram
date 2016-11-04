@@ -110,11 +110,22 @@ export default class LabelLine {
                 let line_lengths = (function(stop){
                     return this.line_lengths.map(function(length){
                         return (1 + stop) * length;
-                    })
+                    });
                 }.bind(this))(stops[j]);
 
-                let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, lines, line_lengths, this.line_angles_segments, label_lengths, upp);
+                let new_lines = (function(stop){
+                    var prev = anchor;
+                    var new_line = [anchor];
+                    lines.forEach(function(pt, i){
+                        if (i == lines.length - 1) return;
+                        var v = Vector.sub(lines[i+1], lines[i]);
+                        var delta = Vector.mult(v, 1 + stop);
+                        new_line.push(Vector.add(new_line[i], delta));
+                    });
+                    return new_line;
+                }.bind(this))(stops[j]);
 
+                let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, new_lines, line_lengths, this.line_angles_segments, label_lengths, upp);
 
                 angle_info[i].offsets.push(offsets[i][0]);
                 angle_info[i].angle_array.push(angles[i]);
@@ -801,7 +812,7 @@ function getAngleRanges(line_lengths, label_lengths){
         let stops = [];
 
         while (prev_cumulate_label_length > cumulate_line_length){
-            let stop = 0.5 * prev_cumulate_label_length / cumulate_line_length;
+            let stop = prev_cumulate_label_length / cumulate_line_length - 1;
             if (stop <= 1) {
                 stops.unshift(stop);
             }
@@ -845,19 +856,6 @@ function placeAtPosition(anchor, line, line_lengths, line_angles_segments, label
     });
 
     return {positions, offsets, angles, pre_angles, indices};
-}
-
-function getRangeOffsets(zoom, index, anchor, line, line_lengths, label_lengths){
-    let zoomed_line_lengths = line_lengths.map(function(len){
-        return (1 + zoom) * len;
-    });
-
-    let [indices, relative_offsets] = placeAtAnchor(0, 0, zoomed_line_lengths, label_lengths);
-    let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
-
-    let [offsets, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
-
-    return offsets[index];
 }
 
 function getAnglesAndStops(angles, angle_ranges){
