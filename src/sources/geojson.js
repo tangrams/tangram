@@ -114,8 +114,7 @@ export class GeoJSONSource extends NetworkSource {
     parseSourceData (tile, source, response) {
         let parsed_response = JSON.parse(response);
         let layers = this.getLayers(parsed_response);
-        this.preprocessLayers(layers);
-        source.layers = layers;
+        source.layers = this.preprocessLayers(layers);
     }
 
     preprocessLayers (layers){
@@ -123,6 +122,18 @@ export class GeoJSONSource extends NetworkSource {
             let layer = layers[key];
             this.preprocessFeatures(layer.features);
         }
+
+        // Apply optional data transform
+        if (typeof this.transform === 'function') {
+            if (Object.keys(layers).length === 1 && layers._default) {
+                layers._default = this.transform(layers._default, this.extra_data); // single-layer
+            }
+            else {
+                layers = this.transform(layers, this.extra_data); // multiple layers
+            }
+        }
+
+        return layers;
     }
 
     // Preprocess features. Currently used to add a new "centroid" feature for polygon labeling
