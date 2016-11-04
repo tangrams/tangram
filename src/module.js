@@ -1,5 +1,11 @@
 /*jshint worker: true*/
 
+// ES5/ES6 environment
+import 'core-js/fn/object/assign';
+import 'core-js/fn/set';
+import 'core-js/fn/map';
+import 'core-js/es6/promise';
+
 // The leaflet layer plugin is currently the primary public API
 import {leafletLayer} from './leaflet_layer';
 

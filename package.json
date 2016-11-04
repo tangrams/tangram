@@ -86,6 +86,7 @@
     "budo": "8.2.1",
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
+    "core-js": "2.4.1",
     "glob": "4.0.6",
     "jshint": "jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad",
     "karma": "0.12.23",
