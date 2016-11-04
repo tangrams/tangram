@@ -21,6 +21,12 @@ export class MVTSource extends NetworkTileSource {
         var buffer = new Pbf(data);
         source.data = new VectorTile(buffer);
         source.layers = this.toGeoJSON(source.data);
+
+        // Apply optional data transform
+        if (typeof this.transform === 'function') {
+            source.layers = this.transform(source.layers, this.extra_data);
+        }
+
         delete source.data; // comment out to save raw data for debugging
     }
 
