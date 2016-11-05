@@ -12,7 +12,7 @@ export default class TilePyramid {
         return (
             this.coords[coord.key] &&
             this.coords[coord.key].sources &&
-            this.coords[coord.key].sources.get(source.name));
+            this.coords[coord.key].sources[source.name]);
     }
 
     addTile(tile) {
@@ -24,13 +24,13 @@ export default class TilePyramid {
         }
 
         if (!coord.sources) {
-            coord.sources = new Map();
+            coord.sources = {};
         }
 
-        if (!coord.sources.get(tile.source.name)) {
-            coord.sources.set(tile.source.name, new Map());
+        if (!coord.sources[tile.source.name]) {
+            coord.sources[tile.source.name] = {};
         }
-        coord.sources.get(tile.source.name).set(tile.style_zoom, tile);
+        coord.sources[tile.source.name][tile.style_zoom] = tile;
 
         // Increment reference count up the tile pyramid
         for (let z = tile.coords.z - 1; z >= 0; z--) {
@@ -48,11 +48,11 @@ export default class TilePyramid {
         let key = tile.coords.key;
 
         if (source_tiles) {
-            source_tiles.delete(tile.style_zoom);
-            if (source_tiles.size === 0) {
+            delete source_tiles[tile.style_zoom];
+            if (Object.keys(source_tiles).length === 0) {
                 // remove source
-                this.coords[key].sources.delete(tile.source.name);
-                if (this.coords[key].sources.size === 0) {
+                delete this.coords[key].sources[tile.source.name];
+                if (Object.keys(this.coords[key].sources).length === 0) {
                     delete this.coords[key].sources;
 
                     if (this.coords[key].descendants === 0) {
@@ -81,8 +81,8 @@ export default class TilePyramid {
             let source_tiles = this.sourceTiles(coords, source);
             if (source_tiles) {
                 for (let z = style_zoom - 1; z >= source.max_zoom; z--) {
-                    if (source_tiles.has(z) && source_tiles.get(z).loaded) {
-                        return source_tiles.get(z);
+                    if (source_tiles[z] && source_tiles[z].loaded) {
+                        return source_tiles[z];
                     }
                 }
             }
@@ -93,8 +93,8 @@ export default class TilePyramid {
         style_zoom--;
         let parent = Tile.coordinateAtZoom(coords, coords.z - 1);
         let parent_tiles = this.sourceTiles(parent, source);
-        if (parent_tiles && parent_tiles.has(style_zoom) && parent_tiles.get(style_zoom).loaded) {
-            return parent_tiles.get(style_zoom);
+        if (parent_tiles && parent_tiles[style_zoom] && parent_tiles[style_zoom].loaded) {
+            return parent_tiles[style_zoom];
         }
         // didn't find ancestor, try next level
         // TODO: max depth levels to check
@@ -112,8 +112,8 @@ export default class TilePyramid {
             if (source_tiles) {
                 let search_max_zoom = Math.max(Geo.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
                 for (let z = style_zoom + 1; z <= search_max_zoom; z++) {
-                    if (source_tiles.has(z) && source_tiles.get(z).loaded) {
-                        descendants.push(source_tiles.get(z));
+                    if (source_tiles[z] && source_tiles[z].loaded) {
+                        descendants.push(source_tiles[z]);
                         return descendants;
                     }
                 }
@@ -128,8 +128,8 @@ export default class TilePyramid {
             for (let c=0; c < children.length; c++) {
                 const child = children[c];
                 let child_tiles = this.sourceTiles(child, source);
-                if (child_tiles && child_tiles.has(style_zoom) && child_tiles.get(style_zoom).loaded) {
-                    descendants.push(child_tiles.get(style_zoom));
+                if (child_tiles && child_tiles[style_zoom] && child_tiles[style_zoom].loaded) {
+                    descendants.push(child_tiles[style_zoom]);
                 }
                 // didn't find child, try next level
                 else if (level <= this.max_proxy_descendant_depth && child.z <= source.max_zoom) {

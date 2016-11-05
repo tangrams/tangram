@@ -13,8 +13,14 @@ export default class DataSource {
         this.name = config.name;
         this.pad_scale = config.pad_scale || 0.0001; // scale tile up by small factor to cover seams
         this.default_winding = null; // winding order will adapt to data source
-        this.rasters = // attached raster tile sources
-            Array.isArray(config.rasters) ? [...new Set(config.rasters)] : []; // de-dupe with set conversion
+        this.rasters = []; // attached raster tile sources
+        if (Array.isArray(config.rasters)) { // copy unique set of raster sources
+            config.rasters.forEach(r => {
+                if (this.rasters.indexOf(r) === -1) {
+                    this.rasters.push(r);
+                }
+            });
+        }
 
         // Optional function to transform source data
         this.transform = config.transform;

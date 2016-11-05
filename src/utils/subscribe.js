@@ -1,19 +1,24 @@
 export default function subscribeMixin (target) {
 
-    const listeners = new Set();
+    let listeners = [];
 
     return Object.assign(target, {
 
         subscribe(listener) {
-            listeners.add(listener);
+            if (listeners.indexOf(listener) === -1) {
+                listeners.push(listener);
+            }
         },
 
         unsubscribe(listener) {
-            listeners.delete(listener);
+            let index = listeners.indexOf(listener);
+            if (index > -1) {
+                listeners.splice(index, 1);
+            }
         },
 
         unsubscribeAll() {
-            listeners.clear();
+            listeners = [];
         },
 
         trigger(event, ...data) {

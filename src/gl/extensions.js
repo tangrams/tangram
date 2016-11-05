@@ -1,17 +1,20 @@
 // WebGL extension wrapper
 // Stores extensions by name and GL context
 
-let extensions = new Map(); // map of extensions by GL context
+// list of extension arrays, for each entry, 1st element GL context, 2nd map of extensions by name
+let extensions = [];
 
 export default function getExtension (gl, name) {
-    let exts = extensions.get(gl);
+    let exts = extensions.filter(e => e[0] === gl)[0];
+    exts = exts && exts[1];
+
     if (!exts) {
-        extensions.set(gl, new Map());
-        exts = extensions.get(gl);
+        extensions.push([gl, {}]);
+        exts = extensions[extensions.length-1][1];
     }
 
-    if (!exts.get(name)) {
-        exts.set(name, gl.getExtension(name));
+    if (!exts[name]) {
+        exts[name] = gl.getExtension(name);
     }
-    return exts.get(name);
+    return exts[name];
 }

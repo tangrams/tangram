@@ -23,7 +23,7 @@ export default class VBOMesh  {
         this.fade_in_time = options.fade_in_time || 0; // optional time to fade in mesh
 
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
-        this.vaos = new Map(); // map of VertexArrayObjects, keyed by program
+        this.vaos = {}; // map of VertexArrayObjects, keyed by program
 
         this.toggle_element_array = false;
         if (this.element_data){
@@ -89,18 +89,18 @@ export default class VBOMesh  {
     // Bind buffers and vertex attributes to prepare for rendering
     bind(program) {
         // Bind VAO for this progam, or create one
-        let vao = this.vaos.get(program);
+        let vao = this.vaos[program.id];
         if (vao) {
             VertexArrayObject.bind(this.gl, vao);
         }
         else {
-            this.vaos.set(program, VertexArrayObject.create(this.gl, (force) => {
+            this.vaos[program.id] = VertexArrayObject.create(this.gl, (force) => {
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertex_buffer);
                 if (this.toggle_element_array) {
                     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
                 }
                 this.vertex_layout.enable(this.gl, program, force);
-            }));
+            });
         }
     }
 
@@ -110,9 +110,9 @@ export default class VBOMesh  {
         }
         this.valid = false;
 
-        this.vaos.forEach(vao => {
-            VertexArrayObject.destroy(this.gl, vao);
-        });
+        for (let v in this.vaos) {
+            VertexArrayObject.destroy(this.gl, this.vaos[v]);
+        }
 
         log('trace', 'VBOMesh.destroy: delete buffer' + (this.vertex_data ? ` of size ${this.vertex_data.byteLength}` : ''));
 
