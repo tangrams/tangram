@@ -324,7 +324,6 @@ export default class Scene {
             log.setWorkers(null);
             this.workers.forEach((worker) => {
                 worker.terminate();
-                WorkerBroker.removeWorker(worker);
             });
             this.workers = null;
         }

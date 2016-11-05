@@ -130,9 +130,6 @@ function findTarget (method) {
 // - Receive messages from workers, and optionally send an async response back as a promise
 function setupMainThread () {
 
-    var worker_id = 0;
-    var workers = new Map();
-
     // Send a message to a worker, and optionally get an async response
     // Arguments:
     //   - worker: one or more web worker instances to send the message to (single value or array)
@@ -185,9 +182,6 @@ function setupMainThread () {
         if (!(worker instanceof Worker)) {
             throw Error(`Worker broker could not add non-Worker object`, worker);
         }
-
-        // Keep track of all registered workers
-        workers.set(worker, worker_id++);
 
         worker.addEventListener('message', function WorkerBrokerMainThreadHandler(event) {
             let data = maybeDecode(event.data);
@@ -284,15 +278,6 @@ function setupMainThread () {
             }
         });
 
-    };
-
-    WorkerBroker.removeWorker = function (worker) {
-        if (!workers.has(worker)) {
-            throw Error(`Worker broker could not remove unregistered object`, worker);
-        }
-
-        workers.delete(worker);
-        // TODO: remove event handlers from worker as well?
     };
 
     // Expose for debugging
