@@ -145,11 +145,7 @@ export default class LabelLine {
             angle_info[i].stop_array = stops;
         }
 
-        // test
-        for (var i = 0; i < 4; i++){
-            if (angle_info[i].angle_array[0] !== angles[i]) debugger
-            if (angle_info[i].offsets[0] !== offsets[i][0]) debugger
-        }
+        // smooth(angle_info);
 
         this.angle = angles;
         this.pre_angles = pre_angles;
@@ -640,6 +636,34 @@ function getLineLength(line){
 
 function norm(p, q){
     return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
+}
+
+function smooth(angle_info){
+    for (let i = 0; i < angle_info.length; i++){
+        let info = angle_info[i];
+        let angles = info.angle_array;
+        let pre_angles = info.pre_angles;
+
+        let smooth_angles = [];
+        let smooth_pre_angles = [];
+
+        for (let j = 0; j < angles.length; j++){
+            if (j === 0){
+                smooth_angles[j] = 1/3 * (2 * angles[0] + angles[1]);
+                smooth_pre_angles[j] = 1/3 * (2 * pre_angles[0] + pre_angles[1]);
+            }
+            else if (j === angles.length - 1){
+                smooth_angles[j] = 1/3 * (2 * angles[j] + angles[j - 1]);
+                smooth_pre_angles[j] = 1/3 * (2 * pre_angles[j] + pre_angles[j - 1]);
+            }
+            else {
+                smooth_angles[j] = 1/4 * (2 * angles[j] + angles[j - 1] + angles[j + 1]);
+                smooth_pre_angles[j] = 1/4 * (2 * pre_angles[j] + pre_angles[j - 1] + pre_angles[j + 1]);
+            }
+        }
+        info.angle_array = smooth_angles;
+        info.pre_angles = smooth_pre_angles;
+    }
 }
 
 function getStartingPositions(line, spacing, upp){
