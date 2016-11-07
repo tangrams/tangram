@@ -1,7 +1,7 @@
 import DataSource from './data_source';
 import {GeoJSONSource, GeoJSONTileSource} from './geojson';
 
-import topojson from 'topojson';
+import * as topojson from 'topojson-client';
 
 /**
  TopoJSON standalone (non-tiled) source
