@@ -1,0 +1,279 @@
+global:
+    language: en # OSM language code
+    language_text_source: |
+        function() {
+            // Use preferred language label if available
+            return (global.language && feature['name:'+global.language]) || feature.name;
+        }
+    feature_order: function () { return feature.sort_key; }
+
+cameras:
+    perspective:
+        type: perspective
+        vanishing_point: [0, -250px] # relative to center of screen, in pixels
+        active: true
+
+scene:
+    background:
+        color: '#f0ebeb'
+
+sources:
+    custom:
+        type: GeoJSON
+        url: https://gist.githubusercontent.com/anonymous/056345aaf79f800dce3fe67e7a7589f8/raw/21684301533b265fabd84a93661ebe7ae5c11c4c/map.geojson
+    mapzen:
+        type: TopoJSON
+        url: http://tile.mapzen.com/mapzen/vector/v1/all/{z}/{x}/{y}.topojson
+        url_params:
+            api_key: vector-tiles-HqUVidw
+        max_zoom: 19
+
+layers:
+    roads:
+        data: { source: custom }
+        filter:
+            not: { kind: [rail] }
+        draw:
+            lines:
+                color: function(){return [Math.random(), Math.random(), Math.random]}
+                width: 12px
+                order: 10
+                # outline:
+                #     color: [[16, '#999'], [18, '#aaa']]
+                #     width: [[15, 0], [16, 2]]
+                #     order: 352 # put all outlines below all roads
+
+    road_labels:
+        data: { source: custom }
+
+        label:
+            filter: { not: { kind: highway } }
+            draw:
+                text:
+                    text_source: global.language_text_source
+                    priority: 5
+                    font:
+                        fill: '#666'
+                        stroke: { color: white, width: 4 }
+                        family: Helvetica
+                        size: 12px
+
+    earth:
+        data: { source: mapzen }
+        visible: false
+        draw:
+            polygons:
+                order: global.feature_order
+                color: '#f0ebeb'
+
+        continents:
+            filter: { kind: continent, $geometry: point }
+            visible: true
+            draw:
+                text:
+                    text_source: global.language_text_source
+                    priority: 1
+                    font:
+                        family: Helvetica
+                        size: 12px
+                        fill: [0, 0, 0, .8]
+                        stroke: { color: white, width: 4 }
+                        transform: uppercase
+
+
+    landuse:
+        data: { source: mapzen }
+        filter:
+            - { $zoom: { min: 16 } }
+            - { area: { min: 500px2 } }
+
+        areas:
+            draw:
+                polygons:
+                    order: global.feature_order
+                    interactive: true
+                    color: honeydew
+
+
+            parks:
+                filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
+                draw:
+                    polygons:
+                        color: '#bddec5'
+            park-detail:
+                filter: { kind: [pitch, wood, natural_wood, grass] }
+                draw:
+                    polygons:
+                        color: '#9dbea5'
+            industry:
+                filter: { kind: [commercial, industrial] }
+                draw:
+                    polygons:
+                        color: '#C0CDCD'
+            civic:
+                filter: { kind: university }
+                draw:
+                    polygons:
+                        color: '#D9CFC3'
+            urban:
+                filter: { kind: urban_area }
+                draw:
+                    polygons:
+                        # color: [0.902, 0.835, 0.753, 1.00]
+                        color: [[7, lightgrey], [9, [.88, .88, .88]]]
+                        # color: lightgrey
+
+    water:
+        data: { source: mapzen }
+        draw:
+            polygons:
+                interactive: true
+                order: global.feature_order
+                color: '#9dc3de'
+
+        oceans:
+            filter: { kind: ocean }
+            visible: true
+            draw:
+                text:
+                    font:
+                        family: Baskerville
+                        size: 14pt
+                        style: italic
+
+        seas:
+            filter: { kind: sea, $zoom: { min: 7 } }
+            visible: true
+            draw:
+                text:
+                    font:
+                        family: Baskerville
+                        size: 12pt
+                        style: italic
+
+    boundaries:
+        data: { source: mapzen}
+        visible: false
+        draw:
+            lines:
+                order: global.feature_order
+                width: 2px
+                color: wheat
+
+        country:
+            filter: { kind: country }
+            visible: true
+            draw:
+                lines:
+                    color: [0.824, 0.651, 0.329, 1.00]
+            water:
+                filter: { maritime_boundary: true }
+                visible: false
+
+        region:
+            filter: { kind: [region, macroregion] }
+            visible: true
+            water:
+                filter: { maritime_boundary: true }
+                visible: false
+
+    places:
+        data: { source: mapzen }
+
+        # city labels with points
+        city-points:
+            filter:
+                kind: locality
+                kind_detail: city
+                $zoom: { max: 11 }
+            visible: true
+            draw:
+                points:
+                    size: 8px
+                    color: darkred
+                    text:
+                        text_source: global.language_text_source
+                        priority: 1
+                        font:
+                            family: Helvetica
+                            size: 12px
+                            fill: [0, 0, 0, .8]
+                            stroke: { color: white, width: 4 }
+                            transform: uppercase
+                            weight: bold
+                            size: [[8, 11px], [12, 16px]]
+                            buffer: 2px
+
+        # places w/text-only labels (not accompanying point)
+        text-only:
+            draw:
+                text:
+                    text_source: global.language_text_source
+                    priority: 1
+                    font:
+                        family: Helvetica
+                        size: 12px
+                        fill: [0, 0, 0, .8]
+                        stroke: { color: white, width: 4 }
+                        transform: uppercase
+            visible: false
+
+            countries:
+                filter:
+                    kind: country
+                    any:
+                        - { population: { min: 100000000 } }
+                        - { $zoom: { min: 5, max: 8 }, population: { min: 1000000 } }
+                        # - population: { min: 10000000 }
+                visible: true
+                draw:
+                    text:
+                        buffer: 2px
+                        font:
+                            weight: bold
+                            size: [[6, 14px], [8, 20px]]
+
+            regions:
+                filter:
+                    kind: region
+                    kind_detail: [state, province]
+                    $zoom: { min: 5, max: 9 }
+                visible: true
+                draw:
+                    text:
+                        buffer: 2px
+                        font:
+                            # weight: bold
+                            size: [[6, 12px], [8, 16px]]
+
+                # use short name when available at low-zooms
+                short:
+                    filter: { $zoom: { max: 7 } }
+                    draw:
+                        text:
+                            text_source: 'name:short'
+
+            cities:
+                filter:
+                    kind: locality
+                    kind_detail: city
+                    $zoom: { min: 11 } # show city point labels below z11
+                visible: true
+                draw:
+                    text:
+                        font:
+                            weight: bold
+                            size: [[8, 11px], [12, 16px]]
+                            buffer: 2px
+
+            neighborhoods:
+                filter:
+                    - { kind: [neighbourhood, macrohood], $zoom: { min: 13 } }
+                    - { kind: microhood, $zoom: { min: 15 } }
+                visible: true
+                draw:
+                    text:
+                        font:
+                            size: [[13, 11px], [14, 11px], [15, 13px]]
+                            style: italic
+                            fill: rgba(136, 45, 23, 0.9)
