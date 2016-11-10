@@ -104,7 +104,10 @@ export default class LabelLine {
                 stop_array : []
             };
 
-            let stops = [0].concat(label_stops[i]);
+            let stops = label_stops[i].slice();
+            stops.unshift(0);
+            if (stops.length == 3 && stops[2] < .9) stops[2] = .9;
+            else stops.push(.9);
 
             for (var j = 0; j < stops.length; j++){
                 let line_lengths = (function(stop){
@@ -649,12 +652,16 @@ function smooth(angle_info){
 
         for (let j = 0; j < angles.length; j++){
             if (j === 0){
-                smooth_angles[j] = 1/3 * (2 * angles[0] + angles[1]);
-                smooth_pre_angles[j] = 1/3 * (2 * pre_angles[0] + pre_angles[1]);
+                smooth_angles[j] = angles[0];
+                smooth_pre_angles[j] = pre_angles[0];
+                // smooth_angles[j] = 1/3 * (2 * angles[0] + angles[1]);
+                // smooth_pre_angles[j] = 1/3 * (2 * pre_angles[0] + pre_angles[1]);
             }
             else if (j === angles.length - 1){
-                smooth_angles[j] = 1/3 * (2 * angles[j] + angles[j - 1]);
-                smooth_pre_angles[j] = 1/3 * (2 * pre_angles[j] + pre_angles[j - 1]);
+                smooth_angles[j] = angles[j];
+                smooth_pre_angles[j] = pre_angles[j];
+                // smooth_angles[j] = 1/3 * (2 * angles[j] + angles[j - 1]);
+                // smooth_pre_angles[j] = 1/3 * (2 * pre_angles[j] + pre_angles[j - 1]);
             }
             else {
                 smooth_angles[j] = 1/4 * (2 * angles[j] + angles[j - 1] + angles[j + 1]);
