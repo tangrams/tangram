@@ -66,31 +66,31 @@ void main() {
     float w;
 
     if (zoom < a_stops[0]){
-        // w = zoom / a_stops[0];
-        // theta = mix(a_angles[0], a_angles[1], w);
-        // offset.x = mix(a_offsets[0], a_offsets[1], w);
-        // pre_angle = mix(a_pre_angles[0], a_pre_angles[1], w);
-        theta = a_angles[0];
-        offset.x = a_offsets[0];
-        pre_angle = a_pre_angles[0];
+        w = zoom / a_stops[0];
+        theta = mix(a_angles[0], a_angles[1], w);
+        offset.x = mix(a_offsets[0], a_offsets[1], w);
+        pre_angle = mix(a_pre_angles[0], a_pre_angles[1], w);
+        // theta = a_angles[0];
+        // offset.x = a_offsets[0];
+        // pre_angle = a_pre_angles[0];
     }
     else if (zoom < a_stops[1]){
-        // w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
-        // theta = mix(a_angles[1], a_angles[2], w);
-        // offset.x = mix(a_offsets[1], a_offsets[2], w);
-        // pre_angle = mix(a_pre_angles[1], a_pre_angles[2], w);
-        theta = a_angles[1];
-        offset.x = a_offsets[1];
-        pre_angle = a_pre_angles[1];
+        w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
+        theta = mix(a_angles[1], a_angles[2], w);
+        offset.x = mix(a_offsets[1], a_offsets[2], w);
+        pre_angle = mix(a_pre_angles[1], a_pre_angles[2], w);
+        // theta = a_angles[1];
+        // offset.x = a_offsets[1];
+        // pre_angle = a_pre_angles[1];
     }
     else if (zoom < a_stops[2]){
-        // w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
-        // theta = mix(a_angles[2], a_angles[3], w);
-        // offset.x = mix(a_offsets[2], a_offsets[3], w);
-        // pre_angle = mix(a_pre_angles[2], a_pre_angles[3], w);
-        theta = a_angles[2];
-        offset.x = a_offsets[2];
-        pre_angle = a_pre_angles[2];
+        w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
+        theta = mix(a_angles[2], a_angles[3], w);
+        offset.x = mix(a_offsets[2], a_offsets[3], w);
+        pre_angle = mix(a_pre_angles[2], a_pre_angles[3], w);
+        // theta = a_angles[2];
+        // offset.x = a_offsets[2];
+        // pre_angle = a_pre_angles[2];
     }
     else {
         theta = a_angles[3];
