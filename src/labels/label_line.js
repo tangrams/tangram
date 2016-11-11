@@ -740,13 +740,15 @@ function interpolate2d(x, y, t){
      ];
 }
 
-function getPositionsFromIndicesAndOffsets(line, indices, offsets){
+function getPositionsFromIndicesAndOffsets(line, indices, offsets, line_lengths, label_lengths){
     let positions = [];
     for (let i = 0; i < indices.length; i++){
         let index = indices[i];
         let offset = offsets[i];
+        let label_length = label_lengths[i];
+        let line_length = line_lengths[index];
 
-        let angle = getAngleForSegment(line[index], line[index+1]);
+        let angle = getAngleForSegment(line[index], line[index + 1]);;
 
         let offset2d = Vector.rot([offset, 0], angle);
         let position = Vector.add(line[index], offset2d);
@@ -757,30 +759,40 @@ function getPositionsFromIndicesAndOffsets(line, indices, offsets){
     return positions;
 }
 
-function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
+function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions, line_lengths, label_lengths, offsets){
     let angles = [];
     let pre_angles = [];
-    let offsets = [];
+    let offsets2d = [];
 
     for (let i = 0; i < positions.length; i++){
         let position = positions[i];
         let index = indices[i];
+        let label_length = label_lengths[i];
+        let line_length = line_lengths[index];
+        let offset = offsets[i];
 
-        let offset = Vector.sub(position, anchor);
-        let offset_angle = -Vector.angle(offset);
+        let offset2d = Vector.sub(position, anchor);
+        let offset2d_angle = -Vector.angle(offset2d);
 
-        let angle = getAngleFromSegment(line[index], line[index + 1]);
-        let pre_angle = angle - offset_angle;
+        let angle;
 
-        // Make sure this is correct. Are modified line lengths passed in?
-        // debugger
+        if (index + 1 < line.length && offset + 0.5 * label_length > line_length){
+            let angle1 = getAngleFromSegment(line[index], line[index + 1]);
+            let angle2 = getAngleFromSegment(line[index + 1], line[index + 2]);
+            let weight = (line_length - (offset + 0.5 * label_length)) / label_length;
+            angle = weight * angle1 + (1 - weight) * angle2;
+        }
+        else
+            angle = getAngleFromSegment(line[index], line[index + 1]);
+
+        let pre_angle = angle - offset2d_angle;
 
         if (i > 0){
             let prev_angle = angles[i - 1];
             let prev_pre_angle = pre_angles[i - 1];
-            if (Math.abs(offset_angle - prev_angle) > Math.PI) {
-                if (offset_angle > prev_angle) offset_angle -= 2 * Math.PI;
-                else offset_angle += 2 * Math.PI;
+            if (Math.abs(offset2d_angle - prev_angle) > Math.PI) {
+                if (offset2d_angle > prev_angle) offset2d_angle -= 2 * Math.PI;
+                else offset2d_angle += 2 * Math.PI;
             }
             if (Math.abs(prev_pre_angle - pre_angle) > Math.PI) {
                 if (pre_angle > prev_pre_angle) pre_angle -= 2 * Math.PI;
@@ -788,12 +800,12 @@ function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
             }
         }
 
-        angles.push(offset_angle);
+        angles.push(offset2d_angle);
         pre_angles.push(pre_angle);
-        offsets.push(offset);
+        offsets2d.push(offset2d);
     }
 
-    return [offsets, angles, pre_angles];
+    return [offsets2d, angles, pre_angles];
 }
 
 function placeAtAnchor(line_index, line_offset, line_lengths, label_lengths){
@@ -877,10 +889,10 @@ function placeAtPosition(anchor, line, line_lengths, line_angles_segments, label
     let [indices, relative_offsets] = placeAtAnchor(0, 0, line_lengths, label_lengths);
 
     // get 2D positions based on "flat" indices and offsets
-    let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
+    let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets, line_lengths, label_lengths);
 
     // get 2d offsets, angles and pre_angles relative to anchor
-    let [offsets2d, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
+    let [offsets2d, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions, line_lengths, label_lengths, relative_offsets);
 
     let offsets = offsets2d.map(function(offset){
         return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
