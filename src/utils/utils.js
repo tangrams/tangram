@@ -1,7 +1,9 @@
 // Miscellaneous utilities
 /*jshint worker: true*/
 
+import log from './log';
 import Thread from './thread';
+import WorkerBroker from './worker_broker';
 import Geo from '../geo';
 
 import yaml from 'js-yaml';
@@ -9,44 +11,60 @@ import yaml from 'js-yaml';
 var Utils;
 export default Utils = {};
 
+WorkerBroker.addTarget('Utils', Utils);
+
 // Basic Safari detection
 // http://stackoverflow.com/questions/7944460/detect-safari-browser
 Utils.isSafari = function () {
     return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 };
 
+// Basic IE11 or Edge detection
+Utils.isMicrosoft = function () {
+    return /(Trident\/7.0|Edge[ /](\d+[\.\d]+))/i.test(navigator.userAgent);
+};
+
 Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}) {
-    var request = new XMLHttpRequest();
-    var promise = new Promise((resolve, reject) => {
-        request.open(method, url, true);
-        request.timeout = timeout;
-        request.responseType = responseType;
-        request.onload = () => {
-            if (request.status === 200) {
-                if (['text', 'json'].indexOf(request.responseType) > -1) {
-                    resolve(request.responseText);
+    if (Thread.is_worker && Utils.isMicrosoft()) {
+        // Some versions of IE11 and Edge will hang web workers when performing XHR requests
+        // These requests can be proxied through the main thread
+        // https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/9545866/
+        log('debug', 'Proxying request for URL to worker', url);
+        return WorkerBroker.postMessage('Utils.io', ...arguments);
+    }
+    else {
+        var request = new XMLHttpRequest();
+        var promise = new Promise((resolve, reject) => {
+            request.open(method, url, true);
+            request.timeout = timeout;
+            request.responseType = responseType;
+            request.onload = () => {
+                if (request.status === 200) {
+                    if (['text', 'json'].indexOf(request.responseType) > -1) {
+                        resolve(request.responseText);
+                    }
+                    else {
+                        resolve(request.response);
+                    }
+                } else {
+                    reject(Error('Request error with a status of ' + request.statusText));
                 }
-                else {
-                    resolve(request.response);
-                }
-            } else {
-                reject(Error('Request error with a status of ' + request.statusText));
-            }
-        };
-        request.onerror = (evt) => {
-            reject(Error('There was a network error' + evt.toString()));
-        };
-        request.ontimeout = (evt) => {
-            reject(Error('timeout '+ evt.toString()));
-        };
-        request.send();
-    });
+            };
+            request.onerror = (evt) => {
+                reject(Error('There was a network error' + evt.toString()));
+            };
+            request.ontimeout = (evt) => {
+                reject(Error('timeout '+ evt.toString()));
+            };
+            request.send();
+        });
 
-    Object.defineProperty(promise, 'request', {
-        value: request
-    });
+        Object.defineProperty(promise, 'request', {
+            value: request
+        });
 
-    return promise;
+        return promise;
+    }
 };
 
 Utils.parseResource = function (body) {
