@@ -611,13 +611,6 @@ export var Style = {
         }
 
         return a.name < b.name ? -1 : 1; // use name as tie breaker
-    },
-
-    update () {
-        // Style-specific animation
-        // if (typeof this.animation === 'function') {
-        //     this.animation();
-        // }
     }
 
 };

@@ -59,28 +59,25 @@ describe('Styles:', () => {
 
             it('compiles parent custom style', () => {
                 style_manager.styles.rainbow.setGL(gl);
-                style_manager.styles.rainbow.compile();
+                style_manager.styles.rainbow.getProgram();
                 assert.equal(style_manager.styles.rainbow.constructor, Style.constructor);
                 assert.equal(style_manager.styles.rainbow.base, 'polygons');
-                assert.ok(style_manager.styles.rainbow.compiled);
                 assert.ok(style_manager.styles.rainbow.program.compiled);
             });
 
             it('compiles child style dependent on another custom style', () => {
                 style_manager.styles.rainbow_child.setGL(gl);
-                style_manager.styles.rainbow_child.compile();
+                style_manager.styles.rainbow_child.getProgram();
                 assert.equal(style_manager.styles.rainbow_child.constructor, Style.constructor);
                 assert.equal(style_manager.styles.rainbow_child.base, 'polygons');
-                assert.ok(style_manager.styles.rainbow_child.compiled);
                 assert.ok(style_manager.styles.rainbow_child.program.compiled);
             });
 
             it('compiles a style with the same style mixed by multiple ancestors', () => {
                 style_manager.styles.descendant.setGL(gl);
-                style_manager.styles.descendant.compile();
+                style_manager.styles.descendant.getProgram();
                 assert.equal(style_manager.styles.descendant.constructor, Style.constructor);
                 assert.equal(style_manager.styles.descendant.base, 'polygons');
-                assert.ok(style_manager.styles.descendant.compiled);
                 assert.ok(style_manager.styles.descendant.program.compiled);
             });
 
@@ -105,16 +102,15 @@ describe('Styles:', () => {
         it('compiles a program', () => {
             style_manager.styles.polygons.init();
             style_manager.styles.polygons.setGL(gl);
-            style_manager.styles.polygons.compile();
-            assert.ok(style_manager.styles.polygons.compiled);
+            style_manager.styles.polygons.getProgram();
+            assert.ok(style_manager.styles.polygons.program.compiled);
         });
 
         it('injects a dependent uniform in a custom style', () => {
             style_manager.create('scale', sampleScene.styles.scale);
             style_manager.styles.scale.init();
             style_manager.styles.scale.setGL(gl);
-            style_manager.styles.scale.compile();
-            assert.ok(style_manager.styles.scale.compiled);
+            style_manager.styles.scale.getProgram();
             assert.ok(style_manager.styles.scale.program.compiled);
         });
 

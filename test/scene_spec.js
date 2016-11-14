@@ -60,10 +60,6 @@ describe('Scene', function () {
                 assert.instanceOf(subject.gl, WebGLRenderingContext);
             });
 
-            it('compiles render styles', () => {
-                assert.isTrue(subject.styles.rainbow.compiled);
-                assert.ok(subject.styles.rainbow.program);
-            });
         });
 
         describe('loading scene from an existing object', () => {
@@ -248,54 +244,6 @@ describe('Scene', function () {
             assert.isTrue(subject.update());
         });
 
-    });
-
-    describe('.updateStyles()', () => {
-
-        beforeEach(() => {
-            return subject.load();
-        });
-
-        describe('when a new style is added', () => {
-
-            beforeEach(() => {
-                subject.config.styles.elevator = {
-                    "base": "polygons",
-                    "animated": true,
-                    "shaders": {
-                        "blocks": {
-                            "vertex": "position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings"
-                        }
-                    }
-                };
-            });
-
-            it('doesn\'t compile if the style isn\'t referenced by a layer', () => {
-                subject.updateStyles();
-                assert.isFalse(subject.styles.elevator.compiled);
-            });
-
-            it('does compile if the style is referenced by a layer', () => {
-                subject.config.layers.buildings.draw.polygons.style = 'elevator';
-                subject.updateStyles();
-                assert.isTrue(subject.styles.elevator.compiled);
-                assert.ok(subject.styles.elevator.program);
-            });
-
-        });
-
-        it('adds properties to an existing style', () => {
-            subject.config.styles.rainbow.shaders.uniforms = { u_test: 10 };
-            subject.config.styles.rainbow.defines = subject.config.styles.rainbow.defines || {};
-            subject.config.styles.rainbow.defines.TEST = true;
-            subject.updateStyles();
-
-            assert.ok(subject.styles.rainbow);
-            assert.isTrue(subject.styles.rainbow.compiled);
-            assert.ok(subject.styles.rainbow.program);
-            assert.deepPropertyVal(subject, 'styles.rainbow.shaders.uniforms.u_test', 10);
-            assert.deepPropertyVal(subject, 'styles.rainbow.defines.TEST', true);
-        });
     });
 
 });

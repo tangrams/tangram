@@ -13,6 +13,8 @@ export default class TileManager {
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
+        this.renderable_tiles = [];
+        this.active_styles = [];
 
         // Provide a hook for this object to be called from worker threads
         this.main_thread_target = ['TileManager', this.scene.id].join('_');
@@ -122,6 +124,8 @@ export default class TileManager {
         this.loadQueuedCoordinates();
         this.updateProxyTiles();
         this.view.pruneTilesForView();
+        this.updateRenderableTiles();
+        this.updateActiveStyles();
     }
 
     updateProxyTiles () {
@@ -182,15 +186,34 @@ export default class TileManager {
         this.removeTiles(tile => !tile.visible);
     }
 
-    getRenderableTiles() {
-        let tiles = [];
+    getRenderableTiles () {
+        return this.renderable_tiles;
+    }
+
+    updateRenderableTiles() {
+        this.renderable_tiles = [];
         for (let t in this.tiles) {
             let tile = this.tiles[t];
             if (tile.visible && tile.loaded) {
-                tiles.push(tile);
+                this.renderable_tiles.push(tile);
             }
         }
-        return tiles;
+        return this.renderable_tiles;
+    }
+
+    getActiveStyles () {
+        return this.active_styles;
+    }
+
+    updateActiveStyles () {
+        let tiles = this.renderable_tiles;
+        let active = {};
+        for (let t=0; t < tiles.length; t++) {
+            let tile = tiles[t];
+            Object.keys(tile.meshes).forEach(s => active[s] = true);
+        }
+        this.active_styles = Object.keys(active);
+        return this.active_styles;
     }
 
     isLoadingVisibleTiles() {
