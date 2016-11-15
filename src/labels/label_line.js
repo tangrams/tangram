@@ -55,7 +55,7 @@ export default class LabelLine {
         }
 
         let total_line_length = this.line_lengths.reduce(function(prev, next){ return prev + next; });
-        let total_label_length = size.reduce(function(prev, next){ return prev + next[0] * layout.units_per_pixel; }, 0);
+        let total_label_length = layout.units_per_pixel * size.reduce(function(prev, next){ return prev + next[0]; }, 0);
 
         if (total_label_length > total_line_length){
             this.throw_away = true;
@@ -75,7 +75,8 @@ export default class LabelLine {
 
         // starting position
         let anchor_offset = 0;
-        let anchor_index = 0;
+        let anchor_index = curvaturePlacement(this.lines, total_line_length, this.line_lengths, total_label_length);
+        // let anchor_index = 0;
         let anchor = Vector.add(
             lines[anchor_index],
             Vector.rot([anchor_offset, 0], this.line_angles_segments[anchor_index])
@@ -711,6 +712,8 @@ function curvaturePlacement(line, total_line_length, line_lengths, label_length)
         // iterate through points on line intersecting window
         while (ahead_index < line.length && line_position + line_lengths[ahead_index] < window_end){
             cost += curvatures[ahead_index];
+            if (cost === Infinity) break; // no further progress can be made
+
             line_position += line_lengths[ahead_index];
             ahead_index++;
         }
