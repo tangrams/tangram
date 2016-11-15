@@ -60,7 +60,7 @@ void main() {
     vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
 
-    float zoom = fract(u_map_position.z);
+    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);
     float theta = a_shape.z / 4096.;
     float pre_angle = a_pre_angle;
     float w;
