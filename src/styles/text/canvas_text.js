@@ -456,7 +456,9 @@ function splitLabelText(text){
 
     let space_indices = [];
     let space_index = 0;
-    let num_bins = 4;
+    // let num_bins = 4;
+    let num_bins = Math.ceil(text.length / 2);
+    // let num_bins = text.length;
 
     while (text.length){
         let codon = Math.ceil(text.length / num_bins) || 1;
