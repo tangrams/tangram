@@ -497,6 +497,7 @@ export default class Scene {
         // Sort styles by blend order
         let styles = this.tile_manager.getActiveStyles().
             map(s => this.styles[s]).
+            filter(s => s). // guard against missing styles, such as while loading a new scene
             sort(Style.blendOrderSort);
 
         // Render styles
