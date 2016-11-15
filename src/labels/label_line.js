@@ -675,6 +675,56 @@ function smooth(angle_info){
     }
 }
 
+function curvaturePlacement(line, total_line_length, line_lengths, label_length){
+    var curvatures = []; // array of curvature values per line vertex
+
+    // calculate curvature values
+    for (let i = 1; i < line.length - 1; i++){
+        var prev = line[i - 1];
+        var curr = line[i];
+        var next = line[i + 1];
+
+        var norm_1 = Vector.perp(curr, prev);
+        var norm_2 = Vector.perp(next, curr);
+
+        var curvature = Vector.angleBetween(norm_1, norm_2);
+        curvatures.push(curvature);
+    }
+
+    curvatures.push(Infinity); // Infinite penalty for going off end of line
+
+    // calculate curvature costs
+    var costs = [];
+    var line_index = 0;
+    var position = 0;
+
+    // move window along line, starting at first vertex
+    while (position + label_length < total_line_length){
+        // define window breadth
+        var window_start = position;
+        var window_end = window_start + label_length;
+
+        var line_position = window_start;
+        var ahead_index = line_index;
+        var cost = 0;
+
+        // iterate through points on line intersecting window
+        while (ahead_index < line.length && line_position + line_lengths[ahead_index] < window_end){
+            cost += curvatures[ahead_index];
+            line_position += line_lengths[ahead_index];
+            ahead_index++;
+        }
+
+        costs.push(cost);
+
+        position += line_lengths[line_index];
+        line_index++;
+    }
+
+    // return index with best placement (least curvature)
+    return costs.indexOf(Math.min(costs)) + 1;
+}
+
 function getStartingPositions(line, spacing, upp){
     let length = getLineLength(line);
     let num_labels = Math.floor(length / spacing);
