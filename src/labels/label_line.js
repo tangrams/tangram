@@ -109,6 +109,8 @@ export default class LabelLine {
             if (stops.length == 3 && stops[2] < .9) stops[2] = .9;
             else stops.push(.9);
 
+            stops = [0, .5, .9];
+
             for (var j = 0; j < stops.length; j++){
                 let line_lengths = (function(stop){
                     return this.line_lengths.map(function(length){
@@ -652,16 +654,16 @@ function smooth(angle_info){
 
         for (let j = 0; j < angles.length; j++){
             if (j === 0){
-                smooth_angles[j] = angles[0];
-                smooth_pre_angles[j] = pre_angles[0];
-                // smooth_angles[j] = 1/3 * (2 * angles[0] + angles[1]);
-                // smooth_pre_angles[j] = 1/3 * (2 * pre_angles[0] + pre_angles[1]);
+                // smooth_angles[j] = angles[0];
+                // smooth_pre_angles[j] = pre_angles[0];
+                smooth_angles[j] = 1/3 * (2 * angles[0] + angles[1]);
+                smooth_pre_angles[j] = 1/3 * (2 * pre_angles[0] + pre_angles[1]);
             }
             else if (j === angles.length - 1){
-                smooth_angles[j] = angles[j];
-                smooth_pre_angles[j] = pre_angles[j];
-                // smooth_angles[j] = 1/3 * (2 * angles[j] + angles[j - 1]);
-                // smooth_pre_angles[j] = 1/3 * (2 * pre_angles[j] + pre_angles[j - 1]);
+                // smooth_angles[j] = angles[j];
+                // smooth_pre_angles[j] = pre_angles[j];
+                smooth_angles[j] = 1/3 * (2 * angles[j] + angles[j - 1]);
+                smooth_pre_angles[j] = 1/3 * (2 * pre_angles[j] + pre_angles[j - 1]);
             }
             else {
                 smooth_angles[j] = 1/4 * (2 * angles[j] + angles[j - 1] + angles[j + 1]);
@@ -776,13 +778,13 @@ function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions, line_l
 
         let angle;
 
-        if (index + 1 < line.length && offset + 0.5 * label_length > line_length){
-            let angle1 = getAngleFromSegment(line[index], line[index + 1]);
-            let angle2 = getAngleFromSegment(line[index + 1], line[index + 2]);
-            let weight = (line_length - (offset + 0.5 * label_length)) / label_length;
-            angle = weight * angle1 + (1 - weight) * angle2;
-        }
-        else
+        // if (index + 2 < line.length && offset + 0.5 * label_length > line_length){
+        //     let angle1 = getAngleFromSegment(line[index], line[index + 1]);
+        //     let angle2 = getAngleFromSegment(line[index + 1], line[index + 2]);
+        //     let weight = (line_length - (offset + 0.5 * label_length)) / label_length;
+        //     angle = weight * angle1 + (1 - weight) * angle2;
+        // }
+        // else
             angle = getAngleFromSegment(line[index], line[index + 1]);
 
         let pre_angle = angle - offset2d_angle;
@@ -822,7 +824,20 @@ function placeAtAnchor(line_index, line_offset, line_lengths, label_lengths){
 
     while (label_index < num_labels && line_index < num_segments){
         while (label_index < num_labels && line_offset < line_length){
-            offsets.push(line_offset + 0.5 * label_length);
+            if (line_offset + 0.5 * label_length <= line_length)
+                offsets.push(line_offset + 0.5 * label_length);
+            else {
+                let offset = line_offset - line_length;
+                offsets.push(offset + 0.5 * label_length);
+                indices.push(line_index + 1);
+
+                line_offset += label_length;
+                label_index++;
+                label_length = label_lengths[label_index];
+                // skip to next line
+                break;
+            }
+
             indices.push(line_index);
 
             line_offset += label_length;
