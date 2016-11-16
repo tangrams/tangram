@@ -366,30 +366,6 @@ export class StyleManager {
         return parents;
     }
 
-    // Compile all styles
-    compile (keys, scene) {
-        keys = keys || Object.keys(this.styles);
-        keys.forEach(key => {
-            let style = this.styles[key];
-            try {
-                style.compile();
-                log('trace', `StyleManager.compile(): compiled style ${key}`);
-            }
-            catch(error) {
-                log('error', `StyleManager.compile(): error compiling style ${key}:`, error);
-
-                scene.trigger('warning', {
-                    type: 'styles',
-                    message: `Error compiling style ${key}`,
-                    style,
-                    shader_errors: style.program && style.program.shader_errors
-                });
-            }
-        });
-
-        log('debug', `StyleManager.compile(): compiled all styles`);
-    }
-
     // Get all styles with mesh data for a given tile
     static stylesForTile (tile_key, styles) {
         let tile_styles = [];

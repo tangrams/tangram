@@ -27,8 +27,7 @@ export var Style = {
         this.shaders = (this.hasOwnProperty('shaders') && this.shaders) || {}; // shader customization (uniforms, defines, blocks, etc.)
         this.introspection = introspection || false;
         this.selection = this.selection || this.introspection || false;   // flag indicating if this style supports feature selection
-        this.compiling = false;                     // programs are currently compiling
-        this.compiled = false;                      // programs are finished compiling
+        this.compile_setup = false;                 // one-time setup steps for program compilation
         this.program = null;                        // GL program reference (for main render pass)
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
@@ -293,16 +292,31 @@ export var Style = {
         return mesh.render();
     },
 
-    compile () {
+    // Get a specific program, compiling if necessary
+    getProgram (key = 'program') {
+        this.compileSetup();
+
+        const program = this[key];
+        if (!program || program.error) {
+            return;
+        }
+
+        if (!program.compiled) {
+            log('debug', `Compiling style '${this.name}', program key '${key}'`);
+            program.compile();
+        }
+        return program;
+    },
+
+    // One-time setup for compiling style's programs
+    compileSetup () {
+        if (this.compile_setup) {
+            return;
+        }
+
         if (!this.gl) {
             throw(new Error(`style.compile(): skipping for ${this.name} because no GL context`));
         }
-
-        if (this.compiling) {
-            throw(new Error(`style.compile(): skipping for ${this.name} because style is already compiling`));
-        }
-        this.compiling = true;
-        this.compiled = false;
 
         // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
         var defines = this.buildDefineList();
@@ -323,50 +337,40 @@ export var Style = {
         }
 
         // Create shaders
-        try {
-            this.program = new ShaderProgram(
+        this.program = new ShaderProgram(
+            this.gl,
+            this.vertex_shader_src,
+            this.fragment_shader_src,
+            {
+                name: this.name,
+                defines,
+                uniforms,
+                blocks,
+                block_scopes,
+                extensions
+            }
+        );
+
+        if (this.selection) {
+            this.selection_program = new ShaderProgram(
                 this.gl,
                 this.vertex_shader_src,
-                this.fragment_shader_src,
+                shaderSrc_selectionFragment,
                 {
-                    name: this.name,
-                    defines,
+                    name: (this.name + ' (selection)'),
+                    defines: selection_defines,
                     uniforms,
                     blocks,
                     block_scopes,
                     extensions
                 }
             );
-            this.program.compile();
-
-            if (this.selection) {
-                this.selection_program = new ShaderProgram(
-                    this.gl,
-                    this.vertex_shader_src,
-                    shaderSrc_selectionFragment,
-                    {
-                        name: (this.name + ' (selection)'),
-                        defines: selection_defines,
-                        uniforms,
-                        blocks,
-                        block_scopes,
-                        extensions
-                    }
-                );
-                this.selection_program.compile();
-            }
-            else {
-                this.selection_program = null;
-            }
         }
-        catch(error) {
-            this.compiling = false;
-            this.compiled = false;
-            throw(new Error(`style.compile(): style ${this.name} error:`, error));
+        else {
+            this.selection_program = null;
         }
 
-        this.compiling = false;
-        this.compiled = true;
+        this.compile_setup = true;
     },
 
     // Add a shader block
@@ -607,13 +611,6 @@ export var Style = {
         }
 
         return a.name < b.name ? -1 : 1; // use name as tie breaker
-    },
-
-    update () {
-        // Style-specific animation
-        // if (typeof this.animation === 'function') {
-        //     this.animation();
-        // }
     }
 
 };

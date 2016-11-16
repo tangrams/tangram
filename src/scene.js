@@ -48,7 +48,6 @@ export default class Scene {
         this.last_valid_config_source = null;
 
         this.styles = null;
-        this.active_styles = {};
         this.style_manager = new StyleManager();
 
         this.building = null;                           // tracks current scene building state (tiles being built, etc.)
@@ -449,12 +448,7 @@ export default class Scene {
 
         // Update styles, camera, lights
         this.view.update();
-        Object.keys(this.active_styles).forEach(i => this.styles[i].update());
         Object.keys(this.lights).forEach(i => this.lights[i].update());
-
-        // Renderable tile list
-        this.renderable_tiles = this.tile_manager.getRenderableTiles();
-        this.renderable_tiles_count = this.renderable_tiles.length;
 
         // Render main pass
         this.render_count = this.renderPass();
@@ -501,8 +495,9 @@ export default class Scene {
         this.clearFrame({ clear_color: true, clear_depth: true });
 
         // Sort styles by blend order
-        let styles = Object.keys(this.active_styles).
+        let styles = this.tile_manager.getActiveStyles().
             map(s => this.styles[s]).
+            filter(s => s). // guard against missing styles, such as while loading a new scene
             sort(Style.blendOrderSort);
 
         // Render styles
@@ -510,6 +505,7 @@ export default class Scene {
         let last_blend;
         for (let s=0; s < styles.length; s++) {
             let style = styles[s];
+
             // Only update render state when blend mode changes
             if (style.blend !== last_blend) {
                 let state = Object.assign({},
@@ -525,20 +521,18 @@ export default class Scene {
         return count;
     }
 
-    renderStyle(style, program_key) {
+    renderStyle(style_name, program_key) {
+        let style = this.styles[style_name];
         let first_for_style = true;
         let render_count = 0;
-
-        let program = this.styles[style][program_key];
-        if (!program || !program.compiled) {
-            return 0;
-        }
+        let program;
 
         // Render tile GL geometries
-        for (let t=0; t < this.renderable_tiles.length; t++) {
-            let tile = this.renderable_tiles[t];
+        let renderable_tiles = this.tile_manager.getRenderableTiles();
+        for (let t=0; t < renderable_tiles.length; t++) {
+            let tile = renderable_tiles[t];
 
-            if (tile.meshes[style] == null) {
+            if (tile.meshes[style_name] == null) {
                 continue;
             }
 
@@ -547,20 +541,15 @@ export default class Scene {
             // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
             if (first_for_style === true) {
                 first_for_style = false;
-
-                program.use();
-                this.styles[style].setup();
-
-                program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
-                this.view.setupProgram(program);
-                for (let i in this.lights) {
-                    this.lights[i].setupProgram(program);
+                program = this.setupStyle(style, program_key);
+                if (!program) {
+                    return 0;
                 }
             }
 
             // Skip proxy tiles if new tiles have finished loading this style
-            if (!tile.shouldProxyForStyle(style)) {
-                // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style}' `, tile, tile.proxy_for);
+            if (!tile.shouldProxyForStyle(style_name)) {
+                // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
                 continue;
             }
 
@@ -568,16 +557,48 @@ export default class Scene {
             this.view.setupTile(tile, program);
 
             // Render tile
-            if (this.styles[style].render(tile.meshes[style])) {
+            let mesh = tile.meshes[style_name];
+            if (style.render(mesh)) {
                 // Don't incur additional renders while viewport is moving
                 if (!(this.view.panning || this.view.zooming)) {
                    this.requestRedraw();
                 }
             }
-            render_count += tile.meshes[style].geometry_count;
+            render_count += mesh.geometry_count;
         }
 
         return render_count;
+    }
+
+    setupStyle(style, program_key) {
+        // Get shader program from style, lazily compiling if necessary
+        let program;
+        try {
+            program = style.getProgram(program_key);
+            if (!program) {
+                return;
+            }
+        }
+        catch(error) {
+            this.trigger('warning', {
+                type: 'styles',
+                message: `Error compiling style ${style.name}`,
+                style,
+                shader_errors: style.program && style.program.shader_errors
+            });
+            return;
+        }
+
+        program.use();
+        style.setup();
+
+        program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
+        this.view.setupProgram(program);
+        for (let i in this.lights) {
+            this.lights[i].setupProgram(program);
+        }
+
+        return program;
     }
 
     clearFrame({ clear_color, clear_depth } = {}) {
@@ -716,7 +737,6 @@ export default class Scene {
             // Update config (in case JS objects were manipulated directly)
             if (sync) {
                 this.syncConfigToWorker({ serialize_funcs });
-                this.style_manager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
             }
             this.resetFeatureSelection();
             this.resetTime();
@@ -886,68 +906,13 @@ export default class Scene {
             this.styles[style].setGL(this.gl);
         }
 
-        // Find & compile active styles
-        this.updateActiveStyles();
-        this.style_manager.compile(Object.keys(this.active_styles), this);
+        // Use explicitly set scene animation flag if defined, otherwise turn on animation if there are any animated styles
+        this.animated =
+            this.config.scene.animated !== undefined ?
+                this.config.scene.animated :
+                Object.keys(this.styles).some(s => this.styles[s].animated);
 
         this.dirty = true;
-    }
-
-    updateActiveStyles() {
-        // Make a set of currently active styles (used in a layer)
-        // Note: doesn't actually check if any geometry matches the layer, just that the style is potentially renderable
-        let prev_styles = Object.keys(this.active_styles || {});
-        this.active_styles = {};
-        let animated = false; // is any active style animated?
-
-        const parseLayers = (layer) => {
-            if (!layer) {
-                return;
-            }
-
-            // Traverse draw groups
-            if (layer.draw) {
-                for (let name in layer.draw) {
-                    let group = layer.draw[name];
-
-                    // TODO: warn on non-object draw group
-                    if (group != null && typeof group === 'object' && group.visible !== false) {
-                        let style_name = group.style || name;
-                        let styles = [style_name];
-
-                        // optional additional outline style
-                        if (group.outline && group.outline.style) {
-                            styles.push(group.outline.style);
-                        }
-
-                        styles = styles.filter(x => this.styles[x]).forEach(style_name => {
-                            let style = this.styles[style_name];
-                            if (style) {
-                                this.active_styles[style_name] = true;
-                                if (style.animated) {
-                                    animated = true;
-                                }
-                            }
-                        });
-                    }
-                }
-            }
-
-            // Traverse sublayers
-            if (typeof layer === 'object' && !Array.isArray(layer)) {
-                for (let name in layer) {
-                    parseLayers(layer[name]);
-                }
-            }
-        };
-        parseLayers(this.config.layers);
-
-        // Use explicitly set scene animation flag if defined, otherwise turn on animation
-        // if there are any animated styles
-        this.animated = this.config.scene.animated !== undefined ? this.config.scene.animated : animated;
-
-        // Compile newly active styles
-        return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
     }
 
     // Get active camera - for public API

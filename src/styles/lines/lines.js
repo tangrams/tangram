@@ -66,9 +66,11 @@ Object.assign(Lines, {
     },
 
     // Override
-    compile () {
-        this.parseLineTexture();
-        return Style.compile.apply(this, arguments);
+    compileSetup () {
+        if (!this.compile_setup) {
+            this.parseLineTexture();
+        }
+        return Style.compileSetup.apply(this, arguments);
     },
 
     // Optionally apply a dash array pattern to this line
