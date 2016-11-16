@@ -93,10 +93,12 @@ export default SceneLoader = {
 
         for (let sn in config.sources) {
             let source = config.sources[sn];
-            source.url = bundle.urlFor(source.url);
+            if (isURL(source.url)) {
+                source.url = bundle.urlFor(source.url);
+            }
 
             if (Array.isArray(source.scripts)) {
-                source.scripts = source.scripts.map(url => bundle.urlFor(url));
+                source.scripts = source.scripts.map(url => isURL(url) ? bundle.urlFor(url) : url);
             }
         }
 
@@ -110,12 +112,12 @@ export default SceneLoader = {
         for (let family in config.fonts) {
             if (Array.isArray(config.fonts[family])) {
                 config.fonts[family].forEach(face => {
-                    face.url = face.url && bundle.urlFor(face.url);
+                    face.url = isURL(face.url) ? bundle.urlFor(face.url) : face.url;
                 });
             }
             else {
                 let face = config.fonts[family];
-                face.url = face.url && bundle.urlFor(face.url);
+                face.url = isURL(face.url) ? bundle.urlFor(face.url) : face.url;
             }
         }
 
@@ -132,7 +134,7 @@ export default SceneLoader = {
         if (config.textures) {
             for (let tn in config.textures) {
                 let texture = config.textures[tn];
-                if (texture.url) {
+                if (isURL(texture.url)) {
                     texture.url = bundle.urlFor(texture.url);
                 }
             }
@@ -152,7 +154,7 @@ export default SceneLoader = {
 
                 // Style `texture`
                 let tex = style.texture;
-                if (typeof tex === 'string' && !config.textures[tex]) {
+                if (typeof tex === 'string' && isURL(tex) && !config.textures[tex]) {
                     tex = bundle.urlFor(tex);
                     config.textures[tex] = { url: tex };
                     style.texture = tex;
@@ -163,7 +165,7 @@ export default SceneLoader = {
                     ['emission', 'ambient', 'diffuse', 'specular', 'normal'].forEach(prop => {
                         // Material property has a texture
                         let tex = style.material[prop] != null && style.material[prop].texture;
-                        if (typeof tex === 'string' && !config.textures[tex]) {
+                        if (typeof tex === 'string' && isURL(tex) && !config.textures[tex]) {
                             tex = bundle.urlFor(tex);
                             config.textures[tex] = { url: tex };
                             style.material[prop].texture = tex;
@@ -175,7 +177,7 @@ export default SceneLoader = {
                 if (style.shaders && style.shaders.uniforms) {
                     GLSL.parseUniforms(style.shaders.uniforms).forEach(({type, value, key, uniforms}) => {
                         // Texture by URL (string-named texture not referencing existing texture definition)
-                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
+                        if (type === 'sampler2D' && typeof value === 'string' && isURL(value) && !config.textures[value]) {
                             let tex = bundle.urlFor(value);
                             config.textures[tex] = { url: tex };
                             uniforms[key] = tex;
@@ -278,6 +280,14 @@ export default SceneLoader = {
     }
 
 };
+
+// URL or global property?
+function isURL (val) {
+    if (val && val.slice(0, 7) === 'global.') {
+        return false;
+    }
+    return true;
+}
 
 // Flatten nested properties for simpler string look-ups
 // e.g. global.background.color -> 'global:background:color'
