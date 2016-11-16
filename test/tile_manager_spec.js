@@ -4,7 +4,6 @@ import Tile from '../src/tile';
 
 let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 let midtownTile = { x: 38603, y: 49255, z: 17 };
-let midtownTileKey = `${midtownTile.x}/${midtownTile.y}/${midtownTile.z}`;
 
 describe('TileManager', function () {
 
@@ -19,7 +18,6 @@ describe('TileManager', function () {
     });
 
     afterEach(() => {
-        // scene.destroy();
         scene = null;
     });
 
@@ -68,7 +66,6 @@ describe('TileManager', function () {
         });
 
         describe('when the tile manager already has the tile', () => {
-            let key = midtownTileKey;
             let tile, tiles;
 
             beforeEach(() => {
@@ -86,7 +83,6 @@ describe('TileManager', function () {
             afterEach(() => {
                 tile_manager.keepTile.restore();
                 tile.build.restore();
-                tile_manager.tiles[key] = undefined;
             });
 
             it('does not build the tile', () => {
