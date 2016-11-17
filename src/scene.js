@@ -979,6 +979,7 @@ export default class Scene {
         this.updating++;
 
         this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
+        SceneLoader.hoistTextures(this.config); // move inline textures into global texture set
         this.style_manager.init();
         this.view.reset();
         this.createLights();

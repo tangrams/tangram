@@ -50,6 +50,10 @@ export class SceneBundle {
     }
 
     urlFor(url) {
+        if (isGlobal(url)) {
+            return url;
+        }
+
         if (URLs.isRelativeURL(url) && this.container) {
             return this.parent.urlFor(this.path_for_parent + url);
         }
@@ -99,6 +103,10 @@ export class ZipSceneBundle extends SceneBundle {
     }
 
     urlFor(url) {
+        if (isGlobal(url)) {
+            return url;
+        }
+
         if (URLs.isRelativeURL(url)) {
             return this.urlForZipFile(URLs.flattenRelativeURL(url));
         }
@@ -186,4 +194,12 @@ export function createSceneBundle(url, path, parent, type = null) {
         return new ZipSceneBundle(url, path, parent);
     }
     return new SceneBundle(url, path, parent);
+}
+
+// References a global property?
+export function isGlobal (val) {
+    if (val && val.slice(0, 7) === 'global.') {
+        return true;
+    }
+    return false;
 }
