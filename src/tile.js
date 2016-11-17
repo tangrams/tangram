@@ -1,7 +1,6 @@
 import log from './utils/log';
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
-import {StyleManager} from './styles/style_manager';
 import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
@@ -271,10 +270,20 @@ export default class Tile {
         tile.debug.rendering = +new Date() - tile.debug.rendering;
 
         // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
-        let tile_styles = StyleManager.stylesForTile(tile.key, styles).map(s => styles[s]);
+        let tile_styles = this.stylesForTile(tile.key, styles).map(s => styles[s]);
         Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.collision ? 'collision' : 'non-collision');
         // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.name); // call for each style
         // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => 'styles'); // all styles in single call (previous behavior)
+    }
+
+    static stylesForTile (tile_key, styles) {
+        let tile_styles = [];
+        for (let s in styles) {
+            if (styles[s].hasDataForTile(tile_key)) {
+                tile_styles.push(s);
+            }
+        }
+        return tile_styles;
     }
 
     // Send groups of styles back to main thread, asynchronously (as they finish building),

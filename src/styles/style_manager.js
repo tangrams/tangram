@@ -366,15 +366,4 @@ export class StyleManager {
         return parents;
     }
 
-    // Get all styles with mesh data for a given tile
-    static stylesForTile (tile_key, styles) {
-        let tile_styles = [];
-        for (let s in styles) {
-            if (styles[s].hasDataForTile(tile_key)) {
-                tile_styles.push(s);
-            }
-        }
-        return tile_styles;
-    }
-
 }
