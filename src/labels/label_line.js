@@ -54,16 +54,15 @@ export default class LabelLine {
             return;
         }
 
+        let upp = layout.units_per_pixel;
+
         let total_line_length = this.line_lengths.reduce(function(prev, next){ return prev + next; });
-        let total_label_length = layout.units_per_pixel * size.reduce(function(prev, next){ return prev + next[0]; }, 0);
+        let total_label_length = upp * size.reduce(function(prev, next){ return prev + next[0]; }, 0);
 
         if (total_label_length > total_line_length){
             this.throw_away = true;
             return;
         }
-
-        // only do first one for now
-        let upp = layout.units_per_pixel;
 
         let label_lengths = size.map(function(size){
             return size[0] * upp;
@@ -77,6 +76,7 @@ export default class LabelLine {
         let anchor_offset = 0;
         let anchor_index = curvaturePlacement(this.lines, total_line_length, this.line_lengths, total_label_length);
         // let anchor_index = 0;
+
         let anchor = Vector.add(
             lines[anchor_index],
             Vector.rot([anchor_offset, 0], this.line_angles_segments[anchor_index])
@@ -84,7 +84,7 @@ export default class LabelLine {
 
         let height = size[0][1];
 
-        let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, lines, this.line_lengths, this.line_angles_segments, label_lengths, upp);
+        let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, anchor_index, anchor_offset, lines, this.line_lengths, this.line_angles_segments, label_lengths, upp);
 
         this.position = anchor;
         this.positions = positions.slice();
@@ -131,7 +131,12 @@ export default class LabelLine {
                     return new_line;
                 }.bind(this))(stops[j]);
 
-                let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, new_lines, line_lengths, this.line_angles_segments, label_lengths, upp);
+                anchor = Vector.add(
+                    new_lines[anchor_index],
+                    Vector.rot([anchor_offset, 0], this.line_angles_segments[anchor_index])
+                );
+
+                let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, anchor_index, anchor_offset, new_lines, line_lengths, this.line_angles_segments, label_lengths, upp);
 
                 angle_info[i].offsets.push(offsets[i][0]);
                 angle_info[i].angle_array.push(angles[i]);
@@ -718,6 +723,9 @@ function curvaturePlacement(line, total_line_length, line_lengths, label_length)
             ahead_index++;
         }
 
+        // if optimal cost, break out
+        if (cost === 0) return line_index;
+
         costs.push(cost);
 
         position += line_lengths[line_index];
@@ -725,7 +733,8 @@ function curvaturePlacement(line, total_line_length, line_lengths, label_length)
     }
 
     // return index with best placement (least curvature)
-    return costs.indexOf(Math.min(costs)) + 1;
+    // TODO: double check off-by-one error
+    return costs.indexOf(Math.min.apply(null, costs));
 }
 
 function getStartingPositions(line, spacing, upp){
@@ -867,40 +876,29 @@ function placeAtAnchor(line_index, line_offset, line_lengths, label_lengths){
     let num_labels = label_lengths.length;
     let num_segments = line_lengths.length;
 
-    let label_index = 0;
-
     let indices = [];
     let offsets = [];
 
-    let line_length = line_lengths[line_index];
-    let label_length = label_lengths[label_index];
+    let label_index = 0;
+    let label_offset = 0;
 
-    while (label_index < num_labels && line_index < num_segments){
-        while (label_index < num_labels && line_offset < line_length){
-            if (line_offset + 0.5 * label_length <= line_length)
-                offsets.push(line_offset + 0.5 * label_length);
-            else {
-                let offset = line_offset - line_length;
-                offsets.push(offset + 0.5 * label_length);
-                indices.push(line_index + 1);
+    // iterate along line
+    while (label_index < num_labels){
+        let label_length = label_lengths[label_index];
 
-                line_offset += label_length;
-                label_index++;
-                label_length = label_lengths[label_index];
-                // skip to next line
-                break;
-            }
-
+        // iterate along labels within the line segment
+        while (label_index < num_labels && label_offset + 0.5 * label_length <= line_offset + line_lengths[line_index]){
+            let offset = label_offset - line_offset + 0.5 * label_length;
+            offsets.push(offset);
             indices.push(line_index);
 
-            line_offset += label_length;
+            label_offset += label_length;
             label_index++;
             label_length = label_lengths[label_index];
         }
 
-        line_offset -= line_length;
+        line_offset += line_lengths[line_index];
         line_index++;
-        line_length = line_lengths[line_index];
     }
 
     return [indices, offsets];
@@ -952,9 +950,9 @@ function getNextPlacement(line_index, line_offset, label_length, line_lengths){
     return [line_index, line_offset];
 }
 
-function placeAtPosition(anchor, line, line_lengths, line_angles_segments, label_lengths, upp){
+function placeAtPosition(anchor, anchor_index, anchor_offset, line, line_lengths, line_angles_segments, label_lengths, upp){
     // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
-    let [indices, relative_offsets] = placeAtAnchor(0, 0, line_lengths, label_lengths);
+    let [indices, relative_offsets] = placeAtAnchor(anchor_index, anchor_offset, line_lengths, label_lengths);
 
     // get 2D positions based on "flat" indices and offsets
     let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets, line_lengths, label_lengths);
