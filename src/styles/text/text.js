@@ -220,8 +220,8 @@ Object.assign(TextStyle, {
 
 });
 
-const TARGET_STRAIGHT = 0.4; // Optimistic target ratio for straight labels (label length / line length)
-const TARGET_KINKED = 0.5; // Optimistic target ratio for kinked labels (label length / line length)
+// const TARGET_STRAIGHT = 0.4; // Optimistic target ratio for straight labels (label length / line length)
+// const TARGET_KINKED = 0.5; // Optimistic target ratio for kinked labels (label length / line length)
 
 // Place labels according to the following strategy:
 // - choose the best straight label that satisfies the optimistic straight cutoff (if any)
@@ -229,49 +229,47 @@ const TARGET_KINKED = 0.5; // Optimistic target ratio for kinked labels (label l
 // - else choose the best straight label that satisfies its internal (less optimistic) cutoff (if any)
 // - else choose the best kinked labels that satisfies its internal (less optimistic) cutoff (if any)
 // - else don't place a label
-function placementStrategy(label){
-    return label;
+// function placementStrategy(label){
+//     let labels_straight = [];
+//     let labels_kinked = [];
+//     let best_straight_fitness = Infinity;
+//     let best_kinked_fitness = Infinity;
 
-    let labels_straight = [];
-    let labels_kinked = [];
-    let best_straight_fitness = Infinity;
-    let best_kinked_fitness = Infinity;
+//     // loop through all labels
+//     while (label && !label.throw_away) {
+//         if (label.kink_index > 0){
+//             // check if articulated label is above lowest cutoff
+//             if (label.fitness < best_kinked_fitness){
+//                 best_kinked_fitness = label.fitness;
+//                 labels_kinked.unshift(label);
+//             }
+//         }
+//         else {
+//             // check if straight label is above lowest straight cutoff
+//             if (label.fitness < best_straight_fitness){
+//                 best_straight_fitness = label.fitness;
+//                 labels_straight.unshift(label);
+//             }
+//         }
 
-    // loop through all labels
-    while (label && !label.throw_away) {
-        if (label.kink_index > 0){
-            // check if articulated label is above lowest cutoff
-            if (label.fitness < best_kinked_fitness){
-                best_kinked_fitness = label.fitness;
-                labels_kinked.unshift(label);
-            }
-        }
-        else {
-            // check if straight label is above lowest straight cutoff
-            if (label.fitness < best_straight_fitness){
-                best_straight_fitness = label.fitness;
-                labels_straight.unshift(label);
-            }
-        }
+//         label = LabelLine.nextLabel(label);
+//     }
 
-        label = LabelLine.nextLabel(label);
-    }
+//     let best_straight = labels_straight[0];
+//     let best_kinked = labels_kinked[0];
 
-    let best_straight = labels_straight[0];
-    let best_kinked = labels_kinked[0];
-
-    if (labels_straight.length && best_straight.fitness < TARGET_STRAIGHT){
-        // return the best straight segment if it is above the stricter straight cutoff
-        return best_straight;
-    }
-    else if (labels_kinked.length && best_kinked.fitness < TARGET_KINKED){
-        // return the best kinked segment if it is above the stricter kinked cutoff
-        return best_kinked;
-    }
-    else {
-        // otherwise return best of what's left (if any)
-        return best_straight || best_kinked;
-    }
-}
+//     if (labels_straight.length && best_straight.fitness < TARGET_STRAIGHT){
+//         // return the best straight segment if it is above the stricter straight cutoff
+//         return best_straight;
+//     }
+//     else if (labels_kinked.length && best_kinked.fitness < TARGET_KINKED){
+//         // return the best kinked segment if it is above the stricter kinked cutoff
+//         return best_kinked;
+//     }
+//     else {
+//         // otherwise return best of what's left (if any)
+//         return best_straight || best_kinked;
+//     }
+// }
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures

@@ -455,7 +455,7 @@ function splitLabelText(text){
     let segments = [];
 
     let space_indices = [];
-    let space_index = 0;
+    // let space_index = 0;
     // let num_bins = 4;
     let num_bins = Math.ceil(text.length / 2);
     // let num_bins = text.length;

@@ -118,7 +118,7 @@ Vector.angleBetween = function(A, B){
         Vector.normalize(A),
         Vector.normalize(B)
     );
-    if (delta > 1) delta = 1; // protect against floating point error
+    if (delta > 1) {delta = 1;} // protect against floating point error
     return Math.acos(delta);
 };
 
@@ -155,7 +155,9 @@ Vector.normalize = function (v) {
     if (v.length === 2) {
         d = v[0]*v[0] + v[1]*v[1];
 
-        if (d === 1) return v;
+        if (d === 1) {
+            return v;
+        }
 
         d = Math.sqrt(d);
 
@@ -166,7 +168,9 @@ Vector.normalize = function (v) {
     } else if (v.length >= 3) {
         d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
 
-        if (d === 1) return v;
+        if (d === 1) {
+            return v;
+        }
 
         d = Math.sqrt(d);
 
