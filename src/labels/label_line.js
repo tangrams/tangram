@@ -86,6 +86,21 @@ export default class LabelLine {
 
         let {positions, offsets, angles, pre_angles, indices} = placeAtPosition.call(this, anchor, anchor_index, anchor_offset, lines, this.line_lengths, this.line_angles_segments, label_lengths, upp);
 
+        for (let i = 0; i < positions.length; i++){
+            let position = positions[i];
+            let offset = [offsets[i][0], 0];
+            let offset_angle = angles[i];
+            let pre_angle = pre_angles[i];
+            let width = widths[i] * upp;
+            let height = this.total_height * upp;
+
+            let obb = getOBB(position, width, height, offset_angle, pre_angle, offset);
+            let aabb = obb.getExtent();
+
+            this.obbs.push(obb);
+            this.aabbs.push(aabb);
+        }
+
         this.position = anchor;
         this.positions = positions.slice();
         this.offsets = offsets.slice();
@@ -152,8 +167,6 @@ export default class LabelLine {
 
         this.angle = angles;
         this.pre_angles = pre_angles;
-        this.obbs = obbs;
-        this.aabbs = aabbs;
         this.angle_info = angle_info;
 
         // First fitting segment
@@ -604,13 +617,13 @@ export default class LabelLine {
 }
 
 // Private method to calculate oriented bounding box
-function getOBB(position, width, height, angle, offset, upp) {
+function getOBB(position, width, height, offsetAngle, angle, offset) {
     let p0, p1;
     // apply offset, x positive, y pointing down
     if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-        offset = Vector.rot(offset, angle);
-        p0 = position[0] + (offset[0] * upp);
-        p1 = position[1] - (offset[1] * upp);
+        offset = Vector.rot(offset, offsetAngle);
+        p0 = position[0] + offset[0];
+        p1 = position[1] - offset[1];
     }
     else {
         p0 = position[0];
