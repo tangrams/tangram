@@ -110,7 +110,7 @@ export default class LabelLine {
             if (stops.length == 3 && stops[2] < .9) stops[2] = .9;
             else stops.push(.9);
 
-            stops = [0, .5, .9];
+            stops = [0, .3, .6, .9];
 
             for (var j = 0; j < stops.length; j++){
                 let line_lengths = (function(stop){
@@ -141,14 +141,6 @@ export default class LabelLine {
                 angle_info[i].offsets.push(offsets[i][0]);
                 angle_info[i].angle_array.push(angles[i]);
                 angle_info[i].pre_angles.push(pre_angles[i]);
-            }
-
-            var length = stops.length;
-            for (var j = length; j < 4; j++){
-                stops.push(1);
-                angle_info[i].offsets.push(angle_info[i].offsets[length-1]);
-                angle_info[i].angle_array.push(angle_info[i].angle_array[length-1]);
-                angle_info[i].pre_angles.push(angle_info[i].pre_angles[length-1]);
             }
 
             stops.shift();
