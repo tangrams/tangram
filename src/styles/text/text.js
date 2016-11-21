@@ -209,10 +209,11 @@ Object.assign(TextStyle, {
         else {
             let label = new LabelLine(size, line, layout);
             if (!label.throw_away){
-                let chosen_label = placementStrategy(label);
-                if (chosen_label){
-                    labels.push(chosen_label);
-                }
+                labels.push(label);
+                // let chosen_label = placementStrategy(label);
+                // if (chosen_label){
+                    // labels.push(chosen_label);
+                // }
             }
         }
     }
