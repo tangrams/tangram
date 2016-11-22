@@ -29,7 +29,6 @@ Object.assign(Points, TextLabels);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
-    selection: true,  // style enables feature selection
     collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
@@ -48,10 +47,9 @@ Object.assign(Points, {
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
-        // Optional feature selection
-        if (this.selection) {
-            attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-        }
+        // Feature selection
+        this.selection = true;
+        attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
 
         this.vertex_layout = new VertexLayout(attribs);
 

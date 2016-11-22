@@ -24,7 +24,6 @@ Object.assign(Polygons, {
     built_in: true,
     vertex_shader_src: shaderSrc_polygonsVertex,
     fragment_shader_src: shaderSrc_polygonsFragment,
-    selection: true, // turn feature selection on
 
     init() {
         Style.init.apply(this, arguments);
@@ -40,10 +39,9 @@ Object.assign(Polygons, {
         this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
         this.defines.TANGRAM_LAYER_ORDER = true;
 
-        // Optional feature selection
-        if (this.selection) {
-            attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-        }
+        // Feature selection
+        this.selection = true;
+        attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
 
         // Optional texture UVs
         if (this.texcoords) {

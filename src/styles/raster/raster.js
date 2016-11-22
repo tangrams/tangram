@@ -9,13 +9,14 @@ Object.assign(RasterStyle, {
     name: 'raster',
     super: Polygons,
     built_in: true,
-    selection: false, // no feature selection by default
 
     init() {
         // Required for raster tiles
         this.raster = this.raster || 'color';
 
         this.super.init.apply(this, arguments);
+
+        this.selection = false; // raster styles can't support feature selection
     },
 
     _preprocess (draw) {
