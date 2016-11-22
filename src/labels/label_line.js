@@ -1,6 +1,7 @@
 import Label from './label';
 import Vector from '../vector';
 import OBB from '../utils/obb';
+import Utils from '../utils/utils';
 
 const PLACEMENT = {
     MID_POINT: 0,
@@ -250,12 +251,15 @@ export default class LabelLine {
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                position = segment[1].slice();
+                position = [
+                    Utils.roundToNearestPixel(segment[1][0]),
+                    Utils.roundToNearestPixel(segment[1][1]),
+                ];
                 break;
             case PLACEMENT.MID_POINT:
                 position = [
-                    0.5 * (segment[0][0] + segment[1][0]),
-                    0.5 * (segment[0][1] + segment[1][1])
+                    Utils.roundToNearestPixel(0.5 * (segment[0][0] + segment[1][0])),
+                    Utils.roundToNearestPixel(0.5 * (segment[0][1] + segment[1][1])),
                 ];
                 break;
         }
@@ -328,7 +332,7 @@ export default class LabelLine {
                     this.aabbs.push(aabb);
 
                     this.offsets[i] = [
-                        this.layout.offset[0] + nudge,
+                        this.layout.offset[0] + Utils.roundToNearestPixel(nudge),
                         this.layout.offset[1]
                     ];
 
@@ -356,7 +360,7 @@ export default class LabelLine {
                     this.aabbs.push(aabb);
 
                     this.offsets[i] = [
-                        this.layout.offset[0] + nudge,
+                        this.layout.offset[0] + Utils.roundToNearestPixel(nudge),
                         this.layout.offset[1]
                     ];
 
@@ -383,7 +387,7 @@ export default class LabelLine {
                     this.aabbs.push(aabb);
 
                     this.offsets[i] = [
-                        this.layout.offset[0] + shift,
+                        this.layout.offset[0] + Utils.roundToNearestPixel(shift),
                         this.layout.offset[1]
                     ];
 

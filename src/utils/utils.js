@@ -178,6 +178,11 @@ Utils.updateDevicePixelRatio = function () {
     return Utils.device_pixel_ratio !== prev;
 };
 
+Utils.roundToNearestPixel = function (value) {
+    let dpr = Utils.device_pixel_ratio;
+    return Math.round(value * dpr) / dpr;
+};
+
 if (Thread.is_main) {
     Utils.updateDevicePixelRatio();
 }
