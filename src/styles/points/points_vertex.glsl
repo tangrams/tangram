@@ -82,5 +82,8 @@ void main() {
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
 
+    // Snap to pixel grid
+    position.xy = (floor(((position.xy * position.w) + 1.) * u_resolution * .5)) / (position.w * u_resolution * .5) - 1.;
+
     gl_Position = position;
 }
