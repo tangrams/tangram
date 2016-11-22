@@ -166,7 +166,7 @@ Object.assign(self, {
 
                     // Warn and continue on data source error
                     if (tile.source_data.error) {
-                        log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error.stack}`);
+                        log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
                     }
 
                     tile.loading = false;
