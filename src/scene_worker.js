@@ -205,7 +205,7 @@ Object.assign(self, {
             return self.sources.tiles[tile.source].load(tile);
         }
         else {
-            tile.source_data = { error: `Data source '${tile.source}' not found` };
+            tile.source_data = {};
             return Promise.resolve(tile);
         }
     },
