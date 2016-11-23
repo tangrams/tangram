@@ -434,7 +434,7 @@ export default class Scene {
         }
 
         // Redraw every frame if animating
-        if (this.animated === true) {
+        if (this.animated === true || this.view.isAnimating()) {
             this.dirty = true;
         }
 

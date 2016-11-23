@@ -5,6 +5,8 @@ import Utils from './utils/utils';
 import subscribeMixin from './utils/subscribe';
 import log from './utils/log';
 
+export const VIEW_PAN_SNAP_TIME = 0.5;
+
 export default class View {
 
     constructor (scene, options) {
@@ -19,6 +21,8 @@ export default class View {
         this.meters_per_pixel = null;
 
         this.panning = false;
+        this.panning_stop_at = 0;
+        this.pan_snap_timer = 0;
         this.zooming = false;
         this.zoom_direction = 0;
 
@@ -86,6 +90,7 @@ export default class View {
     // Update method called once per frame
     update () {
         this.camera.update();
+        this.pan_snap_timer = ((+new Date()) - this.panning_stop_at) / 1000;
     }
 
     // Set logical pixel size of viewport
@@ -167,6 +172,13 @@ export default class View {
     // For a given tile zoom, what style zoom should be used?
     styleZoom (tile_zoom) {
         return this.baseZoom(tile_zoom) + this.tile_simplification_level;
+    }
+
+    setPanning (panning) {
+        this.panning = panning;
+        if (!this.panning) {
+            this.panning_stop_at = (+new Date());
+        }
     }
 
     ready () {
@@ -312,8 +324,15 @@ export default class View {
         program.uniform('3fv', 'u_map_position', [this.center.meters.x, this.center.meters.y, this.zoom]);
         program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
         program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
+        program.uniform('1f', 'u_view_pan_snap_timer', this.pan_snap_timer);
+        program.uniform('1i', 'u_view_panning', this.panning);
 
         this.camera.setupProgram(program);
+    }
+
+    // View requires some animation, such as after panning stops
+    isAnimating () {
+        return (this.pan_snap_timer <= VIEW_PAN_SNAP_TIME);
     }
 
 }

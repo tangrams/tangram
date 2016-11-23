@@ -117,14 +117,15 @@ function extendLeaflet(options) {
                 map.on('zoomstart', this.hooks.zoomstart);
 
                 this.hooks.dragstart = () => {
-                    this.scene.view.panning = true;
+                    this.scene.view.setPanning(true);
                 };
                 map.on('dragstart', this.hooks.dragstart);
 
-                this.hooks.dragend = () => {
-                    this.scene.view.panning = false;
+                this.hooks.moveend = () => {
+                    this.scene.view.setPanning(false);
+                    this.scene.requestRedraw();
                 };
-                map.on('dragend', this.hooks.dragend);
+                map.on('moveend', this.hooks.moveend);
 
                 // Force leaflet zoom animations off
                 map._zoomAnimated = false;
@@ -174,7 +175,7 @@ function extendLeaflet(options) {
                 map.off('move', this.hooks.move);
                 map.off('zoomstart', this.hooks.zoomstart);
                 map.off('dragstart', this.hooks.dragstart);
-                map.off('dragend', this.hooks.dragend);
+                map.off('moveend', this.hooks.moveend);
                 map.off('click', this.hooks.click);
                 map.off('mousemove', this.hooks.mousemove);
                 map.off('mouseout', this.hooks.mouseout);

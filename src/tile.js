@@ -545,7 +545,7 @@ export default class Tile {
 
         // Fade in labels according to proxy status, avoiding "flickering" where
         // labels quickly go from invisible back to visible
-        program.uniform('1i', 'u_fade_in', this.fade_in && this.proxied_as !== 'child');
+        program.uniform('1i', 'u_tile_fade_in', this.fade_in && this.proxied_as !== 'child');
     }
 
     // Slice a subset of keys out of a tile
