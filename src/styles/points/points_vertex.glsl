@@ -89,7 +89,11 @@ void main() {
         vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);
 
         // Animate the snapping to smooth the transition and make it less noticeable
-        position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));
+        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE
+            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));
+        #else
+            position.xy = position_snap;
+        #endif
     }
 
     gl_Position = position;

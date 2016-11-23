@@ -88,7 +88,9 @@ Object.assign(Points, {
         }
 
         // Snap points to pixel grid after panning stop
-        this.defines.TANGRAM_VIEW_PAN_SNAP_RATE = 1 / VIEW_PAN_SNAP_TIME; // inverse time in seconds
+        if (debugSettings.suppress_label_snap_animation !== true) {
+            this.defines.TANGRAM_VIEW_PAN_SNAP_RATE = 1 / VIEW_PAN_SNAP_TIME; // inverse time in seconds
+        }
 
         this.collision_group_points = this.name+'-points';
         this.collision_group_text = this.name+'-text';
