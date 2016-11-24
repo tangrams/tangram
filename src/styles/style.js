@@ -563,7 +563,8 @@ export var Style = {
         add: { depth_test: true, depth_write: false },
         multiply: { depth_test: true, depth_write: false },
         inlay: { depth_test: true, depth_write: false },
-        overlay: { depth_test: false, depth_write: false }
+        overlay: { depth_test: false, depth_write: false },
+        bufinlay: { depth_test: true, depth_write: true }
     },
 
     // Default sort order for blend modes
