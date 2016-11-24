@@ -106,50 +106,27 @@ export default class Light {
                 vec4 color = vec4(0.0);
 
                 // Keep material alpha channel when alpha blending is on
-                #if !defined(TANGRAM_BLEND_OPAQUE)
-                    #if defined(TANGRAM_BLEND_BUFINLAY)
-                        color.a = _color.a; // use vertex color alpha
+                #if !defined(TANGRAM_BLEND_OPAQUE) && !defined(TANGRAM_BLEND_DEPTHINLAY)
 
-                        #ifdef TANGRAM_MATERIAL_EMISSION
-                           color.rgb = material.emission.rgb * material.emission.a;
-                        #endif
+                    #ifdef TANGRAM_MATERIAL_EMISSION
+                        color = material.emission;
+                    #endif
 
-                        #ifdef TANGRAM_MATERIAL_AMBIENT
-                            color.rgb += light_accumulator_ambient.rgb * _color.rgb * material.ambient.rgb * material.ambient.a;
-                        #else
-                            #ifdef TANGRAM_MATERIAL_DIFFUSE
-                                color.rgb += light_accumulator_ambient.rgb * _color.rgb * material.diffuse.rgb * material.diffuse.a;
-                            #endif
-                        #endif
-    
-                        #ifdef TANGRAM_MATERIAL_DIFFUSE
-                            color.rgb += light_accumulator_diffuse.rgb * _color.rgb * material.diffuse.rgb * material.diffuse.a;
-                        #endif
-    
-                        #ifdef TANGRAM_MATERIAL_SPECULAR
-                            color.rgb += light_accumulator_specular.rgb * material.specular.rgb * material.specular.a;
-                        #endif
+                    #ifdef TANGRAM_MATERIAL_AMBIENT
+                        color += light_accumulator_ambient * _color * material.ambient;
                     #else
-                        #ifdef TANGRAM_MATERIAL_EMISSION
-                            color = material.emission;
-                        #endif
-    
-                        #ifdef TANGRAM_MATERIAL_AMBIENT
-                            color += light_accumulator_ambient * _color * material.ambient;
-                        #else
-                            #ifdef TANGRAM_MATERIAL_DIFFUSE
-                                color += light_accumulator_ambient * _color * material.diffuse;
-                            #endif
-                        #endif
-
                         #ifdef TANGRAM_MATERIAL_DIFFUSE
-                            color += light_accumulator_diffuse * _color * material.diffuse;
-                        #endif
-
-                        #ifdef TANGRAM_MATERIAL_SPECULAR
-                            color += light_accumulator_specular * material.specular;
+                            color += light_accumulator_ambient * _color * material.diffuse;
                         #endif
                     #endif
+                    #ifdef TANGRAM_MATERIAL_DIFFUSE
+                        color += light_accumulator_diffuse * _color * material.diffuse;
+                    #endif
+
+                    #ifdef TANGRAM_MATERIAL_SPECULAR
+                        color += light_accumulator_specular * material.specular;
+                    #endif
+
                 // Multiply material alpha channel into material RGB when alpha blending is off
                 #else
                     color.a = _color.a; // use vertex color alpha
