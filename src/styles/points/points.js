@@ -652,7 +652,7 @@ Object.assign(Points, {
         for (var i = 0; i < label.num_segments; i++){
             let angle = label.angle[i];
             let size = style.size[i];
-            let offset = label.offsets[i];
+            let offset = label.offsets[i] || [0,0];
             let texcoord = style.texcoords[i];
             let position = label.position;
             let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
