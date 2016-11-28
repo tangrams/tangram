@@ -251,15 +251,12 @@ export default class LabelLine {
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                position = [
-                    Utils.roundToNearestPixel(segment[1][0]),
-                    Utils.roundToNearestPixel(segment[1][1]),
-                ];
+                position = segment[1].slice();
                 break;
             case PLACEMENT.MID_POINT:
                 position = [
-                    Utils.roundToNearestPixel(0.5 * (segment[0][0] + segment[1][0])),
-                    Utils.roundToNearestPixel(0.5 * (segment[0][1] + segment[1][1])),
+                    0.5 * (segment[0][0] + segment[1][0]),
+                    0.5 * (segment[0][1] + segment[1][1])
                 ];
                 break;
         }

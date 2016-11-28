@@ -2,14 +2,13 @@ import Label from './label';
 import PointAnchor from './point_anchor';
 import Geo from '../geo';
 import OBB from '../utils/obb';
-import Utils from '../utils/utils';
 import {StyleParser} from '../styles/style_parser';
 
 export default class LabelPoint extends Label {
 
     constructor (position, size, layout) {
         super(size, layout);
-        this.position = [Utils.roundToNearestPixel(position[0]), Utils.roundToNearestPixel(position[1])];
+        this.position = [position[0], position[1]];
         this.parent = this.layout.parent;
         this.update();
 
@@ -51,8 +50,8 @@ export default class LabelPoint extends Label {
     }
 
     updateBBoxes () {
-        let width = (this.size[0] + this.layout.buffer[0] * 2) * this.layout.units_per_pixel;
-        let height = (this.size[1] + this.layout.buffer[1] * 2) * this.layout.units_per_pixel;
+        let width = (this.size[0] + this.layout.buffer[0] * 2) * this.layout.units_per_pixel * Label.epsilon;
+        let height = (this.size[1] + this.layout.buffer[1] * 2) * this.layout.units_per_pixel * Label.epsilon;
 
         // fudge width value as text may overflow bounding box if it has italic, bold, etc style
         if (this.layout.italic){
