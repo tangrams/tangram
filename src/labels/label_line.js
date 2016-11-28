@@ -29,20 +29,14 @@ export default class LabelLine {
         this.fitness = 0; // measure of quality of fit
 
         // flip line?
-        if (Vector.perp(lines[0], lines[1])[1] > 0){
-            if (Vector.perp(lines[lines.length - 1], lines[lines.length - 2])[1] < 0){
-                lines = lines.slice().reverse();
-                this.lines = lines;
-            }
-            else {
-                this.throw_away = true;
-                return;
-            }
+        lines = flipLine(lines);
+        if (!lines){
+            this.throw_away = true;
+            return;
         }
 
-        this.line_lengths = getLineLengths(lines);
-        this.line_angles = getLineAngles(lines);
-        this.line_angles_segments = getLineAnglesForSegments(lines);
+        let line_lengths = getLineLengths(lines);
+        let line_angles_segments = getLineAnglesForSegments(lines);
         this.pre_angles = [];
         this.positions = [];
 
@@ -56,72 +50,30 @@ export default class LabelLine {
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
         this.segment_index = layout.segment_index || layout.segment_start || 0;
-        this.segment_max = layout.segment_end || this.lines.length;
-
-        let spacing = 100;
-        let {label_positions, label_indices} = getStartingPositions(lines, spacing + this.total_length, layout.units_per_pixel);
-        label_indices = null;
-
-        if (label_positions.length === 0 || size.length === 0 || size.length < 4){
-            this.throw_away = true;
-            return;
-        }
+        this.segment_max = layout.segment_end || lines.length;
 
         let upp = layout.units_per_pixel;
 
-        let total_line_length = this.line_lengths.reduce(function(prev, next){ return prev + next; });
-        let total_label_length = upp * size.reduce(function(prev, next){ return prev + next[0]; }, 0);
+        let label_lengths = size.map(function(size){ return size[0] * upp; });
+
+        let total_line_length = line_lengths.reduce(function(prev, next){ return prev + next; }, 0);
+        let total_label_length = label_lengths.reduce(function(prev, next){ return prev + next; }, 0);
 
         if (total_label_length > total_line_length){
             this.throw_away = true;
             return;
         }
 
-        let label_lengths = size.map(function(size){
-            return size[0] * upp;
-        });
-
-        let widths = size.map(function(size){
-            return size[0];
-        });
-
         // starting position
-        let anchor_offset = 0;
-        let anchor_index = curvaturePlacement(this.lines, total_line_length, this.line_lengths, total_label_length);
-        // let anchor_index = 0;
-
-        let anchor = Vector.add(
-            lines[anchor_index],
-            Vector.rot([anchor_offset, 0], this.line_angles_segments[anchor_index])
-        );
-
-        let {positions, offsets, angles, pre_angles} = placeAtPosition.call(this, anchor, anchor_index, anchor_offset, lines, this.line_lengths, this.line_angles_segments, label_lengths, upp);
-
-        let height = size[0][1] * upp;
-        for (let i = 0; i < positions.length; i++){
-            let position = positions[i];
-            let offset = [offsets[i][0], 0];
-            let offset_angle = angles[i];
-            let pre_angle = pre_angles[i];
-            let width = widths[i] * upp;
-
-            let obb = getOBB(position, width, height, offset_angle, pre_angle, offset);
-            let aabb = obb.getExtent();
-
-            this.obbs.push(obb);
-            this.aabbs.push(aabb);
-        }
-
+        let anchor_index = curvaturePlacement(lines, total_line_length, line_lengths, total_label_length);
+        let anchor = lines[anchor_index];
         this.position = anchor;
-        this.positions = positions.slice();
-        this.offsets = offsets.slice();
-        this.angle = angles.slice();
-        this.pre_angles = pre_angles.slice();
 
-        let label_stops = getAngleRanges(this.line_lengths, label_lengths);
+        let stops = [0, 0.3, 0.6, 0.9];
+        let height = this.total_height * upp;
 
         let angle_info = [];
-        for (var i = 0; i < label_stops.length; i++){
+        for (var i = 0; i < label_lengths.length; i++){
             angle_info[i] = {
                 offsets : [],
                 angle_array : [],
@@ -129,59 +81,45 @@ export default class LabelLine {
                 stop_array : []
             };
 
-            let stops = label_stops[i].slice();
-            stops.unshift(0);
-            if (stops.length === 3 && stops[2] < 0.9) {
-                stops[2] = 0.9;
-            }
-            else {
-                stops.push(0.9);
-            }
-
-            stops = [0, 0.3, 0.6, 0.9];
-
             for (var j = 0; j < stops.length; j++){
-                let line_lengths = (function(stop){
-                    return this.line_lengths.map(function(length){
-                        return (1 + stop) * length;
-                    });
-                }.bind(this))(stops[j]);
+                let stop = stops[j];
 
-                let new_lines = (function(stop){
-                    var new_line = [anchor];
-                    lines.forEach(function(pt, i){
-                        if (i === lines.length - 1) {
-                            return;
-                        }
-                        var v = Vector.sub(lines[i+1], lines[i]);
-                        var delta = Vector.mult(v, 1 + stop);
-                        new_line.push(Vector.add(new_line[i], delta));
-                    });
-                    return new_line;
-                }.bind(this))(stops[j]);
+                let [new_lines, line_lengths] = scaleLine(stop, lines);
+                anchor = new_lines[anchor_index];
 
-                anchor = Vector.add(
-                    new_lines[anchor_index],
-                    Vector.rot([anchor_offset, 0], this.line_angles_segments[anchor_index])
-                );
+                let {positions, offsets, angles, pre_angles} = placeAtPosition(anchor, anchor_index, new_lines, line_lengths, line_angles_segments, label_lengths, upp);
 
-                let {positions, offsets, angles, pre_angles} = placeAtPosition.call(this, anchor, anchor_index, anchor_offset, new_lines, line_lengths, this.line_angles_segments, label_lengths, upp);
-                positions = null;
+                if (j === 0){
+                    for (let i = 0; i < positions.length; i++){
+                        let position = positions[i];
+                        let offset = [offsets[i][0], 0];
+                        let offset_angle = angles[i];
+                        let pre_angle = pre_angles[i];
+                        let width = label_lengths[i];
+
+                        let obb = getOBB(position, width, height, offset_angle, pre_angle, offset);
+                        let aabb = obb.getExtent();
+
+                        this.obbs.push(obb);
+                        this.aabbs.push(aabb);
+
+                        this.angle = angles;
+                        this.pre_angles = pre_angles;
+                    }
+                }
+                else {
+                    positions = null;
+                }
 
                 angle_info[i].offsets.push(offsets[i][0]);
                 angle_info[i].angle_array.push(angles[i]);
                 angle_info[i].pre_angles.push(pre_angles[i]);
             }
 
-            stops.shift();
-
-            angle_info[i].stop_array = stops;
+            angle_info[i].stop_array = [0.3, 0.6, 0.9];
         }
 
-        // smooth(angle_info);
-
-        this.angle = angles;
-        this.pre_angles = pre_angles;
+        smooth(angle_info);
         this.angle_info = angle_info;
 
         // First fitting segment
@@ -362,8 +300,8 @@ export default class LabelLine {
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                let theta1 = getAngleFromSegment(segment[0], segment[1]);
-                let theta2 = getAngleFromSegment(segment[1], segment[2]);
+                let theta1 = getTextAngleForSegment(segment[0], segment[1]);
+                let theta2 = getTextAngleForSegment(segment[1], segment[2]);
 
                 let p0p1 = Vector.sub(segment[0], segment[1]);
                 let p1p2 = Vector.sub(segment[1], segment[2]);
@@ -382,7 +320,7 @@ export default class LabelLine {
                 }
                 break;
             case PLACEMENT.MID_POINT:
-                let theta = getAngleFromSegment(segment[0], segment[1]);
+                let theta = getTextAngleForSegment(segment[0], segment[1]);
                 for (let i = 0; i < this.num_segments; i++){
                     angles.push(theta);
                 }
@@ -622,6 +560,32 @@ export default class LabelLine {
     }
 }
 
+// places label at length offset from index. Finds next index and length offset
+// function getNextPlacement(line_index, line_offset, label_length, line_lengths){
+//     let line_length = line_lengths[line_index];
+//     let distance = label_length;
+//     line_offset += distance;
+
+//     if (line_offset > line_length && line_index < line_lengths.length - 1){
+//         line_offset = line_offset - line_length;
+//         line_index = line_index + 1;
+//     }
+
+//     return [line_index, line_offset];
+// }
+
+function flipLine(lines){
+    if (Vector.perp(lines[0], lines[1])[1] > 0){
+        if (Vector.perp(lines[lines.length - 1], lines[lines.length - 2])[1] < 0){
+            lines = lines.slice().reverse();
+        }
+        else {
+            return false;
+        }
+    }
+    return lines;
+}
+
 // Private method to calculate oriented bounding box
 function getOBB(position, width, height, offsetAngle, angle, offset) {
     let p0, p1;
@@ -660,37 +624,36 @@ function norm(p, q){
     return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
 }
 
-// function smooth(angle_info){
-//     for (let i = 0; i < angle_info.length; i++){
-//         let info = angle_info[i];
-//         let angles = info.angle_array;
-//         let pre_angles = info.pre_angles;
+function smooth(angle_info){
+    for (let i = 0; i < angle_info.length; i++){
+        let info = angle_info[i];
+        let angles = info.angle_array;
+        let pre_angles = info.pre_angles;
 
-//         let smooth_angles = [];
-//         let smooth_pre_angles = [];
+        let smooth_angles = [];
+        let smooth_pre_angles = [];
+        let total_angle = angles.map(function(angle, i){
+            return angle + pre_angles[i];
+        });
+        let smooth_total_angle = [];
 
-//         for (let j = 0; j < angles.length; j++){
-//             if (j === 0){
-//                 // smooth_angles[j] = angles[0];
-//                 // smooth_pre_angles[j] = pre_angles[0];
-//                 smooth_angles[j] = 1/3 * (2 * angles[0] + angles[1]);
-//                 smooth_pre_angles[j] = 1/3 * (2 * pre_angles[0] + pre_angles[1]);
-//             }
-//             else if (j === angles.length - 1){
-//                 // smooth_angles[j] = angles[j];
-//                 // smooth_pre_angles[j] = pre_angles[j];
-//                 smooth_angles[j] = 1/3 * (2 * angles[j] + angles[j - 1]);
-//                 smooth_pre_angles[j] = 1/3 * (2 * pre_angles[j] + pre_angles[j - 1]);
-//             }
-//             else {
-//                 smooth_angles[j] = 1/4 * (2 * angles[j] + angles[j - 1] + angles[j + 1]);
-//                 smooth_pre_angles[j] = 1/4 * (2 * pre_angles[j] + pre_angles[j - 1] + pre_angles[j + 1]);
-//             }
-//         }
-//         info.angle_array = smooth_angles;
-//         info.pre_angles = smooth_pre_angles;
-//     }
-// }
+        for (let j = 0; j < angles.length; j++){
+            if (j === 0){
+                smooth_total_angle[j] = 1/3 * (2 * total_angle[0] + total_angle[1]);
+            }
+            else if (j === angles.length - 1){
+                smooth_total_angle[j] = 1/3 * (2 * total_angle[j] + total_angle[j - 1]);
+            }
+            else {
+                smooth_total_angle[j] = 1/4 * (2 * total_angle[j] + total_angle[j - 1] + total_angle[j + 1]);
+            }
+
+            smooth_pre_angles[j] = total_angle[j] - angles[j];
+        }
+        info.angle_array = angles;
+        info.pre_angles = smooth_pre_angles;
+    }
+}
 
 function curvaturePlacement(line, total_line_length, line_lengths, label_length){
     var curvatures = []; // array of curvature values per line vertex
@@ -752,70 +715,71 @@ function curvaturePlacement(line, total_line_length, line_lengths, label_length)
     return costs.indexOf(Math.min.apply(null, costs));
 }
 
-function getStartingPositions(line, spacing, upp){
-    let length = getLineLength(line);
-    let num_labels = Math.floor(length / spacing);
-    let remainder = length - (num_labels - 1) * spacing;
+function scaleLine(scale, line){
+    var new_line = [line[0]];
+    var line_lengths = [];
 
-    let label_positions = [];
-    let label_indices = [];
-
-    let distance = 0.5 * remainder;
-    for (let i = 0; i < num_labels; i++){
-        let {position, index} = interpolateLine(line, distance);
-
-        label_positions.push(position);
-        label_indices.push(index);
-        distance += spacing;
-    }
-
-    return {label_positions, label_indices};
-}
-
-function interpolateLine(line, distance){
-    let sum = 0;
-    for (let i = 0; i < line.length - 1; i++){
-        let p = line[i];
-        let q = line[i+1];
-        let segment_length = norm(p, q);
-
-        sum += segment_length;
-
-        if (sum > distance){
-            let overflow = sum - distance;
-            let position = interpolateSegment(p, q, overflow);
-            let index = i; // super weird
-            return {position, index};
+    line.forEach(function(pt, i){
+        if (i === line.length - 1) {
+            return;
         }
+        var v = Vector.sub(line[i+1], line[i]);
+        var delta = Vector.mult(v, 1 + scale);
+
+        new_line.push(Vector.add(new_line[i], delta));
+        line_lengths.push(Vector.length(delta));
+    });
+
+    return [new_line, line_lengths];
+}
+
+function placeAtPosition(anchor, anchor_index, line, line_lengths, line_angles_segments, label_lengths, upp){
+    // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
+    let [indices, relative_offsets] = getIndicesAndOffsets(anchor_index, line_lengths, label_lengths);
+
+    // get 2D positions based on "flat" indices and offsets
+    let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
+
+    // get 2d offsets, angles and pre_angles relative to anchor
+    let [offsets2d, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
+
+    let offsets = offsets2d.map(function(offset){
+        return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
+    });
+
+    return {positions, offsets, angles, pre_angles};
+}
+
+function getIndicesAndOffsets(line_index, line_lengths, label_lengths){
+    let num_labels = label_lengths.length;
+
+    let indices = [];
+    let offsets = [];
+
+    let label_index = 0;
+    let label_offset = 0;
+    let line_offset = 0;
+
+    // iterate along line
+    while (label_index < num_labels){
+        let label_length = label_lengths[label_index];
+
+        // iterate along labels within the line segment
+        while (label_index < num_labels && label_offset + 0.5 * label_length <= line_offset + line_lengths[line_index]){
+            let offset = label_offset - line_offset + 0.5 * label_length;
+            offsets.push(offset);
+            indices.push(line_index);
+
+            label_offset += label_length;
+            label_index++;
+            label_length = label_lengths[label_index];
+        }
+
+        line_offset += line_lengths[line_index];
+        line_index++;
     }
-}
 
-// function interpolateAngle(index, ratio){
-//     if (this.line_angles[index + 1]){
-//         let angle1 = this.line_angles[index];
-//         let angle2 = this.line_angles[index + 1];
-//         return interpolate1d(angle1, angle2, ratio);
-//     }
-//     else {
-//         return this.line_angles[index];
-//     }
-// }
-
-function interpolateSegment(p, q, distance){
-    let length = norm(p, q);
-    let ratio = distance / length;
-    return interpolate2d(p, q, ratio);
-}
-
-function interpolate1d(x, y, t){
-     return t * x + (1 - t) * y;
-}
-
-function interpolate2d(x, y, t){
-     return [
-         interpolate1d(x[0], y[0], t),
-         interpolate1d(x[1], y[1], t)
-     ];
+    return [indices, offsets];
 }
 
 function getPositionsFromIndicesAndOffsets(line, indices, offsets){
@@ -847,17 +811,7 @@ function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
         let offset2d = Vector.sub(position, anchor);
         let offset2d_angle = -Vector.angle(offset2d);
 
-        let angle;
-
-        // if (index + 2 < line.length && offset + 0.5 * label_length > line_length){
-        //     let angle1 = getAngleFromSegment(line[index], line[index + 1]);
-        //     let angle2 = getAngleFromSegment(line[index + 1], line[index + 2]);
-        //     let weight = (line_length - (offset + 0.5 * label_length)) / label_length;
-        //     angle = weight * angle1 + (1 - weight) * angle2;
-        // }
-        // else
-            angle = getAngleFromSegment(line[index], line[index + 1]);
-
+        let angle = getTextAngleForSegment(line[index], line[index + 1]);
         let pre_angle = angle - offset2d_angle;
 
         if (i > 0){
@@ -889,101 +843,6 @@ function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
     return [offsets2d, angles, pre_angles];
 }
 
-function placeAtAnchor(line_index, line_offset, line_lengths, label_lengths){
-    let num_labels = label_lengths.length;
-
-    let indices = [];
-    let offsets = [];
-
-    let label_index = 0;
-    let label_offset = 0;
-
-    // iterate along line
-    while (label_index < num_labels){
-        let label_length = label_lengths[label_index];
-
-        // iterate along labels within the line segment
-        while (label_index < num_labels && label_offset + 0.5 * label_length <= line_offset + line_lengths[line_index]){
-            let offset = label_offset - line_offset + 0.5 * label_length;
-            offsets.push(offset);
-            indices.push(line_index);
-
-            label_offset += label_length;
-            label_index++;
-            label_length = label_lengths[label_index];
-        }
-
-        line_offset += line_lengths[line_index];
-        line_index++;
-    }
-
-    return [indices, offsets];
-}
-
-function getAngleRanges(line_lengths, label_lengths){
-    var angle_ranges = [[]];
-
-    var cumulate_label_lengths = [];
-    label_lengths.reduce(function(a,b,i) { return cumulate_label_lengths[i] = a+b; }, 0);
-
-    var cumulate_line_lengths = [];
-    line_lengths.reduce(function(a,b,i) { return cumulate_line_lengths[i] = a+b; }, 0);
-
-    for (var label_index = 1; label_index < label_lengths.length; label_index++){
-        let line_index = 0;
-        let prev_cumulate_label_length = cumulate_label_lengths[label_index - 1];
-        let cumulate_line_length = cumulate_line_lengths[line_index];
-        let stops = [];
-
-        while (prev_cumulate_label_length > cumulate_line_length){
-            let stop = prev_cumulate_label_length / cumulate_line_length - 1;
-            if (stop <= 1) {
-                stops.unshift(stop);
-            }
-            if (stops.length === 3) {
-                break;
-            }
-            line_index++;
-            cumulate_line_length = cumulate_line_lengths[line_index];
-        }
-
-        angle_ranges[label_index] = stops;
-    }
-
-    return angle_ranges;
-}
-
-// places label at length offset from index. Finds next index and length offset
-// function getNextPlacement(line_index, line_offset, label_length, line_lengths){
-//     let line_length = line_lengths[line_index];
-//     let distance = label_length;
-//     line_offset += distance;
-
-//     if (line_offset > line_length && line_index < line_lengths.length - 1){
-//         line_offset = line_offset - line_length;
-//         line_index = line_index + 1;
-//     }
-
-//     return [line_index, line_offset];
-// }
-
-function placeAtPosition(anchor, anchor_index, anchor_offset, line, line_lengths, line_angles_segments, label_lengths, upp){
-    // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
-    let [indices, relative_offsets] = placeAtAnchor(anchor_index, anchor_offset, line_lengths, label_lengths);
-
-    // get 2D positions based on "flat" indices and offsets
-    let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
-
-    // get 2d offsets, angles and pre_angles relative to anchor
-    let [offsets2d, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
-
-    let offsets = offsets2d.map(function(offset){
-        return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
-    });
-
-    return {positions, offsets, angles, pre_angles};
-}
-
 // function createBoundingBoxes(positions, angles, widths, height){
 //     let obbs = [];
 //     let aabbs = [];
@@ -996,17 +855,6 @@ function placeAtPosition(anchor, anchor_index, anchor_offset, line, line_lengths
 //     }
 //     return {obbs, aabbs};
 // }
-
-function getLineAngles(line){
-    let angles = [];
-    for (let i = 0; i < line.length - 1; i++){
-        let p = line[i];
-        let q = line[i+1];
-        let angle = getAngleFromSegment(p, q);
-        angles.push(angle);
-    }
-    return angles;
-}
 
 function getLineAnglesForSegments(line){
     let angles = [];
@@ -1024,25 +872,8 @@ function getAngleForSegment(p, q){
     return Vector.angle(pq);
 }
 
-// Private method to calculate the angle of a segment.
-// Transforms the angle to lie within the range [0, PI/2] and [3*PI/2, 2*PI] (1st or 4th quadrants)
-// as other ranges produce "upside down" labels
-function getAngleFromSegment(pt1, pt2) {
-    let p1p2 = Vector.sub(pt1, pt2);
-    let theta = Math.atan2(p1p2[0], p1p2[1]) + Math.PI/2;
-    // let theta = Math.PI - Math.atan2(p1p2[1], p1p2[0]);
-
-    // if (theta > Math.PI/2) {
-    //     // If in 2nd quadrant, move to 4th quadrant
-    //     theta += Math.PI;
-    //     theta %= 2 * Math.PI;
-    // }
-    // else if (theta < 0) {
-    //     // If in 4th quadrant, make a positive angle
-    //     theta += 2 * Math.PI;
-    // }
-
-    return theta;
+function getTextAngleForSegment(pt1, pt2) {
+    return -getAngleForSegment(pt1, pt2);
 }
 
 function getLineLengths(line){
