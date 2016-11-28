@@ -28,6 +28,18 @@ export default class LabelLine {
         this.spread_factor = 1; // spaces out adjacent words to prevent overlap
         this.fitness = 0; // measure of quality of fit
 
+        // flip line?
+        if (Vector.perp(lines[0], lines[1])[1] > 0){
+            if (Vector.perp(lines[lines.length - 1], lines[lines.length - 2])[1] < 0){
+                lines = lines.slice().reverse();
+                this.lines = lines;
+            }
+            else {
+                this.throw_away = true;
+                return;
+            }
+        }
+
         this.line_lengths = getLineLengths(lines);
         this.line_angles = getLineAngles(lines);
         this.line_angles_segments = getLineAnglesForSegments(lines);
@@ -1019,7 +1031,6 @@ function getAngleFromSegment(pt1, pt2) {
     let p1p2 = Vector.sub(pt1, pt2);
     let theta = Math.atan2(p1p2[0], p1p2[1]) + Math.PI/2;
     // let theta = Math.PI - Math.atan2(p1p2[1], p1p2[0]);
-    // console.log(theta, Math.PI - Math.atan2(p1p2[1], p1p2[0]))
 
     // if (theta > Math.PI/2) {
     //     // If in 2nd quadrant, move to 4th quadrant
