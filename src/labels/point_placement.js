@@ -120,11 +120,11 @@ function interpolateLine(line, distance, min_length, options){
         let q = line[i+1];
 
         const length = norm(p, q);
-        sum += length;
-
         if (length <= min_length) {
             continue;
         }
+
+        sum += length;
 
         if (sum > distance){
             position = interpolateSegment(p, q, sum - distance);
