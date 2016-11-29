@@ -13,6 +13,7 @@ import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import placePointsOnLine from '../../labels/point_placement';
 import {TextLabels} from '../text/text_labels';
+import {VIEW_PAN_SNAP_TIME} from '../../view';
 import debugSettings from '../../utils/debug_settings';
 
 let fs = require('fs');
@@ -82,6 +83,11 @@ Object.assign(Points, {
         else {
             this.fade_in_time = 0.15; // time in seconds
             this.defines.TANGRAM_FADE_IN_RATE = 1 / this.fade_in_time;
+        }
+
+        // Snap points to pixel grid after panning stop
+        if (debugSettings.suppress_label_snap_animation !== true) {
+            this.defines.TANGRAM_VIEW_PAN_SNAP_RATE = 1 / VIEW_PAN_SNAP_TIME; // inverse time in seconds
         }
 
         this.collision_group_points = this.name+'-points';

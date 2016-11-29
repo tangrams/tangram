@@ -462,7 +462,7 @@ class MultiLine {
         this.lines = [];
 
         this.ellipsis = '...';
-        this.ellipsis_width = context.measureText(this.ellipsis).width;
+        this.ellipsis_width = Math.ceil(context.measureText(this.ellipsis).width);
 
         this.max_lines = max_lines;
         this.text_wrap = text_wrap;
@@ -600,7 +600,7 @@ class Line {
         this.chars = 0;
         this.text = '';
 
-        this.height = height;
+        this.height = Math.ceil(height);
         this.text_wrap = text_wrap;
     }
 

@@ -6,7 +6,8 @@ uniform float u_tile_proxy_depth;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 uniform float u_visible_time;
-uniform bool u_fade_in;
+uniform bool u_view_panning;
+uniform float u_view_pan_snap_timer;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
@@ -81,6 +82,19 @@ void main() {
     // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
+
+    // Snap to pixel grid - only applied to fully upright sprites/labels, while panning is not active
+    if (!u_view_panning && abs(theta) < TANGRAM_EPSILON) {
+        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);
+        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);
+
+        // Animate the snapping to smooth the transition and make it less noticeable
+        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE
+            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));
+        #else
+            position.xy = position_snap;
+        #endif
+    }
 
     gl_Position = position;
 }

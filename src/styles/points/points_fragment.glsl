@@ -5,7 +5,7 @@ uniform vec4 u_tile_origin;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 uniform float u_visible_time;
-uniform bool u_fade_in;
+uniform bool u_tile_fade_in;
 
 uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
@@ -82,7 +82,7 @@ void main (void) {
 
     // Fade in (if requested) based on time mesh has been visible
     #ifdef TANGRAM_FADE_IN_RATE
-    if (u_fade_in) {
+    if (u_tile_fade_in) {
         color.a *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);
     }
     #endif
