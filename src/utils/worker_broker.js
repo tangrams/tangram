@@ -232,7 +232,7 @@ function setupMainThread () {
                     result.then((value) => {
                         if (value instanceof WorkerBroker.withTransferables) {
                             transferables = value.transferables;
-                            value = value.value;
+                            value = value.value[0];
                         }
 
                         payload = {
@@ -259,7 +259,7 @@ function setupMainThread () {
                 else {
                     if (result instanceof WorkerBroker.withTransferables) {
                         transferables = result.transferables;
-                        result = result.value;
+                        result = result.value[0];
                     }
 
                     payload = {
@@ -383,7 +383,7 @@ function setupWorkerThread () {
                 result.then((value) => {
                     if (value instanceof WorkerBroker.withTransferables) {
                         transferables = value.transferables;
-                        value = value.value;
+                        value = value.value[0];
                     }
 
                     payload = {
@@ -409,7 +409,7 @@ function setupWorkerThread () {
             else {
                 if (result instanceof WorkerBroker.withTransferables) {
                     transferables = result.transferables;
-                    result = result.value;
+                    result = result.value[0];
                 }
 
                 payload = {
