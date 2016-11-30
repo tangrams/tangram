@@ -101,6 +101,8 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
+    var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq} = context;
+
     // Loop backwards through line to a tile boundary if found
     if (closed_polygon && join_type === JOIN_TYPE.miter) {
         var boundaryIndex = getTileBoundaryIndex(line);
@@ -113,7 +115,6 @@ function buildPolyline(line, context, extra_lines){
     }
 
     var coordCurr, coordNext, normPrev, normNext;
-    var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq} = context;
     var v = 0; // Texture v-coordinate
 
     var index_start = 0;
