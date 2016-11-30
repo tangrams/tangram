@@ -602,16 +602,16 @@ export default class ShaderProgram {
 
 // Static methods and state
 ShaderProgram.id = 0;                   // assign each program a unique id
+ShaderProgram.current = null;           // currently bound program
+
+// Global config applied to all programs (duplicate properties for a specific program will take precedence)
+ShaderProgram.defines = {};
+ShaderProgram.blocks = {};
 
 // Reset program and shader caches
 ShaderProgram.reset = function () {
     ShaderProgram.programs_by_source = {};  // GL program objects by exact vertex + fragment shader source
     ShaderProgram.shaders_by_source = {};   // GL shader objects by exact source
-    ShaderProgram.current = null;           // currently bound program
-
-    // Global config applied to all programs (duplicate properties for a specific program will take precedence)
-    ShaderProgram.defines = {};
-    ShaderProgram.blocks = {};
 };
 ShaderProgram.reset();
 

@@ -4,6 +4,7 @@ let assert = chai.assert;
 import {StyleManager} from '../src/styles/style_manager';
 import {Style} from '../src/styles/style';
 import Context from '../src/gl/context';
+import ShaderProgram from '../src/gl/shader_program';
 import Camera from '../src/camera';
 import Light from '../src/light';
 
@@ -53,6 +54,7 @@ describe('Styles:', () => {
         describe('builds custom styles w/dependencies from stylesheet', () => {
 
             beforeEach(() => {
+                ShaderProgram.reset();
                 style_manager.build(sampleScene.styles);
                 style_manager.initStyles();
             });
