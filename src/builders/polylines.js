@@ -101,9 +101,7 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
-    var coordCurr, coordNext, normPrev, normNext;
     var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq} = context;
-    var v = 0; // Texture v-coordinate
 
     // Loop backwards through line to a tile boundary if found
     if (closed_polygon && join_type === JOIN_TYPE.miter) {
@@ -116,15 +114,37 @@ function buildPolyline(line, context, extra_lines){
         }
     }
 
-    // FIRST POINT
-    coordCurr = line[0];
-    coordNext = line[1];
+    var coordCurr, coordNext, normPrev, normNext;
+    var v = 0; // Texture v-coordinate
 
-    // If first pair of points is redundant, slice and push to the lines array
-    if (Vector.isEqual(coordCurr, coordNext)) {
-        if (line.length > 2) {
-            extra_lines.push(line.slice(1));
+    var index_start = 0;
+    var index_end = line.length - 1;
+    var ignored_indices_count = 0;
+
+    // FIRST POINT
+    // loop through beginning points if duplicates
+    coordCurr = line[index_start];
+    coordNext = line[index_start + 1];
+    while (Vector.isEqual(coordCurr, coordNext)) {
+        index_start++;
+        coordCurr = coordNext;
+        coordNext = line[index_start + 1];
+        ignored_indices_count++;
+        if (index_start === line.length - 1) {
+            return;
         }
+    }
+
+    // loop through ending points to check for duplicates
+    while (Vector.isEqual(line[index_end], line[index_end - 1])) {
+        index_end--;
+        ignored_indices_count++;
+        if (index_end === 0) {
+            return;
+        }
+    }
+
+    if (line.length < 2 + ignored_indices_count) {
         return;
     }
 
@@ -132,7 +152,7 @@ function buildPolyline(line, context, extra_lines){
 
     // Skip tile boundary lines and append a new line if needed
     if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
-        var nonBoundarySegment = getNextNonBoundarySegment(line, 0, tile_edge_tolerance);
+        var nonBoundarySegment = getNextNonBoundarySegment(line, index_start, tile_edge_tolerance);
         if (nonBoundarySegment) {
             extra_lines.push(nonBoundarySegment);
         }
@@ -141,7 +161,7 @@ function buildPolyline(line, context, extra_lines){
 
     if (closed_polygon){
         // Begin the polygon with a join (connecting the first and last segments)
-        normPrev = Vector.normalize(Vector.perp(line[line.length - 2], coordCurr));
+        normPrev = Vector.normalize(Vector.perp(line[index_end - 1], coordCurr));
         startPolygon(coordCurr, normPrev, normNext, join_type, context);
     }
     else {
@@ -160,7 +180,7 @@ function buildPolyline(line, context, extra_lines){
 
     // INTERMEDIARY POINTS
     v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
-    for (var i = 1; i < line.length - 1; i++) {
+    for (var i = index_start + 1; i < index_end; i++) {
         var currIndex = i;
         var nextIndex = i + 1;
         coordCurr = line[currIndex];
