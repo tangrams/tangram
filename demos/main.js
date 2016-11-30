@@ -38,8 +38,10 @@ Enjoy!
         layer = Tangram.leafletLayer({
             scene: scene_url,
             events: {
-                hover: onFeatureHover
+                hover: onFeatureHover,
+                click: function(selection){ scene.requestRedraw(); console.log(selection); }
             },
+            numWorkers: 1,
             preUpdate: preUpdate,
             postUpdate: postUpdate,
             // highDensityDisplay: false,

@@ -79,7 +79,6 @@ styles:
                         color.rgb = vec3(.8, .8, 0.);
                     }
 
-
     icons:
         base: points
         texture: icons
@@ -215,6 +214,7 @@ layers:
         areas:
             draw:
                 polygons:
+                    style: buildings
                     order: global.feature_order
                     interactive: true
                     color: honeydew
