@@ -46,7 +46,6 @@ export default class ShaderProgram {
         this.fragment_source = fragment_source;
 
         this.id = ShaderProgram.id++;
-        ShaderProgram.programs[this.id] = this;
         this.name = options.name; // can provide a program name (useful for debugging)
     }
 
@@ -56,7 +55,6 @@ export default class ShaderProgram {
         this.program = null;
         this.uniforms = {};
         this.attribs = {};
-        delete ShaderProgram.programs[this.id];
         this.compiled = false;
     }
 
@@ -147,8 +145,6 @@ export default class ShaderProgram {
 
         // Build & inject extensions & defines
         // This is done *after* code injection so that we can add defines for which code points were injected
-        let info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
-        let header = `// Program: ${info}\n`;
         let precision = '';
         let high = this.gl.getShaderPrecisionFormat(this.gl.FRAGMENT_SHADER, this.gl.HIGH_FLOAT);
         if (high && high.precision > 0) {
@@ -161,7 +157,6 @@ export default class ShaderProgram {
         defines['TANGRAM_VERTEX_SHADER'] = true;
         defines['TANGRAM_FRAGMENT_SHADER'] = false;
         this.computed_vertex_source =
-            header +
             precision +
             ShaderProgram.buildDefineString(defines) +
             this.computed_vertex_source;
@@ -173,7 +168,6 @@ export default class ShaderProgram {
         defines['TANGRAM_FRAGMENT_SHADER'] = true;
         this.computed_fragment_source =
             ShaderProgram.buildExtensionString(extensions) +
-            header +
             precision +
             ShaderProgram.buildDefineString(defines) +
             this.computed_fragment_source;
@@ -607,14 +601,19 @@ export default class ShaderProgram {
 
 
 // Static methods and state
-
-ShaderProgram.id = 0;           // assign each program a unique id
-ShaderProgram.programs = {};    // programs, by id
-ShaderProgram.current = null;   // currently bound program
+ShaderProgram.id = 0;                   // assign each program a unique id
+ShaderProgram.current = null;           // currently bound program
 
 // Global config applied to all programs (duplicate properties for a specific program will take precedence)
 ShaderProgram.defines = {};
 ShaderProgram.blocks = {};
+
+// Reset program and shader caches
+ShaderProgram.reset = function () {
+    ShaderProgram.programs_by_source = {};  // GL program objects by exact vertex + fragment shader source
+    ShaderProgram.shaders_by_source = {};   // GL shader objects by exact source
+};
+ShaderProgram.reset();
 
 // Turn an object of key/value pairs into single string of #define statements
 ShaderProgram.buildDefineString = function (defines) {
@@ -664,6 +663,13 @@ ShaderProgram.replaceBlock = function (key, ...blocks) {
 // Compile & link a WebGL program from provided vertex and fragment shader sources
 // update a program if one is passed in. Create one if not. Alert and don't update anything if the shaders don't compile.
 ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragment_shader_source) {
+    // Program with this exact vertex and fragment shader sources already cached?
+    let key = vertex_shader_source + '::' + fragment_shader_source;
+    if (ShaderProgram.programs_by_source[key]) {
+        log('debug', 'Reusing identical source GL program object');
+        return ShaderProgram.programs_by_source[key];
+    }
+
     try {
         var vertex_shader = ShaderProgram.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
         var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
@@ -690,10 +696,10 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
     gl.attachShader(program, vertex_shader);
     gl.attachShader(program, fragment_shader);
 
-    gl.deleteShader(vertex_shader);
-    gl.deleteShader(fragment_shader);
-
     gl.linkProgram(program);
+
+    gl.detachShader(program, vertex_shader);
+    gl.detachShader(program, fragment_shader);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         let message = new Error(
@@ -710,11 +716,19 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
         throw error;
     }
 
+    ShaderProgram.programs_by_source[key] = program; // cache by exact source
     return program;
 };
 
 // Compile a vertex or fragment shader from provided source
 ShaderProgram.createShader = function (gl, source, stype) {
+    // Program with identical vertex and fragment shader sources already cached?
+    let key = source;
+    if (ShaderProgram.shaders_by_source[key]) {
+        log('debug', 'Reusing identical source GL shader object');
+        return ShaderProgram.shaders_by_source[key];
+    }
+
     let shader = gl.createShader(stype);
 
     gl.shaderSource(shader, source);
@@ -727,5 +741,6 @@ ShaderProgram.createShader = function (gl, source, stype) {
         throw { type, message, errors };
     }
 
+    ShaderProgram.shaders_by_source[key] = shader; // cache by exact source
     return shader;
 };

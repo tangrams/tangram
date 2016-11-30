@@ -5,6 +5,7 @@ import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
 import Context from './gl/context';
 import Texture from './gl/texture';
+import ShaderProgram from './gl/shader_program';
 import VertexArrayObject from './gl/vao';
 import {StyleManager} from './styles/style_manager';
 import {Style} from './styles/style';
@@ -186,6 +187,8 @@ export default class Scene {
             Texture.destroy(this.gl);
             this.style_manager.destroy(this.gl);
             this.styles = {};
+
+            ShaderProgram.reset();
 
             // Force context loss
             let ext = this.gl.getExtension('WEBGL_lose_context');
