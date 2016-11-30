@@ -28,14 +28,11 @@ export default class LabelLine {
         this.spread_factor = 1; // spaces out adjacent words to prevent overlap
         this.fitness = 0; // measure of quality of fit
 
-        // flip line?
-        lines = flipLine(lines);
-        if (!lines){
-            this.throw_away = true;
-            return;
-        }
+        lines = splitLineByOrientation(lines);
+        this.lines = lines;
 
         let line_lengths = getLineLengths(lines);
+
         let line_angles_segments = getLineAnglesForSegments(lines);
         this.pre_angles = [];
         this.positions = [];
@@ -584,6 +581,63 @@ function flipLine(lines){
         }
     }
     return lines;
+}
+
+function splitLineByOrientation(line){
+    let current_line = [line[0]];
+    let current_length = 0;
+    let max_length = 0;
+    let orientation = 1;
+    let longest_line;
+
+    for (let i = 1; i < line.length; i++) {
+        let pt = line[i];
+        let prev_pt = line[i - 1];
+
+        if (pt[0] >= prev_pt[0]){
+            // positive orientation
+            if (orientation === 1){
+                current_line.push(pt);
+                current_length += Vector.length(pt, prev_pt);
+
+                if (current_length > max_length){
+                    longest_line = current_line;
+                    max_length = current_length;
+                }
+            }
+            else {
+                current_line = [prev_pt, pt];
+                current_length = Vector.length(pt, prev_pt);
+                if (current_length > max_length){
+                    longest_line = current_line;
+                    max_length = current_length;
+                }
+                orientation = 1;
+            }
+        }
+        else {
+            // negative orientation
+            if (orientation === -1){
+                current_line.unshift(pt);
+                current_length += Vector.length(pt, prev_pt);
+                if (current_length > max_length){
+                    longest_line = current_line;
+                    max_length = current_length;
+                }
+            }
+            else {
+                // add lines is reverse order
+                current_line = [pt, prev_pt];
+                current_length = Vector.length(pt, prev_pt);
+                if (current_length > max_length){
+                    longest_line = current_line;
+                    max_length = current_length;
+                }
+                orientation = -1;
+            }
+        }
+    }
+    return longest_line;
 }
 
 // Private method to calculate oriented bounding box
