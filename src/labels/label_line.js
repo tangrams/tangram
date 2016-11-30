@@ -86,26 +86,22 @@ export default class LabelLine {
 
                 let {positions, offsets, angles, pre_angles} = placeAtPosition(anchor, anchor_index, new_lines, line_lengths, line_angles_segments, label_lengths, upp);
 
-                if (j === 0){
+                if (stop === 0){
                     for (let i = 0; i < positions.length; i++){
                         let position = positions[i];
-                        let offset = [offsets[i][0], 0];
                         let offset_angle = angles[i];
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
 
-                        let obb = getOBB(position, width, height, offset_angle, pre_angle, offset);
+                        let obb = getOBB(position, width, height, pre_angle + offset_angle);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
                         this.aabbs.push(aabb);
-
-                        this.angle = angles;
-                        this.pre_angles = pre_angles;
                     }
-                }
-                else {
-                    positions = null;
+
+                    this.angle = angles;
+                    this.pre_angles = pre_angles;
                 }
 
                 angle_info[i].offsets.push(offsets[i][0]);
@@ -641,11 +637,11 @@ function splitLineByOrientation(line){
 }
 
 // Private method to calculate oriented bounding box
-function getOBB(position, width, height, offsetAngle, angle, offset) {
+function getOBB(position, width, height, angle, offset) {
     let p0, p1;
     // apply offset, x positive, y pointing down
     if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-        offset = Vector.rot(offset, offsetAngle);
+        offset = Vector.rot(offset, angle);
         p0 = position[0] + offset[0];
         p1 = position[1] - offset[1];
     }
