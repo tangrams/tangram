@@ -24,13 +24,13 @@ Utils.isMicrosoft = function () {
     return /(Trident\/7.0|Edge[ /](\d+[\.\d]+))/i.test(navigator.userAgent);
 };
 
-Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}) {
+Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}, proxy = false) {
     if (Thread.is_worker && Utils.isMicrosoft()) {
         // Some versions of IE11 and Edge will hang web workers when performing XHR requests
         // These requests can be proxied through the main thread
         // https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/9545866/
         log('debug', 'Proxying request for URL to worker', url);
-        return WorkerBroker.postMessage('Utils.io', ...arguments);
+        return WorkerBroker.postMessage('Utils.io', url, timeout, responseType, method, headers, true);
     }
     else {
         var request = new XMLHttpRequest();
@@ -63,7 +63,9 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             value: request
         });
 
-        return promise;
+        return promise.then(response => {
+            return (proxy && WorkerBroker.withTransferables(response)) || response;
+        });
     }
 };
 
