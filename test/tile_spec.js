@@ -24,7 +24,7 @@ describe('Tile', function() {
                 coords,
                 style_zoom: coords.z,
                 source: scene.sources.osm,
-                worker: scene.nextWorker(),
+                worker: scene.getWorkerForDataSource(scene.sources.osm),
                 view: scene.view
             });
         });
