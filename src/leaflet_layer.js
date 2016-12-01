@@ -180,6 +180,7 @@ function extendLeaflet(options) {
                 map.off('click', this.hooks.click);
                 map.off('mousemove', this.hooks.mousemove);
                 map.off('mouseout', this.hooks.mouseout);
+                document.removeEventListener('visibilitychange', this.hooks.visibilitychange);
                 this.hooks = {};
 
                 if (this.scene) {
@@ -356,12 +357,14 @@ function extendLeaflet(options) {
 
             resizeOnFirstVisible: function () {
                 let first_visibility = true;
-                document.addEventListener('visibilitychange', () => {
+                this.hooks.visibilitychange = () => {
                     if (first_visibility) {
                         first_visibility = false;
                         this.updateSize();
                     }
-                });
+                };
+
+                document.addEventListener('visibilitychange', this.hooks.visibilitychange);
             },
 
             onTangramViewUpdate: function () {
