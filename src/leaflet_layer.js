@@ -144,6 +144,7 @@ function extendLeaflet(options) {
 
                 // Initial view
                 this.updateView();
+                this.resizeOnFirstVisible();
 
                 // Subscribe to tangram events
                 this.scene.subscribe({
@@ -351,6 +352,16 @@ function extendLeaflet(options) {
             updateSize: function () {
                 var size = this._map.getSize();
                 this.scene.resizeMap(size.x, size.y);
+            },
+
+            resizeOnFirstVisible: function () {
+                let first_visibility = true;
+                document.addEventListener('visibilitychange', () => {
+                    if (first_visibility) {
+                        first_visibility = false;
+                        this.updateSize();
+                    }
+                });
             },
 
             onTangramViewUpdate: function () {
