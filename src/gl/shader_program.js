@@ -666,7 +666,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
     // Program with this exact vertex and fragment shader sources already cached?
     let key = vertex_shader_source + '::' + fragment_shader_source;
     if (ShaderProgram.programs_by_source[key]) {
-        log('debug', 'Reusing identical source GL program object');
+        log('trace', 'Reusing identical source GL program object');
         return ShaderProgram.programs_by_source[key];
     }
 
@@ -725,7 +725,7 @@ ShaderProgram.createShader = function (gl, source, stype) {
     // Program with identical vertex and fragment shader sources already cached?
     let key = source;
     if (ShaderProgram.shaders_by_source[key]) {
-        log('debug', 'Reusing identical source GL shader object');
+        log('trace', 'Reusing identical source GL shader object');
         return ShaderProgram.shaders_by_source[key];
     }
 
