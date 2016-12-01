@@ -666,7 +666,7 @@ export default class Scene {
                 });
             }
             // Traditional alpha blending
-            else if (blend === 'overlay' || blend === 'inlay') {
+            else if (blend === 'overlay' || blend === 'inlay' || blend === 'depthinlay') {
                 render_states.blending.set({
                     blend: true,
                     src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
