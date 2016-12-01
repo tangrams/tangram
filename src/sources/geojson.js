@@ -15,7 +15,6 @@ export class GeoJSONSource extends NetworkSource {
 
     constructor(source, sources) {
         super(source, sources);
-        this.tiled = true;
         this.load_data = null;
         this.tile_indexes = {}; // geojson-vt tile indices, by layer name
         this.max_zoom = Math.max(this.max_zoom || 0, 15); // TODO: max zoom < 15 causes artifacts/no-draw at 20, investigate
