@@ -8,46 +8,140 @@ const PLACEMENT = {
 };
 
 const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
-const LINE_EXCEED_STRAIGHT = 0.1;   // minimal ratio for straight labels (label length) / (line length)
-const LINE_EXCEED_KINKED = 0.6;     // minimal ratio for kinked labels
+const LINE_EXCEED_STRAIGHT = 0.6;   // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_KINKED = 0.4;     // minimal ratio for kinked labels
 
 export default class LabelLine {
-
     constructor (size, lines, layout) {
-        this.size = size;
+        this.num_segments = size.length;
         this.layout = layout;
-        this.lines = lines;
-        this.space_width = layout.space_width; // width of space for the font used
-        this.space_indices = layout.space_indices;
-        this.num_segments = size.length; // number of label segments
-        this.total_length = size.reduce(function(prev, next){ return prev + next[0]; }, 0) + this.space_indices.length * this.space_width;
-        this.total_height = size[0][1];
-        this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
 
-        this.kink_index = 0; // index at which an articulated label will kink (e.g., 1 means a kink _after_ the first segment)
-        this.spread_factor = 1; // spaces out adjacent words to prevent overlap
-        this.fitness = 0; // measure of quality of fit
+        // var label = new LabelLineCurved(size, lines, layout);
+        var label = new LabelLineArticulated(size, lines, layout);
 
-        lines = splitLineByOrientation(lines);
-        this.lines = lines;
+        if (label.throw_away){
+            label = new LabelLineCurved(size, lines, layout);
+        }
 
+        this.position = label.position;
+        this.angle = label.angle;
+        this.pre_angles = label.pre_angles || undefined;
+        this.positions = label.positions;
+        this.offsets = label.offsets;
+        this.offset = label.offset;
+        this.obbs = label.obbs;
+        this.aabbs = label.aabbs;
+        this.angle_info = label.angle_info;
+        this.throw_away = label.throw_away;
+    }
+
+    static splitLineByOrientation(line){
+        let current_line = [line[0]];
+        let current_length = 0;
+        let max_length = 0;
+        let orientation = 1;
+        let longest_line = current_line;
+
+        for (let i = 1; i < line.length; i++) {
+            let pt = line[i];
+            let prev_pt = line[i - 1];
+
+            if (pt[0] >= prev_pt[0]){
+                // positive orientation
+                if (orientation === 1){
+                    current_line.push(pt);
+                    current_length += Vector.length(pt, prev_pt);
+
+                    if (current_length > max_length){
+                        longest_line = current_line;
+                        max_length = current_length;
+                    }
+                }
+                else {
+                    current_line = [prev_pt, pt];
+                    current_length = Vector.length(pt, prev_pt);
+                    if (current_length > max_length){
+                        longest_line = current_line;
+                        max_length = current_length;
+                    }
+                    orientation = 1;
+                }
+            }
+            else {
+                // negative orientation
+                if (orientation === -1){
+                    current_line.unshift(pt);
+                    current_length += Vector.length(pt, prev_pt);
+                    if (current_length > max_length){
+                        longest_line = current_line;
+                        max_length = current_length;
+                    }
+                }
+                else {
+                    // add lines is reverse order
+                    current_line = [pt, prev_pt];
+                    current_length = Vector.length(pt, prev_pt);
+                    if (current_length > max_length){
+                        longest_line = current_line;
+                        max_length = current_length;
+                    }
+                    orientation = -1;
+                }
+            }
+        }
+
+        return longest_line;
+    }
+
+    // Adds each segment to the collision pass as its own bounding box
+    // TODO: label group
+    add(bboxes) {
+        this.placed = true;
+        for (let i = 0; i < this.aabbs.length; i++) {
+            let aabb = this.aabbs[i];
+            let obb = this.obbs[i];
+            let obj = { aabb, obb };
+            Label.prototype.add.call(obj, bboxes);
+        }
+    }
+
+    // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
+    // TODO: label group
+    discard(bboxes, exclude = null) {
+        if (this.throw_away) {
+            return true;
+        }
+
+        for (let i = 0; i < this.obbs.length; i++){
+            let aabb = this.aabbs[i];
+            let obb = this.obbs[i];
+            let obj = { aabb, obb };
+
+            let shouldDiscard = Label.prototype.occluded.call(obj, bboxes, exclude);
+            if (shouldDiscard) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+class LabelLineCurved {
+    constructor (size, lines, layout) {
+        lines = LabelLine.splitLineByOrientation(lines);
         let line_lengths = getLineLengths(lines);
 
         let line_angles_segments = getLineAnglesForSegments(lines);
-        this.pre_angles = [];
-        this.positions = [];
 
         // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
         this.position = [];
         this.angle = [];
+        this.pre_angles = [];
+        this.positions = [];
         this.offsets = [];
+        this.offset = [];
         this.obbs = [];
         this.aabbs = [];
-
-        // optionally limit the line segments that the label may be placed in, by specifying a segment index range
-        // used as a coarse subdivide for placing multiple labels per line geometry
-        this.segment_index = layout.segment_index || layout.segment_start || 0;
-        this.segment_max = layout.segment_end || lines.length;
 
         let upp = layout.units_per_pixel;
 
@@ -62,15 +156,15 @@ export default class LabelLine {
         }
 
         // starting position
-        let height = this.total_height * upp;
-        let [start_index, end_index] = checkTileBoundary(lines, line_lengths, height, line_angles_segments);
+        let height = size[0][1] * upp;
+        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(lines, line_lengths, height, line_angles_segments);
 
         if (start_index === end_index){
             this.throw_away = true;
             return;
         }
 
-        let anchor_index = curvaturePlacement(lines, total_line_length, line_lengths, total_label_length, start_index, end_index);
+        let anchor_index = LabelLineCurved.curvaturePlacement(lines, total_line_length, line_lengths, total_label_length, start_index, end_index);
         let anchor = lines[anchor_index];
         this.position = anchor;
 
@@ -88,10 +182,10 @@ export default class LabelLine {
             for (var j = 0; j < stops.length; j++){
                 let stop = stops[j];
 
-                let [new_lines, line_lengths] = scaleLine(stop, lines);
+                let [new_lines, line_lengths] = LabelLineCurved.scaleLine(stop, lines);
                 anchor = new_lines[anchor_index];
 
-                let {positions, offsets, angles, pre_angles} = placeAtPosition(anchor, anchor_index, new_lines, line_lengths, line_angles_segments, label_lengths, upp);
+                let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtPosition(anchor, anchor_index, new_lines, line_lengths, line_angles_segments, label_lengths, upp);
 
                 if (stop === 0){
                     for (let i = 0; i < positions.length; i++){
@@ -119,12 +213,377 @@ export default class LabelLine {
             angle_info[i].stop_array = [0.3, 0.6, 0.9];
         }
 
-        smooth(angle_info);
+        LabelLineCurved.smooth(angle_info);
         this.angle_info = angle_info;
+    }
+
+    static checkTileBoundary(lines, widths, height, angles){
+        let start = 0;
+        let end = lines.length - 1;
+
+        let start_width = widths[0];
+        let end_width = widths[widths.length - 1];
+
+        while (start < end){
+            let position = Vector.add(Vector.rot([start_width/2, 0], -angles[start]), lines[start]);
+            let obb = getOBB(position, start_width, height, -angles[start]);
+            let aabb = obb.getExtent();
+            let in_tile = Label.prototype.inTileBounds.call({ aabb });
+            if (in_tile) break;
+            else start++;
+        }
+
+        while (end > start){
+            let position = Vector.add(Vector.rot([-end_width/2, 0], -angles[end]), lines[end]);
+            let obb = getOBB(position, end_width, height, -angles[end]);
+            let aabb = obb.getExtent();
+            let in_tile = Label.prototype.inTileBounds.call({ aabb });
+            if (in_tile) break;
+            else end--;
+        }
+
+        return [start, end]
+    }
+
+    static smooth(angle_info){
+        for (let i = 0; i < angle_info.length; i++){
+            let info = angle_info[i];
+            let angles = info.angle_array;
+            let pre_angles = info.pre_angles;
+
+            let smooth_angles = [];
+            let smooth_pre_angles = [];
+            let total_angle = angles.map(function(angle, i){
+                return angle + pre_angles[i];
+            });
+            let smooth_total_angle = [];
+
+            for (let j = 0; j < angles.length; j++){
+                if (j === 0){
+                    smooth_total_angle[j] = 1/3 * (2 * total_angle[0] + total_angle[1]);
+                }
+                else if (j === angles.length - 1){
+                    smooth_total_angle[j] = 1/3 * (2 * total_angle[j] + total_angle[j - 1]);
+                }
+                else {
+                    smooth_total_angle[j] = 1/4 * (2 * total_angle[j] + total_angle[j - 1] + total_angle[j + 1]);
+                }
+
+                smooth_pre_angles[j] = total_angle[j] - angles[j];
+            }
+            info.angle_array = angles;
+            info.pre_angles = smooth_pre_angles;
+        }
+    }
+
+    static curvaturePlacement(line, total_line_length, line_lengths, label_length, start_index, end_index){
+        start_index = start_index || 0;
+        end_index = end_index || line.length - 1;
+
+        var curvatures = []; // array of curvature values per line vertex
+
+        // calculate curvature values
+        for (let i = 1; i < line.length - 1; i++){
+            var prev = line[i - 1];
+            var curr = line[i];
+            var next = line[i + 1];
+
+            var norm_1 = Vector.perp(curr, prev);
+            var norm_2 = Vector.perp(next, curr);
+
+            var curvature = Vector.angleBetween(norm_1, norm_2);
+            curvatures.push(curvature);
+        }
+
+        curvatures.push(Infinity); // Infinite penalty for going off end of line
+
+        // calculate curvature costs
+        var costs = [];
+        var line_index = 0;
+        var position = 0;
+
+        // move window along line, starting at first vertex
+        while (position + label_length < total_line_length){
+            // define window breadth
+            var window_start = position;
+            var window_end = window_start + label_length;
+
+            var line_position = window_start;
+            var ahead_index = line_index;
+            var cost = 0;
+
+            // iterate through points on line intersecting window
+            while (ahead_index < line.length && line_position + line_lengths[ahead_index] < window_end){
+                cost += curvatures[ahead_index];
+                if (cost === Infinity) {
+                    break; // no further progress can be made
+                }
+
+                line_position += line_lengths[ahead_index];
+                ahead_index++;
+            }
+
+            // if optimal cost, break out
+            if (cost === 0) {
+                return line_index;
+            }
+
+            costs.push(cost);
+
+            position += line_lengths[line_index];
+            line_index++;
+        }
+
+        // return index with best placement (least curvature)
+        // TODO: double check off-by-one error
+        return costs.indexOf(Math.min.apply(null, costs));
+    }
+
+    static scaleLine(scale, line){
+        var new_line = [line[0]];
+        var line_lengths = [];
+
+        line.forEach(function(pt, i){
+            if (i === line.length - 1) {
+                return;
+            }
+            var v = Vector.sub(line[i+1], line[i]);
+            var delta = Vector.mult(v, 1 + scale);
+
+            new_line.push(Vector.add(new_line[i], delta));
+            line_lengths.push(Vector.length(delta));
+        });
+
+        return [new_line, line_lengths];
+    }
+
+    static placeAtPosition(anchor, anchor_index, line, line_lengths, line_angles_segments, label_lengths, upp){
+        // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
+        let [indices, relative_offsets] = LabelLineCurved.getIndicesAndOffsets(anchor_index, line_lengths, label_lengths);
+
+        // get 2D positions based on "flat" indices and offsets
+        let positions = LabelLineCurved.getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
+
+        // get 2d offsets, angles and pre_angles relative to anchor
+        let [offsets2d, angles, pre_angles] = LabelLineCurved.getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
+
+        let offsets = offsets2d.map(function(offset){
+            return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
+        });
+
+        return {positions, offsets, angles, pre_angles};
+    }
+
+    static getIndicesAndOffsets(line_index, line_lengths, label_lengths){
+        let num_labels = label_lengths.length;
+
+        let indices = [];
+        let offsets = [];
+
+        let label_index = 0;
+        let label_offset = 0;
+        let line_offset = 0;
+
+        // iterate along line
+        while (label_index < num_labels){
+            let label_length = label_lengths[label_index];
+
+            // iterate along labels within the line segment
+            while (label_index < num_labels && label_offset + 0.5 * label_length <= line_offset + line_lengths[line_index]){
+                let offset = label_offset - line_offset + 0.5 * label_length;
+                offsets.push(offset);
+                indices.push(line_index);
+
+                label_offset += label_length;
+                label_index++;
+                label_length = label_lengths[label_index];
+            }
+
+            line_offset += line_lengths[line_index];
+            line_index++;
+        }
+
+        return [indices, offsets];
+    }
+
+    static getPositionsFromIndicesAndOffsets(line, indices, offsets){
+        let positions = [];
+        for (let i = 0; i < indices.length; i++){
+            let index = indices[i];
+            let offset = offsets[i];
+
+            let angle = getAngleForSegment(line[index], line[index + 1]);
+
+            let offset2d = Vector.rot([offset, 0], angle);
+            let position = Vector.add(line[index], offset2d);
+
+            positions.push(position);
+        }
+
+        return positions;
+    }
+
+    static getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
+        let angles = [];
+        let pre_angles = [];
+        let offsets2d = [];
+
+        for (let i = 0; i < positions.length; i++){
+            let position = positions[i];
+            let index = indices[i];
+
+            let offset2d = Vector.sub(position, anchor);
+            let offset2d_angle = -Vector.angle(offset2d);
+
+            let angle = getTextAngleForSegment(line[index], line[index + 1]);
+            let pre_angle = angle - offset2d_angle;
+
+            if (i > 0){
+                let prev_angle = angles[i - 1];
+                let prev_pre_angle = pre_angles[i - 1];
+                if (Math.abs(offset2d_angle - prev_angle) > Math.PI) {
+                    if (offset2d_angle > prev_angle) {
+                        offset2d_angle -= 2 * Math.PI;
+                    }
+                    else {
+                        offset2d_angle += 2 * Math.PI;
+                    }
+                }
+                if (Math.abs(prev_pre_angle - pre_angle) > Math.PI) {
+                    if (pre_angle > prev_pre_angle) {
+                        pre_angle -= 2 * Math.PI;
+                    }
+                    else {
+                        pre_angle += 2 * Math.PI;
+                    }
+                }
+            }
+
+            angles.push(offset2d_angle);
+            pre_angles.push(pre_angle);
+            offsets2d.push(offset2d);
+        }
+
+        return [offsets2d, angles, pre_angles];
+    }
+}
+
+// Private method to calculate oriented bounding box
+function getOBB(position, width, height, angle, offset) {
+    let p0, p1;
+    // apply offset, x positive, y pointing down
+    if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
+        offset = Vector.rot(offset, angle);
+        p0 = position[0] + offset[0];
+        p1 = position[1] - offset[1];
+    }
+    else {
+        p0 = position[0];
+        p1 = position[1];
+    }
+
+    // the angle of the obb is negative since it's the tile system y axis is pointing down
+    return new OBB(p0, p1, -angle, width, height);
+}
+
+function calcFitness(line_length, label_length) {
+    return 1 - line_length / label_length;
+}
+
+function hasSpaceAtIndex(index, space_indices) {
+    return (space_indices.indexOf(index) !== -1);
+}
+
+function getLineLength(line){
+    let distance = 0;
+    for (let i = 0; i < line.length - 1; i++){
+        distance += norm(line[i], line[i+1]);
+    }
+    return distance;
+}
+
+function norm(p, q){
+    return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
+}
+
+function createBoundingBoxes(positions, angles, widths, height){
+    let obbs = [];
+    let aabbs = [];
+    for (let i = 0; i < positions.length; i++){
+        let obb = getOBB(positions[i], widths[i], height, angles[i]);
+        let aabb = obb.getExtent();
+
+        obbs.push(obb);
+        aabbs.push(aabb);
+    }
+    return {obbs, aabbs};
+}
+
+function getLineAnglesForSegments(line){
+    let angles = [];
+    for (let i = 0; i < line.length - 1; i++){
+        let p = line[i];
+        let q = line[i+1];
+        let angle = getAngleForSegment(p, q);
+        angles.push(angle);
+    }
+    return angles;
+}
+
+function getAngleForSegment(p, q){
+    let pq = Vector.sub(q,p);
+    return Vector.angle(pq);
+}
+
+function getTextAngleForSegment(pt1, pt2) {
+    return -getAngleForSegment(pt1, pt2);
+}
+
+function getLineLengths(line){
+    let lengths = [];
+    for (let i = 0; i < line.length - 1; i++){
+        let p = line[i];
+        let q = line[i+1];
+        let length = norm(p,q);
+        lengths.push(length);
+    }
+    return lengths;
+}
+
+class LabelLineArticulated {
+    constructor (size, lines, layout){
+        this.size = size;
+        this.layout = layout;
+        this.space_width = layout.space_width; // width of space for the font used
+        this.space_indices = layout.space_indices;
+        this.num_segments = size.length; // number of label segments
+        this.total_length = size.reduce(function(prev, next){ return prev + next[0]; }, 0) + this.space_indices.length * this.space_width;
+        this.total_height = size[0][1];
+        this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
+
+        this.kink_index = 0; // index at which an articulated label will kink (e.g., 1 means a kink _after_ the first segment)
+        this.spread_factor = 1; // spaces out adjacent words to prevent overlap
+        this.fitness = 0; // measure of quality of fit
+
+        lines = LabelLine.splitLineByOrientation(lines);
+        this.lines = lines;
+
+        // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
+        this.positions = [];
+        this.position = [];
+        this.angle = [];
+        this.offsets = [];
+        this.obbs = [];
+        this.aabbs = [];
+
+        // optionally limit the line segments that the label may be placed in, by specifying a segment index range
+        // used as a coarse subdivide for placing multiple labels per line geometry
+        this.segment_index = layout.segment_index || layout.segment_start || 0;
+        this.segment_max = layout.segment_end || lines.length;
 
         // First fitting segment
-        // let segment = this.getNextFittingSegment(this.getCurrentSegment());
-        // this.throw_away = (!segment);
+        let segment = this.getNextFittingSegment(this.getCurrentSegment());
+        this.throw_away = (!segment);
     }
 
     // Iterate through the line geometry creating the next valid label.
@@ -526,452 +985,4 @@ export default class LabelLine {
         }
         return true;
     }
-
-    // Adds each segment to the collision pass as its own bounding box
-    // TODO: label group
-    add(bboxes) {
-        this.placed = true;
-        for (let i = 0; i < this.aabbs.length; i++) {
-            let aabb = this.aabbs[i];
-            let obb = this.obbs[i];
-            let obj = { aabb, obb };
-            Label.prototype.add.call(obj, bboxes);
-        }
-    }
-
-    // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
-    // TODO: label group
-    discard(bboxes, exclude = null) {
-        if (this.throw_away) {
-            return true;
-        }
-
-        for (let i = 0; i < this.obbs.length; i++){
-            let aabb = this.aabbs[i];
-            let obb = this.obbs[i];
-            let obj = { aabb, obb };
-
-            let shouldDiscard = Label.prototype.occluded.call(obj, bboxes, exclude);
-            if (shouldDiscard) {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-
-// places label at length offset from index. Finds next index and length offset
-// function getNextPlacement(line_index, line_offset, label_length, line_lengths){
-//     let line_length = line_lengths[line_index];
-//     let distance = label_length;
-//     line_offset += distance;
-
-//     if (line_offset > line_length && line_index < line_lengths.length - 1){
-//         line_offset = line_offset - line_length;
-//         line_index = line_index + 1;
-//     }
-
-//     return [line_index, line_offset];
-// }
-
-function checkTileBoundary(lines, widths, height, angles){
-    let start = 0;
-    let end = lines.length - 1;
-
-    let start_width = widths[0];
-    let end_width = widths[widths.length - 1];
-
-    while (start < end){
-        let position = Vector.add(Vector.rot([start_width/2, 0], -angles[start]), lines[start]);
-        let obb = getOBB(position, start_width, height, -angles[start]);
-        let aabb = obb.getExtent();
-        let in_tile = Label.prototype.inTileBounds.call({ aabb });
-        if (in_tile) break;
-        else start++;
-    }
-
-    while (end > start){
-        let position = Vector.add(Vector.rot([-end_width/2, 0], -angles[end]), lines[end]);
-        let obb = getOBB(position, end_width, height, -angles[end]);
-        let aabb = obb.getExtent();
-        let in_tile = Label.prototype.inTileBounds.call({ aabb });
-        if (in_tile) break;
-        else end--;
-    }
-
-    return [start, end]
-}
-
-function flipLine(lines){
-    if (Vector.perp(lines[0], lines[1])[1] > 0){
-        if (Vector.perp(lines[lines.length - 1], lines[lines.length - 2])[1] < 0){
-            lines = lines.slice().reverse();
-        }
-        else {
-            return false;
-        }
-    }
-    return lines;
-}
-
-function splitLineByOrientation(line){
-    let current_line = [line[0]];
-    let current_length = 0;
-    let max_length = 0;
-    let orientation = 1;
-    let longest_line = current_line;
-
-    for (let i = 1; i < line.length; i++) {
-        let pt = line[i];
-        let prev_pt = line[i - 1];
-
-        if (pt[0] >= prev_pt[0]){
-            // positive orientation
-            if (orientation === 1){
-                current_line.push(pt);
-                current_length += Vector.length(pt, prev_pt);
-
-                if (current_length > max_length){
-                    longest_line = current_line;
-                    max_length = current_length;
-                }
-            }
-            else {
-                current_line = [prev_pt, pt];
-                current_length = Vector.length(pt, prev_pt);
-                if (current_length > max_length){
-                    longest_line = current_line;
-                    max_length = current_length;
-                }
-                orientation = 1;
-            }
-        }
-        else {
-            // negative orientation
-            if (orientation === -1){
-                current_line.unshift(pt);
-                current_length += Vector.length(pt, prev_pt);
-                if (current_length > max_length){
-                    longest_line = current_line;
-                    max_length = current_length;
-                }
-            }
-            else {
-                // add lines is reverse order
-                current_line = [pt, prev_pt];
-                current_length = Vector.length(pt, prev_pt);
-                if (current_length > max_length){
-                    longest_line = current_line;
-                    max_length = current_length;
-                }
-                orientation = -1;
-            }
-        }
-    }
-
-    return longest_line;
-}
-
-// Private method to calculate oriented bounding box
-function getOBB(position, width, height, angle, offset) {
-    let p0, p1;
-    // apply offset, x positive, y pointing down
-    if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-        offset = Vector.rot(offset, angle);
-        p0 = position[0] + offset[0];
-        p1 = position[1] - offset[1];
-    }
-    else {
-        p0 = position[0];
-        p1 = position[1];
-    }
-
-    // the angle of the obb is negative since it's the tile system y axis is pointing down
-    return new OBB(p0, p1, -angle, width, height);
-}
-
-function calcFitness(line_length, label_length) {
-    return 1 - line_length / label_length;
-}
-
-function hasSpaceAtIndex(index, space_indices) {
-    return (space_indices.indexOf(index) !== -1);
-}
-
-function getLineLength(line){
-    let distance = 0;
-    for (let i = 0; i < line.length - 1; i++){
-        distance += norm(line[i], line[i+1]);
-    }
-    return distance;
-}
-
-function norm(p, q){
-    return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
-}
-
-function smooth(angle_info){
-    for (let i = 0; i < angle_info.length; i++){
-        let info = angle_info[i];
-        let angles = info.angle_array;
-        let pre_angles = info.pre_angles;
-
-        let smooth_angles = [];
-        let smooth_pre_angles = [];
-        let total_angle = angles.map(function(angle, i){
-            return angle + pre_angles[i];
-        });
-        let smooth_total_angle = [];
-
-        for (let j = 0; j < angles.length; j++){
-            if (j === 0){
-                smooth_total_angle[j] = 1/3 * (2 * total_angle[0] + total_angle[1]);
-            }
-            else if (j === angles.length - 1){
-                smooth_total_angle[j] = 1/3 * (2 * total_angle[j] + total_angle[j - 1]);
-            }
-            else {
-                smooth_total_angle[j] = 1/4 * (2 * total_angle[j] + total_angle[j - 1] + total_angle[j + 1]);
-            }
-
-            smooth_pre_angles[j] = total_angle[j] - angles[j];
-        }
-        info.angle_array = angles;
-        info.pre_angles = smooth_pre_angles;
-    }
-}
-
-function curvaturePlacement(line, total_line_length, line_lengths, label_length, start_index, end_index){
-    start_index = start_index || 0;
-    end_index = end_index || line.length - 1;
-
-    var curvatures = []; // array of curvature values per line vertex
-
-    // calculate curvature values
-    for (let i = 1; i < line.length - 1; i++){
-        var prev = line[i - 1];
-        var curr = line[i];
-        var next = line[i + 1];
-
-        var norm_1 = Vector.perp(curr, prev);
-        var norm_2 = Vector.perp(next, curr);
-
-        var curvature = Vector.angleBetween(norm_1, norm_2);
-        curvatures.push(curvature);
-    }
-
-    curvatures.push(Infinity); // Infinite penalty for going off end of line
-
-    // calculate curvature costs
-    var costs = [];
-    var line_index = 0;
-    var position = 0;
-
-    // move window along line, starting at first vertex
-    while (position + label_length < total_line_length){
-        // define window breadth
-        var window_start = position;
-        var window_end = window_start + label_length;
-
-        var line_position = window_start;
-        var ahead_index = line_index;
-        var cost = 0;
-
-        // iterate through points on line intersecting window
-        while (ahead_index < line.length && line_position + line_lengths[ahead_index] < window_end){
-            cost += curvatures[ahead_index];
-            if (cost === Infinity) {
-                break; // no further progress can be made
-            }
-
-            line_position += line_lengths[ahead_index];
-            ahead_index++;
-        }
-
-        // if optimal cost, break out
-        if (cost === 0) {
-            return line_index;
-        }
-
-        costs.push(cost);
-
-        position += line_lengths[line_index];
-        line_index++;
-    }
-
-    // return index with best placement (least curvature)
-    // TODO: double check off-by-one error
-    return costs.indexOf(Math.min.apply(null, costs));
-}
-
-function scaleLine(scale, line){
-    var new_line = [line[0]];
-    var line_lengths = [];
-
-    line.forEach(function(pt, i){
-        if (i === line.length - 1) {
-            return;
-        }
-        var v = Vector.sub(line[i+1], line[i]);
-        var delta = Vector.mult(v, 1 + scale);
-
-        new_line.push(Vector.add(new_line[i], delta));
-        line_lengths.push(Vector.length(delta));
-    });
-
-    return [new_line, line_lengths];
-}
-
-function placeAtPosition(anchor, anchor_index, line, line_lengths, line_angles_segments, label_lengths, upp){
-    // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
-    let [indices, relative_offsets] = getIndicesAndOffsets(anchor_index, line_lengths, label_lengths);
-
-    // get 2D positions based on "flat" indices and offsets
-    let positions = getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
-
-    // get 2d offsets, angles and pre_angles relative to anchor
-    let [offsets2d, angles, pre_angles] = getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
-
-    let offsets = offsets2d.map(function(offset){
-        return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
-    });
-
-    return {positions, offsets, angles, pre_angles};
-}
-
-function getIndicesAndOffsets(line_index, line_lengths, label_lengths){
-    let num_labels = label_lengths.length;
-
-    let indices = [];
-    let offsets = [];
-
-    let label_index = 0;
-    let label_offset = 0;
-    let line_offset = 0;
-
-    // iterate along line
-    while (label_index < num_labels){
-        let label_length = label_lengths[label_index];
-
-        // iterate along labels within the line segment
-        while (label_index < num_labels && label_offset + 0.5 * label_length <= line_offset + line_lengths[line_index]){
-            let offset = label_offset - line_offset + 0.5 * label_length;
-            offsets.push(offset);
-            indices.push(line_index);
-
-            label_offset += label_length;
-            label_index++;
-            label_length = label_lengths[label_index];
-        }
-
-        line_offset += line_lengths[line_index];
-        line_index++;
-    }
-
-    return [indices, offsets];
-}
-
-function getPositionsFromIndicesAndOffsets(line, indices, offsets){
-    let positions = [];
-    for (let i = 0; i < indices.length; i++){
-        let index = indices[i];
-        let offset = offsets[i];
-
-        let angle = getAngleForSegment(line[index], line[index + 1]);
-
-        let offset2d = Vector.rot([offset, 0], angle);
-        let position = Vector.add(line[index], offset2d);
-
-        positions.push(position);
-    }
-
-    return positions;
-}
-
-function getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
-    let angles = [];
-    let pre_angles = [];
-    let offsets2d = [];
-
-    for (let i = 0; i < positions.length; i++){
-        let position = positions[i];
-        let index = indices[i];
-
-        let offset2d = Vector.sub(position, anchor);
-        let offset2d_angle = -Vector.angle(offset2d);
-
-        let angle = getTextAngleForSegment(line[index], line[index + 1]);
-        let pre_angle = angle - offset2d_angle;
-
-        if (i > 0){
-            let prev_angle = angles[i - 1];
-            let prev_pre_angle = pre_angles[i - 1];
-            if (Math.abs(offset2d_angle - prev_angle) > Math.PI) {
-                if (offset2d_angle > prev_angle) {
-                    offset2d_angle -= 2 * Math.PI;
-                }
-                else {
-                    offset2d_angle += 2 * Math.PI;
-                }
-            }
-            if (Math.abs(prev_pre_angle - pre_angle) > Math.PI) {
-                if (pre_angle > prev_pre_angle) {
-                    pre_angle -= 2 * Math.PI;
-                }
-                else {
-                    pre_angle += 2 * Math.PI;
-                }
-            }
-        }
-
-        angles.push(offset2d_angle);
-        pre_angles.push(pre_angle);
-        offsets2d.push(offset2d);
-    }
-
-    return [offsets2d, angles, pre_angles];
-}
-
-// function createBoundingBoxes(positions, angles, widths, height){
-//     let obbs = [];
-//     let aabbs = [];
-//     for (let i = 0; i < positions.length; i++){
-//         let obb = getOBB(positions[i], widths[i], height, angles[i]);
-//         let aabb = obb.getExtent();
-
-//         obbs.push(obb);
-//         aabbs.push(aabb);
-//     }
-//     return {obbs, aabbs};
-// }
-
-function getLineAnglesForSegments(line){
-    let angles = [];
-    for (let i = 0; i < line.length - 1; i++){
-        let p = line[i];
-        let q = line[i+1];
-        let angle = getAngleForSegment(p, q);
-        angles.push(angle);
-    }
-    return angles;
-}
-
-function getAngleForSegment(p, q){
-    let pq = Vector.sub(q,p);
-    return Vector.angle(pq);
-}
-
-function getTextAngleForSegment(pt1, pt2) {
-    return -getAngleForSegment(pt1, pt2);
-}
-
-function getLineLengths(line){
-    let lengths = [];
-    for (let i = 0; i < line.length - 1; i++){
-        let p = line[i];
-        let q = line[i+1];
-        let length = norm(p,q);
-        lengths.push(length);
-    }
-    return lengths;
 }
