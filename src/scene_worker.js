@@ -21,10 +21,7 @@ Object.assign(self, {
 
     FeatureSelection,
 
-    sources: {
-        tiles: {},
-        objects: {}
-    },
+    sources: {},
     styles: {},
     layers: {},
     tiles: {},
@@ -72,7 +69,7 @@ Object.assign(self, {
         self.style_manager.initStyles({
             generation: self.generation,
             styles: self.styles,
-            sources: self.sources.tiles,
+            sources: self.sources,
             introspection: self.introspection
         });
 
@@ -91,11 +88,11 @@ Object.assign(self, {
     // Create data sources and clear tile cache if necessary
     createDataSources (config) {
         config.sources = Utils.stringsToFunctions(config.sources); // parse new sources
-        self.sources.tiles = {}; // clear previous sources
+        self.sources = {}; // clear previous sources
         for (let name in config.sources) {
             let source;
             try {
-                source = DataSource.create(Object.assign({}, config.sources[name], {name}), self.sources.tiles);
+                source = DataSource.create(Object.assign({}, config.sources[name], {name}), self.sources);
             }
             catch(e) {
                 continue;
@@ -104,21 +101,7 @@ Object.assign(self, {
             if (!source) {
                 continue;
             }
-
-            if (source.tiled) {
-                self.sources.tiles[name] = source;
-            }
-            else {
-                // Distribute object sources across workers
-                if (source.id % self.num_workers === self._worker_id) {
-                    // Load source if not cached
-                    self.sources.objects[name] = source;
-                    if (!self.objects[source.name]) {
-                        self.objects[source.name] = {};
-                        source.load(self.objects[source.name]);
-                    }
-                }
-            }
+            self.sources[name] = source;
         }
 
         // Clear tile cache if data source config changed
@@ -201,8 +184,8 @@ Object.assign(self, {
 
     // Load this tile's data source
     loadTileSourceData (tile) {
-        if (self.sources.tiles[tile.source]) {
-            return self.sources.tiles[tile.source].load(tile);
+        if (self.sources[tile.source]) {
+            return self.sources[tile.source].load(tile);
         }
         else {
             tile.source_data = {};
