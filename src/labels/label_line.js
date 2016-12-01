@@ -62,12 +62,19 @@ export default class LabelLine {
         }
 
         // starting position
-        let anchor_index = curvaturePlacement(lines, total_line_length, line_lengths, total_label_length);
+        let height = this.total_height * upp;
+        let [start_index, end_index] = checkTileBoundary(lines, line_lengths, height, line_angles_segments);
+
+        if (start_index === end_index){
+            this.throw_away = true;
+            return;
+        }
+
+        let anchor_index = curvaturePlacement(lines, total_line_length, line_lengths, total_label_length, start_index, end_index);
         let anchor = lines[anchor_index];
         this.position = anchor;
 
         let stops = [0, 0.3, 0.6, 0.9];
-        let height = this.total_height * upp;
 
         let angle_info = [];
         for (var i = 0; i < label_lengths.length; i++){
@@ -567,6 +574,34 @@ export default class LabelLine {
 //     return [line_index, line_offset];
 // }
 
+function checkTileBoundary(lines, widths, height, angles){
+    let start = 0;
+    let end = lines.length - 1;
+
+    let start_width = widths[0];
+    let end_width = widths[widths.length - 1];
+
+    while (start < end){
+        let position = Vector.add(Vector.rot([start_width/2, 0], -angles[start]), lines[start]);
+        let obb = getOBB(position, start_width, height, -angles[start]);
+        let aabb = obb.getExtent();
+        let in_tile = Label.prototype.inTileBounds.call({ aabb });
+        if (in_tile) break;
+        else start++;
+    }
+
+    while (end > start){
+        let position = Vector.add(Vector.rot([-end_width/2, 0], -angles[end]), lines[end]);
+        let obb = getOBB(position, end_width, height, -angles[end]);
+        let aabb = obb.getExtent();
+        let in_tile = Label.prototype.inTileBounds.call({ aabb });
+        if (in_tile) break;
+        else end--;
+    }
+
+    return [start, end]
+}
+
 function flipLine(lines){
     if (Vector.perp(lines[0], lines[1])[1] > 0){
         if (Vector.perp(lines[lines.length - 1], lines[lines.length - 2])[1] < 0){
@@ -584,7 +619,7 @@ function splitLineByOrientation(line){
     let current_length = 0;
     let max_length = 0;
     let orientation = 1;
-    let longest_line;
+    let longest_line = current_line;
 
     for (let i = 1; i < line.length; i++) {
         let pt = line[i];
@@ -633,6 +668,7 @@ function splitLineByOrientation(line){
             }
         }
     }
+
     return longest_line;
 }
 
@@ -705,7 +741,10 @@ function smooth(angle_info){
     }
 }
 
-function curvaturePlacement(line, total_line_length, line_lengths, label_length){
+function curvaturePlacement(line, total_line_length, line_lengths, label_length, start_index, end_index){
+    start_index = start_index || 0;
+    end_index = end_index || line.length - 1;
+
     var curvatures = []; // array of curvature values per line vertex
 
     // calculate curvature values
