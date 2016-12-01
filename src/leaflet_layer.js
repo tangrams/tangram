@@ -43,7 +43,7 @@ function extendLeaflet(options) {
         // Define custom layer methods
         Object.assign(layerClassConfig, {
 
-            initialize: function (options) {
+            initialize (options) {
                 // Defaults
                 options.showDebug = (!options.showDebug ? false : true);
 
@@ -56,7 +56,7 @@ function extendLeaflet(options) {
                 this._zoomAnimated = false;
             },
 
-            createScene: function () {
+            createScene () {
                 this.scene = Scene.create(
                     this.options.scene,
                     {
@@ -75,7 +75,7 @@ function extendLeaflet(options) {
             },
 
             // Finish initializing scene and setup events when layer is added to map
-            onAdd: function (map) {
+            onAdd (map) {
                 if (!this.scene) {
                     this.createScene();
                 }
@@ -169,7 +169,7 @@ function extendLeaflet(options) {
                 });
             },
 
-            onRemove: function (map) {
+            onRemove (map) {
                 layerBaseClass.prototype.onRemove.apply(this, arguments);
 
                 map.off('resize', this.hooks.resize);
@@ -189,7 +189,7 @@ function extendLeaflet(options) {
                 }
             },
 
-            createTile: function (coords) {
+            createTile (coords) {
                 var key = coords.x + '/' + coords.y + '/' + coords.z;
                 var div = document.createElement('div');
                 div.setAttribute('data-tile-key', key);
@@ -218,7 +218,7 @@ function extendLeaflet(options) {
 
             // Modify leaflet's default scroll wheel behavior to render frames more frequently
             // (should generally lead to smoother scroll with Tangram frame re-render)
-            modifyScrollWheelBehavior: function (map) {
+            modifyScrollWheelBehavior (map) {
                 if (this.scene.view.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
                     map.options.zoomSnap = 0;
 
@@ -262,7 +262,7 @@ function extendLeaflet(options) {
             },
 
             // Modify leaflet's default double-click zoom behavior, to match typical vector basemap products
-            modifyDoubleClickZoom: function (map) {
+            modifyDoubleClickZoom (map) {
                 if (this.scene.view.continuous_zoom && map.doubleClickZoom && this.options.modifyDoubleClickZoom !== false) {
 
                     // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
@@ -344,18 +344,18 @@ function extendLeaflet(options) {
                 }
             },
 
-            updateView: function () {
+            updateView () {
                 var view = this._map.getCenter();
                 view.zoom = Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.default_view_max_zoom);
                 this.scene.view.setView(view);
             },
 
-            updateSize: function () {
+            updateSize () {
                 var size = this._map.getSize();
                 this.scene.resizeMap(size.x, size.y);
             },
 
-            resizeOnFirstVisible: function () {
+            resizeOnFirstVisible () {
                 let first_visibility = true;
                 this.hooks.visibilitychange = () => {
                     if (first_visibility) {
@@ -367,7 +367,7 @@ function extendLeaflet(options) {
                 document.addEventListener('visibilitychange', this.hooks.visibilitychange);
             },
 
-            onTangramViewUpdate: function () {
+            onTangramViewUpdate () {
                 if (!this._map || this._updating_tangram) {
                     return;
                 }
@@ -377,7 +377,7 @@ function extendLeaflet(options) {
                 this._updating_tangram = false;
             },
 
-            render: function () {
+            render () {
                 if (!this.scene) {
                     return;
                 }
@@ -386,7 +386,7 @@ function extendLeaflet(options) {
 
             // Reverse the CSS positioning Leaflet applies to the layer, since Tangram's WebGL canvas
             // is expected to be 'absolutely' positioned.
-            reverseTransform: function () {
+            reverseTransform () {
                 if (!this._map || !this.scene || !this.scene.container) {
                     return;
                 }
@@ -396,7 +396,7 @@ function extendLeaflet(options) {
             },
 
             // Tie Leaflet event handlers to Tangram feature selection
-            setupSelectionEventHandlers: function (map) {
+            setupSelectionEventHandlers (map) {
                 this._selection_events = {};
 
                 this.hooks.click = (event) => {
@@ -433,7 +433,7 @@ function extendLeaflet(options) {
             // Set user-defined handlers for feature selection events
             // Currently only one handler can be defined for each event type
             // Event types are: `click`, `hover` (leaflet `mousemove`)
-            setSelectionEvents: function (events) {
+            setSelectionEvents (events) {
                 this._selection_events = Object.assign(this._selection_events, events);
             }
 
