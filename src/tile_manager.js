@@ -261,7 +261,7 @@ export default class TileManager {
                 let tile = Tile.create({
                     source,
                     coords,
-                    worker: this.scene.nextWorker(),
+                    worker: this.scene.getWorkerForDataSource(source),
                     style_zoom: this.view.styleZoom(coords.z),
                     view: this.view
                 });
