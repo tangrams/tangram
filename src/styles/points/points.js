@@ -191,7 +191,6 @@ Object.assign(Points, {
 
         // Placement strategy
         style.placement = draw.placement;
-        style.placement_must_fit = draw.placement_must_fit;
         style.placement_min_length_ratio = StyleParser.evalCachedProperty(draw.placement_min_length_ratio, context);
 
         // Spacing parameter (in pixels) to equally space points along a line
