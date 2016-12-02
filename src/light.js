@@ -103,52 +103,30 @@ export default class Light {
                 ${calculateLights}
 
                 //  Final light intensity calculation
-                vec4 color = vec4(0.0);
+                vec4 color = vec4(vec3(0.), _color.a); // start with vertex color alpha
 
-                // Keep material alpha channel when alpha blending is on
-                #if !defined(TANGRAM_BLEND_OPAQUE)
-                    #ifdef TANGRAM_MATERIAL_EMISSION
-                        color = material.emission;
-                    #endif
+                #ifdef TANGRAM_MATERIAL_EMISSION
+                    color.rgb = material.emission.rgb;
+                    color.a *= material.emission.a;
+                #endif
 
-                    #ifdef TANGRAM_MATERIAL_AMBIENT
-                        color += light_accumulator_ambient * _color * material.ambient;
-                    #else
-                        #ifdef TANGRAM_MATERIAL_DIFFUSE
-                            color += light_accumulator_ambient * _color * material.diffuse;
-                        #endif
-                    #endif
-
-                    #ifdef TANGRAM_MATERIAL_DIFFUSE
-                        color += light_accumulator_diffuse * _color * material.diffuse;
-                    #endif
-
-                    #ifdef TANGRAM_MATERIAL_SPECULAR
-                        color += light_accumulator_specular * material.specular;
-                    #endif
-                // Multiply material alpha channel into material RGB when alpha blending is off
+                #ifdef TANGRAM_MATERIAL_AMBIENT
+                    color.rgb += light_accumulator_ambient.rgb * _color.rgb * material.ambient.rgb;
+                    color.a *= material.ambient.a;
                 #else
-                    color.a = _color.a; // use vertex color alpha
-
-                    #ifdef TANGRAM_MATERIAL_EMISSION
-                        color.rgb = material.emission.rgb * material.emission.a;
-                    #endif
-
-                    #ifdef TANGRAM_MATERIAL_AMBIENT
-                        color.rgb += light_accumulator_ambient.rgb * _color.rgb * material.ambient.rgb * material.ambient.a;
-                    #else
-                        #ifdef TANGRAM_MATERIAL_DIFFUSE
-                            color.rgb += light_accumulator_ambient.rgb * _color.rgb * material.diffuse.rgb * material.diffuse.a;
-                        #endif
-                    #endif
-
                     #ifdef TANGRAM_MATERIAL_DIFFUSE
-                        color.rgb += light_accumulator_diffuse.rgb * _color.rgb * material.diffuse.rgb * material.diffuse.a;
+                        color.rgb += light_accumulator_ambient.rgb * _color.rgb * material.diffuse.rgb;
                     #endif
+                #endif
 
-                    #ifdef TANGRAM_MATERIAL_SPECULAR
-                        color.rgb += light_accumulator_specular.rgb * material.specular.rgb * material.specular.a;
-                    #endif
+                #ifdef TANGRAM_MATERIAL_DIFFUSE
+                    color.rgb += light_accumulator_diffuse.rgb * _color.rgb * material.diffuse.rgb;
+                    color.a *= material.diffuse.a;
+                #endif
+
+                #ifdef TANGRAM_MATERIAL_SPECULAR
+                    color.rgb += light_accumulator_specular.rgb * material.specular.rgb;
+                    color.a *= material.specular.a;
                 #endif
 
                 // Clamp final color
