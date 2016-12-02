@@ -661,8 +661,7 @@ export default class Scene {
             // Opaque: all source, no destination
             if (blend === 'opaque') {
                 render_states.blending.set({
-                    blend: true,
-                    src: gl.SRC_ALPHA, dst: gl.ZERO
+                    blend: false
                 });
             }
             // Traditional alpha blending
@@ -677,16 +676,14 @@ export default class Scene {
             else if (blend === 'add') {
                 render_states.blending.set({
                     blend: true,
-                    src: gl.ONE, dst: gl.ONE,
-                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                    src: gl.ONE, dst: gl.ONE
                 });
             }
             // Multiplicative blending
             else if (blend === 'multiply') {
                 render_states.blending.set({
                     blend: true,
-                    src: gl.ZERO, dst: gl.SRC_COLOR,
-                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                    src: gl.ZERO, dst: gl.SRC_COLOR
                 });
             }
         }
