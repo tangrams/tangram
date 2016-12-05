@@ -31,7 +31,7 @@ export const TextLabels = {
     parseTextFeature (feature, draw, context, tile) {
         // Compute label text
         let text = this.parseTextSource(feature, draw, context);
-        if (text == null) {
+        if (text == null || text === '') {
             return; // no text for this feature
         }
 
