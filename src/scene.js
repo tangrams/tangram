@@ -847,13 +847,15 @@ export default class Scene {
     createDataSources() {
         let reset = []; // sources to reset
         let prev_source_names = Object.keys(this.sources);
+        let source_id = 0;
 
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
             let prev_source = this.sources[name];
 
             try {
-                this.sources[name] = DataSource.create(Object.assign({}, source, {name}), this.sources);
+                let config = Object.assign({}, source, { name, id: source_id++ });
+                this.sources[name] = DataSource.create(config, this.sources);
                 if (!this.sources[name]) {
                     throw {};
                 }

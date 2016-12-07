@@ -286,12 +286,6 @@ export default SceneLoader = {
         config.styles = config.styles || {};
         config.layers = config.layers || {};
 
-        // Assign ids to data sources
-        let source_id = 0;
-        for (let source in config.sources) {
-            config.sources[source].id = source_id++;
-        }
-
         // If only one camera specified, set it as default
         if (config.camera) {
             config.cameras.default = config.camera;
