@@ -698,8 +698,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
 
     gl.linkProgram(program);
 
-    gl.detachShader(program, vertex_shader);
-    gl.detachShader(program, fragment_shader);
+    // TODO: reference count and delete shader objects when no programs reference them
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         let message = new Error(
