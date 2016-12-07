@@ -59,13 +59,16 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             request.send();
         });
 
+        promise = promise.then(response => {
+            return (proxy && WorkerBroker.withTransferables(response)) || response;
+        });
+
+        // Attach request to promise to allow for XHR cancellation
         Object.defineProperty(promise, 'request', {
             value: request
         });
 
-        return promise.then(response => {
-            return (proxy && WorkerBroker.withTransferables(response)) || response;
-        });
+        return promise;
     }
 };
 
