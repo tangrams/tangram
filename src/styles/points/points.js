@@ -623,7 +623,18 @@ Object.assign(Points, {
         let vertex_template = this.makeVertexTemplate(style);
         let angle = label.angle || style.angle;
 
-        let angle = style.angle;
+        let size
+        if (style.size[0] instanceof Array){
+            let height = style.size[0][1];
+            size = style.size.reduce(function(prev, next){
+                return [prev[0] + next[0], prev[1]];
+            }, [0, height])
+        }
+        else {
+            size = style.size;
+        }
+
+        let angle = style.angle || label.angle;
         let angles = [angle, angle, angle, angle];
         let stops = [1,1,1];
         let offset = label.offset;
@@ -631,9 +642,8 @@ Object.assign(Points, {
 
         this.buildQuad(
             [label.position],               // position
-            style.size,                     // size in pixels
-            angle,                          // angle in radians
-            style.angle,                    // angle in radians
+            size,                     // size in pixels
+            angle,                    // angle in radians
             angles,
             stops,
             0,                              // pre-angle in radians

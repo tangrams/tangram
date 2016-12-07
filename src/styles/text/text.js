@@ -21,6 +21,8 @@ Object.assign(TextStyle, {
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
 
+        // this.defines.TANGRAM_ARTICULATED_POINT = true;
+
         // Disable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = false;
 
@@ -105,7 +107,17 @@ Object.assign(TextStyle, {
 
                         if (text_info.text_settings.can_articulate){
                             // unpack logical sizes of each segment into an array for the style
-                            style.size = text_info.size.map(function(size){ return size.logical_size; });
+                            if (q.label.type === 'straight')
+                                style.size = text_info.total_size.logical_size;
+                            else{
+                                style.size = text_info.size.map(function(size){ return size.logical_size; });
+                            }
+
+                            if (q.label.type !== text_info.type){
+                                console.log(q.text)
+                                debugger
+                            }
+
                             style.texcoords = text_info.texcoords;
                         }
                         else {
@@ -166,11 +178,11 @@ Object.assign(TextStyle, {
         let labels = [];
 
         if (geometry.type === "LineString") {
-            this.buildLineLabels(geometry.coordinates, size, layout, labels);
+            Array.prototype.push.apply(labels, this.buildLineLabels(geometry.coordinates, size, layout));
         } else if (geometry.type === "MultiLineString") {
             let lines = geometry.coordinates;
             for (let i = 0; i < lines.length; ++i) {
-                this.buildLineLabels(lines[i], size, layout, labels);
+                Array.prototype.push.apply(labels, this.buildLineLabels(lines[i], size, layout));
             }
         } else if (geometry.type === "Point") {
             labels.push(new LabelPoint(geometry.coordinates, size, layout));
@@ -191,22 +203,26 @@ Object.assign(TextStyle, {
     },
 
     // Build one or more labels for a line geometry
-    buildLineLabels (line, size, layout, labels) {
-        let subdiv = Math.min(layout.subdiv, line.length - 1);
-        if (subdiv > 1) {
-            // Create multiple labels for line, with each allotted a range of segments
-            // in which it will attempt to place
-            let seg_per_div = (line.length - 1) / subdiv;
-            for (let i = 0; i < subdiv; i++) {
-                layout.segment_start = Math.floor(i * seg_per_div);
-                layout.segment_end = Math.floor((i + 1) * seg_per_div);
+    buildLineLabels (line, size, layout) {
+        let labels = [];
+        // let subdiv = Math.min(layout.subdiv, line.length - 1);
+        // if (subdiv > 1) {
+        //     // Create multiple labels for line, with each allotted a range of segments
+        //     // in which it will attempt to place
+        //     let seg_per_div = (line.length - 1) / subdiv;
+        //     for (let i = 0; i < subdiv; i++) {
+        //         layout.segment_start = Math.floor(i * seg_per_div);
+        //         layout.segment_end = Math.floor((i + 1) * seg_per_div);
 
-                labels.push(new LabelLine(size, line, layout));
-            }
-            layout.segment_start = null;
-            layout.segment_end = null;
-        }
-        else {
+        //         let label = new LabelLine(size, line, layout);
+        //         if (!label.throw_away){
+        //             labels.push(label);
+        //         }
+        //     }
+        //     layout.segment_start = null;
+        //     layout.segment_end = null;
+        // }
+        // else {
             let label = new LabelLine(size, line, layout);
             if (!label.throw_away){
                 labels.push(label);
@@ -215,7 +231,8 @@ Object.assign(TextStyle, {
                     // labels.push(chosen_label);
                 // }
             }
-        }
+        // }
+        return labels;
     }
 
 });

@@ -8,19 +8,25 @@ const PLACEMENT = {
 };
 
 const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
-const LINE_EXCEED_STRAIGHT = 0.6;   // minimal ratio for straight labels (label length) / (line length)
-const LINE_EXCEED_KINKED = 0.4;     // minimal ratio for kinked labels
+const LINE_EXCEED_STRAIGHT = 0.1;   // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_KINKED = 0.0;     // minimal ratio for kinked labels
 
 export default class LabelLine {
     constructor (size, lines, layout) {
         this.num_segments = size.length;
         this.layout = layout;
 
-        // var label = new LabelLineCurved(size, lines, layout);
         var label = new LabelLineArticulated(size, lines, layout);
 
         if (label.throw_away){
             label = new LabelLineCurved(size, lines, layout);
+
+            if (label.throw_away){
+                this.throw_away = true;
+                this.type = '';
+                this.num_segments = 0;
+                return;
+            }
         }
 
         this.position = label.position;
@@ -33,6 +39,14 @@ export default class LabelLine {
         this.aabbs = label.aabbs;
         this.angle_info = label.angle_info;
         this.throw_away = label.throw_away;
+        this.type = label.type;
+        this.size = size;
+
+        if (this.type === 'straight'){
+            this.num_segments = 0;
+            this.offset = this.offsets[0];
+            this.angle = this.angle[0];
+        }
     }
 
     static splitLineByOrientation(line){
@@ -142,6 +156,7 @@ class LabelLineCurved {
         this.offset = [];
         this.obbs = [];
         this.aabbs = [];
+        this.type = 'curved';
 
         let upp = layout.units_per_pixel;
 
@@ -165,6 +180,12 @@ class LabelLineCurved {
         }
 
         let anchor_index = LabelLineCurved.curvaturePlacement(lines, total_line_length, line_lengths, total_label_length, start_index, end_index);
+
+        if (anchor_index === false){
+            this.throw_away = true;
+            return;
+        }
+
         let anchor = lines[anchor_index];
         this.position = anchor;
 
@@ -334,9 +355,12 @@ class LabelLineCurved {
             line_index++;
         }
 
+        var min_cost = Math.min.apply(null, costs);
+
+        // if (min_cost / label_length > .005) return false;
+
         // return index with best placement (least curvature)
-        // TODO: double check off-by-one error
-        return costs.indexOf(Math.min.apply(null, costs));
+        return costs.indexOf(min_cost);
     }
 
     static scaleLine(scale, line){
@@ -564,6 +588,7 @@ class LabelLineArticulated {
         this.kink_index = 0; // index at which an articulated label will kink (e.g., 1 means a kink _after_ the first segment)
         this.spread_factor = 1; // spaces out adjacent words to prevent overlap
         this.fitness = 0; // measure of quality of fit
+        this.type = 'straight';
 
         lines = LabelLine.splitLineByOrientation(lines);
         this.lines = lines;
@@ -578,6 +603,14 @@ class LabelLineArticulated {
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
+        if (
+            layout.segment_start && layout.segment_start > lines.length - 2 ||
+            layout.segment_max && layout.segment_max > lines.length - 2
+        ){
+            this.throw_away = true;
+            return;
+        }
+
         this.segment_index = layout.segment_index || layout.segment_start || 0;
         this.segment_max = layout.segment_end || lines.length;
 
@@ -612,6 +645,7 @@ class LabelLineArticulated {
         switch (this.placement) {
             case PLACEMENT.CORNER:
                 this.placement = PLACEMENT.MID_POINT;
+                this.type = 'straight';
                 break;
             case PLACEMENT.MID_POINT:
                 if (this.segment_index >= this.lines.length - 2) {
@@ -619,6 +653,7 @@ class LabelLineArticulated {
                 }
                 else if (this.size.length > 1) {
                     this.placement = PLACEMENT.CORNER;
+                    this.type = 'kinked';
                 }
                 this.segment_index++;
                 break;
