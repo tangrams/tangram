@@ -45,6 +45,7 @@ export default class Scene {
 
         this.config = null;
         this.config_source = config_source;
+        this.config_bundle = null;
         this.config_serialized = null;
         this.last_valid_config_source = null;
 
@@ -803,8 +804,9 @@ export default class Scene {
             this.config_path = URLs.pathForURL(config_path);
         }
 
-        return SceneLoader.loadScene(this.config_source, this.config_path).then(config => {
+        return SceneLoader.loadScene(this.config_source, this.config_path).then(({config, bundle}) => {
             this.config = config;
+            this.config_bundle = bundle;
             this.trigger('load', { config: this.config });
             return this.config;
         });
@@ -832,10 +834,14 @@ export default class Scene {
         let load = (this.config.sources[name] == null);
         let source = this.config.sources[name] = Object.assign({}, config);
 
+        // Convert raw data into blob URL
         if (source.data && typeof source.data === 'object') {
             source.url = URLs.createObjectURL(new Blob([JSON.stringify(source.data)]));
             delete source.data;
         }
+
+        // Resolve paths relative to root scene bundle
+        SceneLoader.normalizeDataSource(source, this.config_bundle);
 
         if (load) {
             return this.updateConfig({ rebuild: { sources: [name] } });
