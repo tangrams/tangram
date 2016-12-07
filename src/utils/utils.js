@@ -6,8 +6,6 @@ import Thread from './thread';
 import WorkerBroker from './worker_broker';
 import Geo from '../geo';
 
-import yaml from 'js-yaml';
-
 var Utils;
 export default Utils = {};
 
@@ -70,38 +68,6 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
 
         return promise;
     }
-};
-
-Utils.parseResource = function (body) {
-    var data;
-    try {
-        // jsyaml 'json' option allows duplicate keys
-        // Keeping this for backwards compatibility, but should consider migrating to requiring
-        // unique keys, as this is YAML spec. But Tangram ES currently accepts dupe keys as well,
-        // so should consider how best to unify.
-        data = yaml.safeLoad(body, { json: true });
-    } catch (e) {
-        throw e;
-    }
-    return data;
-};
-
-Utils.loadResource = function (source) {
-    return new Promise((resolve, reject) => {
-        if (typeof source === 'string') {
-            Utils.io(source).then((body) => {
-                try {
-                    let data = Utils.parseResource(body);
-                    resolve(data);
-                }
-                catch(e) {
-                    reject(e);
-                }
-            }, reject);
-        } else {
-            resolve(source);
-        }
-    });
 };
 
 // Needed for older browsers that still support WebGL (Safari 6 etc.)
