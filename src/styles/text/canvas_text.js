@@ -241,57 +241,68 @@ export default class CanvasText {
                 if (text_settings.can_articulate){
                     let words = text_info.segments;
 
-                    if (text_info.type === 'straight'){
-                        let word = words.reduce(function(prev, next){ return prev + next; });
-                        let texcoord;
+                    text_info.texcoords = {};
+                    for (let i = 0; i < text_info.type.length; i++){
 
-                        if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
-                            texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
-                        }
-                        else {
-                            let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
-                            let size = CanvasText.text_cache[style][word].size;
-                            let line = CanvasText.text_cache[style][word].lines;
+                        let type = text_info.type[i];
+                        switch (type){
+                            case 'straight':
+                                let word = words.reduce(function(prev, next){ return prev + next; });
+                                let texcoord;
 
-                            this.drawTextMultiLine(line, texture_position, size, text_settings);
+                                if (!CanvasText.texcoord_cache[tile_key][style][word]) debugger
 
-                            texcoord = Texture.getTexcoordsForSprite(
-                                texture_position,
-                                size.texture_size,
-                                texture_size
-                            );
+                                if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
+                                    texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
+                                }
+                                else {
+                                    let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
+                                    let size = CanvasText.text_cache[style][word].size;
+                                    let line = CanvasText.text_cache[style][word].lines;
 
-                            CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
-                        }
+                                    this.drawTextMultiLine(line, texture_position, size, text_settings);
 
-                        text_info.texcoords = texcoord;
-                    }
-                    else {
-                        text_info.texcoords = [];
-                        for (let i = 0; i < words.length; i++){
-                            let word = words[i];
-                            let texcoord;
+                                    texcoord = Texture.getTexcoordsForSprite(
+                                        texture_position,
+                                        size.texture_size,
+                                        texture_size
+                                    );
 
-                            if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
-                                texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
-                            }
-                            else {
-                                let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
-                                let size = CanvasText.text_cache[style][word].size;
-                                let line = CanvasText.text_cache[style][word].lines;
+                                    CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
+                                }
 
-                                this.drawTextMultiLine(line, texture_position, size, text_settings);
+                                text_info.texcoords[type] = texcoord;
+                                break;
+                            case 'curved':
+                                text_info.texcoords[type] = [];
+                                for (let i = 0; i < words.length; i++){
+                                    let word = words[i];
+                                    let texcoord;
 
-                                texcoord = Texture.getTexcoordsForSprite(
-                                    texture_position,
-                                    size.texture_size,
-                                    texture_size
-                                );
+                                    if (!CanvasText.texcoord_cache[tile_key][style][word]) debugger
 
-                                CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
-                            }
+                                    if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
+                                        texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
+                                    }
+                                    else {
+                                        let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
+                                        let size = CanvasText.text_cache[style][word].size;
+                                        let line = CanvasText.text_cache[style][word].lines;
 
-                            text_info.texcoords.push(texcoord);
+                                        this.drawTextMultiLine(line, texture_position, size, text_settings);
+
+                                        texcoord = Texture.getTexcoordsForSprite(
+                                            texture_position,
+                                            size.texture_size,
+                                            texture_size
+                                        );
+
+                                        CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
+                                    }
+
+                                    text_info.texcoords[type].push(texcoord);
+                                }
+                                break;
                         }
                     }
                 }
@@ -342,43 +353,17 @@ export default class CanvasText {
                 if (text_info.text_settings.can_articulate){
                     let texture_position;
 
-                    if (text_info.type === 'straight'){
-                        let word = '';
-                        let size = [0, text_info.size[0].texture_size[1]];
-                        for (let i = 0; i < text_info.size.length; i++){
-                            word += text_info.segments[i];
-                            size[0] += text_info.size[i].texture_size[0];
-                        }
+                    for (let i = 0; i < text_info.type.length; i++){
+                        let type = text_info.type[i];
+                        switch (type){
+                            case 'straight':
+                                let word = '';
+                                let size = [0, text_info.size[0].texture_size[1]];
+                                for (let i = 0; i < text_info.size.length; i++){
+                                    word += text_info.segments[i];
+                                    size[0] += text_info.size[i].texture_size[0];
+                                }
 
-                        if (size[0] > column_width) {
-                            column_width = size[0];
-                        }
-                        if (cy + size[1] < max_texture_size) {
-                            texture_position = [cx, cy];
-
-                            cy += size[1];
-                            if (cy > height) {
-                                height = cy;
-                            }
-                        }
-                        else { // start new column if taller than texture
-                            cx += column_width;
-                            column_width = 0;
-                            cy = 0;
-                            texture_position = [cx, cy];
-                        }
-
-                        CanvasText.texcoord_cache[tile_key][style][word] = {
-                            texture_position: texture_position
-                        };
-                    }
-                    else {
-                        for (let i = 0; i < text_info.size.length; i++) {
-                            let word = text_info.segments[i];
-
-                            if (!CanvasText.texcoord_cache[tile_key][style][word]) {
-
-                                let size = text_info.size[i].texture_size;
                                 if (size[0] > column_width) {
                                     column_width = size[0];
                                 }
@@ -400,7 +385,38 @@ export default class CanvasText {
                                 CanvasText.texcoord_cache[tile_key][style][word] = {
                                     texture_position: texture_position
                                 };
-                            }
+                            break;
+                            case 'curved':
+                                for (let i = 0; i < text_info.size.length; i++) {
+                                    let word = text_info.segments[i];
+
+                                    if (!CanvasText.texcoord_cache[tile_key][style][word]) {
+
+                                        let size = text_info.size[i].texture_size;
+                                        if (size[0] > column_width) {
+                                            column_width = size[0];
+                                        }
+                                        if (cy + size[1] < max_texture_size) {
+                                            texture_position = [cx, cy];
+
+                                            cy += size[1];
+                                            if (cy > height) {
+                                                height = cy;
+                                            }
+                                        }
+                                        else { // start new column if taller than texture
+                                            cx += column_width;
+                                            column_width = 0;
+                                            cy = 0;
+                                            texture_position = [cx, cy];
+                                        }
+
+                                        CanvasText.texcoord_cache[tile_key][style][word] = {
+                                            texture_position: texture_position
+                                        };
+                                    }
+                                }
+                            break;
                         }
                     }
                 }

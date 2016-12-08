@@ -623,15 +623,23 @@ Object.assign(Points, {
         let vertex_template = this.makeVertexTemplate(style);
         let angle = label.angle || style.angle;
 
-        let size
-        if (style.size[0] instanceof Array){
-            let height = style.size[0][1];
-            size = style.size.reduce(function(prev, next){
-                return [prev[0] + next[0], prev[1]];
-            }, [0, height])
+        let size, texcoords;
+
+        if (label.type){
+            size = style.size[label.type];
+            texcoords = style.texcoords[label.type];
         }
         else {
-            size = style.size;
+            if (style.size[0] instanceof Array){
+                let height = style.size[0][1];
+                size = style.size.reduce(function(prev, next){
+                    return [prev[0] + next[0], prev[1]];
+                }, [0, height])
+            }
+            else {
+                size = style.size;
+            }
+            texcoords = style.texcoords;
         }
 
         let angle = style.angle || label.angle;
@@ -651,7 +659,7 @@ Object.assign(Points, {
             style.sampler,                  // texture sampler to use
             offset,                   // offset from center in pixels
             offsets,
-            style.texcoords,                // texture UVs
+            texcoords,                // texture UVs
             vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
@@ -661,9 +669,9 @@ Object.assign(Points, {
 
         for (var i = 0; i < label.num_segments; i++){
             let angle = label.angle[i];
-            let size = style.size[i];
+            let size = style.size[label.type][i];
             let offset = label.offsets[i] || [0,0];
-            let texcoord = style.texcoords[i];
+            let texcoord = style.texcoords[label.type][i];
             let position = label.position;
             let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 

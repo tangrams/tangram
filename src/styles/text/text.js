@@ -107,18 +107,17 @@ Object.assign(TextStyle, {
 
                         if (text_info.text_settings.can_articulate){
                             // unpack logical sizes of each segment into an array for the style
+                            style.size = {};
+                            style.texcoords = {};
+
                             if (q.label.type === 'straight')
-                                style.size = text_info.total_size.logical_size;
+                                style.size.straight = text_info.total_size.logical_size;
                             else{
-                                style.size = text_info.size.map(function(size){ return size.logical_size; });
+                                style.size.curved = text_info.size.map(function(size){ return size.logical_size; });
                             }
 
-                            if (q.label.type !== text_info.type){
-                                console.log(q.text)
-                                debugger
-                            }
-
-                            style.texcoords = text_info.texcoords;
+                            style.texcoords.straight = text_info.texcoords.straight;
+                            style.texcoords.curved = text_info.texcoords.curved;
                         }
                         else {
                             style.size = text_info.size.logical_size;
@@ -165,8 +164,9 @@ Object.assign(TextStyle, {
                 feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             }
             for (let i = 0; i < feature_labels.length; i++) {
+                let label = feature_labels[i];
                 let fql = Object.create(fq);
-                fql.label = feature_labels[i];
+                fql.label = label;
                 labels.push(fql);
             }
         }
