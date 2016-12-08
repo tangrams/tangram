@@ -46,6 +46,23 @@ vec2 rotate2D(vec2 _st, float _angle) {
                 sin(_angle),cos(_angle)) * _st;
 }
 
+
+float mix4linear(float a, float b, float c, float d, float x ) {
+    return mix(mix(a,b,clamp(x,0.,.33)*3.),
+               mix(b,
+                   mix(c,d,(clamp(x,.66,1.)-.66)*3.),
+                   (clamp(x,.33,.66)-.33)*3.),
+               step(0.33,x));
+}
+
+float mix4smoothstep(float a, float b, float c, float d, float x ) {
+    return mix(mix(a,b,smoothstep(0.,.3,x)),
+               mix(b,
+                   mix(c,d,smoothstep(.6, .9, x)),
+                   smoothstep(.3,.6,x)),
+               step(.3,x));
+}
+
 void main() {
     // Initialize globals
     #pragma tangram: setup
@@ -61,42 +78,17 @@ void main() {
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
 
     float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);
-    float theta = a_shape.z / 4096.;
-    float pre_angle = a_pre_angle;
-    float w;
+    // float theta = a_shape.z / 4096.;
+    // float pre_angle = a_pre_angle;
+    float w = 0.0;
 
-    if (zoom < a_stops[0]){
-        w = zoom / a_stops[0];
-        theta = mix(a_angles[0], a_angles[1], w);
-        offset.x = mix(a_offsets[0], a_offsets[1], w);
-        pre_angle = mix(a_pre_angles[0], a_pre_angles[1], w);
-        // theta = a_angles[0];
-        // offset.x = a_offsets[0];
-        // pre_angle = a_pre_angles[0];
-    }
-    else if (zoom < a_stops[1]){
-        w = (zoom - a_stops[0]) / (a_stops[1] - a_stops[0]);
-        theta = mix(a_angles[1], a_angles[2], w);
-        offset.x = mix(a_offsets[1], a_offsets[2], w);
-        pre_angle = mix(a_pre_angles[1], a_pre_angles[2], w);
-        // theta = a_angles[1];
-        // offset.x = a_offsets[1];
-        // pre_angle = a_pre_angles[1];
-    }
-    else if (zoom < a_stops[2]){
-        w = (zoom - a_stops[1]) / (a_stops[2] - a_stops[1]);
-        theta = mix(a_angles[2], a_angles[3], w);
-        offset.x = mix(a_offsets[2], a_offsets[3], w);
-        pre_angle = mix(a_pre_angles[2], a_pre_angles[3], w);
-        // theta = a_angles[2];
-        // offset.x = a_offsets[2];
-        // pre_angle = a_pre_angles[2];
-    }
-    else {
-        theta = a_angles[3];
-        offset.x = a_offsets[3];
-        pre_angle = a_pre_angles[3];
-    }
+    float theta = mix4linear(a_angles[0], a_angles[1], a_angles[2], a_angles[3], zoom);
+    offset.x = mix4linear(a_offsets[0], a_offsets[1], a_offsets[2], a_offsets[3], zoom);
+    float pre_angle = mix4linear(a_pre_angles[0], a_pre_angles[1], a_pre_angles[2], a_pre_angles[3], zoom);
+
+    // float theta = mix4smoothstep(a_angles[0], a_angles[1], a_angles[2], a_angles[3], zoom);
+    // offset.x = mix4smoothstep(a_offsets[0], a_offsets[1], a_offsets[2], a_offsets[3], zoom);
+    // float pre_angle = mix4smoothstep(a_pre_angles[0], a_pre_angles[1], a_pre_angles[2], a_pre_angles[3], zoom);
 
     #ifdef TANGRAM_MULTI_SAMPLER
     v_sampler = a_shape.w; // texture sampler
