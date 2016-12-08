@@ -250,14 +250,17 @@ export default class Scene {
             throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
         }
 
-        // Import custom data source scripts alongside core library
-        // NOTE: workaround for issue where large libraries intermittently fail to load in web workers,
-        // when multiple importScripts() calls are used. Loading all scripts (including Tangram itself)
-        // in one call at at worker creation time has not exhibited the same issue.
-        let urls = [...this.data_source_scripts];
-        urls.push(worker_url); // load Tangram *last* (has been more reliable, though reason unknown)
-        let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
-        return URLs.createObjectURL(new Blob([body], { type: 'application/javascript' }));
+        if (this.data_source_scripts.length > 0) {
+            // Import custom data source scripts alongside core library
+            // NOTE: workaround for issue where large libraries intermittently fail to load in web workers,
+            // when multiple importScripts() calls are used. Loading all scripts (including Tangram itself)
+            // in one call at at worker creation time has not exhibited the same issue.
+            let urls = [...this.data_source_scripts];
+            urls.push(worker_url); // load Tangram *last* (has been more reliable, though reason unknown)
+            let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
+            worker_url = URLs.createObjectURL(new Blob([body], { type: 'application/javascript' }));
+        }
+        return worker_url;
     }
 
     // Update list of any custom data source scripts (if any)
