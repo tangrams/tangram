@@ -40,7 +40,7 @@ module.exports = function (config) {
         },
         browserify : {
             debug: true,
-            transform: [['babelify', { presets: ['es2015'], plugins: ['transform-runtime'] }], 'brfs']
+            transform: [['babelify', { presets: ['es2015'] }], 'brfs']
         },
 
         plugins: [
