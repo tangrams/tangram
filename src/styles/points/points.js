@@ -34,7 +34,7 @@ Object.assign(Points, {
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init(options = {}) {
-        Style.init.apply(this, arguments);
+        Style.init.call(this, options);
 
         // Base shaders
         this.vertex_shader_src = shaderSrc_pointsVertex;
@@ -44,13 +44,10 @@ Object.assign(Points, {
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_pre_angle', size: 1, type: gl.FLOAT, normalized: false },
-            { name: 'a_pre_angles', size: 4, type: gl.FLOAT, normalized: false },
             { name: 'a_angles', size: 4, type: gl.FLOAT, normalized: false },
-            { name: 'a_stops', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_offsets', size: 4, type: gl.FLOAT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
         ];
 
         // Feature selection

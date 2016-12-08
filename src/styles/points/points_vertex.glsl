@@ -17,13 +17,16 @@ uniform mat3 u_inverseNormalMatrix;
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute float a_pre_angle;
-attribute vec4 a_pre_angles;
-attribute vec4 a_angles;
-attribute vec3 a_stops;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
-attribute vec4 a_offsets;
+
+#ifdef TANGRAM_CURVED_POINT
+    attribute vec4 a_offsets;
+    attribute vec4 a_pre_angles;
+    attribute vec4 a_angles;
+    attribute vec3 a_stops;
+#endif
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
@@ -78,13 +81,17 @@ void main() {
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
 
     float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);
-    // float theta = a_shape.z / 4096.;
-    // float pre_angle = a_pre_angle;
-    float w = 0.0;
 
-    float theta = mix4linear(a_angles[0], a_angles[1], a_angles[2], a_angles[3], zoom);
-    offset.x = mix4linear(a_offsets[0], a_offsets[1], a_offsets[2], a_offsets[3], zoom);
-    float pre_angle = mix4linear(a_pre_angles[0], a_pre_angles[1], a_pre_angles[2], a_pre_angles[3], zoom);
+    #ifdef TANGRAM_CURVED_POINT
+        float theta = mix4linear(a_angles[0], a_angles[1], a_angles[2], a_angles[3], zoom);
+        offset.x = mix4linear(a_offsets[0], a_offsets[1], a_offsets[2], a_offsets[3], zoom);
+        float pre_angle = mix4linear(a_pre_angles[0], a_pre_angles[1], a_pre_angles[2], a_pre_angles[3], zoom);
+    #endif
+
+    #ifndef TANGRAM_CURVED_POINT
+        float theta = a_shape.z / 4096.;
+        float pre_angle = a_pre_angle;
+    #endif
 
     // float theta = mix4smoothstep(a_angles[0], a_angles[1], a_angles[2], a_angles[3], zoom);
     // offset.x = mix4smoothstep(a_offsets[0], a_offsets[1], a_offsets[2], a_offsets[3], zoom);

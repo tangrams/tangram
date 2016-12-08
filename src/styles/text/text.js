@@ -6,6 +6,7 @@ import {Points} from '../points/points';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
+import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 
 export let TextStyle = Object.create(Points);
 
@@ -14,14 +15,20 @@ Object.assign(TextStyle, {
     super: Points,
     built_in: true,
 
-    init() {
-        this.super.init.apply(this, arguments);
+    init(options = {}) {
+        options.attribs = [
+            { name: 'a_offsets', size: 4, type: gl.FLOAT, normalized: false },
+            { name: 'a_pre_angles', size: 4, type: gl.FLOAT, normalized: false },
+            { name: 'a_stops', size: 3, type: gl.FLOAT, normalized: false }
+        ];
+
+        this.super.init.call(this, options);
 
         // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
 
-        // this.defines.TANGRAM_ARTICULATED_POINT = true;
+        this.defines.TANGRAM_CURVED_POINT = true;
 
         // Disable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = false;
