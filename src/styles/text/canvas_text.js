@@ -20,10 +20,10 @@ export default class CanvasText {
     }
 
     // Set font style params for canvas drawing
-    setFont ({ font_css, fill, stroke, stroke_width, px_size }) {
+    setFont ({ font_css, fill, stroke, stroke_width, px_size, supersample }) {
         this.px_size = px_size;
         let ctx = this.context;
-        let dpr = Utils.device_pixel_ratio;
+        let dpr = Utils.device_pixel_ratio * supersample;
 
         if (stroke && stroke_width > 0) {
             ctx.strokeStyle = stroke;
@@ -36,7 +36,7 @@ export default class CanvasText {
     }
 
     textSizes (texts) {
-        let dpr = Utils.device_pixel_ratio;
+        let dpr;
         return FontManager.loadFonts().then(() => {
             for (let style in texts) {
                 CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
@@ -51,6 +51,7 @@ export default class CanvasText {
 
                     if (first) {
                         this.setFont(text_settings);
+                        dpr = Utils.device_pixel_ratio * text_settings.supersample;
                         space_width = this.context.measureText(' ').width / dpr;
                         first = false;
                     }
@@ -96,8 +97,8 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, {transform, text_wrap, max_lines, stroke_width = 0}) {
-        let dpr = Utils.device_pixel_ratio;
+    textSize (text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
+        let dpr = Utils.device_pixel_ratio * supersample;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let vertical_buffer = this.vertical_text_buffer * dpr;
@@ -136,12 +137,12 @@ export default class CanvasText {
     }
 
     // Draw multiple lines of text
-    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, transform, align }) {
+    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, transform, align, supersample }) {
         let line_height = size.line_height;
         let height = y;
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
-            this.drawTextLine(line, [x, height], size, { stroke, stroke_width, transform, align });
+            this.drawTextLine(line, [x, height], size, { stroke, stroke_width, transform, align, supersample });
             height += line_height;
         }
 
@@ -149,7 +150,7 @@ export default class CanvasText {
         if (debugSettings.draw_label_collision_boxes) {
             this.context.save();
 
-            let dpr = Utils.device_pixel_ratio;
+            let dpr = Utils.device_pixel_ratio * supersample;
             let horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
             let vertical_buffer = dpr * this.vertical_text_buffer;
             let collision_size = size.collision_size;
@@ -178,8 +179,8 @@ export default class CanvasText {
     }
 
     // Draw single line of text at specified location, adjusting for buffer and baseline
-    drawTextLine (line, [x, y], size, { stroke, stroke_width = 0, transform, align }) {
-        let dpr = Utils.device_pixel_ratio;
+    drawTextLine (line, [x, y], size, { stroke, stroke_width = 0, transform, align, supersample }) {
+        let dpr = Utils.device_pixel_ratio * supersample;
         align = align || 'center';
 
         let vertical_buffer = this.vertical_text_buffer * dpr;
@@ -263,6 +264,7 @@ export default class CanvasText {
                             stroke: text_settings.stroke,
                             stroke_width: text_settings.stroke_width,
                             transform: text_settings.transform,
+                            supersample: text_settings.supersample,
                             align: align
                         });
 

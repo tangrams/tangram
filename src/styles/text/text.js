@@ -56,6 +56,9 @@ Object.assign(TextStyle, {
         let type = feature.geometry.type;
         draw.can_articulate = (type === "LineString" || type === "MultiLineString");
 
+        // supersample text rendering for angled labels, to improve clarity
+        draw.supersample_text = (type === "LineString" || type === "MultiLineString");
+
         let q = this.parseTextFeature(feature, draw, context, tile);
         if (!q) {
             return;
