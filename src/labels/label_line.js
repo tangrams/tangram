@@ -182,7 +182,7 @@ class LabelLineCurved {
 
         let anchor_index = LabelLineCurved.curvaturePlacement(lines, total_line_length, line_lengths, total_label_length, start_index, end_index);
 
-        if (anchor_index === false){
+        if (anchor_index === -1){
             this.throw_away = true;
             return;
         }
@@ -309,13 +309,16 @@ class LabelLineCurved {
             var norm_2 = Vector.perp(next, curr);
 
             var curvature = Vector.angleBetween(norm_1, norm_2);
+            if (curvature > 1) curvature = Infinity;
+
             curvatures.push(curvature);
         }
 
         curvatures.push(Infinity); // Infinite penalty for going off end of line
 
         // calculate curvature costs
-        var costs = [];
+        var total_costs = [];
+        var avg_costs = [];
         var line_index = 0;
         var position = 0;
 
@@ -345,18 +348,29 @@ class LabelLineCurved {
                 return line_index;
             }
 
-            costs.push(cost);
+            var avg_cost = cost / (ahead_index - line_index);
+
+            total_costs.push(cost);
+            avg_costs.push(avg_cost);
 
             position += line_lengths[line_index];
             line_index++;
         }
 
-        var min_cost = Math.min.apply(null, costs);
+        var min_total_cost = Math.min.apply(null, total_costs);
+        var min_index = total_costs.indexOf(min_total_cost);
+        var min_avg_cost = avg_costs[min_index];
 
-        // if (min_cost / label_length > .005) return false;
+        // return total_costs.indexOf(min_total_cost);
 
-        // return index with best placement (least curvature)
-        return costs.indexOf(min_cost);
+        if (min_total_cost < 1.3 && min_avg_cost < .4){
+            // return index with best placement (least curvature)
+            return total_costs.indexOf(min_total_cost);
+        }
+        else {
+            // if tolerances aren't satisfied, throw away tile
+            return -1;
+        }
     }
 
     static scaleLine(scale, line){
@@ -489,13 +503,14 @@ class LabelLineCurved {
 }
 
 // Private method to calculate oriented bounding box
-function getOBB(position, width, height, angle, offset) {
+function getOBB(position, width, height, angle, offset, upp) {
+    if (!upp) upp = 1;
     let p0, p1;
     // apply offset, x positive, y pointing down
     if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
         offset = Vector.rot(offset, angle);
-        p0 = position[0] + offset[0];
-        p1 = position[1] - offset[1];
+        p0 = position[0] + offset[0] * upp;
+        p1 = position[1] - offset[1] * upp;
     }
     else {
         p0 = position[0];
@@ -524,19 +539,6 @@ function getLineLength(line){
 
 function norm(p, q){
     return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
-}
-
-function createBoundingBoxes(positions, angles, widths, height){
-    let obbs = [];
-    let aabbs = [];
-    for (let i = 0; i < positions.length; i++){
-        let obb = getOBB(positions[i], widths[i], height, angles[i]);
-        let aabb = obb.getExtent();
-
-        obbs.push(obb);
-        aabbs.push(aabb);
-    }
-    return {obbs, aabbs};
 }
 
 function getLineAnglesForSegments(line){
