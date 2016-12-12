@@ -187,6 +187,8 @@ DataSource.types = {}; // set of supported data source classes, referenced by ty
 
 /*** Generic network loading source - abstract class ***/
 
+let network_request_id = 0; // used to namespace URL requests
+
 export class NetworkSource extends DataSource {
 
     constructor (source, sources) {
@@ -215,8 +217,10 @@ export class NetworkSource extends DataSource {
             //     promise = Promise.reject(Error('fake data source error'));
             // }
             // promise.then((body) => {
-            let promise = Utils.io(url, 60 * 1000, this.response_type);
-            source_data.request = promise.request;
+
+            let request_id = (network_request_id++) + '-' + url;
+            let promise = Utils.io(url, 60 * 1000, this.response_type, 'GET', {}, request_id);
+            source_data.request_id = request_id;
 
             promise.then((body) => {
                 dest.debug.response_size = body.length || body.byteLength;
