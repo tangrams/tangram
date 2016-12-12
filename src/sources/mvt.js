@@ -36,6 +36,7 @@ export class MVTSource extends NetworkTileSource {
         var layers = {};
         for (var l in tile.layers) {
             var layer = tile.layers[l];
+            var scale = Geo.tile_scale / layer.extent;
             var layer_geojson = {
                 type: 'FeatureCollection',
                 features: []
@@ -55,8 +56,8 @@ export class MVTSource extends NetworkTileSource {
                     var ring = coordinates[r];
                     for (var c=0; c < ring.length; c++) {
                         ring[c] = [
-                            ring[c].x,
-                            ring[c].y
+                            ring[c].x * scale,
+                            ring[c].y * scale
                         ];
                     }
                 }
