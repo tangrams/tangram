@@ -19,6 +19,7 @@ export default TextSettings = {
             settings.transform,
             settings.text_wrap,
             settings.max_lines,
+            settings.supersample,
             Utils.device_pixel_ratio
         ].join('/');
     },
@@ -72,7 +73,8 @@ export default TextSettings = {
         style.size = draw.font.size || this.defaults.size;
 
         // calculated pixel size
-        style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context);
+        style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
+        style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample;
 
         // Use stroke if specified
         if (draw.font.stroke && draw.font.stroke.color) {
