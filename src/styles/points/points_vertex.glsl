@@ -25,7 +25,6 @@ attribute vec2 a_offset;
     attribute vec4 a_offsets;
     attribute vec4 a_pre_angles;
     attribute vec4 a_angles;
-    attribute vec3 a_stops;
 #endif
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
@@ -51,11 +50,12 @@ vec2 rotate2D(vec2 _st, float _angle) {
 
 
 float mix4linear(float a, float b, float c, float d, float x ) {
-    return mix(mix(a,b,clamp(x,0.,.33)*3.),
+    float e = 1. / .3;
+    return mix(mix(a,b,clamp(x,0.,.3) * e),
                mix(b,
-                   mix(c,d,(clamp(x,.66,1.)-.66)*3.),
-                   (clamp(x,.33,.66)-.33)*3.),
-               step(0.33,x));
+                   mix(c,d,(clamp(x,.6,.9)-.6) * e),
+                   (clamp(x,.3,.6)-.3) * e),
+               step(0.3,x));
 }
 
 float mix4smoothstep(float a, float b, float c, float d, float x ) {

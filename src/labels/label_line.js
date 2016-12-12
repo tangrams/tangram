@@ -10,6 +10,7 @@ const PLACEMENT = {
 const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
 const LINE_EXCEED_STRAIGHT = 0.1;   // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_KINKED = -Infinity;     // minimal ratio for kinked labels
+const stops = [0, 0.3, 0.6, 0.9];
 
 export default class LabelLine {
     constructor (size, lines, layout) {
@@ -189,15 +190,12 @@ class LabelLineCurved {
         let anchor = lines[anchor_index];
         this.position = anchor;
 
-        let stops = [0, 0.3, 0.6, 0.9];
-
         let angle_info = [];
         for (var i = 0; i < label_lengths.length; i++){
             angle_info[i] = {
                 offsets : [],
                 angle_array : [],
-                pre_angles : [],
-                stop_array : []
+                pre_angles : []
             };
 
             for (var j = 0; j < stops.length; j++){
@@ -230,8 +228,6 @@ class LabelLineCurved {
                 angle_info[i].angle_array.push(angles[i]);
                 angle_info[i].pre_angles.push(pre_angles[i]);
             }
-
-            angle_info[i].stop_array = [0.3, 0.6, 0.9];
         }
 
         LabelLineCurved.smooth(angle_info);

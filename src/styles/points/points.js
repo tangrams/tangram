@@ -567,12 +567,11 @@ Object.assign(Points, {
         this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
         this.fillVertexTemplate('a_offsets', 0, { size: 4 });
         this.fillVertexTemplate('a_angles', 0, { size: 4 });
-        this.fillVertexTemplate('a_stops', 0, { size: 3 });
 
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, angles, stops, pre_angle, pre_angles, sampler, offset, offsets, texcoord_scale, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, angles, pre_angle, pre_angles, sampler, offset, offsets, texcoord_scale, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -585,8 +584,7 @@ Object.assign(Points, {
                 offsets_index: this.vertex_layout.index.a_offsets,
                 pre_angle_index: this.vertex_layout.index.a_pre_angle,
                 pre_angles_index: this.vertex_layout.index.a_pre_angles,
-                angles_index: this.vertex_layout.index.a_angles,
-                stops_index: this.vertex_layout.index.a_stops
+                angles_index: this.vertex_layout.index.a_angles
             },
             {
                 quad: size,
@@ -595,7 +593,6 @@ Object.assign(Points, {
                 offsets,
                 angle: angle * 4096,    // values have a 12-bit fraction
                 angles: angles,
-                stops: stops,
                 pre_angle: pre_angle,
                 pre_angles: pre_angles,
                 shape_w: sampler,
@@ -641,7 +638,6 @@ Object.assign(Points, {
 
         let angle = style.angle || label.angle;
         let angles = [angle, angle, angle, angle];
-        let stops = [1,1,1];
         let offset = label.offset;
         let offsets = [offset[0], offset[0], offset[0], offset[0]];
 
@@ -650,7 +646,6 @@ Object.assign(Points, {
             size,                     // size in pixels
             angle,                    // angle in radians
             angles,
-            stops,
             0,                              // pre-angle in radians
             [0,0,0,0],
             style.sampler,                  // texture sampler to use
@@ -672,16 +667,14 @@ Object.assign(Points, {
             let position = label.position;
             let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 
-            let angles, stops, offsets, pre_angles;
+            let angles, offsets, pre_angles;
             if (label.angle_info){
                 angles = label.angle_info[i].angle_array;
-                stops = label.angle_info[i].stop_array;
                 offsets = label.angle_info[i].offsets;
                 pre_angles = label.angle_info[i].pre_angles;
             }
             else {
                 angles = [angle, angle, angle, angle];
-                stops = [1,1,1];
                 offsets = [offset[0], offset[0], offset[0], offset[0]];
                 pre_angles = [pre_angle, pre_angle, pre_angle, pre_angle];
             }
@@ -691,7 +684,6 @@ Object.assign(Points, {
                 size,                           // size in pixels
                 angle,                          // angle in degrees
                 angles,
-                stops,
                 pre_angle,                      // pre-angle in radians
                 pre_angles,
                 style.sampler,                  // texture sampler to use
