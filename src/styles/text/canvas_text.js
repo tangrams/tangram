@@ -354,7 +354,7 @@ export default class CanvasText {
                         switch (type){
                             case 'straight':
                                 let word = '';
-                                let size = [0, text_info.size[0].texture_size[1]];
+                                let size = [0, text_info.total_size.texture_size[1]];
                                 for (let i = 0; i < text_info.size.length; i++){
                                     word += text_info.segments[i];
                                     size[0] += text_info.size[i].texture_size[0];
