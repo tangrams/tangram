@@ -116,8 +116,9 @@ Object.assign(TextStyle, {
                             style.size = {};
                             style.texcoords = {};
 
-                            if (q.label.type === 'straight')
+                            if (q.label.type === 'straight'){
                                 style.size.straight = text_info.total_size.logical_size;
+                            }
                             else{
                                 style.size.curved = text_info.size.map(function(size){ return size.logical_size; });
                             }
@@ -164,7 +165,7 @@ Object.assign(TextStyle, {
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
                 fq.layout.space_width = text_info.space_width;
                 fq.layout.space_indices = text_info.space_indices;
-                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout);
+                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout, text_info.total_size.collision_size);
             }
             else {
                 feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
@@ -180,15 +181,15 @@ Object.assign(TextStyle, {
     },
 
     // Builds one or more labels for a geometry
-    buildLabels (size, geometry, layout) {
+    buildLabels (size, geometry, layout, total_size) {
         let labels = [];
 
         if (geometry.type === "LineString") {
-            Array.prototype.push.apply(labels, this.buildLineLabels(geometry.coordinates, size, layout));
+            Array.prototype.push.apply(labels, this.buildLineLabels(geometry.coordinates, size, layout, total_size));
         } else if (geometry.type === "MultiLineString") {
             let lines = geometry.coordinates;
             for (let i = 0; i < lines.length; ++i) {
-                Array.prototype.push.apply(labels, this.buildLineLabels(lines[i], size, layout));
+                Array.prototype.push.apply(labels, this.buildLineLabels(lines[i], size, layout, total_size));
             }
         } else if (geometry.type === "Point") {
             labels.push(new LabelPoint(geometry.coordinates, size, layout));
@@ -209,7 +210,7 @@ Object.assign(TextStyle, {
     },
 
     // Build one or more labels for a line geometry
-    buildLineLabels (line, size, layout) {
+    buildLineLabels (line, size, layout, total_size) {
         let labels = [];
         // let subdiv = Math.min(layout.subdiv, line.length - 1);
         // if (subdiv > 1) {
@@ -229,7 +230,7 @@ Object.assign(TextStyle, {
         //     layout.segment_end = null;
         // }
         // else {
-            let label = new LabelLine(size, line, layout);
+            let label = new LabelLine(size, line, layout, total_size);
             if (!label.throw_away){
                 labels.push(label);
                 // let chosen_label = placementStrategy(label);

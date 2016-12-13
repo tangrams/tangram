@@ -13,11 +13,12 @@ const LINE_EXCEED_KINKED = -Infinity;     // minimal ratio for kinked labels
 const stops = [0, 0.3, 0.6, 0.9];
 
 export default class LabelLine {
-    constructor (size, lines, layout) {
+    constructor (size, lines, layout, total_size) {
         this.num_segments = size.length;
         this.layout = layout;
+        this.total_size = total_size;
 
-        var label = new LabelLineArticulated(size, lines, layout);
+        var label = new LabelLineArticulated(size, lines, layout, total_size);
 
         if (label.throw_away){
             label = new LabelLineCurved(size, lines, layout);
@@ -45,7 +46,6 @@ export default class LabelLine {
 
         if (this.type === 'straight'){
             this.num_segments = 0;
-            this.offset = this.offsets[0];
             this.angle = this.angle[0];
         }
     }
@@ -154,7 +154,7 @@ class LabelLineCurved {
         this.pre_angles = [];
         this.positions = [];
         this.offsets = [];
-        this.offset = [];
+        this.offset = [0,0];
         this.obbs = [];
         this.aabbs = [];
         this.type = 'curved';
@@ -573,8 +573,9 @@ function getLineLengths(line){
 }
 
 class LabelLineArticulated {
-    constructor (size, lines, layout){
+    constructor (size, lines, layout, total_size){
         this.size = size;
+        this.total_size = total_size;
         this.layout = layout;
         this.space_width = layout.space_width; // width of space for the font used
         this.space_indices = layout.space_indices;
@@ -596,6 +597,7 @@ class LabelLineArticulated {
         this.position = [];
         this.angle = [];
         this.offsets = [];
+        this.offset = layout.offset.slice();
         this.obbs = [];
         this.aabbs = [];
 
@@ -650,8 +652,8 @@ class LabelLineArticulated {
                     return false;
                 }
                 else if (this.size.length > 1) {
-                    this.placement = PLACEMENT.CORNER;
-                    this.type = 'kinked';
+                    // this.placement = PLACEMENT.CORNER;
+                    // this.type = 'kinked';
                 }
                 this.segment_index++;
                 break;
@@ -940,13 +942,7 @@ class LabelLineArticulated {
                     let offset = Vector.rot([nudge * upp, 0], -angle);
                     let position = Vector.add(this.position, offset);
 
-<<<<<<< 86b491e65e95f36e4c9345dd5468352dde65aa00
                     let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
-=======
-                    this.positions[i] = position;
-
-                    let obb = getOBB(position, width, height, angle, this.offset, upp);
->>>>>>> WIP new line walking algorithm
                     let aabb = obb.getExtent();
 
                     this.obbs.push(obb);
@@ -965,41 +961,44 @@ class LabelLineArticulated {
                 }
                 break;
             case PLACEMENT.MID_POINT:
-                let shift = -0.5 * this.total_length; // shift for centering the labels
+                let width = (this.total_size[0] + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
+                let height = (this.total_size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;
+                let angle = this.angle[0];
 
-                for (let i = 0; i < this.num_segments; i++){
-                    if (hasSpaceAtIndex(i, this.space_indices)){
-                        shift += 0.5 * this.space_width;
-                    }
+                let obb = getOBB(this.position, width, height, angle, this.offset, upp);
+                let aabb = obb.getExtent();
 
-                    let width_px = this.size[i][0];
-                    let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-                    let angle = this.angle[i];
+                this.obbs.push(obb);
+                this.aabbs.push(aabb);
+                // let shift = -0.5 * this.total_length; // shift for centering the labels
 
-                    shift += 0.5 * width_px;
+                // for (let i = 0; i < this.num_segments; i++){
+                //     if (hasSpaceAtIndex(i, this.space_indices)){
+                //         shift += 0.5 * this.space_width;
+                //     }
 
-                    let offset = Vector.rot([shift * upp, 0], -angle);
-                    let position = Vector.add(this.position, offset);
+                //     let width_px = this.size[i][0];
+                //     let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
+                //     let angle = this.angle[i];
 
-<<<<<<< 86b491e65e95f36e4c9345dd5468352dde65aa00
                     let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
-=======
-                    this.positions[i] = position;
-
-                    let obb = getOBB(position, width, height, angle, this.offset, upp);
->>>>>>> WIP new line walking algorithm
                     let aabb = obb.getExtent();
 
-                    this.obbs.push(obb);
-                    this.aabbs.push(aabb);
+                //     this.positions[i] = position;
 
-                    this.offsets[i] = [
-                        this.layout.offset[0] + shift,
-                        this.layout.offset[1]
-                    ];
+                //     let obb = getOBB(position, width, height, angle, this.offset, upp);
+                //     let aabb = obb.getExtent();
 
-                    shift += 0.5 * width_px;
-                }
+                //     this.obbs.push(obb);
+                //     this.aabbs.push(aabb);
+
+                //     this.offsets[i] = [
+                //         this.layout.offset[0] + shift,
+                //         this.layout.offset[1]
+                //     ];
+
+                //     shift += 0.5 * width_px;
+                // }
 
                 break;
         }
