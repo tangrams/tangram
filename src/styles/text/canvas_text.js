@@ -250,8 +250,6 @@ export default class CanvasText {
                                 let word = words.reduce(function(prev, next){ return prev + next; });
                                 let texcoord;
 
-                                if (!CanvasText.texcoord_cache[tile_key][style][word]) debugger
-
                                 if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
                                     texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
                                 }
@@ -278,8 +276,6 @@ export default class CanvasText {
                                 for (let i = 0; i < words.length; i++){
                                     let word = words[i];
                                     let texcoord;
-
-                                    if (!CanvasText.texcoord_cache[tile_key][style][word]) debugger
 
                                     if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
                                         texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
@@ -540,21 +536,19 @@ function reorderWordsLTR(words) {
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text){
     let segments = [];
-
     let space_indices = [];
-    // let space_index = 0;
-    // let num_bins = 4;
-    let num_bins = Math.ceil(text.length / 2);
-    // let num_bins = text.length;
+    let codon_length = 2;
 
     while (text.length){
-        let codon = Math.ceil(text.length / num_bins) || 1;
-        let segment = text.substring(0, codon);
+        let segment = text.substring(0, codon_length);
+        if (segment.length === 1) {
+            segments[segments.length - 1] += segment;
+        }
+        else {
+            segments.push(segment);
+        }
 
-        segments.push(segment);
-
-        text = text.substring(codon);
-        num_bins--;
+        text = text.substring(codon_length);
     }
 
     // let segments = reorderWordsLTR(words);
