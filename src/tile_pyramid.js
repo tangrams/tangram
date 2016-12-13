@@ -5,7 +5,8 @@ export default class TilePyramid {
 
     constructor() {
         this.coords = {};
-        this.max_proxy_descendant_depth = 3; // # of levels deep to search for descendant proxy tiles
+        this.max_proxy_descendant_depth = 3; // # of levels to search up/down for proxy tiles
+        this.max_proxy_ancestor_depth = 5;
     }
 
     sourceTiles(coord, source) {
@@ -75,7 +76,11 @@ export default class TilePyramid {
         }
     }
 
-    getAncestor ({ coords, style_zoom, source }) {
+    getAncestor ({ coords, style_zoom, source }, level = 1) {
+        if (level > this.max_proxy_ancestor_depth) {
+            return;
+        }
+
         // First check overzoomed tiles at same coordinate zoom
         if (style_zoom > source.max_zoom) {
             let source_tiles = this.sourceTiles(coords, source);
@@ -83,6 +88,10 @@ export default class TilePyramid {
                 for (let z = style_zoom - 1; z >= source.max_zoom; z--) {
                     if (source_tiles[z] && source_tiles[z].loaded) {
                         return source_tiles[z];
+                    }
+
+                    if (++level > this.max_proxy_ancestor_depth) {
+                        return;
                     }
                 }
             }
@@ -97,9 +106,8 @@ export default class TilePyramid {
             return parent_tiles[style_zoom];
         }
         // didn't find ancestor, try next level
-        // TODO: max depth levels to check
         if (parent.z > 0) {
-            return this.getAncestor({ coords: parent, style_zoom, source });
+            return this.getAncestor({ coords: parent, style_zoom, source }, level + 1);
         }
     }
 
