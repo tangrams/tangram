@@ -125,6 +125,7 @@ Object.assign(TextStyle, {
 
                             style.texcoords.straight = text_info.texcoords.straight;
                             style.texcoords.curved = text_info.texcoords.curved;
+                            style.texcoords_stroke = text_info.texcoords_stroke;
                         }
                         else {
                             style.size = text_info.size.logical_size;

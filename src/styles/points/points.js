@@ -663,7 +663,46 @@ Object.assign(Points, {
             let angle = label.angle[i];
             let size = style.size[label.type][i];
             let offset = label.offsets[i] || [0,0];
+
+            let texcoord_stroke = style.texcoords_stroke[i];
+
+            let position = label.position;
+            let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
+
+            let angles, offsets, pre_angles;
+            if (label.angle_info){
+                angles = label.angle_info[i].angle_array;
+                offsets = label.angle_info[i].offsets;
+                pre_angles = label.angle_info[i].pre_angles;
+            }
+            else {
+                angles = [angle, angle, angle, angle];
+                offsets = [offset[0], offset[0], offset[0], offset[0]];
+                pre_angles = [pre_angle, pre_angle, pre_angle, pre_angle];
+            }
+
+            this.buildQuad(
+                [position],               // position
+                size,                           // size in pixels
+                angle,                          // angle in degrees
+                angles,
+                pre_angle,                      // pre-angle in radians
+                pre_angles,
+                style.sampler,                  // texture sampler to use
+                offset,                         // offset from center in pixels
+                offsets,
+                texcoord_stroke,                       // texture UVs
+                vertex_data, vertex_template    // VBO and data for current vertex
+            );
+        }
+
+        for (var i = 0; i < label.num_segments; i++){
+            let angle = label.angle[i];
+            let size = style.size[label.type][i];
+            let offset = label.offsets[i] || [0,0];
+
             let texcoord = style.texcoords[label.type][i];
+
             let position = label.position;
             let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 
