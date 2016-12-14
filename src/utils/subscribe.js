@@ -1,3 +1,5 @@
+import log from './log';
+
 export default function subscribeMixin (target) {
 
     let listeners = [];
@@ -24,7 +26,12 @@ export default function subscribeMixin (target) {
         trigger(event, ...data) {
             listeners.forEach(listener => {
                 if (typeof listener[event] === 'function') {
-                    listener[event](...data);
+                    try {
+                        listener[event](...data);
+                    }
+                    catch(e) {
+                        log('warn', `Caught exception in listener for event '${event}':`, e);
+                    }
                 }
             });
         },
