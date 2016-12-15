@@ -185,8 +185,8 @@ Object.assign(Points, {
 
         // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
         style.size = [
-            Math.min((style.size[0] || style.size), 256),
-            Math.min((style.size[1] || style.size), 256)
+            Math.min(style.size[0] != null ? style.size[0] : style.size, 256),
+            Math.min(style.size[1] != null ? style.size[1] : style.size, 256)
         ];
 
         // Placement strategy
