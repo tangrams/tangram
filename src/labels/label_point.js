@@ -12,12 +12,9 @@ export default class LabelPoint extends Label {
         this.parent = this.layout.parent;
         this.update();
 
-        if (this.layout.anchor) {
-            this.start_anchor_index = 1;
-        }
-
-        let hasNext = this.getNextFit();
-        this.throw_away = !hasNext;
+        this.start_anchor_index = 1;
+        this.degenerate = !this.size[0] && !this.size[1] && !this.layout.buffer[0] && !this.layout.buffer[1];
+        this.throw_away = !this.getNextFit();
     }
 
     update() {
@@ -129,6 +126,10 @@ export default class LabelPoint extends Label {
     }
 
     discard (bboxes, exclude = null) {
+        if (this.degenerate) {
+            return false;
+        }
+
         if (super.discard(bboxes, exclude)) {
             // If more than one anchor specified, try them in order
             if (Array.isArray(this.layout.anchor)) {
