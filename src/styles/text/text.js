@@ -129,7 +129,6 @@ Object.assign(TextStyle, {
                         }
                         else {
                             style.size = text_info.size.logical_size;
-                            style.angle = q.label.angle || 0;
                             style.texcoords = text_info.align[q.label.align].texcoords;
                         }
 

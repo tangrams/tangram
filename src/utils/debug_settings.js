@@ -1,6 +1,6 @@
 export default {
     // draws a blue rectangle border around the collision box of a label
-    draw_label_collision_boxes: false,
+    draw_label_collision_boxes: true,
     // draws a green rectangle border within the texture box of a label
     draw_label_texture_boxes: false,
     // suppreses fade-in of labels
