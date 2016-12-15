@@ -123,51 +123,19 @@ Object.assign(Points, {
 
         // require color or texture
         if (!style.color && !this.texture) {
-            return null;
+            return;
         }
 
-        let sprite = style.sprite = StyleParser.evalProperty(draw.sprite, context);
-        style.sprite_default = draw.sprite_default; // optional fallback if 'sprite' not found
-
-        // if point has texture and sprites, require a valid sprite to draw
-        if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
-            if (!sprite && !style.sprite_default) {
+        // optional sprite
+        if (this.hasSprites()) {
+            let sprite_info = this.parseSprite(draw, context);
+            if (sprite_info) {
+                style.texcoords = sprite_info.texcoords;
+            }
+            else {
                 return;
             }
-            else if (!Texture.textures[this.texture].sprites[sprite]) {
-                // If sprite not found, check for default sprite
-                if (style.sprite_default) {
-                    sprite = style.sprite_default;
-                    if (!Texture.textures[this.texture].sprites[sprite]) {
-                        log('warn', `Style: in style '${this.name}', could not find default sprite '${sprite}' for texture '${this.texture}'`);
-                        return;
-                    }
-                }
-                else {
-                    if (!this.texture_missing_sprites[sprite]) { // only log each missing sprite once
-                        log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
-                        this.texture_missing_sprites[sprite] = true;
-                    }
-                    return;
-                }
-            }
         }
-        else if (sprite) {
-            log('warn', `Style: in style '${this.name}', sprite '${sprite}' was specified, but texture '${this.texture}' has no sprites`);
-            sprite = null;
-        }
-
-        // Sets texcoord scale if needed (e.g. for sprite sub-area)
-        let sprite_info;
-        if (this.texture && sprite) {
-            sprite_info = Texture.getSpriteInfo(this.texture, sprite);
-            style.texcoords = sprite_info.texcoords;
-        } else {
-            style.texcoords = null;
-        }
-
-        // points can be placed off the ground
-        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
 
         // point size defined explicitly, or defaults to sprite size, or generic fallback
         style.size = draw.size;
@@ -200,6 +168,9 @@ Object.assign(Points, {
 
         // Angle parameter (can be a number or the string "auto")
         style.angle = StyleParser.evalProperty(draw.angle, context);
+
+        // points can be placed off the ground
+        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
 
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
@@ -239,6 +210,27 @@ Object.assign(Points, {
 
         // Register with collision manager
         Collision.addStyle(this.collision_group_points, tile.key);
+    },
+
+    hasSprites() {
+        return this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites;
+    },
+
+    getSpriteInfo (sprite) {
+        let info = Texture.textures[this.texture].sprites[sprite] && Texture.getSpriteInfo(this.texture, sprite);
+        if (sprite && !info) {
+            if (!this.texture_missing_sprites[sprite]) { // only log each missing sprite once
+                log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                this.texture_missing_sprites[sprite] = true;
+            }
+        }
+        return info;
+    },
+
+    parseSprite (draw, context) {
+        let sprite = StyleParser.evalProperty(draw.sprite, context);
+        let sprite_info = this.getSpriteInfo(sprite) || this.getSpriteInfo(draw.sprite_default);
+        return sprite_info;
     },
 
     // Override
