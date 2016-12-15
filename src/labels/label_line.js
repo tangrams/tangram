@@ -2,52 +2,45 @@ import Label from './label';
 import Vector from '../vector';
 import OBB from '../utils/obb';
 
-const PLACEMENT = {
-    MID_POINT: 0,
-    CORNER: 1
-};
-
-const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
 const LINE_EXCEED_STRAIGHT = 0.1;   // minimal ratio for straight labels (label length) / (line length)
-const LINE_EXCEED_KINKED = -Infinity;     // minimal ratio for kinked labels
 const stops = [0, 0.3, 0.6, 0.9];
 
 export default class LabelLine {
     constructor (size, lines, layout, total_size) {
-        this.num_segments = size.length;
         this.layout = layout;
-        this.total_size = total_size;
 
-        var label = new LabelLineArticulated(size, lines, layout, total_size);
+        // try straight label
+        var label = new LabelLineStraight(total_size, lines, layout);
 
         if (label.throw_away){
+            // try curved label
             label = new LabelLineCurved(size, lines, layout);
 
             if (label.throw_away){
                 this.throw_away = true;
-                this.type = '';
                 this.num_segments = 0;
                 return;
             }
+            else {
+                this.throw_away = false;
+                this.angle_info = label.angle_info;
+                this.pre_angles = label.pre_angles;
+                this.positions = label.positions;
+                this.offsets = label.offsets;
+                this.num_segments = size.length;
+            }
+        }
+        else {
+            this.num_segments = 0;
         }
 
         this.position = label.position;
         this.angle = label.angle;
-        this.pre_angles = label.pre_angles || undefined;
-        this.positions = label.positions;
-        this.offsets = label.offsets;
         this.offset = label.offset;
         this.obbs = label.obbs;
         this.aabbs = label.aabbs;
-        this.angle_info = label.angle_info;
-        this.throw_away = label.throw_away;
         this.type = label.type;
-        this.size = size;
-
-        if (this.type === 'straight'){
-            this.num_segments = 0;
-            this.angle = this.angle[0];
-        }
+        this.size = label.size;
     }
 
     static splitLineByOrientation(line){
@@ -230,7 +223,6 @@ class LabelLineCurved {
             }
         }
 
-        LabelLineCurved.smooth(angle_info);
         this.angle_info = angle_info;
     }
 
@@ -260,37 +252,6 @@ class LabelLineCurved {
         }
 
         return [start, end]
-    }
-
-    static smooth(angle_info){
-        for (let i = 0; i < angle_info.length; i++){
-            let info = angle_info[i];
-            let angles = info.angle_array;
-            let pre_angles = info.pre_angles;
-
-            let smooth_angles = [];
-            let smooth_pre_angles = [];
-            let total_angle = angles.map(function(angle, i){
-                return angle + pre_angles[i];
-            });
-            let smooth_total_angle = [];
-
-            for (let j = 0; j < angles.length; j++){
-                if (j === 0){
-                    smooth_total_angle[j] = 1/3 * (2 * total_angle[0] + total_angle[1]);
-                }
-                else if (j === angles.length - 1){
-                    smooth_total_angle[j] = 1/3 * (2 * total_angle[j] + total_angle[j - 1]);
-                }
-                else {
-                    smooth_total_angle[j] = 1/4 * (2 * total_angle[j] + total_angle[j - 1] + total_angle[j + 1]);
-                }
-
-                smooth_pre_angles[j] = total_angle[j] - angles[j];
-            }
-            info.angle_array = angles;
-            info.pre_angles = smooth_pre_angles;
-        }
     }
 
     static curvaturePlacement(line, total_line_length, line_lengths, label_length, start_index, end_index){
@@ -572,20 +533,13 @@ function getLineLengths(line){
     return lengths;
 }
 
-class LabelLineArticulated {
-    constructor (size, lines, layout, total_size){
+class LabelLineStraight {
+    constructor (size, lines, layout){
         this.size = size;
-        this.total_size = total_size;
         this.layout = layout;
-        this.space_width = layout.space_width; // width of space for the font used
-        this.space_indices = layout.space_indices;
-        this.num_segments = size.length; // number of label segments
-        this.total_length = size.reduce(function(prev, next){ return prev + next[0]; }, 0) + this.space_indices.length * this.space_width;
-        this.total_height = size[0][1];
-        this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
-
-        this.kink_index = 0; // index at which an articulated label will kink (e.g., 1 means a kink _after_ the first segment)
-        this.spread_factor = 1; // spaces out adjacent words to prevent overlap
+        this.num_segments = 0; // number of label segments
+        this.total_length = size[0];
+        this.total_height = size[1];
         this.fitness = 0; // measure of quality of fit
         this.type = 'straight';
 
@@ -593,10 +547,8 @@ class LabelLineArticulated {
         this.lines = lines;
 
         // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
-        this.positions = [];
         this.position = [];
         this.angle = [];
-        this.offsets = [];
         this.offset = layout.offset.slice();
         this.obbs = [];
         this.aabbs = [];
@@ -642,23 +594,10 @@ class LabelLineArticulated {
     // taking into account both straight and articulated segments. Returns false if all possibilities
     // have been exhausted
     getNextSegment() {
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                this.placement = PLACEMENT.MID_POINT;
-                this.type = 'straight';
-                break;
-            case PLACEMENT.MID_POINT:
-                if (this.segment_index >= this.lines.length - 2) {
-                    return false;
-                }
-                else if (this.size.length > 1) {
-                    // this.placement = PLACEMENT.CORNER;
-                    // this.type = 'kinked';
-                }
-                this.segment_index++;
-                break;
+        if (this.segment_index >= this.lines.length - 2) {
+            return false;
         }
-
+        this.segment_index++;
         return this.getCurrentSegment();
     }
 
@@ -666,22 +605,10 @@ class LabelLineArticulated {
     // This is the current and next segment for a straight line, and the previous, current and next
     // for an articulated segment.
     getCurrentSegment() {
-        let p1, p2, segment;
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                p1 = this.lines[this.segment_index - 1];
-                p2 = this.lines[this.segment_index];
-                let p3 = this.lines[this.segment_index + 1];
-                segment = [ p1, p2, p3 ];
-                break;
-            case PLACEMENT.MID_POINT:
-                p1 = this.lines[this.segment_index];
-                p2 = this.lines[this.segment_index + 1];
-                segment = [ p1, p2 ];
-                break;
-        }
-
-        return segment;
+        return [
+            this.lines[this.segment_index],
+            this.lines[this.segment_index + 1]
+        ];
     }
 
     // Returns next segment that is valid (within tile, inside angle requirements and within line geometry).
@@ -693,7 +620,7 @@ class LabelLineArticulated {
 
         if (this.doesSegmentFit(segment)) {
             this.update();
-            if (this.inTileBounds() && this.inAngleBounds()) {
+            if (this.inTileBounds()) {
                 return segment;
             }
         }
@@ -703,71 +630,6 @@ class LabelLineArticulated {
 
     // Returns boolean indicating whether current segment is valid
     doesSegmentFit(segment) {
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                return this.fitKinkedSegment(segment);
-            case PLACEMENT.MID_POINT:
-                return this.fitStraightSegment(segment);
-        }
-    }
-
-    // Returns boolean indicating whether kinked segment is valid
-    // Cycles through various ways of kinking the labels around the segment's pivot,
-    // finding the best fit, and determines the kink_index.
-    fitKinkedSegment(segment) {
-        let upp = this.layout.units_per_pixel;
-
-        let p0p1 = Vector.sub(segment[0], segment[1]);
-        let p1p2 = Vector.sub(segment[1], segment[2]);
-
-        // Don't fit if segment doesn't pass the vertical line test, resulting in upside-down labels
-        if (p0p1[0] * p1p2[0] < 0 && p0p1[1] * p1p2[1] > 0) {
-            return false;
-        }
-
-        let line_length1 = Vector.length(p0p1) / upp;
-        let line_length2 = Vector.length(p1p2) / upp;
-
-        // break up multiple segments into two chunks (N-1 options)
-        let label_length1 = this.total_length;
-        let label_length2 = 0;
-        let width, fitness = 0;
-        let kink_index = this.num_segments - 1;
-        let fitnesses = [];
-
-        while (kink_index > 0) {
-            width = this.size[kink_index][0];
-
-            if (hasSpaceAtIndex(kink_index, this.space_indices)){
-                width += this.space_width;
-            }
-
-            label_length1 -= width;
-            label_length2 += width;
-
-            fitness = Math.max(calcFitness(line_length1, label_length1), calcFitness(line_length2, label_length2));
-            fitnesses.unshift(fitness);
-
-            kink_index--;
-        }
-
-        let max_fitness = Math.max.apply(null, fitnesses);
-
-        if (max_fitness < LINE_EXCEED_KINKED) {
-            this.kink_index = fitnesses.indexOf(max_fitness) + 1;
-            this.fitness = max_fitness;
-            return true;
-        }
-        else {
-            this.kink_index = 0;
-            return false;
-        }
-    }
-
-    // Returns boolean indicating whether straight segment is valid
-    // A straight segment is placed at the midpoint and is valid if the label's length is greater than a
-    // factor (LINE_EXCEED_STRAIGHT) of the line segment's length
-    fitStraightSegment(segment) {
         let upp = this.layout.units_per_pixel;
         let line_length = Vector.length(Vector.sub(segment[0], segment[1])) / upp;
         let fitness = calcFitness(line_length, this.total_length);
@@ -790,218 +652,34 @@ class LabelLineArticulated {
 
     getCurrentAngle() {
         let segment = this.getCurrentSegment();
-        let angles = [];
-
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                let theta1 = getTextAngleForSegment(segment[0], segment[1]);
-                let theta2 = getTextAngleForSegment(segment[1], segment[2]);
-
-                let p0p1 = Vector.sub(segment[0], segment[1]);
-                let p1p2 = Vector.sub(segment[1], segment[2]);
-
-                let orientation = (p0p1[0] >= 0 && p1p2[0] >= 0) ? 1 : -1;
-                let angle;
-
-                for (let i = 0; i < this.num_segments; i++){
-                    if (i < this.kink_index){
-                        angle = (orientation > 0) ? theta2 : theta1;
-                    }
-                    else {
-                        angle = (orientation > 0) ? theta1 : theta2;
-                    }
-                    angles.push(angle);
-                }
-                break;
-            case PLACEMENT.MID_POINT:
-                let theta = getTextAngleForSegment(segment[0], segment[1]);
-                for (let i = 0; i < this.num_segments; i++){
-                    angles.push(theta);
-                }
-                break;
-        }
-
-        return angles;
+        return getTextAngleForSegment(segment[0], segment[1]);
     }
 
     // Return the position of the center of the label
     getCurrentPosition() {
         let segment = this.getCurrentSegment();
-        let position;
-
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                position = segment[1].slice();
-                break;
-            case PLACEMENT.MID_POINT:
-                position = [
-                    0.5 * (segment[0][0] + segment[1][0]),
-                    0.5 * (segment[0][1] + segment[1][1])
-                ];
-                break;
-        }
-
-        return position;
-    }
-
-    // Check for articulated labels to be within an angle range [-MAX_ANGLE, +MAX_ANGLE]
-    inAngleBounds() {
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                let angle0 = this.angle[0];
-                if (angle0 < 0) {
-                    angle0 += 2 * Math.PI;
-                }
-
-                let angle1 = this.angle[1];
-                if (angle1 < 0) {
-                    angle1 += 2 * Math.PI;
-                }
-
-                let theta = Math.abs(angle1 - angle0);
-                theta = Math.min(2 * Math.PI - theta, theta);
-
-                return theta <= MAX_ANGLE;
-            case PLACEMENT.MID_POINT:
-                return true;
-        }
+        return [
+            0.5 * (segment[0][0] + segment[1][0]),
+            0.5 * (segment[0][1] + segment[1][1])
+        ];
     }
 
     // Calculate bounding boxes
     updateBBoxes() {
         let upp = this.layout.units_per_pixel;
-        let height = (this.total_height + this.layout.buffer[1] * 2) * upp * Label.epsilon;
 
         // reset bounding boxes
         this.obbs = [];
         this.aabbs = [];
 
-        // fudge width value as text may overflow bounding box if it has italic, bold, etc style
-        let italics_buffer = (this.layout.italic) ? 5 * upp : 0;
+        let width = (this.size[0] + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
+        let height = (this.size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;;
 
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                let angle0 = this.angle[this.kink_index - 1]; // angle before kink
-                let angle1 = this.angle[this.kink_index]; // angle after kink
-                let theta = Math.abs(angle1 - angle0); // angle delta
+        let obb = getOBB(this.position, width, height, this.angle, this.offset, upp);
+        let aabb = obb.getExtent();
 
-                // A spread factor of 0 pivots the boxes on their horizontal center, looking like: "X"
-                // a spread factor of 1 offsets the boxes so that their corners touch, looking like: "\/" or "/\"
-                let dx = this.spread_factor * Math.abs(this.total_height * Math.tan(0.5 * theta));
-                let nudge = -0.5 * dx;
-
-                if (hasSpaceAtIndex(this.kink_index, this.space_indices)){
-                    nudge -= 0.5 * this.space_width;
-                }
-
-                // Place labels backwards from kink index
-                for (let i = this.kink_index - 1; i >= 0; i--) {
-                    let width_px = this.size[i][0];
-                    let angle = this.angle[i];
-
-                    let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-
-                    nudge -= 0.5 * width_px;
-
-                    let offset = Vector.rot([nudge * upp, 0], -angle);
-                    let position = Vector.add(this.position, offset);
-
-                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
-                    let aabb = obb.getExtent();
-
-                    this.obbs.push(obb);
-                    this.aabbs.push(aabb);
-
-                    this.offsets[i] = [
-                        this.layout.offset[0] + nudge,
-                        this.layout.offset[1]
-                    ];
-
-                    nudge -= 0.5 * width_px;
-
-                    if (hasSpaceAtIndex(this.kink_index, this.space_indices)){
-                       nudge -= 0.5 * this.space_width;
-                    }
-                }
-
-                // Place labels forwards from kink index
-                nudge = 0.5 * dx;
-
-                if (hasSpaceAtIndex(this.kink_index, this.space_indices)){
-                    nudge += 0.5 * this.space_width;
-                }
-
-                for (let i = this.kink_index; i < this.num_segments; i++){
-                    let width_px = this.size[i][0];
-                    let angle = this.angle[i];
-
-                    let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-
-                    nudge += 0.5 * width_px;
-
-                    let offset = Vector.rot([nudge * upp, 0], -angle);
-                    let position = Vector.add(this.position, offset);
-
-                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
-                    let aabb = obb.getExtent();
-
-                    this.obbs.push(obb);
-                    this.aabbs.push(aabb);
-
-                    this.offsets[i] = [
-                        this.layout.offset[0] + nudge,
-                        this.layout.offset[1]
-                    ];
-
-                    nudge += 0.5 * width_px;
-
-                    if (hasSpaceAtIndex(this.kink_index, this.space_indices)){
-                        nudge += 0.5 * this.space_width;
-                    }
-                }
-                break;
-            case PLACEMENT.MID_POINT:
-                let width = (this.total_size[0] + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-                let height = (this.total_size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;
-                let angle = this.angle[0];
-
-                let obb = getOBB(this.position, width, height, angle, this.offset, upp);
-                let aabb = obb.getExtent();
-
-                this.obbs.push(obb);
-                this.aabbs.push(aabb);
-                // let shift = -0.5 * this.total_length; // shift for centering the labels
-
-                // for (let i = 0; i < this.num_segments; i++){
-                //     if (hasSpaceAtIndex(i, this.space_indices)){
-                //         shift += 0.5 * this.space_width;
-                //     }
-
-                //     let width_px = this.size[i][0];
-                //     let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-                //     let angle = this.angle[i];
-
-                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
-                    let aabb = obb.getExtent();
-
-                //     this.positions[i] = position;
-
-                //     let obb = getOBB(position, width, height, angle, this.offset, upp);
-                //     let aabb = obb.getExtent();
-
-                //     this.obbs.push(obb);
-                //     this.aabbs.push(aabb);
-
-                //     this.offsets[i] = [
-                //         this.layout.offset[0] + shift,
-                //         this.layout.offset[1]
-                //     ];
-
-                //     shift += 0.5 * width_px;
-                // }
-
-                break;
-        }
+        this.obbs.push(obb);
+        this.aabbs.push(aabb);
     }
 
     // Checks each segment to see if it is within the tile. If any segment fails this test, they all fail.
