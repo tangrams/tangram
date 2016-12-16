@@ -127,8 +127,9 @@ Object.assign(Points, {
         }
 
         // optional sprite
+        let sprite_info;
         if (this.hasSprites()) {
-            let sprite_info = this.parseSprite(draw, context);
+            sprite_info = this.parseSprite(draw, context);
             if (sprite_info) {
                 style.texcoords = sprite_info.texcoords;
             }
