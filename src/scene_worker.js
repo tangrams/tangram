@@ -218,14 +218,14 @@ Object.assign(self, {
     getFeatureSelection ({ id, key } = {}) {
         let selection = FeatureSelection.map[key];
         let feature = selection && selection.feature;
-        let color = feature && this.getFeatureSelectionColor({ feature_id: feature.properties.id });
+        let color = feature && this.getFeatureSelectionColor({ selection_key: feature.selection_key });
 
         return { id, feature, color };
     },
 
-    getFeatureSelectionColor ({ feature_id }) {
-        if (FeatureSelection.features[feature_id]) {
-            return FeatureSelection.features[feature_id].color;
+    getFeatureSelectionColor ({ selection_key }) {
+        if (FeatureSelection.features[selection_key]) {
+            return FeatureSelection.features[selection_key].color;
         }
     },
 

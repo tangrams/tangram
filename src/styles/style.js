@@ -18,6 +18,8 @@ const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.gl
 
 // Base class
 
+const default_selection_prop = 'id'; // use id as default feature property for grouping selection
+
 export var Style = {
     init ({ generation, styles, sources = {}, introspection } = {}) {
         this.generation = generation;               // scene generation id this style was created for
@@ -210,12 +212,11 @@ export var Style = {
             }
 
             // If feature is marked as selectable
+            style.selection_color = null;
             if (selectable) {
-                style.selection_color = FeatureSelection.makeColor(feature, context.tile, context);
+                style.selection_color = FeatureSelection.makeColor(feature, draw.selection_prop || default_selection_prop, context.tile, context);
             }
-            else {
-                style.selection_color = FeatureSelection.defaultColor;
-            }
+            style.selection_color = style.selection_color || FeatureSelection.defaultColor;
 
             // Subclass implementation
             style = this._parseFeature(feature, draw, context);

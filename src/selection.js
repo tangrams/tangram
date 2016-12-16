@@ -189,7 +189,7 @@ export default class FeatureSelection {
 
         if (feature) {
             // TODO: we can skip sending a message back to the initial worker we got the feature from
-            return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionColor', { feature_id: feature.properties.id })
+            return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionColor', { selection_key: feature.selection_key })
                 .then(selection_colors => {
                     // Resolve the request
                     request.resolve({ feature, changed, request, selection_colors /*selection_color: message.selection_color*/ });
@@ -247,14 +247,19 @@ export default class FeatureSelection {
         return this.map[key];
     }
 
-    static makeColor(feature, tile, context) {
-        if (this.features[feature.properties.id]) {
-            return this.features[feature.properties.id].color;
+    static makeColor(feature, selection_prop, tile, context) {
+        if (!feature.properties[selection_prop]) {
+            return;
+        }
+
+        let selection_key = selection_prop + '/' + feature.properties[selection_prop];
+        if (this.features[selection_key]) {
+            return this.features[selection_key].color;
         }
 
         var selector = this.makeEntry(tile);
         selector.feature = {
-            id: feature.properties.id,
+            selection_key,
             properties: feature.properties,
             source_name: context.source,
             source_layer: context.layer,
@@ -262,7 +267,7 @@ export default class FeatureSelection {
             tile: this.tiles[tile.key].tile
         };
 
-        this.features[feature.properties.id] = selector;
+        this.features[selector.feature.selection_key] = selector;
         return selector.color;
     }
 
