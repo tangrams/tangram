@@ -295,6 +295,7 @@ export default class Scene {
         this.workers = [];
         for (var id=0; id < this.num_workers; id++) {
             var worker = new Worker(url);
+            worker._tangram_id = id;
             this.workers[id] = worker;
 
             WorkerBroker.addWorker(worker);
@@ -587,6 +588,25 @@ export default class Scene {
             // Tile-specific state
             this.view.setupTile(tile, program);
 
+            let worker_id = tile.worker_id;
+            if (this.last_selection_hover &&
+                this.last_selection_hover.selection_colors &&
+                this.last_selection_hover.selection_colors[worker_id]) {
+                program.uniform('4f', 'u_selection_hover', this.last_selection_hover.selection_colors[worker_id]);
+            }
+            else {
+                program.uniform('4f', 'u_selection_hover', [0, 0, 0, 0]);
+            }
+
+            if (this.last_selection_click &&
+                this.last_selection_click.selection_colors &&
+                this.last_selection_click.selection_colors[worker_id]) {
+                program.uniform('4f', 'u_selection_click', this.last_selection_click.selection_colors[worker_id]);
+            }
+            else {
+                program.uniform('4f', 'u_selection_click', [0, 0, 0, 0]);
+            }
+
             // Render tile
             let mesh = tile.meshes[style_name];
             if (style.render(mesh)) {
@@ -622,27 +642,6 @@ export default class Scene {
 
         program.use();
         style.setup();
-
-        // if (this.last_selection && this.last_selection.selection_color) {
-        //     program.uniform('4f', 'u_selection_color', this.last_selection.selection_color.map(c => c / 255));
-        // }
-        // else {
-        //     program.uniform('4f', 'u_selection_color', [0, 0, 0, 0]);
-        // }
-
-        if (this.last_selection_hover && this.last_selection_hover.selection_color) {
-            program.uniform('4f', 'u_selection_hover', this.last_selection_hover.selection_color.map(c => c / 255));
-        }
-        else {
-            program.uniform('4f', 'u_selection_hover', [0, 0, 0, 0]);
-        }
-
-        if (this.last_selection_click && this.last_selection_click.selection_color) {
-            program.uniform('4f', 'u_selection_click', this.last_selection_click.selection_color.map(c => c / 255));
-        }
-        else {
-            program.uniform('4f', 'u_selection_click', [0, 0, 0, 0]);
-        }
 
         program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
         this.view.setupProgram(program);
@@ -746,7 +745,7 @@ export default class Scene {
         return this.selection.getFeatureAt(point).
             then(selection => {
                 Object.assign(selection, { pixel });
-                this.last_selection = selection;
+                // this.last_selection = selection;
                 return selection;
             }).
             catch(error => Promise.resolve({ error }));

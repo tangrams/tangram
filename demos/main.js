@@ -41,7 +41,6 @@ Enjoy!
                 hover: onFeatureHover,
                 click: function(selection){ scene.requestRedraw(); console.log(selection); }
             },
-            numWorkers: 1,
             preUpdate: preUpdate,
             postUpdate: postUpdate,
             // highDensityDisplay: false,

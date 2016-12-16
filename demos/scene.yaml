@@ -220,33 +220,33 @@ layers:
                     color: honeydew
 
 
-            parks:
-                filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
-                draw:
-                    polygons:
-                        color: '#bddec5'
-            park-detail:
-                filter: { kind: [pitch, wood, natural_wood, grass] }
-                draw:
-                    polygons:
-                        color: '#9dbea5'
-            industry:
-                filter: { kind: [commercial, industrial] }
-                draw:
-                    polygons:
-                        color: '#C0CDCD'
-            civic:
-                filter: { kind: university }
-                draw:
-                    polygons:
-                        color: '#D9CFC3'
-            urban:
-                filter: { kind: urban_area }
-                draw:
-                    polygons:
-                        # color: [0.902, 0.835, 0.753, 1.00]
-                        color: [[7, lightgrey], [9, [.88, .88, .88]]]
-                        # color: lightgrey
+            # parks:
+            #     filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
+            #     draw:
+            #         polygons:
+            #             color: '#bddec5'
+            # park-detail:
+            #     filter: { kind: [pitch, wood, natural_wood, grass] }
+            #     draw:
+            #         polygons:
+            #             color: '#9dbea5'
+            # industry:
+            #     filter: { kind: [commercial, industrial] }
+            #     draw:
+            #         polygons:
+            #             color: '#C0CDCD'
+            # civic:
+            #     filter: { kind: university }
+            #     draw:
+            #         polygons:
+            #             color: '#D9CFC3'
+            # urban:
+            #     filter: { kind: urban_area }
+            #     draw:
+            #         polygons:
+            #             # color: [0.902, 0.835, 0.753, 1.00]
+            #             color: [[7, lightgrey], [9, [.88, .88, .88]]]
+            #             # color: lightgrey
 
     water:
         data: { source: mapzen }

@@ -216,12 +216,17 @@ Object.assign(self, {
 
     // Get a feature from the selection map
     getFeatureSelection ({ id, key } = {}) {
-        var selection = FeatureSelection.map[key];
+        let selection = FeatureSelection.map[key];
+        let feature = selection && selection.feature;
+        let color = feature && this.getFeatureSelectionColor({ feature_id: feature.properties.id });
 
-        return {
-            id: id,
-            feature: (selection && selection.feature)
-        };
+        return { id, feature, color };
+    },
+
+    getFeatureSelectionColor ({ feature_id }) {
+        if (FeatureSelection.features[feature_id]) {
+            return FeatureSelection.features[feature_id].color;
+        }
     },
 
     // Resets the feature selection state

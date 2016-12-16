@@ -150,7 +150,8 @@ export default class FeatureSelection {
                             'self.getFeatureSelection',
                             { id: request.id, key: feature_key })
                         .then(message => {
-                            this.finishRead(Object.assign(message, { selection_color: Array.from(this.pixel) }))
+                            // this.finishRead(Object.assign(message, { selection_color: Array.from(this.pixel) }));
+                            this.finishRead(message);
                         });
                     }
                 }
@@ -186,9 +187,19 @@ export default class FeatureSelection {
 
         this.feature = feature; // store the most recently selected feature
 
-        // Resolve the request
-        request.resolve({ feature, changed, request, selection_color: message.selection_color });
-        delete this.requests[message.id]; // done processing this request
+        if (feature) {
+            // TODO: we can skip sending a message back to the initial worker we got the feature from
+            return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionColor', { feature_id: feature.properties.id })
+                .then(selection_colors => {
+                    // Resolve the request
+                    request.resolve({ feature, changed, request, selection_colors /*selection_color: message.selection_color*/ });
+                    delete this.requests[message.id]; // done processing this request
+                });
+        }
+        else {
+            request.resolve({ feature, changed, request, selection_colors: [] });
+            delete this.requests[message.id]; // done processing this request
+        }
     }
 
 
@@ -256,6 +267,7 @@ export default class FeatureSelection {
     }
 
     static reset() {
+        this.features = {};
         this.tiles = {};
         this.map = {};
         this.map_size = 0;
@@ -263,11 +275,12 @@ export default class FeatureSelection {
     }
 
     static clearTile(key) {
-        if (this.tiles[key]) {
-            this.tiles[key].entries.forEach(k => delete this.map[k]);
-            this.map_size -= this.tiles[key].entries.length;
-            delete this.tiles[key];
-        }
+        // TODO: update this to reference count features so we only delete when all refs released
+        // if (this.tiles[key]) {
+        //     this.tiles[key].entries.forEach(k => delete this.map[k]);
+        //     this.map_size -= this.tiles[key].entries.length;
+        //     delete this.tiles[key];
+        // }
     }
 
     static getMapSize() {
@@ -283,8 +296,8 @@ export default class FeatureSelection {
 // Static properties
 FeatureSelection.map = {};   // this will be unique per module instance (so unique per worker)
 FeatureSelection.tiles = {}; // selection keys, by tile
+FeatureSelection.features = {};
 FeatureSelection.map_size = 0;
 FeatureSelection.map_entry = 0;
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];
-FeatureSelection.features = {};
