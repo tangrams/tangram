@@ -60,8 +60,28 @@ textures:
             arrow: [1, 1175, 22, 22]
 
 styles:
+    screendoor:
+        shaders:
+            defines:
+                GRID_SIZE: 1
+            blocks:
+                global: |
+                    #ifdef TANGRAM_FRAGMENT_SHADER
+                    #define GRID_SIZE_2 (GRID_SIZE * 2.)
+
+                    bool isScreendoor() {
+                        if ((mod(gl_FragCoord.x, GRID_SIZE_2) < GRID_SIZE && mod(gl_FragCoord.y, GRID_SIZE_2) > GRID_SIZE) ||
+                            (mod(gl_FragCoord.x, GRID_SIZE_2) > GRID_SIZE && mod(gl_FragCoord.y, GRID_SIZE_2) < GRID_SIZE)) {
+                            //discard;
+                            return true;
+                        }
+                        return false;
+                    }
+                    #endif
+
     buildings:
         base: polygons
+        mix: screendoor
         shaders:
             blocks:
                 color: |
@@ -70,13 +90,19 @@ styles:
                     material.diffuse.rgb = vec3(.5);
 
                     // Shade by building height
-                    color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
+                    // color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
 
                     if (u_selection_click == v_selection_color) {
                         color.rgb = vec3(.8, 0., 0.);
+                        //if (isScreendoor()) {
+                        //    discard;
+                        //}
                     }
                     else if (u_selection_hover == v_selection_color) {
                         color.rgb = vec3(.8, .8, 0.);
+                        if (isScreendoor()) {
+                            discard;
+                        }
                     }
 
     icons:
@@ -252,7 +278,7 @@ layers:
         data: { source: mapzen }
         draw:
             polygons:
-                interactive: true
+                # interactive: true
                 order: global.feature_order
                 color: '#9dc3de'
 
@@ -476,20 +502,24 @@ layers:
 
         draw:
             polygons:
+                style: buildings
                 order: global.feature_order
-                color: [.83, .83, .83]
+                color: lightgrey
 
         # turn interactive feature selection on for buildings with names
         interactive:
-            # filter: { name: true }
-            draw: { polygons: { interactive: true } }
+            filter: { name: true }
+            draw:
+                polygons:
+                    interactive: true
+                    selection_prop: name
+                    color: grey
 
         # extrude 3d buildings
         extruded:
             filter: { $zoom: { min: 15 } }
             draw:
                 polygons:
-                    style: buildings
                     extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
         high-line:
@@ -569,6 +599,7 @@ layers:
             draw:
                 icons:
                     size: [[13, 12px], [15, 18px]]
+                    # interactive: true
                     priority: 6
 
             # add text label at higher zoom
@@ -760,7 +791,7 @@ layers:
                 outline:
                     color: [.8, .8, .8]
                     width: 1px
-                interactive: true
+                # interactive: true
 
         colored:
             filter: { colour: true }
