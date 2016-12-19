@@ -48,6 +48,7 @@ Object.assign(Points, {
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_curve', size: 1, type: gl.FLOAT, normalized: false },
         ];
 
         // Feature selection
@@ -170,7 +171,7 @@ Object.assign(Points, {
         }
 
         // Angle parameter (can be a number or the string "auto")
-        style.angle = StyleParser.evalProperty(draw.angle, context);
+        style.angle = StyleParser.evalProperty(draw.angle, context) || 0;
 
         // points can be placed off the ground
         style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
@@ -566,11 +567,12 @@ Object.assign(Points, {
         this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
         this.fillVertexTemplate('a_offsets', 0, { size: 4 });
         this.fillVertexTemplate('a_angles', 0, { size: 4 });
+        this.fillVertexTemplate('a_curve', 0, { size: 1 });
 
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, angles, pre_angle, pre_angles, sampler, offset, offsets, texcoord_scale, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, angles, pre_angle, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -583,18 +585,20 @@ Object.assign(Points, {
                 offsets_index: this.vertex_layout.index.a_offsets,
                 pre_angle_index: this.vertex_layout.index.a_pre_angle,
                 pre_angles_index: this.vertex_layout.index.a_pre_angles,
-                angles_index: this.vertex_layout.index.a_angles
+                angles_index: this.vertex_layout.index.a_angles,
+                curve_index: this.vertex_layout.index.a_curve,
             },
             {
                 quad: size,
                 quad_normalize: 256,    // values have an 8-bit fraction
                 offset,
                 offsets,
-                angle: angle * 4096,    // values have a 12-bit fraction
-                angles: angles,
                 pre_angle: pre_angle,
                 pre_angles: pre_angles,
+                angle: angle * 4096,    // values have a 12-bit fraction
+                angles: angles,
                 shape_w: sampler,
+                curve,
                 texcoord_scale,
                 texcoord_normalize: 65535
             }
@@ -617,68 +621,52 @@ Object.assign(Points, {
         let angle = label.angle || style.angle;
 
         let size, texcoords;
-
         if (label.type){
             size = style.size[label.type];
             texcoords = style.texcoords[label.type];
         }
         else {
-            if (style.size[0] instanceof Array){
-                let height = style.size[0][1];
-                size = style.size.reduce(function(prev, next){
-                    return [prev[0] + next[0], prev[1]];
-                }, [0, height])
-            }
-            else {
-                size = style.size;
-            }
+            size = style.size;
             texcoords = style.texcoords;
         }
 
-        let angle = (style.angle !== undefined) ? style.angle : label.angle;
-        let angles = [angle, angle, angle, angle];
+        let angle = (style.angle !== undefined) ? style.angle : label.angle || 0;
         let offset = label.offset;
-        let offsets = [offset[0], offset[0], offset[0], offset[0]];
+
+        let curve = 0;
 
         this.buildQuad(
             [label.position],               // position
             size,                     // size in pixels
             angle,                    // angle in radians
-            angles,
-            0,                              // pre-angle in radians
-            [0,0,0,0],
+            null,
+            null,                     // pre-angle in radians
+            null,
             style.sampler,                  // texture sampler to use
             offset,                   // offset from center in pixels
-            offsets,
+            null,
             texcoords,                // texture UVs
+            curve,
             vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
 
     buildArticulatedLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
+        let curve = 1;
 
         for (var i = 0; i < label.num_segments; i++){
             let angle = label.angle[i];
             let size = style.size[label.type][i];
-            let offset = label.offsets[i] || [0,0];
-
             let texcoord_stroke = style.texcoords_stroke[i];
 
+            let offset = label.offset || [0,0];
             let position = label.position;
             let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 
-            let angles, offsets, pre_angles;
-            if (label.angle_info){
-                angles = label.angle_info[i].angle_array;
-                offsets = label.angle_info[i].offsets;
-                pre_angles = label.angle_info[i].pre_angles;
-            }
-            else {
-                angles = [angle, angle, angle, angle];
-                offsets = [offset[0], offset[0], offset[0], offset[0]];
-                pre_angles = [pre_angle, pre_angle, pre_angle, pre_angle];
-            }
+            let angles = label.angle_info[i].angle_array;
+            let offsets = label.angle_info[i].offsets;
+            let pre_angles = label.angle_info[i].pre_angles;
 
             this.buildQuad(
                 [position],               // position
@@ -691,6 +679,7 @@ Object.assign(Points, {
                 offset,                         // offset from center in pixels
                 offsets,
                 texcoord_stroke,                       // texture UVs
+                curve,
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }
@@ -698,24 +687,15 @@ Object.assign(Points, {
         for (var i = 0; i < label.num_segments; i++){
             let angle = label.angle[i];
             let size = style.size[label.type][i];
-            let offset = label.offsets[i] || [0,0];
-
             let texcoord = style.texcoords[label.type][i];
 
+            let offset = label.offset || [0,0];
             let position = label.position;
             let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 
-            let angles, offsets, pre_angles;
-            if (label.angle_info){
-                angles = label.angle_info[i].angle_array;
-                offsets = label.angle_info[i].offsets;
-                pre_angles = label.angle_info[i].pre_angles;
-            }
-            else {
-                angles = [angle, angle, angle, angle];
-                offsets = [offset[0], offset[0], offset[0], offset[0]];
-                pre_angles = [pre_angle, pre_angle, pre_angle, pre_angle];
-            }
+            let angles = label.angle_info[i].angle_array;
+            let offsets = label.angle_info[i].offsets;
+            let pre_angles = label.angle_info[i].pre_angles;
 
             this.buildQuad(
                 [position],               // position
@@ -728,6 +708,7 @@ Object.assign(Points, {
                 offset,                         // offset from center in pixels
                 offsets,
                 texcoord,                       // texture UVs
+                curve,
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }
