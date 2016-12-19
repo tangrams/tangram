@@ -20,6 +20,8 @@ varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 varying float v_alpha_factor;
+varying vec4 v_outline_color;
+varying float v_outline_edge;
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
@@ -56,7 +58,14 @@ void main (void) {
             // Draw a point
             vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge
             float point_dist = length(uv);
-            color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
+
+            #ifdef TANGRAM_POINT_OUTLINE
+                color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
+            #else
+                color = mix(color, v_outline_color, smoothstep(v_outline_edge, v_outline_edge + ((1. - v_outline_edge) / 2.), point_dist));
+                color.a = color.a - step(1., point_dist);
+            #endif
+
         #endif
     #ifdef TANGRAM_MULTI_SAMPLER
     }
