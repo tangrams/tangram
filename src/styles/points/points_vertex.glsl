@@ -20,7 +20,6 @@ attribute float a_pre_angle;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
-attribute float a_curve;
 
 #ifdef TANGRAM_CURVED_POINT
     attribute vec4 a_offsets;
@@ -85,18 +84,16 @@ void main() {
     float theta = 0.;
 
     #ifdef TANGRAM_CURVED_POINT
-        if (a_curve == 1.){
+        if (a_shape.z == 1.){
+            float pre_angle = mix4linear(a_pre_angles[0], a_pre_angles[1], a_pre_angles[2], a_pre_angles[3], zoom);
             theta = mix4linear(a_angles[0], a_angles[1], a_angles[2], a_angles[3], zoom);
             offset.x = mix4linear(a_offsets[0], a_offsets[1], a_offsets[2], a_offsets[3], zoom);
-            float pre_angle = mix4linear(a_pre_angles[0], a_pre_angles[1], a_pre_angles[2], a_pre_angles[3], zoom);
             shape = rotate2D(shape, pre_angle);
         }
         else {
             theta = a_shape.z / 4096.;
         }
-    #endif
-
-    #ifndef TANGRAM_CURVED_POINT
+    #else
         theta = a_shape.z / 4096.;
     #endif
 

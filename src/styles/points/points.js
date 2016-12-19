@@ -43,12 +43,10 @@ Object.assign(Points, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_pre_angle', size: 1, type: gl.FLOAT, normalized: false },
             { name: 'a_angles', size: 4, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_curve', size: 1, type: gl.FLOAT, normalized: false },
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
         // Feature selection
@@ -563,16 +561,14 @@ Object.assign(Points, {
             this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
         }
 
-        this.fillVertexTemplate('a_pre_angle', 0, { size: 1 });
         this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
         this.fillVertexTemplate('a_offsets', 0, { size: 4 });
         this.fillVertexTemplate('a_angles', 0, { size: 4 });
-        this.fillVertexTemplate('a_curve', 0, { size: 1 });
 
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, angles, pre_angle, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -583,17 +579,14 @@ Object.assign(Points, {
                 shape_index: this.vertex_layout.index.a_shape,
                 offset_index: this.vertex_layout.index.a_offset,
                 offsets_index: this.vertex_layout.index.a_offsets,
-                pre_angle_index: this.vertex_layout.index.a_pre_angle,
                 pre_angles_index: this.vertex_layout.index.a_pre_angles,
-                angles_index: this.vertex_layout.index.a_angles,
-                curve_index: this.vertex_layout.index.a_curve,
+                angles_index: this.vertex_layout.index.a_angles
             },
             {
                 quad: size,
                 quad_normalize: 256,    // values have an 8-bit fraction
                 offset,
                 offsets,
-                pre_angle: pre_angle,
                 pre_angles: pre_angles,
                 angle: angle * 4096,    // values have a 12-bit fraction
                 angles: angles,
@@ -640,7 +633,6 @@ Object.assign(Points, {
             size,                     // size in pixels
             angle,                    // angle in radians
             null,
-            null,                     // pre-angle in radians
             null,
             style.sampler,                  // texture sampler to use
             offset,                   // offset from center in pixels
@@ -662,7 +654,6 @@ Object.assign(Points, {
 
             let offset = label.offset || [0,0];
             let position = label.position;
-            let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 
             let angles = label.angle_info[i].angle_array;
             let offsets = label.angle_info[i].offsets;
@@ -673,7 +664,6 @@ Object.assign(Points, {
                 size,                           // size in pixels
                 angle,                          // angle in degrees
                 angles,
-                pre_angle,                      // pre-angle in radians
                 pre_angles,
                 style.sampler,                  // texture sampler to use
                 offset,                         // offset from center in pixels
@@ -702,7 +692,6 @@ Object.assign(Points, {
                 size,                           // size in pixels
                 angle,                          // angle in degrees
                 angles,
-                pre_angle,                      // pre-angle in radians
                 pre_angles,
                 style.sampler,                  // texture sampler to use
                 offset,                         // offset from center in pixels
