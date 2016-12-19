@@ -371,6 +371,16 @@ function extendLeaflet(options) {
                 if (!this._map || this._updating_tangram) {
                     return;
                 }
+
+                // View changed?
+                let map_center = this._map.getCenter();
+                let view_center = this.scene.view.center;
+                if (map_center.lng === view_center.lng &&
+                    map_center.lat === view_center.lat &&
+                    this._map.getZoom() === this.scene.view.zoom) {
+                    return;
+                }
+
                 this._updating_tangram = true;
                 this._map.setView([this.scene.view.center.lat, this.scene.view.center.lng], this.scene.view.zoom, { animate: false });
                 this.reverseTransform();
