@@ -50,6 +50,8 @@ export var Style = {
             this.blend_order = -1; // defaults to first
         }
 
+        this.removeShaderBlock('setup'); // clear before material injection
+
         // If the style defines its own material, replace the inherited material instance
         if (!(this.material instanceof Material)) {
             if (!Material.isValid(this.material)) {
