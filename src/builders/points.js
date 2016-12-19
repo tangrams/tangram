@@ -90,7 +90,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
             }
 
             if (outline_edge_index) {
-                vertex_template[outline_edge_index] = 1. - (outline_width / Math.min(quad[0], quad[1]));
+                vertex_template[outline_edge_index] = 1.0 - (outline_width / Math.min(quad[0], quad[1]));
             }
 
             vertex_data.addVertex(vertex_template);
