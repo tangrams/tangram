@@ -600,13 +600,16 @@ function addCap (coord, v, normal, type, isBeginning, context) {
     }
 }
 
+// For IE Math.log2 support
+let log2 = Math.log2 || function(x){ return Math.log(x) * Math.LOG2E; };
+
 // Calculate number of triangles for a fan given an angle and line width
 function trianglesPerArc (angle, width) {
     if (angle < 0) {
         angle = -angle;
     }
 
-    var numTriangles = (width > 2 * DEFAULT.MIN_FAN_WIDTH) ? Math.log2(width / DEFAULT.MIN_FAN_WIDTH) : 1;
+    var numTriangles = (width > 2 * DEFAULT.MIN_FAN_WIDTH) ? log2(width / DEFAULT.MIN_FAN_WIDTH) : 1;
     return Math.ceil(angle / Math.PI * numTriangles);
 }
 
