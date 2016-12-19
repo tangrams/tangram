@@ -24,7 +24,6 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
 
-        if (!((texcoord_scale || default_uvs) instanceof Array)) debugger;
         var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
 
         texcoords = [

@@ -2,8 +2,10 @@ import Label from './label';
 import Vector from '../vector';
 import OBB from '../utils/obb';
 
-const LINE_EXCEED_STRAIGHT = 0.1;   // minimal ratio for straight labels (label length) / (line length)
 const stops = [0, 0.3, 0.6, 0.9];
+const LINE_EXCEED_STRAIGHT = 0.1;   // minimal ratio for straight labels (label length) / (line length)
+const MIN_TOTAL_COST = 1.3;
+const MIN_AVG_COST = 0.4;
 
 export default class LabelLine {
     constructor (size, lines, layout, total_size) {
@@ -228,8 +230,12 @@ class LabelLineCurved {
             let obb = getOBB(position, start_width, height, -angles[start]);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
-            if (in_tile) break;
-            else start++;
+            if (in_tile) {
+                break;
+            }
+            else {
+                start++;
+            }
         }
 
         while (end > start){
@@ -237,11 +243,15 @@ class LabelLineCurved {
             let obb = getOBB(position, end_width, height, -angles[end]);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
-            if (in_tile) break;
-            else end--;
+            if (in_tile) {
+                break;
+            }
+            else {
+                end--;
+            }
         }
 
-        return [start, end]
+        return [start, end];
     }
 
     static curvaturePlacement(line, total_line_length, line_lengths, label_length, start_index, end_index){
@@ -260,7 +270,9 @@ class LabelLineCurved {
             var norm_2 = Vector.perp(next, curr);
 
             var curvature = Vector.angleBetween(norm_1, norm_2);
-            if (curvature > 1) curvature = Infinity;
+            if (curvature > 1) {
+                curvature = Infinity;
+            }
 
             curvatures.push(curvature);
         }
@@ -312,9 +324,7 @@ class LabelLineCurved {
         var min_index = total_costs.indexOf(min_total_cost);
         var min_avg_cost = avg_costs[min_index];
 
-        // return total_costs.indexOf(min_total_cost);
-
-        if (min_total_cost < 1.3 && min_avg_cost < .4){
+        if (min_total_cost < MIN_TOTAL_COST && min_avg_cost < MIN_AVG_COST){
             // return index with best placement (least curvature)
             return total_costs.indexOf(min_total_cost);
         }
@@ -455,7 +465,9 @@ class LabelLineCurved {
 
 // Private method to calculate oriented bounding box
 function getOBB(position, width, height, angle, offset, upp) {
-    if (!upp) upp = 1;
+    if (!upp) {
+        upp = 1;
+    }
     let p0, p1;
     // apply offset, x positive, y pointing down
     if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
@@ -474,18 +486,6 @@ function getOBB(position, width, height, angle, offset, upp) {
 
 function calcFitness(line_length, label_length) {
     return 1 - line_length / label_length;
-}
-
-function hasSpaceAtIndex(index, space_indices) {
-    return (space_indices.indexOf(index) !== -1);
-}
-
-function getLineLength(line){
-    let distance = 0;
-    for (let i = 0; i < line.length - 1; i++){
-        distance += norm(line[i], line[i+1]);
-    }
-    return distance;
 }
 
 function norm(p, q){
@@ -663,7 +663,7 @@ class LabelLineStraight {
         this.aabbs = [];
 
         let width = (this.size[0] + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-        let height = (this.size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;;
+        let height = (this.size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;
 
         let obb = getOBB(this.position, width, height, this.angle, this.offset, upp);
         let aabb = obb.getExtent();

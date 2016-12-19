@@ -647,7 +647,7 @@ Object.assign(Points, {
         let vertex_template = this.makeVertexTemplate(style);
         let curve = 1;
 
-        for (var i = 0; i < label.num_segments; i++){
+        for (let i = 0; i < label.num_segments; i++){
             let size = style.size[label.type][i];
             let texcoord_stroke = style.texcoords_stroke[i];
 
@@ -673,7 +673,7 @@ Object.assign(Points, {
             );
         }
 
-        for (var i = 0; i < label.num_segments; i++){
+        for (let i = 0; i < label.num_segments; i++){
             let size = style.size[label.type][i];
             let texcoord = style.texcoords[label.type][i];
 

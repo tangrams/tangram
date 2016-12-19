@@ -43,7 +43,6 @@ export default class CanvasText {
 
                 let text_infos = texts[style];
                 let first = true;
-                let space_width;
 
                 for (let text in text_infos) {
                     let text_info = text_infos[text];
@@ -56,13 +55,10 @@ export default class CanvasText {
                         first = false;
                     }
 
-                    text_info.space_width = space_width;
-
                     if (text_settings.can_articulate){
-                        let {segments, space_indices} = splitLabelText(text);
+                        let segments = splitLabelText(text);
 
                         text_info.segments = segments;
-                        text_info.space_indices = space_indices;
                         text_info.size = [];
 
                         for (let i = 0; i < segments.length; i++){
@@ -565,7 +561,6 @@ function reorderWordsLTR(words) {
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text){
     let segments = [];
-    let space_indices = [];
     let codon_length = 2;
 
     while (text.length){
@@ -580,13 +575,7 @@ function splitLabelText(text){
         text = text.substring(codon_length);
     }
 
-    // let segments = reorderWordsLTR(words);
-    // let space_indices = [];
-    // for (let i = 0; i < words.length - 1; i++){
-    //     space_indices.push(i + 1);
-    // }
-
-    return {segments, space_indices};
+    return segments;
 }
 
 // Private class to arrange text labels into multiple lines based on
