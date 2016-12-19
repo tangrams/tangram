@@ -648,21 +648,20 @@ Object.assign(Points, {
         let curve = 1;
 
         for (var i = 0; i < label.num_segments; i++){
-            let angle = label.angle[i];
             let size = style.size[label.type][i];
             let texcoord_stroke = style.texcoords_stroke[i];
 
             let offset = label.offset || [0,0];
             let position = label.position;
 
-            let angles = label.angle_info[i].angle_array;
-            let offsets = label.angle_info[i].offsets;
-            let pre_angles = label.angle_info[i].pre_angles;
+            let angles = label.angles[i];
+            let offsets = label.offsets[i];
+            let pre_angles = label.pre_angles[i];
 
             this.buildQuad(
                 [position],               // position
                 size,                           // size in pixels
-                angle,                          // angle in degrees
+                0,                          // angle in degrees
                 angles,
                 pre_angles,
                 style.sampler,                  // texture sampler to use
@@ -675,22 +674,20 @@ Object.assign(Points, {
         }
 
         for (var i = 0; i < label.num_segments; i++){
-            let angle = label.angle[i];
             let size = style.size[label.type][i];
             let texcoord = style.texcoords[label.type][i];
 
             let offset = label.offset || [0,0];
             let position = label.position;
-            let pre_angle = label.pre_angles ? label.pre_angles[i] : 0;
 
-            let angles = label.angle_info[i].angle_array;
-            let offsets = label.angle_info[i].offsets;
-            let pre_angles = label.angle_info[i].pre_angles;
+            let angles = label.angles[i];
+            let offsets = label.offsets[i];
+            let pre_angles = label.pre_angles[i];
 
             this.buildQuad(
                 [position],               // position
                 size,                           // size in pixels
-                angle,                          // angle in degrees
+                0,                          // angle in degrees
                 angles,
                 pre_angles,
                 style.sampler,                  // texture sampler to use

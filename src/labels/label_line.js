@@ -18,29 +18,26 @@ export default class LabelLine {
 
             if (label.throw_away){
                 this.throw_away = true;
-                this.num_segments = 0;
                 return;
             }
             else {
                 this.throw_away = false;
-                this.angle_info = label.angle_info;
-                this.pre_angles = label.pre_angles;
-                this.positions = label.positions;
+                this.angles = label.angles;
                 this.offsets = label.offsets;
-                this.num_segments = size.length;
+                this.pre_angles = label.pre_angles;
             }
         }
         else {
-            this.num_segments = 0;
+            this.angle = label.angle;
+            this.offset = label.offset;
+            this.size = label.size;
         }
 
+        this.num_segments = label.num_segments;
         this.position = label.position;
-        this.angle = label.angle;
-        this.offset = label.offset;
         this.obbs = label.obbs;
         this.aabbs = label.aabbs;
         this.type = label.type;
-        this.size = label.size;
     }
 
     static splitLineByOrientation(line){
@@ -137,20 +134,21 @@ export default class LabelLine {
 class LabelLineCurved {
     constructor (size, lines, layout) {
         lines = LabelLine.splitLineByOrientation(lines);
-        let line_lengths = getLineLengths(lines);
 
+        let line_lengths = getLineLengths(lines);
         let line_angles_segments = getLineAnglesForSegments(lines);
 
         // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
+        this.num_segments = size.length;
         this.position = [];
-        this.angle = [];
-        this.pre_angles = [];
-        this.positions = [];
-        this.offsets = [];
-        this.offset = [0,0];
+        this.offset = layout.offset.slice();
         this.obbs = [];
         this.aabbs = [];
         this.type = 'curved';
+
+        this.angles = [];
+        this.pre_angles = [];
+        this.offsets = [];
 
         let upp = layout.units_per_pixel;
 
@@ -183,13 +181,10 @@ class LabelLineCurved {
         let anchor = lines[anchor_index];
         this.position = anchor;
 
-        let angle_info = [];
         for (var i = 0; i < label_lengths.length; i++){
-            angle_info[i] = {
-                offsets : [],
-                angle_array : [],
-                pre_angles : []
-            };
+            this.offsets[i] = [];
+            this.angles[i] = [];
+            this.pre_angles[i] = [];
 
             for (var j = 0; j < stops.length; j++){
                 let stop = stops[j];
@@ -212,18 +207,13 @@ class LabelLineCurved {
                         this.obbs.push(obb);
                         this.aabbs.push(aabb);
                     }
-
-                    this.angle = angles;
-                    this.pre_angles = pre_angles;
                 }
 
-                angle_info[i].offsets.push(offsets[i][0]);
-                angle_info[i].angle_array.push(angles[i]);
-                angle_info[i].pre_angles.push(pre_angles[i]);
+                this.offsets[i].push(offsets[i][0]);
+                this.angles[i].push(angles[i]);
+                this.pre_angles[i].push(pre_angles[i]);
             }
         }
-
-        this.angle_info = angle_info;
     }
 
     static checkTileBoundary(lines, widths, height, angles){
@@ -548,7 +538,7 @@ class LabelLineStraight {
 
         // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
         this.position = [];
-        this.angle = [];
+        this.angle = 0;
         this.offset = layout.offset.slice();
         this.obbs = [];
         this.aabbs = [];
