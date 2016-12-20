@@ -3,7 +3,8 @@ import Vector from '../vector';
 import OBB from '../utils/obb';
 
 const stops = [0, 0.3, 0.6, 0.9];
-const LINE_EXCEED_STRAIGHT = 0.1;   // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_STRAIGHT = 0.1;       // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_STRAIGHT_RTL = 0.7;   // minimal ratio for straight labels that have no curved option
 const MIN_TOTAL_COST = 1.3;
 const MIN_AVG_COST = 0.4;
 
@@ -15,7 +16,13 @@ export default class LabelLine {
         var label = new LabelLineStraight(total_size, lines, layout);
 
         if (label.throw_away){
-            // try curved label
+            // if RTL text, throw away
+            if (layout.isRTL){
+                this.throw_away = true;
+                return;
+            }
+
+            // else try curved label
             label = new LabelLineCurved(size, lines, layout);
 
             if (label.throw_away){
@@ -531,6 +538,7 @@ class LabelLineStraight {
         this.total_length = size[0];
         this.total_height = size[1];
         this.fitness = 0; // measure of quality of fit
+        this.tolerance = (layout.isRTL) ? LINE_EXCEED_STRAIGHT_RTL : LINE_EXCEED_STRAIGHT;
         this.type = 'straight';
 
         lines = LabelLine.splitLineByOrientation(lines);
@@ -624,13 +632,7 @@ class LabelLineStraight {
         let line_length = Vector.length(Vector.sub(segment[0], segment[1])) / upp;
         let fitness = calcFitness(line_length, this.total_length);
 
-        if (fitness < LINE_EXCEED_STRAIGHT){
-            this.fitness = fitness;
-            return true;
-        }
-        else {
-            return false;
-        }
+        return (fitness < this.tolerance);
     }
 
     // Once a fitting segment is found, determine its angles, positions and bounding boxes

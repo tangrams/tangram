@@ -57,7 +57,9 @@ export default class CanvasText {
 
                     if (text_settings.can_articulate){
                         let segments = splitLabelText(text);
+                        let rtl = isTextRTL(text);
 
+                        text_info.isRTL = rtl;
                         text_info.segments = segments;
                         text_info.size = [];
 
@@ -526,37 +528,49 @@ CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
 
 // Right-to-left / bi-directional text handling
-// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl#answer-19143254
-let rtlRegEx = /^[^\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]*?[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]/;
-function isRTL(s){
-    return rtlRegEx.test(s);
+// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
+function isCharRTL(s){
+    var weakChars       = '\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF',
+        rtlChars        = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC',
+        rtlDirCheck     = new RegExp('^['+weakChars+']*['+rtlChars+']');
+
+    return rtlDirCheck.test(s);
 }
 
-function reorderWordsLTR(words) {
-    let words_LTR = [];
-    let words_RTL = [];
-
-    // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
-    for (var i = 0; i < words.length; i++){
-        var str = words[i];
-        var rtl = isRTL(str);
-        if (rtl){
-            words_RTL.push(str);
-        }
-        else {
-            while (words_RTL.length > 0){
-                words_LTR.push(words_RTL.pop());
-            }
-            words_LTR.push(str);
+function isTextRTL(text){
+    for (let i = 0; i < text.length; i++){
+        if (isCharRTL(text[i])) {
+            return true;
         }
     }
-
-    while (words_RTL.length > 0){
-        words_LTR.push(words_RTL.pop());
-    }
-
-    return words_LTR;
+    return false;
 }
+
+// function reorderWordsLTR(words) {
+//     let words_LTR = [];
+//     let words_RTL = [];
+
+//     // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
+//     for (var i = 0; i < words.length; i++){
+//         var str = words[i];
+//         var rtl = isRTL(str);
+//         if (rtl){
+//             words_RTL.push(str);
+//         }
+//         else {
+//             while (words_RTL.length > 0){
+//                 words_LTR.push(words_RTL.pop());
+//             }
+//             words_LTR.push(str);
+//         }
+//     }
+
+//     while (words_RTL.length > 0){
+//         words_LTR.push(words_RTL.pop());
+//     }
+
+//     return words_LTR;
+// }
 
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text){
@@ -565,6 +579,7 @@ function splitLabelText(text){
 
     while (text.length){
         let segment = text.substring(0, codon_length);
+
         if (segment.length === 1) {
             segments[segments.length - 1] += segment;
         }
