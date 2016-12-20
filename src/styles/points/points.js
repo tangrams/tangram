@@ -43,7 +43,6 @@ Object.assign(Points, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_angles', size: 4, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }

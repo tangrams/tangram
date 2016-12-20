@@ -17,8 +17,9 @@ Object.assign(TextStyle, {
 
     init(options = {}) {
         options.attribs = [
-            { name: 'a_offsets', size: 4, type: gl.FLOAT, normalized: false },
-            { name: 'a_pre_angles', size: 4, type: gl.FLOAT, normalized: false }
+            { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
+            { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false }
         ];
 
         this.super.init.call(this, options);

@@ -16,15 +16,18 @@ uniform mat3 u_inverseNormalMatrix;
 
 attribute vec4 a_position;
 attribute vec4 a_shape;
-attribute float a_pre_angle;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
+
+#define PI 3.14159265359
 
 #ifdef TANGRAM_CURVED_POINT
     attribute vec4 a_offsets;
     attribute vec4 a_pre_angles;
     attribute vec4 a_angles;
+#else
+    attribute float a_pre_angle;
 #endif
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
@@ -85,9 +88,14 @@ void main() {
 
     #ifdef TANGRAM_CURVED_POINT
         if (a_shape.z == 1.){
-            float pre_angle = mix4linear(a_pre_angles[0], a_pre_angles[1], a_pre_angles[2], a_pre_angles[3], zoom);
-            theta = mix4linear(a_angles[0], a_angles[1], a_angles[2], a_angles[3], zoom);
-            offset.x = mix4linear(a_offsets[0], a_offsets[1], a_offsets[2], a_offsets[3], zoom);
+            vec4 angles_scaled = (PI / 16384.) * a_angles;
+            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;
+            vec4 offsets_scaled = (1. / 64.) * a_offsets;
+
+            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);
+            theta = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);
+            offset.x = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
+
             shape = rotate2D(shape, pre_angle);
         }
         else {

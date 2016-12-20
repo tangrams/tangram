@@ -1,6 +1,9 @@
 // Point builders
 import { default_uvs } from './common';
 
+const c = 128 / Math.PI;
+const d = 16384 / Math.PI;
+
 // Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
 // properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
 // of a sprite between two zoom levels.
@@ -57,20 +60,28 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
             vertex_template[offset_index + 1] = offset[1];
 
             if (curve){
-                vertex_template[pre_angles_index + 0] = pre_angles[0];
-                vertex_template[pre_angles_index + 1] = pre_angles[1];
-                vertex_template[pre_angles_index + 2] = pre_angles[2];
-                vertex_template[pre_angles_index + 3] = pre_angles[3];
+                // 1 byte (signed) range: [-127, 128]
+                // actual range: [-2pi, 2pi]
+                // total: multiply by 128 / (2 PI)
+                vertex_template[pre_angles_index + 0] = c * pre_angles[0];
+                vertex_template[pre_angles_index + 1] = c * pre_angles[1];
+                vertex_template[pre_angles_index + 2] = c * pre_angles[2];
+                vertex_template[pre_angles_index + 3] = c * pre_angles[3];
 
-                vertex_template[angles_index + 0] = angles[0];
-                vertex_template[angles_index + 1] = angles[1];
-                vertex_template[angles_index + 2] = angles[2];
-                vertex_template[angles_index + 3] = angles[3];
+                // 2 byte (signed) of resolution [-32767, 32768]
+                // actual range: [-2pi, 2pi]
+                // total: multiply by 32768 / (2 PI) = 16384 / PI
+                vertex_template[angles_index + 0] = d * angles[0];
+                vertex_template[angles_index + 1] = d * angles[1];
+                vertex_template[angles_index + 2] = d * angles[2];
+                vertex_template[angles_index + 3] = d * angles[3];
 
-                vertex_template[offsets_index + 0] = offsets[0];
-                vertex_template[offsets_index + 1] = offsets[1];
-                vertex_template[offsets_index + 2] = offsets[2];
-                vertex_template[offsets_index + 3] = offsets[3];
+                // offset range can be [0, 65535]
+                // actual range: [0, 1024]
+                vertex_template[offsets_index + 0] = 64 * offsets[0];
+                vertex_template[offsets_index + 1] = 64 * offsets[1];
+                vertex_template[offsets_index + 2] = 64 * offsets[2];
+                vertex_template[offsets_index + 3] = 64 * offsets[3];
             }
 
             vertex_data.addVertex(vertex_template);

@@ -3,7 +3,7 @@ import Vector from '../vector';
 import OBB from '../utils/obb';
 
 const stops = [0, 0.3, 0.6, 0.9];
-const LINE_EXCEED_STRAIGHT = 0.1;       // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_STRAIGHT = 0.3;       // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_STRAIGHT_RTL = 0.7;   // minimal ratio for straight labels that have no curved option
 const MIN_TOTAL_COST = 1.3;
 const MIN_AVG_COST = 0.4;
@@ -38,11 +38,11 @@ export default class LabelLine {
         }
         else {
             this.angle = label.angle;
-            this.offset = label.offset;
             this.size = label.size;
         }
 
         this.num_segments = label.num_segments;
+        this.offset = label.offset;
         this.position = label.position;
         this.obbs = label.obbs;
         this.aabbs = label.aabbs;
@@ -210,7 +210,7 @@ class LabelLineCurved {
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
 
-                        let obb = getOBB(position, width, height, pre_angle + offset_angle);
+                        let obb = getOBB(position, width, height, pre_angle + offset_angle, this.offset);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
