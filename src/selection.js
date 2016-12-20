@@ -14,7 +14,7 @@ export default class FeatureSelection {
         // Selection state tracking
         this.requests = {}; // pending selection requests
         this.feature = null; // currently selected feature
-        this.read_delay = 5; // delay time from selection render to framebuffer sample, to avoid CPU/GPU sync lock
+        this.read_delay = 0; // delay time from selection render to framebuffer sample, to avoid CPU/GPU sync lock
         this.read_delay_timer = null; // current timer (setTimeout) for delayed selection reads
 
         this.pixel = new Uint8Array(4);
