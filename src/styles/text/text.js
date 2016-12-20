@@ -211,32 +211,30 @@ Object.assign(TextStyle, {
     // Build one or more labels for a line geometry
     buildLineLabels (line, size, layout, total_size) {
         let labels = [];
-        // let subdiv = Math.min(layout.subdiv, line.length - 1);
-        // if (subdiv > 1) {
-        //     // Create multiple labels for line, with each allotted a range of segments
-        //     // in which it will attempt to place
-        //     let seg_per_div = (line.length - 1) / subdiv;
-        //     for (let i = 0; i < subdiv; i++) {
-        //         layout.segment_start = Math.floor(i * seg_per_div);
-        //         layout.segment_end = Math.floor((i + 1) * seg_per_div);
+        let subdiv = Math.min(layout.subdiv, line.length - 1);
+        if (subdiv > 1) {
+            // Create multiple labels for line, with each allotted a range of segments
+            // in which it will attempt to place
+            let seg_per_div = (line.length - 1) / subdiv;
+            for (let i = 0; i < subdiv; i++) {
+                let start = Math.floor(i * seg_per_div);
+                let end = Math.floor((i + 1) * seg_per_div) + 1;
+                let line_segment = line.slice(start, end);
 
-        //         let label = new LabelLine(size, line, layout);
-        //         if (!label.throw_away){
-        //             labels.push(label);
-        //         }
-        //     }
-        //     layout.segment_start = null;
-        //     layout.segment_end = null;
-        // }
-        // else {
+                let label = new LabelLine(size, line_segment, layout, total_size);
+                if (!label.throw_away){
+                    labels.push(label);
+                }
+            }
+        }
+        else {
             let label = new LabelLine(size, line, layout, total_size);
             if (!label.throw_away){
                 labels.push(label);
             }
-        // }
+        }
         return labels;
     }
-
 });
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures

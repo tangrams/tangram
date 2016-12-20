@@ -538,6 +538,7 @@ class LabelLineStraight {
         this.total_length = size[0];
         this.total_height = size[1];
         this.fitness = 0; // measure of quality of fit
+        this.segment_index = 0;
         this.tolerance = (layout.isRTL) ? LINE_EXCEED_STRAIGHT_RTL : LINE_EXCEED_STRAIGHT;
         this.type = 'straight';
 
@@ -550,19 +551,6 @@ class LabelLineStraight {
         this.offset = layout.offset.slice();
         this.obbs = [];
         this.aabbs = [];
-
-        // optionally limit the line segments that the label may be placed in, by specifying a segment index range
-        // used as a coarse subdivide for placing multiple labels per line geometry
-        if (
-            layout.segment_start && layout.segment_start > lines.length - 2 ||
-            layout.segment_max && layout.segment_max > lines.length - 2
-        ){
-            this.throw_away = true;
-            return;
-        }
-
-        this.segment_index = layout.segment_index || layout.segment_start || 0;
-        this.segment_max = layout.segment_end || lines.length;
 
         // First fitting segment
         let segment = this.getNextFittingSegment(this.getCurrentSegment());
