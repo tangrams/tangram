@@ -733,7 +733,8 @@ export default class Scene {
                 }
 
                 // Save queued request
-                this.building.queued = { resolve, reject };
+                let options = { sync, sources, serialize_funcs, profile, fade_in };
+                this.building.queued = { resolve, reject, options };
                 log('trace', `Scene.rebuild(): queuing request`);
                 return;
             }
@@ -784,7 +785,7 @@ export default class Scene {
             this.building = null;
             if (queued) {
                 log('debug', `Scene: starting queued rebuild() request`);
-                this.rebuild().then(queued.resolve, queued.reject);
+                this.rebuild(queued.options).then(queued.resolve, queued.reject);
             }
         }
     }
