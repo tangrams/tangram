@@ -225,13 +225,21 @@ function extendLeaflet(options) {
                     const enabled = map.scrollWheelZoom.enabled();
                     map.scrollWheelZoom.disable();
 
-                    map.scrollWheelZoom._onWheelScroll = function (e) {
-                        var delta = L.DomEvent.getWheelDelta(e);
-                        this._delta += delta;
-                        this._lastMousePos = this._map.mouseEventToContainerPoint(e);
-                        this._performZoom();
-                        L.DomEvent.stop(e);
-                    };
+                    // Chrome and Safari have smoother scroll-zoom without actively throttling the mouse wheel,
+                    // while FF and Edge/IE do better with throttling.
+                    // TODO: may be related to syncing differences with requestAnimationFrame loop, investigate further
+                    if (L.Browser.chrome || L.Browser.safari) {
+                        map.scrollWheelZoom._onWheelScroll = function (e) {
+                            var delta = L.DomEvent.getWheelDelta(e);
+                            this._delta += delta;
+                            this._lastMousePos = this._map.mouseEventToContainerPoint(e);
+                            this._performZoom();
+                            L.DomEvent.stop(e);
+                        };
+                    }
+                    else {
+                        map.options.wheelDebounceTime = 20; // better default for FF and Edge/IE
+                    }
 
                     map.scrollWheelZoom._performZoom = function () {
                         var map = this._map,
