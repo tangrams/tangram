@@ -4,9 +4,10 @@ import WorkerBroker from './utils/worker_broker';
 
 export default class FeatureSelection {
 
-    constructor(gl, workers) {
+    constructor(gl, workers, lock_fn) {
         this.gl = gl;
         this.workers = workers; // pool of workers to request feature look-ups from, keyed by id
+        this._lock_fn = (typeof lock_fn === 'function') && lock_fn; // indicates if safe to read/write selection buffer this frame
         this.init();
     }
 
@@ -49,6 +50,11 @@ export default class FeatureSelection {
         }
 
         // TODO: free texture?
+    }
+
+    // external lock function determines when it's safe to read/write from selection buffer
+    get locked () {
+        return (this._lock_fn && this._lock_fn()) || false;
     }
 
     bind() {
@@ -103,6 +109,10 @@ export default class FeatureSelection {
             clearTimeout(this.read_delay_timer);
         }
         this.read_delay_timer = setTimeout(() => {
+            if (this.locked) {
+                return;
+            }
+
             var gl = this.gl;
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);

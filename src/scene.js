@@ -475,15 +475,18 @@ export default class Scene {
                 return;
             }
 
-            this.selection.bind();                  // switch to FBO
-            this.renderPass(
-                'selection_program',                // render w/alternate program
-                { allow_blend: false });
-            this.selection.read();                  // read results from selection buffer
+            if (!this.selection.locked) {       // check if selection buffer is locked (e.g. building tiles)
+                this.selection.bind();          // switch to FBO
+                this.renderPass(
+                    'selection_program',        // render w/alternate program
+                    { allow_blend: false });
 
-            // Reset to screen buffer
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                // Reset to screen buffer
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            this.selection.read(); // process any pending results from selection buffer
         }
 
         this.render_count_changed = false;
@@ -1067,7 +1070,7 @@ export default class Scene {
 
     resetFeatureSelection() {
         if (!this.selection) {
-            this.selection = new FeatureSelection(this.gl, this.workers);
+            this.selection = new FeatureSelection(this.gl, this.workers, () => this.building);
         }
         else if (this.workers) {
             WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection');
