@@ -146,7 +146,7 @@ export default class FeatureSelection {
                 }
                 // No feature found, but still need to resolve promise
                 else {
-                    this.finishRead({ id: request.id, feature: null });
+                    this.finishRead({ id: request.id });
                 }
 
                 request.sent = true;
