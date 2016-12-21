@@ -37,10 +37,10 @@ export default class LabelLine {
             }
         }
         else {
-            this.angle = label.angle;
             this.size = label.size;
         }
 
+        this.angle = label.angle;
         this.num_segments = label.num_segments;
         this.offset = label.offset;
         this.position = label.position;
@@ -155,6 +155,7 @@ class LabelLineCurved {
         this.aabbs = [];
         this.type = 'curved';
 
+        this.angle = 0; // for global offset
         this.angles = [];
         this.pre_angles = [];
         this.offsets = [];
@@ -173,7 +174,7 @@ class LabelLineCurved {
 
         // starting position
         let height = size[0][1] * upp;
-        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(lines, line_lengths, height, line_angles_segments);
+        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(lines, line_lengths, height, line_angles_segments, this.offset, upp);
 
         if (start_index === end_index){
             this.throw_away = true;
@@ -201,7 +202,10 @@ class LabelLineCurved {
                 let [new_lines, line_lengths] = LabelLineCurved.scaleLine(stop, lines);
                 anchor = new_lines[anchor_index];
 
-                let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtPosition(anchor, anchor_index, new_lines, line_lengths, line_angles_segments, label_lengths, upp);
+                let {positions, offsets, angles, pre_angles, offsets2d} = LabelLineCurved.placeAtPosition(anchor, anchor_index, new_lines, line_lengths, line_angles_segments, label_lengths, upp);
+
+                // use average angle
+                this.angle = 1 / angles.length * angles.reduce(function(prev, next){ return prev + next; });
 
                 if (stop === 0){
                     for (let i = 0; i < positions.length; i++){
@@ -209,8 +213,11 @@ class LabelLineCurved {
                         let offset_angle = angles[i];
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
+                        let offset = offsets2d[i].map(function(value){ return value/upp;})
 
-                        let obb = getOBB(position, width, height, pre_angle + offset_angle, this.offset);
+                        // let obb = getOBB(position, width, height, pre_angle + offset_angle);
+
+                        let obb = getOBBCurved(position, width, height, this.offset, this.angle, offset, pre_angle + offset_angle, upp);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
@@ -225,7 +232,7 @@ class LabelLineCurved {
         }
     }
 
-    static checkTileBoundary(lines, widths, height, angles){
+    static checkTileBoundary(lines, widths, height, angles, offset, upp){
         let start = 0;
         let end = lines.length - 1;
 
@@ -234,7 +241,7 @@ class LabelLineCurved {
 
         while (start < end){
             let position = Vector.add(Vector.rot([start_width/2, 0], -angles[start]), lines[start]);
-            let obb = getOBB(position, start_width, height, -angles[start]);
+            let obb = getOBB(position, start_width, height, -angles[start], offset, upp);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
             if (in_tile) {
@@ -247,7 +254,7 @@ class LabelLineCurved {
 
         while (end > start){
             let position = Vector.add(Vector.rot([-end_width/2, 0], -angles[end]), lines[end]);
-            let obb = getOBB(position, end_width, height, -angles[end]);
+            let obb = getOBB(position, end_width, height, -angles[end], offset, upp);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
             if (in_tile) {
@@ -373,7 +380,7 @@ class LabelLineCurved {
             return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
         });
 
-        return {positions, offsets, angles, pre_angles};
+        return {positions, offsets, angles, pre_angles, offsets2d};
     }
 
     static getIndicesAndOffsets(line_index, line_lengths, label_lengths){
@@ -483,6 +490,33 @@ function getOBB(position, width, height, angle, offset, upp) {
         p1 = position[1] - offset[1] * upp;
     }
     else {
+        p0 = position[0];
+        p1 = position[1];
+    }
+
+    // the angle of the obb is negative since it's the tile system y axis is pointing down
+    return new OBB(p0, p1, -angle, width, height);
+}
+
+function getOBBCurved(position, width, height, offset, angle, offset_curve, angle_curve, upp) {
+    if (!upp) {
+        upp = 1;
+    }
+    let p0, p1;
+    // apply offset, x positive, y pointing down
+    if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
+        offset = Vector.rot(offset, angle);
+        p0 = position[0] + offset[0] * upp;
+        p1 = position[1] - offset[1] * upp;
+    }
+
+    if (offset_curve){
+        offset = Vector.rot(offset_curve, angle_curve);
+        p0 = position[0] + offset[0] * upp;
+        p1 = position[1] - offset[1] * upp;
+    }
+
+    if (!offset && !offset_curve){
         p0 = position[0];
         p1 = position[1];
     }

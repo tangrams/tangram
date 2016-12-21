@@ -82,38 +82,36 @@ void main() {
     // Apply positioning and scaling in screen space
     vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
+    vec2 offset_curve = vec2(0.,0.);
 
     float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);
-    float theta = 0.;
+    float theta = a_shape.z / 4096.;
 
     #ifdef TANGRAM_CURVED_POINT
-        if (a_shape.z == 1.){
+        if (a_offsets[0] != 0.){
             vec4 angles_scaled = (PI / 16384.) * a_angles;
             vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;
             vec4 offsets_scaled = (1. / 64.) * a_offsets;
 
             float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);
-            theta = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);
-            offset.x = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
+            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);
+            offset_curve.x = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
 
             shape = rotate2D(shape, pre_angle);
+            shape = rotate2D(shape + offset_curve, angle);
+            shape += rotate2D(offset, theta);
         }
         else {
-            theta = a_shape.z / 4096.;
+             shape = rotate2D(shape + offset, theta);
         }
     #else
-        theta = a_shape.z / 4096.;
+        shape = rotate2D(shape + offset, theta);
     #endif
-
-    // float theta = mix4smoothstep(a_angles[0], a_angles[1], a_angles[2], a_angles[3], zoom);
-    // offset.x = mix4smoothstep(a_offsets[0], a_offsets[1], a_offsets[2], a_offsets[3], zoom);
-    // float pre_angle = mix4smoothstep(a_pre_angles[0], a_pre_angles[1], a_pre_angles[2], a_pre_angles[3], zoom);
 
     #ifdef TANGRAM_MULTI_SAMPLER
     v_sampler = a_shape.w; // texture sampler
     #endif
 
-    shape = rotate2D(shape + offset, theta);     // apply rotation to vertex
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * position;
