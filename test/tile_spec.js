@@ -62,7 +62,7 @@ describe('Tile', function() {
 
     describe('.create(spec)', () => {
         it('returns a new instance', () => {
-            assert.instanceOf(Tile.create({source: scene.sources.osm, coords: { x: 10, y: 10, z: 10 }, style_zoom: 10 }), Tile);
+            assert.instanceOf(Tile.create({source: scene.sources.osm, coords: { x: 10, y: 10, z: 10 }, style_zoom: 10, worker: scene.getWorkerForDataSource(scene.sources.osm) }), Tile);
         });
     });
 
@@ -137,7 +137,7 @@ describe('Tile', function() {
                 // view.findVisibleTileCoordinates.restore();
                 // sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
                 view.setZoom(z);
-                subject = Tile.create({coords: subject.coords, view: view, style_zoom: view.zoom, source: scene.sources.osm});
+                subject = Tile.create({coords: subject.coords, view: view, style_zoom: view.zoom, source: scene.sources.osm, worker: scene.getWorkerForDataSource(scene.sources.osm)});
                 tile_manager.updateVisibility(subject);
                 // view.findVisibleTileCoordinates.restore();
 
@@ -149,7 +149,7 @@ describe('Tile', function() {
                 // view.findVisibleTileCoordinates.restore();
                 // sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
                 view.setZoom(z);
-                subject = Tile.create({coords: subject.coords, view: view, style_zoom: view.zoom, source: scene.sources.osm});
+                subject = Tile.create({coords: subject.coords, view: view, style_zoom: view.zoom, source: scene.sources.osm, worker: scene.getWorkerForDataSource(scene.sources.osm)});
                 tile_manager.updateVisibility(subject);
 
                 assert.isFalse(subject.visible);
