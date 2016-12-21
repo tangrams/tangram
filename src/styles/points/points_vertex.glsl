@@ -82,7 +82,6 @@ void main() {
     // Apply positioning and scaling in screen space
     vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
     vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
-    vec2 offset_curve = vec2(0.,0.);
 
     float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);
     float theta = a_shape.z / 4096.;
@@ -95,10 +94,11 @@ void main() {
 
             float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);
             float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);
-            offset_curve.x = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
+            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
 
             shape = rotate2D(shape, pre_angle);
-            shape = rotate2D(shape + offset_curve, angle);
+            shape.x += offset_curve;
+            shape = rotate2D(shape, angle);
             shape += rotate2D(offset, theta);
         }
         else {
