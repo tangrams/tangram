@@ -70,7 +70,6 @@ export default class FeatureSelection {
             // Queue requests for feature selection, and they will be picked up by the render loop
             this.selection_request_id = (this.selection_request_id + 1) || 0;
             this.requests[this.selection_request_id] = {
-                type: 'point',
                 id: this.selection_request_id,
                 point,
                 resolve,
@@ -122,11 +121,6 @@ export default class FeatureSelection {
 
                 // This request was already sent to the worker, we're just awaiting its reply
                 if (request.sent) {
-                    continue;
-                }
-
-                // TODO: support other selection types, such as features within a box
-                if (request.type !== 'point') {
                     continue;
                 }
 
