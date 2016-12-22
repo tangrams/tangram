@@ -4,7 +4,7 @@ import OBB from '../utils/obb';
 
 const stops = [0, 0.3, 0.6, 0.9];
 const LINE_EXCEED_STRAIGHT = 0.3;       // minimal ratio for straight labels (label length) / (line length)
-const LINE_EXCEED_STRAIGHT_RTL = 0.7;   // minimal ratio for straight labels that have no curved option
+const LINE_EXCEED_STRAIGHT_RTL = 0.3;   // minimal ratio for straight labels that have no curved option
 const MIN_TOTAL_COST = 1.3;
 const MIN_AVG_COST = 0.4;
 
@@ -17,10 +17,10 @@ export default class LabelLine {
 
         if (label.throw_away){
             // if RTL text, throw away
-            if (layout.isRTL){
-                this.throw_away = true;
-                return;
-            }
+            // if (layout.isRTL){
+            //     this.throw_away = true;
+            //     return;
+            // }
 
             // else try curved label
             label = new LabelLineCurved(size, lines, layout);

@@ -60,6 +60,8 @@ export default class CanvasText {
                         let rtl = isTextRTL(text);
 
                         text_info.isRTL = rtl;
+                        if (rtl) segments.reverse();
+
                         text_info.segments = segments;
                         text_info.size = [];
 
@@ -253,8 +255,14 @@ export default class CanvasText {
                         let type = text_info.type[i];
                         switch (type){
                             case 'straight':
-                                let word = words.reduce(function(prev, next){ return prev + next; });
+                                let word = (text_info.isRTL)
+                                    ? words.reduce(function(prev, next){ return next + prev; })
+                                    : words.reduce(function(prev, next){ return prev + next; });
+
                                 let texcoord;
+
+                                if (CanvasText.text_cache[style][word] === undefined) debugger;
+                                if (CanvasText.texcoord_cache[tile_key][style][word] === undefined) debugger;
 
                                 if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
                                     texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
@@ -379,10 +387,13 @@ export default class CanvasText {
                         let type = text_info.type[i];
                         switch (type){
                             case 'straight':
-                                let word = '';
                                 let size = [0, text_info.total_size.texture_size[1]];
+
+                                let word = (text_info.isRTL)
+                                    ? text_info.segments.reduce(function(prev, next){ return next + prev; })
+                                    : text_info.segments.reduce(function(prev, next){ return prev + next; });
+
                                 for (let i = 0; i < text_info.size.length; i++){
-                                    word += text_info.segments[i];
                                     size[0] += text_info.size[i].texture_size[0];
                                 }
 
@@ -537,45 +548,41 @@ function isCharRTL(s){
     return rtlDirCheck.test(s);
 }
 
-function isTextRTL(text){
-    for (let i = 0; i < text.length; i++){
-        if (isCharRTL(text[i])) {
-            return true;
-        }
-    }
-    return false;
+// Contextual Shaping Languages - Unicode ranges
+// Arabic: 0600 - 06FF
+// Bengali: 0980 - 09FF
+// Burmese - 1000 - 109F
+// Khmer - 1780 - 17FF
+// Gujarati - 0A80 - 0AFF
+// Gurmukhi - 0A00 - 0A7F
+// Devanagari - 0900 - 097F
+// Kannada - 0C80 - OCFF
+// Lao - 0E80 - 0EFF
+// Mongolian - 1800 - 18AF
+// Oriya - 0B00 - 0B7F
+// Tamil - 0B80 - 0BFF
+// Telugu - 0C00 - 0C7F
+// Tibetan - 0F00 - 0FFF
+
+function hasContextualShaping(s){
+    // TODO
 }
 
-// function reorderWordsLTR(words) {
-//     let words_LTR = [];
-//     let words_RTL = [];
-
-//     // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
-//     for (var i = 0; i < words.length; i++){
-//         var str = words[i];
-//         var rtl = isRTL(str);
-//         if (rtl){
-//             words_RTL.push(str);
-//         }
-//         else {
-//             while (words_RTL.length > 0){
-//                 words_LTR.push(words_RTL.pop());
-//             }
-//             words_LTR.push(str);
-//         }
-//     }
-
-//     while (words_RTL.length > 0){
-//         words_LTR.push(words_RTL.pop());
-//     }
-
-//     return words_LTR;
-// }
+function isTextRTL(text){
+    for (let i = 0; i < text.length; i++){
+        if (!isCharRTL(text[i])) {
+            return false;
+        }
+    }
+    return true;
+}
 
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text){
-    let segments = [];
     let codon_length = 2;
+    if (text.length < codon_length) return [text];
+
+    let segments = [];
 
     while (text.length){
         let segment = text.substring(0, codon_length);
