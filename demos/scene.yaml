@@ -105,6 +105,18 @@ styles:
                         }
                     }
 
+    selected_polygons:
+        base: polygons
+        shaders:
+            blocks:
+                color: |
+                    if (u_selection_click == v_selection_color) {
+                        color = u_selection_click_color;
+                    }
+                    else if (u_selection_hover == v_selection_color) {
+                        color = u_selection_hover_color;
+                    }
+
     icons:
         base: points
         texture: icons
@@ -240,10 +252,13 @@ layers:
         areas:
             draw:
                 polygons:
-                    style: buildings
+                    # style: buildings
+                    style: selected_polygons
                     order: global.feature_order
                     interactive: true
                     color: honeydew
+                    hover_color: yellow
+                    click_color: red
 
 
             # parks:
@@ -499,21 +514,27 @@ layers:
     buildings:
         data: { source: mapzen }
         filter: { $zoom: { min: 14 } }
+        # visible: false
 
         draw:
             polygons:
-                style: buildings
+                # style: buildings
+                style: selected_polygons
+                # hover_color: yellow
+                # click_color: red
+                hover_color: function() { return [0, Math.min(((feature.height||0)+20)/100, 1), 0]; }
+                click_color: function() { return [Math.min(((feature.height||0)+20)/100, 1), 0, 0]; }
                 order: global.feature_order
-                color: lightgrey
+                color: [.7, .7, .7]
 
         # turn interactive feature selection on for buildings with names
         interactive:
-            filter: { name: true }
+            # filter: { name: true }
             draw:
                 polygons:
                     interactive: true
-                    selection_prop: name
-                    color: grey
+                    # selection_prop: name
+                    # color: grey
 
         # extrude 3d buildings
         extruded:

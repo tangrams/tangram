@@ -593,6 +593,10 @@ export default class Scene {
                 this.last_selection_hover.selection_colors &&
                 this.last_selection_hover.selection_colors[worker_id]) {
                 program.uniform('4f', 'u_selection_hover', this.last_selection_hover.selection_colors[worker_id]);
+
+                if (this.last_selection_hover.feature.hover_color) {
+                    program.uniform('4f', 'u_selection_hover_color', this.last_selection_hover.feature.hover_color);
+                }
             }
             else {
                 program.uniform('4f', 'u_selection_hover', [0, 0, 0, 0]);
@@ -602,6 +606,10 @@ export default class Scene {
                 this.last_selection_click.selection_colors &&
                 this.last_selection_click.selection_colors[worker_id]) {
                 program.uniform('4f', 'u_selection_click', this.last_selection_click.selection_colors[worker_id]);
+
+                if (this.last_selection_click.feature.click_color) {
+                    program.uniform('4f', 'u_selection_click_color', this.last_selection_click.feature.click_color);
+                }
             }
             else {
                 program.uniform('4f', 'u_selection_click', [0, 0, 0, 0]);
@@ -1050,6 +1058,9 @@ export default class Scene {
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
+
+        this.last_selection_hover = null;
+        this.last_selection_click = null;
 
         // Optionally rebuild geometry
         let done = rebuild ?

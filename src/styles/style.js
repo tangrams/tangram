@@ -204,27 +204,34 @@ export var Style = {
             // Calculate order if it was not cached
             style.order = this.parseOrder(draw.order, context);
 
-            // Feature selection (only if style supports it)
-            var selectable = false;
-            style.interactive = this.introspection || draw.interactive;
-            if (this.selection) {
-                selectable = StyleParser.evalProperty(style.interactive, context);
-            }
-
-            // If feature is marked as selectable
-            style.selection_color = null;
-            if (selectable) {
-                style.selection_color = FeatureSelection.makeColor(feature, draw.selection_prop || default_selection_prop, context.tile, context);
-            }
-            style.selection_color = style.selection_color || FeatureSelection.defaultColor;
-
             // Subclass implementation
             style = this._parseFeature(feature, draw, context);
+
+            if (style) {
+                // Feature selection (only if style supports it)
+                var selectable = false;
+                style.interactive = this.introspection || draw.interactive;
+                if (this.selection) {
+                    selectable = StyleParser.evalProperty(style.interactive, context);
+                }
+
+                // If feature is marked as selectable
+                style.selection_color = null;
+                style.hover_color = null;
+                style.click_color = null;
+                if (selectable) {
+                    style.selection_prop = draw.selection_prop || default_selection_prop;
+                    style.hover_color = (draw.hover_color && StyleParser.evalCachedColorProperty(draw.hover_color, context)) || style.color;
+                    style.click_color = (draw.click_color && StyleParser.evalCachedColorProperty(draw.click_color, context)) || style.color;
+                    style.selection_color = FeatureSelection.makeColor(feature, style, context.tile, context);
+                }
+                style.selection_color = style.selection_color || FeatureSelection.defaultColor;
+            }
 
             return style;
         }
         catch(error) {
-            log('error', 'Style.parseFeature: style parsing error', feature, style, error);
+            log('error', 'Style.parseFeature: style parsing error', feature, style, error.toString());
         }
     },
 
@@ -239,6 +246,12 @@ export var Style = {
             if (!draw) {
                 return;
             }
+
+            if (this.introspection || draw.interactive) {
+                draw.hover_color = draw.hover_color && StyleParser.createColorPropertyCache(draw.hover_color);
+                draw.click_color = draw.click_color && StyleParser.createColorPropertyCache(draw.click_color);
+            }
+
             draw.preprocessed = true;
         }
         return draw;

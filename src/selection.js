@@ -247,13 +247,25 @@ export default class FeatureSelection {
         return this.map[key];
     }
 
-    static makeColor(feature, selection_prop, tile, context) {
-        if (!feature.properties[selection_prop]) {
+    static makeColor(feature, draw, tile, context) {
+        let selection_prop = draw.selection_prop;
+        let selection_val, selection_key;
+        if (typeof selection_prop === 'function') {
+            selection_val = selection_prop(context);
+            selection_key = context.source + '/' + selection_val;
+        }
+        else {
+            selection_val = feature.properties[selection_prop];
+            selection_key = context.source + '/' + selection_prop + '/' + selection_val;
+        }
+
+        if (selection_val == null) {
             return;
         }
 
-        let selection_key = selection_prop + '/' + feature.properties[selection_prop];
+        // let selection_key = selection_prop + '/' + selection_val;
         if (this.features[selection_key]) {
+            this.features[selection_key].feature.properties = feature.properties; // use latest feature properties
             return this.features[selection_key].color;
         }
 
@@ -264,7 +276,9 @@ export default class FeatureSelection {
             source_name: context.source,
             source_layer: context.layer,
             layers: context.layers,
-            tile: this.tiles[tile.key].tile
+            tile: this.tiles[tile.key].tile,
+            hover_color: draw.hover_color,
+            click_color: draw.click_color
         };
 
         this.features[selector.feature.selection_key] = selector;
