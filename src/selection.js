@@ -188,11 +188,16 @@ export default class FeatureSelection {
         this.feature = feature; // store the most recently selected feature
 
         if (feature) {
+            let group_key = message.group_key;
+            let group_value = message.group_value;
+
             // TODO: we can skip sending a message back to the initial worker we got the feature from
-            return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionColor', { selection_key: feature.selection_key })
+            return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionGroupColor', { group_key })
                 .then(selection_colors => {
                     // Resolve the request
-                    request.resolve({ feature, changed, request, selection_colors /*selection_color: message.selection_color*/ });
+                    request.resolve({
+                        feature, changed, request, selection_colors, group_key, group_value
+                    });
                     delete this.requests[message.id]; // done processing this request
                 });
         }
@@ -210,12 +215,12 @@ export default class FeatureSelection {
     // Workers independently create/modify selection colors in their own threads, but we also
     // need the main thread to know where each feature color originated. To accomplish this,
     // we partition the map by setting the 4th component (alpha channel) to the worker's id.
-    static makeEntry(tile) {
+    static createSelector(tile) {
         // 32-bit color key
-        this.map_entry++;
-        var ir = this.map_entry & 255;
-        var ig = (this.map_entry >> 8) & 255;
-        var ib = (this.map_entry >> 16) & 255;
+        this.map_index++;
+        var ir = this.map_index & 255;
+        var ig = (this.map_index >> 8) & 255;
+        var ib = (this.map_index >> 16) & 255;
         var ia = this.map_prefix;
         var r = ir / 255;
         var g = ig / 255;
@@ -247,50 +252,57 @@ export default class FeatureSelection {
         return this.map[key];
     }
 
-    static makeColor(feature, draw, tile, context) {
+    // static makeColor(feature, draw, tile, context) {
+    static getSelector(feature, draw, tile, context) {
         let selection_prop = draw.selection_prop;
-        let selection_val, selection_key;
+        let group_value, group_key;
         if (typeof selection_prop === 'function') {
-            selection_val = selection_prop(context);
-            selection_key = context.source + '/' + selection_val;
+            group_value = selection_prop(context);
+            // group_key = context.source + '/' + group_value;
         }
         else {
-            selection_val = feature.properties[selection_prop];
-            selection_key = context.source + '/' + selection_prop + '/' + selection_val;
+            group_value = feature.properties[selection_prop];
+            // group_key = context.source + '/' + selection_prop + '/' + group_value;
         }
+        // group_key = draw.key + ':' + group_value;
+        group_key = draw.selection_group_name + ':' + group_value;
 
-        if (selection_val == null) {
-            return;
-        }
-
-        // let selection_key = selection_prop + '/' + selection_val;
-        if (this.features[selection_key]) {
-            this.features[selection_key].feature.properties = feature.properties; // use latest feature properties
-            return this.features[selection_key].color;
-        }
-
-        var selector = this.makeEntry(tile);
+        let selector = this.createSelector(tile);
         selector.feature = {
-            selection_key,
             properties: feature.properties,
             source_name: context.source,
             source_layer: context.layer,
             layers: context.layers,
             tile: this.tiles[tile.key].tile,
             hover_color: draw.hover_color,
-            click_color: draw.click_color
+            click_color: draw.click_color,
         };
 
-        this.features[selector.feature.selection_key] = selector;
-        return selector.color;
+        let group;
+        if (group_value) {
+            group = this.groups[group_key];
+            if (!group) {
+                this.group_index++;
+                let r = this.group_index & 255;
+                let g = (this.group_index >> 8) & 255;
+                let b = (this.group_index >> 16) & 255;
+                group = this.groups[group_key] = [r, g, b, 255];
+            }
+        }
+
+        selector.group = group || [255, 255, 255, 255]; //selector.color;
+        selector.group_key = group_key;
+        selector.group_value = group_value;
+
+        return selector;
     }
 
     static reset() {
-        this.features = {};
+        this.groups = {};
         this.tiles = {};
         this.map = {};
         this.map_size = 0;
-        this.map_entry = 0;
+        this.map_index = 0;
     }
 
     static clearTile(key) {
@@ -315,8 +327,9 @@ export default class FeatureSelection {
 // Static properties
 FeatureSelection.map = {};   // this will be unique per module instance (so unique per worker)
 FeatureSelection.tiles = {}; // selection keys, by tile
-FeatureSelection.features = {};
+FeatureSelection.groups = {};
+FeatureSelection.group_index = 0;
 FeatureSelection.map_size = 0;
-FeatureSelection.map_entry = 0;
+FeatureSelection.map_index = 0;
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];

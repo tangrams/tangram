@@ -36,6 +36,7 @@ Object.assign(Lines, {
         // Optional feature selection
         if (this.selection) {
             attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+            attribs.push({ name: 'a_selection_group', size: 4, type: gl.UNSIGNED_BYTE, normalized: false });
         }
 
         // Optional line texture or dash array
@@ -223,6 +224,12 @@ Object.assign(Lines, {
 
                 // Outlines are always at half-layer intervals to avoid conflicting with inner lines
                 style.outline.order -= 0.5;
+
+                // Interactivity
+                style.outline.interactive = draw.outline.interactive;
+                style.outline.selection_prop = draw.outline.selection_prop;
+                style.outline.hover_color = draw.outline.hover_color;
+                style.outline.click_color = draw.outline.click_color;
             }
         }
         else {
@@ -244,6 +251,9 @@ Object.assign(Lines, {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
             draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
+
+            draw.outline.hover_color = StyleParser.createColorPropertyCache(draw.outline.hover_color);
+            draw.outline.click_color = StyleParser.createColorPropertyCache(draw.outline.click_color);
         }
         return draw;
     },
@@ -283,6 +293,11 @@ Object.assign(Lines, {
             this.vertex_template[i++] = style.selection_color[1] * 255;
             this.vertex_template[i++] = style.selection_color[2] * 255;
             this.vertex_template[i++] = style.selection_color[3] * 255;
+
+            this.vertex_template[i++] = style.selection_group[0]; // already scaled to 255 when created
+            this.vertex_template[i++] = style.selection_group[1];
+            this.vertex_template[i++] = style.selection_group[2];
+            this.vertex_template[i++] = style.selection_group[3];
         }
 
         // Add texture UVs to template only if needed

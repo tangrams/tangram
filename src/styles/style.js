@@ -216,22 +216,31 @@ export var Style = {
                 }
 
                 // If feature is marked as selectable
+                style.key = draw.key;
                 style.selection_color = null;
+                style.selection_group = null;
                 style.hover_color = null;
                 style.click_color = null;
                 if (selectable) {
                     style.selection_prop = draw.selection_prop || default_selection_prop;
+                    style.selection_group_name = draw.selection_group;
                     style.hover_color = (draw.hover_color && StyleParser.evalCachedColorProperty(draw.hover_color, context)) || style.color;
                     style.click_color = (draw.click_color && StyleParser.evalCachedColorProperty(draw.click_color, context)) || style.color;
-                    style.selection_color = FeatureSelection.makeColor(feature, style, context.tile, context);
+
+                    let selector = FeatureSelection.getSelector(feature, style, context.tile, context);
+                    if (selector) {
+                        style.selection_color = selector.color;
+                        style.selection_group = selector.group;
+                    }
                 }
                 style.selection_color = style.selection_color || FeatureSelection.defaultColor;
+                style.selection_group = style.selection_group || FeatureSelection.defaultColor;
             }
 
             return style;
         }
         catch(error) {
-            log('error', 'Style.parseFeature: style parsing error', feature, style, error.toString());
+            log('error', 'Style.parseFeature: style parsing error', feature, style, error.stack);
         }
     },
 
@@ -248,6 +257,7 @@ export var Style = {
             }
 
             if (this.introspection || draw.interactive) {
+                draw.selection_group = draw.selection_group || 'default';
                 draw.hover_color = draw.hover_color && StyleParser.createColorPropertyCache(draw.hover_color);
                 draw.click_color = draw.click_color && StyleParser.createColorPropertyCache(draw.click_color);
             }
@@ -340,7 +350,7 @@ export var Style = {
             defines.TANGRAM_FEATURE_SELECTABLE = true;
 
             var selection_defines = Object.assign({}, defines);
-            selection_defines.TANGRAM_FEATURE_SELECTION = true;
+            selection_defines.TANGRAM_FEATURE_SELECTION_PASS = true;
         }
 
         // Get any custom code blocks, uniform dependencies, etc.

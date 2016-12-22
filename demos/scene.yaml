@@ -92,30 +92,37 @@ styles:
                     // Shade by building height
                     // color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
 
-                    if (u_selection_click == v_selection_color) {
+                    if (u_selection_click == v_selection_group) {
                         color.rgb = vec3(.8, 0., 0.);
                         //if (isScreendoor()) {
                         //    discard;
                         //}
                     }
-                    else if (u_selection_hover == v_selection_color) {
+                    else if (u_selection_hover == v_selection_group) {
                         color.rgb = vec3(.8, .8, 0.);
                         if (isScreendoor()) {
                             discard;
                         }
                     }
 
-    selected_polygons:
-        base: polygons
+    selected:
         shaders:
             blocks:
                 color: |
-                    if (u_selection_click == v_selection_color) {
+                    if (u_selection_click == v_selection_group) {
                         color = u_selection_click_color;
                     }
-                    else if (u_selection_hover == v_selection_color) {
+                    else if (u_selection_hover == v_selection_group) {
                         color = u_selection_hover_color;
                     }
+
+    selected-polygons:
+        base: polygons
+        mix: selected
+
+    selected-lines:
+        base: lines
+        mix: selected
 
     icons:
         base: points
@@ -253,9 +260,9 @@ layers:
             draw:
                 polygons:
                     # style: buildings
-                    style: selected_polygons
+                    # style: selected-polygons
                     order: global.feature_order
-                    interactive: true
+                    # interactive: true
                     color: honeydew
                     hover_color: yellow
                     click_color: red
@@ -323,13 +330,20 @@ layers:
         draw:
             lines:
                 color: white
-                # color: function() { return [Math.random(), Math.random(), Math.random()] }
+                style: selected-lines
+                interactive: true
+                selection_prop: function(){ return feature.kind + ':' + feature.kind_detail; }
+                hover_color: yellow
+                click_color: red
                 width: 12
                 order: global.feature_order
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
                     width: [[15, 0], [16, 2]]
                     order: 352 # put all outlines below all roads
+                    # interactive: true
+                    # hover_color: purple
+                    # click_color: lightred
 
         rounded:
             filter: { $zoom: { min: 18 } }
@@ -355,6 +369,7 @@ layers:
             filter: { kind: major_road, $zoom: { min: 10 } }
             draw:
                 lines:
+                    hover_color: green
                     width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
                     outline:
                         width: [[16, 0], [17, 1]]
@@ -514,18 +529,28 @@ layers:
     buildings:
         data: { source: mapzen }
         filter: { $zoom: { min: 14 } }
+        # filter: { name: true }
         # visible: false
 
         draw:
             polygons:
-                # style: buildings
-                style: selected_polygons
+                style: buildings
+                style: selected-polygons
+                # selection_prop: function() { return feature.name && feature.name[0]; }
+                # selection_prop: function() { return feature.height && feature.height > 25; }
                 # hover_color: yellow
                 # click_color: red
-                hover_color: function() { return [0, Math.min(((feature.height||0)+20)/100, 1), 0]; }
-                click_color: function() { return [Math.min(((feature.height||0)+20)/100, 1), 0, 0]; }
+                hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
+                click_color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
                 order: global.feature_order
                 color: [.7, .7, .7]
+
+        # tall:
+        #     filter: { height: { min: 100 } }
+        #     draw:
+        #         polygons:
+        #             color: darkred
+        #             selection_group: taller
 
         # turn interactive feature selection on for buildings with names
         interactive:
@@ -537,11 +562,11 @@ layers:
                     # color: grey
 
         # extrude 3d buildings
-        extruded:
-            filter: { $zoom: { min: 15 } }
-            draw:
-                polygons:
-                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
+        # extruded:
+        #     filter: { $zoom: { min: 15 } }
+        #     draw:
+        #         polygons:
+        #             extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
         high-line:
             filter: { roof_material: grass }
@@ -803,6 +828,7 @@ layers:
     transit:
         data: { source: mapzen }
         filter: { $zoom: { min: 16 } }
+        visible: false
         draw:
             lines:
                 style: transit-lines

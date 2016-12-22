@@ -42,6 +42,7 @@ Object.assign(Polygons, {
         // Feature selection
         this.selection = true;
         attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+        attribs.push({ name: 'a_selection_group', size: 4, type: gl.UNSIGNED_BYTE, normalized: false });
 
         // Optional texture UVs
         if (this.texcoords) {
@@ -127,10 +128,15 @@ Object.assign(Polygons, {
 
         // selection color
         if (this.selection) {
-            this.vertex_template[i++] = style.selection_color[0] * 255;
+            this.vertex_template[i++] = style.selection_color[0] * 255; // TODO: scale to 255 when created?
             this.vertex_template[i++] = style.selection_color[1] * 255;
             this.vertex_template[i++] = style.selection_color[2] * 255;
             this.vertex_template[i++] = style.selection_color[3] * 255;
+
+            this.vertex_template[i++] = style.selection_group[0]; // already scaled to 255 when created
+            this.vertex_template[i++] = style.selection_group[1];
+            this.vertex_template[i++] = style.selection_group[2];
+            this.vertex_template[i++] = style.selection_group[3];
         }
 
         // Add texture UVs to template only if needed

@@ -1,6 +1,6 @@
 // Selection pass-specific rendering
 #if defined(TANGRAM_VERTEX_SHADER) && defined(TANGRAM_FEATURE_SELECTABLE)
-    #if defined(TANGRAM_FEATURE_SELECTION)
+    #if defined(TANGRAM_FEATURE_SELECTION_PASS)
     if (a_selection_color.rgb == vec3(0.)) {
         // Discard by forcing invalid triangle if we're in the feature
         // selection pass but have no selection info
@@ -11,4 +11,5 @@
     #endif
 
     v_selection_color = a_selection_color;
+    v_selection_group = a_selection_group;
 #endif

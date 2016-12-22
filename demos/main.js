@@ -446,29 +446,38 @@ Enjoy!
 
     function onFeatureHover (selection) {
         // Show selection info
-        // var feature = selection.feature;
-        // if (feature != null) {
-        //     var label = '';
-        //     if (feature.properties.name != null) {
-        //         label = feature.properties.name;
-        //     }
-        //     // Object.keys(feature.properties).forEach(p => label += `<b>${p}:</b> ${feature.properties[p]}<br>`);
+        var feature = selection.feature;
+        if (feature != null) {
+            var label = '';
+            // if (feature.properties.name != null) {
+            //     label = feature.properties.name;
+            // }
+            // Object.keys(feature.properties).forEach(p => label += `<b>${p}:</b> ${feature.properties[p]}<br>`);
 
-        //     if (label != '') {
-        //         selection_info.style.left = (selection.pixel.x + 5) + 'px';
-        //         selection_info.style.top = (selection.pixel.y + 15) + 'px';
-        //         selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
-        //         if (selection_info.parentNode == null) {
-        //             map.getContainer().appendChild(selection_info);
-        //         }
-        //     }
-        //     else if (selection_info.parentNode != null) {
-        //         selection_info.parentNode.removeChild(selection_info);
-        //     }
-        // }
-        // else if (selection_info.parentNode != null) {
-        //     selection_info.parentNode.removeChild(selection_info);
-        // }
+            if (feature.properties.name != null) {
+                label = `<b>${feature.properties.name}</b><br>`;
+                // label = `<b>${feature.properties.name[0]}</b>${feature.properties.name.slice(1)}`;
+            }
+
+            if (selection.group_value) {
+                label += selection.group_value;
+            }
+
+            if (label != '') {
+                selection_info.style.left = (selection.pixel.x + 5) + 'px';
+                selection_info.style.top = (selection.pixel.y + 15) + 'px';
+                selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
+                if (selection_info.parentNode == null) {
+                    map.getContainer().appendChild(selection_info);
+                }
+            }
+            else if (selection_info.parentNode != null) {
+                selection_info.parentNode.removeChild(selection_info);
+            }
+        }
+        else if (selection_info.parentNode != null) {
+            selection_info.parentNode.removeChild(selection_info);
+        }
     }
 
     // Pre-render hook
