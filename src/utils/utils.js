@@ -6,8 +6,6 @@ import Thread from './thread';
 import WorkerBroker from './worker_broker';
 import Geo from '../geo';
 
-import yaml from 'js-yaml';
-
 var Utils;
 export default Utils = {};
 
@@ -24,13 +22,21 @@ Utils.isMicrosoft = function () {
     return /(Trident\/7.0|Edge[ /](\d+[\.\d]+))/i.test(navigator.userAgent);
 };
 
-Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}, proxy = false) {
+Utils._requests = {};       // XHR requests on current thread
+Utils._proxy_requests = {}; // XHR requests proxied to main thread
+
+// `request_key` is a user-provided key that can be later used to cancel the request
+Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}, request_key = null, proxy = false) {
     if (Thread.is_worker && Utils.isMicrosoft()) {
         // Some versions of IE11 and Edge will hang web workers when performing XHR requests
         // These requests can be proxied through the main thread
         // https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/9545866/
         log('debug', 'Proxying request for URL to worker', url);
-        return WorkerBroker.postMessage('Utils.io', url, timeout, responseType, method, headers, true);
+
+        if (request_key) {
+            Utils._proxy_requests[request_key] = true; // mark as proxied
+        }
+        return WorkerBroker.postMessage('Utils.io', url, timeout, responseType, method, headers, request_key, true);
     }
     else {
         var request = new XMLHttpRequest();
@@ -59,46 +65,41 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             request.send();
         });
 
-        Object.defineProperty(promise, 'request', {
-            value: request
+        promise = promise.then(response => {
+            if (request_key) {
+                delete Utils._requests[request_key];
+            }
+
+            if (proxy) {
+                return WorkerBroker.withTransferables(response);
+            }
+            return response;
         });
 
-        return promise.then(response => {
-            return (proxy && WorkerBroker.withTransferables(response)) || response;
-        });
-    }
-};
-
-Utils.parseResource = function (body) {
-    var data;
-    try {
-        // jsyaml 'json' option allows duplicate keys
-        // Keeping this for backwards compatibility, but should consider migrating to requiring
-        // unique keys, as this is YAML spec. But Tangram ES currently accepts dupe keys as well,
-        // so should consider how best to unify.
-        data = yaml.safeLoad(body, { json: true });
-    } catch (e) {
-        throw e;
-    }
-    return data;
-};
-
-Utils.loadResource = function (source) {
-    return new Promise((resolve, reject) => {
-        if (typeof source === 'string') {
-            Utils.io(source).then((body) => {
-                try {
-                    let data = Utils.parseResource(body);
-                    resolve(data);
-                }
-                catch(e) {
-                    reject(e);
-                }
-            }, reject);
-        } else {
-            resolve(source);
+        if (request_key) {
+            Utils._requests[request_key] = request;
         }
-    });
+
+        return promise;
+    }
+};
+
+// Çancel a pending network request by user-provided request key
+Utils.cancelRequest = function (key) {
+    // Check for a request that was proxied to the main thread
+    if (Thread.is_worker && Utils._proxy_requests[key]) {
+        return WorkerBroker.postMessage('Utils.cancelRequest', key); // forward to main thread
+    }
+
+    let req = Utils._requests[key];
+    if (req) {
+        log('trace', `Cancelling network request key '${key}'`);
+        Utils._requests[key].abort();
+        delete Utils._requests[key];
+    }
+    else {
+        log('trace', `Could not find network request key '${key}'`);
+    }
 };
 
 // Needed for older browsers that still support WebGL (Safari 6 etc.)

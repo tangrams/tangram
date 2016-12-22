@@ -45,6 +45,7 @@ export default class Scene {
 
         this.config = null;
         this.config_source = config_source;
+        this.config_bundle = null;
         this.config_serialized = null;
         this.last_valid_config_source = null;
 
@@ -474,15 +475,18 @@ export default class Scene {
                 return;
             }
 
-            this.selection.bind();                  // switch to FBO
-            this.renderPass(
-                'selection_program',                // render w/alternate program
-                { allow_blend: false });
-            this.selection.read();                  // read results from selection buffer
+            if (!this.selection.locked) {       // check if selection buffer is locked (e.g. building tiles)
+                this.selection.bind();          // switch to FBO
+                this.renderPass(
+                    'selection_program',        // render w/alternate program
+                    { allow_blend: false });
 
-            // Reset to screen buffer
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                // Reset to screen buffer
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            this.selection.read(); // process any pending results from selection buffer
         }
 
         this.render_count_changed = false;
@@ -732,7 +736,8 @@ export default class Scene {
                 }
 
                 // Save queued request
-                this.building.queued = { resolve, reject };
+                let options = { sync, sources, serialize_funcs, profile, fade_in };
+                this.building.queued = { resolve, reject, options };
                 log('trace', `Scene.rebuild(): queuing request`);
                 return;
             }
@@ -783,7 +788,7 @@ export default class Scene {
             this.building = null;
             if (queued) {
                 log('debug', `Scene: starting queued rebuild() request`);
-                this.rebuild().then(queued.resolve, queued.reject);
+                this.rebuild(queued.options).then(queued.resolve, queued.reject);
             }
         }
     }
@@ -803,8 +808,9 @@ export default class Scene {
             this.config_path = URLs.pathForURL(config_path);
         }
 
-        return SceneLoader.loadScene(this.config_source, this.config_path).then(config => {
+        return SceneLoader.loadScene(this.config_source, this.config_path).then(({config, bundle}) => {
             this.config = config;
+            this.config_bundle = bundle;
             this.trigger('load', { config: this.config });
             return this.config;
         });
@@ -832,10 +838,14 @@ export default class Scene {
         let load = (this.config.sources[name] == null);
         let source = this.config.sources[name] = Object.assign({}, config);
 
+        // Convert raw data into blob URL
         if (source.data && typeof source.data === 'object') {
             source.url = URLs.createObjectURL(new Blob([JSON.stringify(source.data)]));
             delete source.data;
         }
+
+        // Resolve paths relative to root scene bundle
+        SceneLoader.normalizeDataSource(source, this.config_bundle);
 
         if (load) {
             return this.updateConfig({ rebuild: { sources: [name] } });
@@ -847,13 +857,15 @@ export default class Scene {
     createDataSources() {
         let reset = []; // sources to reset
         let prev_source_names = Object.keys(this.sources);
+        let source_id = 0;
 
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
             let prev_source = this.sources[name];
 
             try {
-                this.sources[name] = DataSource.create(Object.assign({}, source, {name}), this.sources);
+                let config = Object.assign({}, source, { name, id: source_id++ });
+                this.sources[name] = DataSource.create(config, this.sources);
                 if (!this.sources[name]) {
                     throw {};
                 }
@@ -1058,7 +1070,7 @@ export default class Scene {
 
     resetFeatureSelection() {
         if (!this.selection) {
-            this.selection = new FeatureSelection(this.gl, this.workers);
+            this.selection = new FeatureSelection(this.gl, this.workers, () => this.building);
         }
         else if (this.workers) {
             WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection');

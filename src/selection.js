@@ -4,9 +4,10 @@ import WorkerBroker from './utils/worker_broker';
 
 export default class FeatureSelection {
 
-    constructor(gl, workers) {
+    constructor(gl, workers, lock_fn) {
         this.gl = gl;
         this.workers = workers; // pool of workers to request feature look-ups from, keyed by id
+        this._lock_fn = (typeof lock_fn === 'function') && lock_fn; // indicates if safe to read/write selection buffer this frame
         this.init();
     }
 
@@ -14,7 +15,7 @@ export default class FeatureSelection {
         // Selection state tracking
         this.requests = {}; // pending selection requests
         this.feature = null; // currently selected feature
-        this.read_delay = 5; // delay time from selection render to framebuffer sample, to avoid CPU/GPU sync lock
+        this.read_delay = 0; // delay time from selection render to framebuffer sample, to avoid CPU/GPU sync lock
         this.read_delay_timer = null; // current timer (setTimeout) for delayed selection reads
 
         this.pixel = new Uint8Array(4);
@@ -51,6 +52,11 @@ export default class FeatureSelection {
         // TODO: free texture?
     }
 
+    // external lock function determines when it's safe to read/write from selection buffer
+    get locked () {
+        return (this._lock_fn && this._lock_fn()) || false;
+    }
+
     bind() {
         // Switch to FBO
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
@@ -64,7 +70,6 @@ export default class FeatureSelection {
             // Queue requests for feature selection, and they will be picked up by the render loop
             this.selection_request_id = (this.selection_request_id + 1) || 0;
             this.requests[this.selection_request_id] = {
-                type: 'point',
                 id: this.selection_request_id,
                 point,
                 resolve,
@@ -103,6 +108,10 @@ export default class FeatureSelection {
             clearTimeout(this.read_delay_timer);
         }
         this.read_delay_timer = setTimeout(() => {
+            if (this.locked) {
+                return;
+            }
+
             var gl = this.gl;
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
@@ -112,11 +121,6 @@ export default class FeatureSelection {
 
                 // This request was already sent to the worker, we're just awaiting its reply
                 if (request.sent) {
-                    continue;
-                }
-
-                // TODO: support other selection types, such as features within a box
-                if (request.type !== 'point') {
                     continue;
                 }
 
@@ -142,7 +146,7 @@ export default class FeatureSelection {
                 }
                 // No feature found, but still need to resolve promise
                 else {
-                    this.finishRead({ id: request.id, feature: null });
+                    this.finishRead({ id: request.id });
                 }
 
                 request.sent = true;

@@ -3,6 +3,8 @@
 var Context;
 export default Context = {};
 
+let context_id = 0;
+
 // Setup a WebGL context
 // If no canvas element is provided, one is created and added to the document body
 Context.getContext = function getContext (canvas, options)
@@ -22,6 +24,7 @@ Context.getContext = function getContext (canvas, options)
     if (!gl) {
         throw new Error("Couldn't create WebGL context.");
     }
+    gl._tangram_id = context_id++;
 
     if (!fullscreen) {
         Context.resize(gl, parseFloat(canvas.style.width), parseFloat(canvas.style.height), options.device_pixel_ratio);

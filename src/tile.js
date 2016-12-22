@@ -1,4 +1,5 @@
 import log from './utils/log';
+import Utils from './utils/utils';
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
 import Collision from './labels/collision';
@@ -183,8 +184,9 @@ export default class Tile {
     static cancel(tile) {
         if (tile) {
             tile.canceled = true;
-            if (tile.source_data && tile.source_data.request) {
-                tile.source_data.request.abort();
+            if (tile.source_data && tile.source_data.request_id) {
+                Utils.cancelRequest(tile.source_data.request_id); // cancel pending tile network request
+                tile.source_data.request_id = null;
             }
             Tile.abortBuild(tile);
         }

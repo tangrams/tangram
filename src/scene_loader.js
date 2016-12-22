@@ -13,8 +13,8 @@ export default SceneLoader = {
     loadScene(url, path = null) {
         let errors = [];
         return this.loadSceneRecursive({ url, path }, null, errors).
-            then(config => this.finalize(config)).
-            then(config => {
+            then(result => this.finalize(result)).
+            then(({ config, bundle }) => {
                 if (!config) {
                     // root scene failed to load, reject with first error
                     return Promise.reject(errors[0]);
@@ -27,7 +27,7 @@ export default SceneLoader = {
                         this.trigger('error', { type: 'scene_import', message, error, url: error.url });
                     });
                 }
-                return config;
+                return { config, bundle };
             });
     },
 
@@ -44,8 +44,7 @@ export default SceneLoader = {
 
         return bundle.load().then(config => {
             if (config.import == null) {
-                this.normalize(config, bundle);
-                return config;
+                return this.normalize(config, bundle);
             }
 
             // accept single entry or array
@@ -66,16 +65,17 @@ export default SceneLoader = {
             delete config.import; // don't want to merge this property
 
             return Promise.
-            all(imports.map(resource => this.loadSceneRecursive(resource, bundle, errors))).
-                then(configs => {
-                    config = mergeObjects({}, ...configs, config);
-                    this.normalize(config, bundle);
-                    return config;
-                });
+                all(imports.map(resource => this.loadSceneRecursive(resource, bundle, errors))).
+                    then(results => {
+                        let configs = results.map(r => r.config);
+                        config = mergeObjects({}, ...configs, config);
+                        return this.normalize(config, bundle);
+                    });
         }).catch(error => {
             // Collect scene load errors as we go
             error.url = url;
             errors.push(error);
+            return {};
         });
     },
 
@@ -84,7 +84,7 @@ export default SceneLoader = {
         this.normalizeDataSources(config, bundle);
         this.normalizeFonts(config, bundle);
         this.normalizeTextures(config, bundle);
-        return config;
+        return { config, bundle };
     },
 
     // Expand paths for data source
@@ -92,15 +92,20 @@ export default SceneLoader = {
         config.sources = config.sources || {};
 
         for (let sn in config.sources) {
-            let source = config.sources[sn];
-            source.url = bundle.urlFor(source.url);
-
-            if (Array.isArray(source.scripts)) {
-                source.scripts = source.scripts.map(url => bundle.urlFor(url));
-            }
+            this.normalizeDataSource(config.sources[sn], bundle);
         }
 
         return config;
+    },
+
+    normalizeDataSource(source, bundle) {
+        source.url = bundle.urlFor(source.url);
+
+        if (Array.isArray(source.scripts)) {
+            source.scripts = source.scripts.map(url => bundle.urlFor(url));
+        }
+
+        return source;
     },
 
     // Expand paths for fonts
@@ -274,9 +279,9 @@ export default SceneLoader = {
     },
 
     // Normalize some scene-wide settings that apply to the final, merged scene
-    finalize(config) {
+    finalize({ config, bundle }) {
         if (!config) {
-            return;
+            return {};
         }
 
         // Ensure top-level properties
@@ -285,12 +290,6 @@ export default SceneLoader = {
         config.lights = config.lights || {};
         config.styles = config.styles || {};
         config.layers = config.layers || {};
-
-        // Assign ids to data sources
-        let source_id = 0;
-        for (let source in config.sources) {
-            config.sources[source].id = source_id++;
-        }
 
         // If only one camera specified, set it as default
         if (config.camera) {
@@ -310,7 +309,7 @@ export default SceneLoader = {
             };
         }
 
-        return config;
+        return { config, bundle };
     }
 
 };
