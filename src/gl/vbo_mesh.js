@@ -24,6 +24,7 @@ export default class VBOMesh  {
 
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
         this.element_count = 0;
+        this.byte_size = this.vertex_data.byteLength;
         this.vaos = {}; // map of VertexArrayObjects, keyed by program
 
         this.toggle_element_array = false;
@@ -36,6 +37,7 @@ export default class VBOMesh  {
             this.buffer_size += this.element_data.byteLength;
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
             this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, this.element_data, this.data_usage);
+            this.byte_size += this.element_data.byteLength;
         }
         else {
             this.geometry_count = this.vertex_count / this.vertices_per_geometry;
