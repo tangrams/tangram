@@ -96,10 +96,10 @@ void main() {
             float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);
             float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
 
-            shape = rotate2D(shape, pre_angle);
-            shape.x += offset_curve;
-            shape = rotate2D(shape, angle);
-            shape += rotate2D(offset, theta);
+            shape = rotate2D(shape, pre_angle); // rotate in place
+            shape.x += offset_curve;            // offset for curved label segment
+            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor
+            shape += rotate2D(offset, theta);   // offset if specified in the scene file
         }
         else {
              shape = rotate2D(shape + offset, theta);

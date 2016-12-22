@@ -202,7 +202,11 @@ class LabelLineCurved {
                 let [new_lines, line_lengths] = LabelLineCurved.scaleLine(stop, lines);
                 anchor = new_lines[anchor_index];
 
-                let {positions, offsets, angles, pre_angles, offsets2d} = LabelLineCurved.placeAtPosition(anchor, anchor_index, new_lines, line_lengths, line_angles_segments, label_lengths, upp);
+                let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtPosition(anchor, anchor_index, new_lines, line_lengths, line_angles_segments, label_lengths);
+
+                let offsets1d = offsets.map(function(offset){
+                    return Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp;
+                });
 
                 // use average angle
                 this.angle = 1 / angles.length * angles.reduce(function(prev, next){ return prev + next; });
@@ -213,11 +217,10 @@ class LabelLineCurved {
                         let offset_angle = angles[i];
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
-                        let offset = offsets2d[i].map(function(value){ return value/upp;})
+                        let offset_curve = offsets[i];
+                        let angle_curve = pre_angle + offset_angle;
 
-                        // let obb = getOBB(position, width, height, pre_angle + offset_angle);
-
-                        let obb = getOBBCurved(position, width, height, this.offset, this.angle, offset, pre_angle + offset_angle, upp);
+                        let obb = getOBBCurved(position, width, height, this.offset, this.angle, offset_curve, angle_curve, upp);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
@@ -225,7 +228,7 @@ class LabelLineCurved {
                     }
                 }
 
-                this.offsets[i].push(offsets[i][0]);
+                this.offsets[i].push(offsets1d[i]);
                 this.angles[i].push(angles[i]);
                 this.pre_angles[i].push(pre_angles[i]);
             }
@@ -366,7 +369,7 @@ class LabelLineCurved {
         return [new_line, line_lengths];
     }
 
-    static placeAtPosition(anchor, anchor_index, line, line_lengths, line_angles_segments, label_lengths, upp){
+    static placeAtPosition(anchor, anchor_index, line, line_lengths, line_angles_segments, label_lengths){
         // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
         let [indices, relative_offsets] = LabelLineCurved.getIndicesAndOffsets(anchor_index, line_lengths, label_lengths);
 
@@ -374,13 +377,9 @@ class LabelLineCurved {
         let positions = LabelLineCurved.getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
 
         // get 2d offsets, angles and pre_angles relative to anchor
-        let [offsets2d, angles, pre_angles] = LabelLineCurved.getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
+        let [offsets, angles, pre_angles] = LabelLineCurved.getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
 
-        let offsets = offsets2d.map(function(offset){
-            return [Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp, 0];
-        });
-
-        return {positions, offsets, angles, pre_angles, offsets2d};
+        return {positions, offsets, angles, pre_angles};
     }
 
     static getIndicesAndOffsets(line_index, line_lengths, label_lengths){
@@ -479,9 +478,6 @@ class LabelLineCurved {
 
 // Private method to calculate oriented bounding box
 function getOBB(position, width, height, angle, offset, upp) {
-    if (!upp) {
-        upp = 1;
-    }
     let p0, p1;
     // apply offset, x positive, y pointing down
     if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
@@ -499,9 +495,6 @@ function getOBB(position, width, height, angle, offset, upp) {
 }
 
 function getOBBCurved(position, width, height, offset, angle, offset_curve, angle_curve, upp) {
-    if (!upp) {
-        upp = 1;
-    }
     let p0, p1;
     // apply offset, x positive, y pointing down
     if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
@@ -512,8 +505,8 @@ function getOBBCurved(position, width, height, offset, angle, offset_curve, angl
 
     if (offset_curve){
         offset = Vector.rot(offset_curve, angle_curve);
-        p0 = position[0] + offset[0] * upp;
-        p1 = position[1] - offset[1] * upp;
+        p0 = position[0] + offset[0];
+        p1 = position[1] - offset[1];
     }
 
     if (!offset && !offset_curve){
