@@ -188,15 +188,14 @@ export default class FeatureSelection {
         this.feature = feature; // store the most recently selected feature
 
         if (feature) {
-            let group_key = message.group_key;
-            let group_value = message.group_value;
+            let group = message.group;
 
             // TODO: we can skip sending a message back to the initial worker we got the feature from
-            return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionGroupColor', { group_key })
+            return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionGroupColor', group.key)
                 .then(selection_colors => {
                     // Resolve the request
                     request.resolve({
-                        feature, changed, request, selection_colors, group_key, group_value
+                        feature, changed, request, selection_colors, group
                     });
                     delete this.requests[message.id]; // done processing this request
                 });
@@ -275,7 +274,7 @@ export default class FeatureSelection {
             layers: context.layers,
             tile: this.tiles[tile.key].tile,
             hover_color: draw.hover_color,
-            click_color: draw.click_color,
+            click_color: draw.click_color
         };
 
         let group;
@@ -290,9 +289,13 @@ export default class FeatureSelection {
             }
         }
 
-        selector.group = group || [255, 255, 255, 255]; //selector.color;
-        selector.group_key = group_key;
-        selector.group_value = group_value;
+        selector.group = {
+            index: group || [255, 255, 255, 255],
+            key: group_key,
+            value: group_value//,
+            // hover_color: draw.hover_color,
+            // click_color: draw.click_color
+        };
 
         return selector;
     }

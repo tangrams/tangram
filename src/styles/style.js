@@ -230,7 +230,7 @@ export var Style = {
                     let selector = FeatureSelection.getSelector(feature, style, context.tile, context);
                     if (selector) {
                         style.selection_color = selector.color;
-                        style.selection_group = selector.group;
+                        style.selection_group = selector.group.index;
                     }
                 }
                 style.selection_color = style.selection_color || FeatureSelection.defaultColor;

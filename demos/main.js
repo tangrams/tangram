@@ -459,8 +459,8 @@ Enjoy!
                 // label = `<b>${feature.properties.name[0]}</b>${feature.properties.name.slice(1)}`;
             }
 
-            if (selection.group_value) {
-                label += selection.group_value;
+            if (selection.group.value) {
+                label += selection.group.value;
             }
 
             if (label != '') {

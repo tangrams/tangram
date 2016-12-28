@@ -218,14 +218,11 @@ Object.assign(self, {
     getFeatureSelection ({ id, key } = {}) {
         let selection = FeatureSelection.map[key];
         let feature = selection && selection.feature;
-        let group_key = selection && selection.group_key;
-        let group_value = selection && selection.group_value;
-        // let color = feature && this.getFeatureSelectionColor({ group_key: feature.group_key });
-
-        return { id, feature, group_key, group_value };
+        let group = selection && selection.group;
+        return { id, feature, group };
     },
 
-    getFeatureSelectionGroupColor ({ group_key }) {
+    getFeatureSelectionGroupColor (group_key) {
         if (FeatureSelection.groups[group_key]) {
             return FeatureSelection.groups[group_key];
         }
