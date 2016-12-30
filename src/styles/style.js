@@ -219,22 +219,23 @@ export var Style = {
                 style.key = draw.key;
                 style.selection_color = null;
                 style.selection_group = null;
+                style.selection_group_index = null;
                 style.hover_color = null;
                 style.click_color = null;
                 if (selectable) {
-                    style.selection_prop = draw.selection_prop || default_selection_prop;
-                    style.selection_group_name = draw.selection_group;
+                    style.selection_prop = draw.selection_prop;
+                    style.selection_group = draw.selection_group;
                     style.hover_color = (draw.hover_color && StyleParser.evalCachedColorProperty(draw.hover_color, context)) || style.color;
                     style.click_color = (draw.click_color && StyleParser.evalCachedColorProperty(draw.click_color, context)) || style.color;
 
                     let selector = FeatureSelection.getSelector(feature, style, context.tile, context);
                     if (selector) {
                         style.selection_color = selector.color;
-                        style.selection_group = selector.group.index;
+                        style.selection_group_index = selector.group.index;
                     }
                 }
                 style.selection_color = style.selection_color || FeatureSelection.defaultColor;
-                style.selection_group = style.selection_group || FeatureSelection.defaultColor;
+                style.selection_group_index = style.selection_group_index || FeatureSelection.defaultColor;
             }
 
             return style;
@@ -251,15 +252,16 @@ export var Style = {
     preprocess (draw) {
         // Preprocess first time
         if (!draw.preprocessed) {
-            draw = this._preprocess(draw); // optional subclass implementation
-            if (!draw) {
-                return;
-            }
-
             if (this.introspection || draw.interactive) {
+                draw.selection_prop = draw.selection_prop || default_selection_prop;
                 draw.selection_group = draw.selection_group || 'default';
                 draw.hover_color = draw.hover_color && StyleParser.createColorPropertyCache(draw.hover_color);
                 draw.click_color = draw.click_color && StyleParser.createColorPropertyCache(draw.click_color);
+            }
+
+            draw = this._preprocess(draw); // optional subclass implementation
+            if (!draw) {
+                return;
             }
 
             draw.preprocessed = true;

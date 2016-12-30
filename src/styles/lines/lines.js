@@ -228,6 +228,7 @@ Object.assign(Lines, {
                 // Interactivity
                 style.outline.interactive = draw.outline.interactive;
                 style.outline.selection_prop = draw.outline.selection_prop;
+                style.outline.selection_group = draw.outline.selection_group;
                 style.outline.hover_color = draw.outline.hover_color;
                 style.outline.click_color = draw.outline.click_color;
             }
@@ -252,8 +253,13 @@ Object.assign(Lines, {
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
             draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
 
-            draw.outline.hover_color = StyleParser.createColorPropertyCache(draw.outline.hover_color);
-            draw.outline.click_color = StyleParser.createColorPropertyCache(draw.outline.click_color);
+            draw.outline.interactive = this.introspection || (draw.outline.interactive != null ? draw.outline.interactive : draw.interactive);
+            if (draw.outline.interactive) {
+                draw.outline.selection_prop = draw.outline.selection_prop || draw.selection_prop;
+                draw.outline.selection_group = draw.outline.selection_group || (draw.selection_group + '/outline'); // TODO: temp fix to make outlines selectable separate from fill
+                draw.outline.hover_color = StyleParser.createColorPropertyCache(draw.outline.hover_color);
+                draw.outline.click_color = StyleParser.createColorPropertyCache(draw.outline.click_color);
+            }
         }
         return draw;
     },
@@ -294,10 +300,10 @@ Object.assign(Lines, {
             this.vertex_template[i++] = style.selection_color[2] * 255;
             this.vertex_template[i++] = style.selection_color[3] * 255;
 
-            this.vertex_template[i++] = style.selection_group[0]; // already scaled to 255 when created
-            this.vertex_template[i++] = style.selection_group[1];
-            this.vertex_template[i++] = style.selection_group[2];
-            this.vertex_template[i++] = style.selection_group[3];
+            this.vertex_template[i++] = style.selection_group_index[0]; // already scaled to 255 when created
+            this.vertex_template[i++] = style.selection_group_index[1];
+            this.vertex_template[i++] = style.selection_group_index[2];
+            this.vertex_template[i++] = style.selection_group_index[3];
         }
 
         // Add texture UVs to template only if needed

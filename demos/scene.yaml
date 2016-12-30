@@ -260,9 +260,9 @@ layers:
             draw:
                 polygons:
                     # style: buildings
-                    # style: selected-polygons
+                    style: selected-polygons
                     order: global.feature_order
-                    # interactive: true
+                    interactive: true
                     color: honeydew
                     hover_color: yellow
                     click_color: red
@@ -331,20 +331,22 @@ layers:
             lines:
                 color: white
                 # color: Style.color.randomColor
+                width: 12
+                order: global.feature_order
                 style: selected-lines
                 interactive: true
                 selection_prop: function(){ return feature.kind + ':' + feature.kind_detail; }
                 hover_color: yellow
                 click_color: red
-                width: 12
-                order: global.feature_order
+                # selection_group: same
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
                     width: [[15, 0], [16, 2]]
                     order: 352 # put all outlines below all roads
                     # interactive: true
-                    # hover_color: purple
-                    # click_color: lightred
+                    hover_color: purple
+                    click_color: orange
+                    # selection_group: same
 
         rounded:
             filter: { $zoom: { min: 18 } }
@@ -539,6 +541,7 @@ layers:
                 style: selected-polygons
                 # selection_prop: function() { return feature.name && feature.name[0]; }
                 # selection_prop: function() { return feature.height && feature.height > 25; }
+                # selection_prop: function() { return Math.ceil(feature.height/50); }
                 # hover_color: yellow
                 # click_color: red
                 hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }

@@ -264,7 +264,7 @@ export default class FeatureSelection {
             // group_key = context.source + '/' + selection_prop + '/' + group_value;
         }
         // group_key = draw.key + ':' + group_value;
-        group_key = draw.selection_group_name + ':' + group_value;
+        group_key = draw.selection_group + ':' + group_value;
 
         let selector = this.createSelector(tile);
         selector.feature = {

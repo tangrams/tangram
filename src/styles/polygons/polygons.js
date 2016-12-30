@@ -133,10 +133,10 @@ Object.assign(Polygons, {
             this.vertex_template[i++] = style.selection_color[2] * 255;
             this.vertex_template[i++] = style.selection_color[3] * 255;
 
-            this.vertex_template[i++] = style.selection_group[0]; // already scaled to 255 when created
-            this.vertex_template[i++] = style.selection_group[1];
-            this.vertex_template[i++] = style.selection_group[2];
-            this.vertex_template[i++] = style.selection_group[3];
+            this.vertex_template[i++] = style.selection_group_index[0]; // already scaled to 255 when created
+            this.vertex_template[i++] = style.selection_group_index[1];
+            this.vertex_template[i++] = style.selection_group_index[2];
+            this.vertex_template[i++] = style.selection_group_index[3];
         }
 
         // Add texture UVs to template only if needed
