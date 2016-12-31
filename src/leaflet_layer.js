@@ -26,6 +26,7 @@ function extendLeaflet(options) {
         let layerBaseClass = L.GridLayer ? L.GridLayer : L.TileLayer;
         let leafletVersion = layerBaseClass === L.GridLayer ? '1.x' : '0.7.x';
         let layerClassConfig = {};
+        let setZoomAroundNoMoveEnd; // alternate zoom function defined below
 
         // If extending leaflet 0.7.x TileLayer, additional modifications are needed
         if (layerBaseClass === L.TileLayer) {
@@ -51,9 +52,7 @@ function extendLeaflet(options) {
                 this.createScene();
                 this.hooks = {};
                 this._updating_tangram = false;
-
-                // Force leaflet zoom animations off
-                this._zoomAnimated = false;
+                this._zoomAnimated = false; // turn leaflet zoom animations off for this layer
             },
 
             createScene () {
@@ -126,9 +125,6 @@ function extendLeaflet(options) {
                     this.scene.requestRedraw();
                 };
                 map.on('moveend', this.hooks.moveend);
-
-                // Force leaflet zoom animations off
-                map._zoomAnimated = false;
 
                 // Modify default Leaflet behaviors
                 this.modifyScrollWheelBehavior(map);
@@ -257,9 +253,9 @@ function extendLeaflet(options) {
                         if (!delta) { return; }
 
                         if (map.options.scrollWheelZoom === 'center') {
-                            map.setZoom(zoom + delta);
+                            setZoomAroundNoMoveEnd(map, map.getCenter(), zoom + delta);
                         } else {
-                            map.setZoomAround(this._lastMousePos, zoom + delta);
+                            setZoomAroundNoMoveEnd(map, this._lastMousePos, zoom + delta);
                         }
                     };
 
@@ -272,18 +268,6 @@ function extendLeaflet(options) {
             // Modify leaflet's default double-click zoom behavior, to match typical vector basemap products
             modifyDoubleClickZoom (map) {
                 if (this.scene.view.continuous_zoom && map.doubleClickZoom && this.options.modifyDoubleClickZoom !== false) {
-
-                    // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
-                    const setZoomAroundNoMoveEnd = function (map, latlng, zoom, options) {
-                        var scale = map.getZoomScale(zoom),
-                            viewHalf = map.getSize().divideBy(2),
-                            containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
-
-                            centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
-                            newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
-
-                        return map._move(newCenter, zoom, { flyTo: true });
-                    };
 
                     // Simplified version of Leaflet's flyTo, for short animations zooming around a point
                     const flyAround = function (map, targetCenter, targetZoom, options) {
@@ -456,6 +440,20 @@ function extendLeaflet(options) {
             }
 
         });
+
+        // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
+        setZoomAroundNoMoveEnd = function (map, latlng, zoom, options) {
+            var scale = map.getZoomScale(zoom),
+                viewHalf = map.getSize().divideBy(2),
+                containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
+
+                centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
+                newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
+
+            var ret = map._move(newCenter, zoom, { flyTo: true });
+            map.fire('viewreset');
+            return ret;
+        };
 
         // Create the layer class
         LeafletLayer = layerBaseClass.extend(layerClassConfig);
