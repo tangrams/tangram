@@ -100,7 +100,11 @@ function extendLeaflet(options) {
                     view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_view_max_zoom);
 
                     this.scene.view.setView(view);
-                    this.scene.immediateRedraw();
+                    if (this._mapLayerCount > 1) {
+                        // if there are other map pane layers active, redraw immediately to stay in better visual sync
+                        // otherwise, wait until next regular animation loop iteration
+                        this.scene.immediateRedraw();
+                    }
                     this.reverseTransform();
 
                     this._updating_tangram = false;
@@ -131,6 +135,7 @@ function extendLeaflet(options) {
                     function(map) { map._moveEnd(true); },
                     map.options.wheelDebounceTime * 2
                 );
+                this.trackMapLayerCounts(map);
 
                 // Setup feature selection
                 this.setupSelectionEventHandlers(map);
@@ -170,6 +175,7 @@ function extendLeaflet(options) {
             onRemove (map) {
                 layerBaseClass.prototype.onRemove.apply(this, arguments);
 
+                map.off('layeradd layerremove overlayadd overlayremove', this._updateMapLayerCount);
                 map.off('resize', this.hooks.resize);
                 map.off('move', this.hooks.move);
                 map.off('zoomstart', this.hooks.zoomstart);
@@ -439,6 +445,21 @@ function extendLeaflet(options) {
             // Event types are: `click`, `hover` (leaflet `mousemove`)
             setSelectionEvents (events) {
                 this._selection_events = Object.assign(this._selection_events, events);
+            },
+
+            // Track the # of layers in the map pane
+            // Used to optimize Tangram redraw sensitivity (redraw more frequently when needing to sync w/other layers)
+            trackMapLayerCounts (map) {
+                this._updateMapLayerCount = () => {
+                    let nodes = map.getPanes().mapPane.childNodes;
+                    this._mapLayerCount = 0;
+                    for (let i=0; i < nodes.length; i++) {
+                        this._mapLayerCount += nodes[i].childNodes.length;
+                    }
+                };
+
+                map.on('layeradd layerremove overlayadd overlayremove', this._updateMapLayerCount);
+                this._updateMapLayerCount();
             }
 
         });
