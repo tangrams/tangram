@@ -1,6 +1,7 @@
 import Thread from './utils/thread';
 import Scene from './scene';
 import Geo from './geo';
+import debounce from './utils/debounce';
 
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
@@ -26,7 +27,7 @@ function extendLeaflet(options) {
         let layerBaseClass = L.GridLayer ? L.GridLayer : L.TileLayer;
         let leafletVersion = layerBaseClass === L.GridLayer ? '1.x' : '0.7.x';
         let layerClassConfig = {};
-        let setZoomAroundNoMoveEnd; // alternate zoom function defined below
+        let setZoomAroundNoMoveEnd, debounceMoveEnd; // alternate zoom functions defined below
 
         // If extending leaflet 0.7.x TileLayer, additional modifications are needed
         if (layerBaseClass === L.TileLayer) {
@@ -92,14 +93,16 @@ function extendLeaflet(options) {
                     if (this._updating_tangram) {
                         return;
                     }
-
                     this._updating_tangram = true;
+
+                    this.scene.view.setPanning(true);
                     var view = map.getCenter();
                     view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_view_max_zoom);
 
                     this.scene.view.setView(view);
                     this.scene.immediateRedraw();
                     this.reverseTransform();
+
                     this._updating_tangram = false;
                 };
                 map.on('move', this.hooks.move);
@@ -115,11 +118,6 @@ function extendLeaflet(options) {
                 };
                 map.on('zoomstart', this.hooks.zoomstart);
 
-                this.hooks.dragstart = () => {
-                    this.scene.view.setPanning(true);
-                };
-                map.on('dragstart', this.hooks.dragstart);
-
                 this.hooks.moveend = () => {
                     this.scene.view.setPanning(false);
                     this.scene.requestRedraw();
@@ -129,6 +127,10 @@ function extendLeaflet(options) {
                 // Modify default Leaflet behaviors
                 this.modifyScrollWheelBehavior(map);
                 this.modifyDoubleClickZoom(map);
+                debounceMoveEnd = debounce(
+                    function(map) { map._moveEnd(true); },
+                    map.options.wheelDebounceTime * 2
+                );
 
                 // Setup feature selection
                 this.setupSelectionEventHandlers(map);
@@ -171,7 +173,6 @@ function extendLeaflet(options) {
                 map.off('resize', this.hooks.resize);
                 map.off('move', this.hooks.move);
                 map.off('zoomstart', this.hooks.zoomstart);
-                map.off('dragstart', this.hooks.dragstart);
                 map.off('moveend', this.hooks.moveend);
                 map.off('click', this.hooks.click);
                 map.off('mousemove', this.hooks.mousemove);
@@ -257,6 +258,7 @@ function extendLeaflet(options) {
                         } else {
                             setZoomAroundNoMoveEnd(map, this._lastMousePos, zoom + delta);
                         }
+                        debounceMoveEnd(map);
                     };
 
                     if (enabled) {
@@ -442,7 +444,7 @@ function extendLeaflet(options) {
         });
 
         // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
-        setZoomAroundNoMoveEnd = function (map, latlng, zoom, options) {
+        setZoomAroundNoMoveEnd = function (map, latlng, zoom) {
             var scale = map.getZoomScale(zoom),
                 viewHalf = map.getSize().divideBy(2),
                 containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
