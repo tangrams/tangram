@@ -132,7 +132,10 @@ function extendLeaflet(options) {
                 this.modifyScrollWheelBehavior(map);
                 this.modifyDoubleClickZoom(map);
                 debounceMoveEnd = debounce(
-                    function(map) { map._moveEnd(true); },
+                    function(map) {
+                        map._moveEnd(true);
+                        map.fire('viewreset'); // keep other leaflet layers in sync
+                    },
                     map.options.wheelDebounceTime * 2
                 );
                 this.trackMapLayerCounts(map);
@@ -474,7 +477,6 @@ function extendLeaflet(options) {
                 newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
 
             var ret = map._move(newCenter, zoom, { flyTo: true });
-            map.fire('viewreset');
             return ret;
         };
 
