@@ -20,6 +20,8 @@ let fs = require('fs');
 const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
 const shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
 
+const PLACEMENT = LabelPoint.PLACEMENT;
+
 const pre_angles_normalize = 128 / Math.PI;
 const angles_normalize = 16384 / Math.PI;
 const offsets_normalize = 64;
@@ -50,6 +52,10 @@ Object.assign(Points, {
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
+
+        if (options.attribs){
+            Array.prototype.push.apply(attribs, options.attribs);
+        }
 
         // Feature selection
         this.selection = true;
@@ -628,7 +634,6 @@ Object.assign(Points, {
             texcoords = style.texcoords;
         }
 
-        let angle = (style.angle !== undefined) ? style.angle : label.angle || 0;
         let offset = label.offset;
 
         let curve = 0;

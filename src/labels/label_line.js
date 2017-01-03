@@ -595,7 +595,6 @@ class LabelLineStraight {
         // clone options
         let layout = Object.create(label.layout);
         layout.segment_index = label.segment_index;
-        layout.placement = label.placement;
 
         // create new label
         let nextLabel = new LabelLine(label.size, label.lines, layout);

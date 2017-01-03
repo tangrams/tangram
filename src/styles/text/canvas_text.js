@@ -51,7 +51,6 @@ export default class CanvasText {
                     if (first) {
                         this.setFont(text_settings);
                         dpr = Utils.device_pixel_ratio * text_settings.supersample;
-                        space_width = this.context.measureText(' ').width / dpr;
                         first = false;
                     }
 

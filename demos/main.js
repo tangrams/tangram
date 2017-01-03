@@ -20,7 +20,7 @@ Enjoy!
 
 (function () {
 
-    var scene_url = 'demos/labels.yaml',
+    var scene_url = 'demos/scene.yaml',
         osm_debug = false,
         rS, url_hash, map_start_location, url_style;
 
