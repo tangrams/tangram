@@ -3,10 +3,10 @@ import Vector from '../vector';
 import OBB from '../utils/obb';
 
 const stops = [0, 0.3, 0.6, 0.9];
-const LINE_EXCEED_STRAIGHT = 0.3;       // minimal ratio for straight labels (label length) / (line length)
-const LINE_EXCEED_STRAIGHT_RTL = 0.3;   // minimal ratio for straight labels that have no curved option
-const MIN_TOTAL_COST = 1.3;
-const MIN_AVG_COST = 0.4;
+const LINE_EXCEED_STRAIGHT = 0.3;           // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_STRAIGHT_NO_CURVE = 0.8;  // minimal ratio for straight labels that have no curved option
+const CURVE_MIN_TOTAL_COST = 1.3;
+const CURVE_MIN_AVG_COST = 0.4;
 
 export default class LabelLine {
     constructor (size, lines, layout, total_size) {
@@ -16,11 +16,11 @@ export default class LabelLine {
         var label = new LabelLineStraight(total_size, lines, layout);
 
         if (label.throw_away){
-            // if RTL text, throw away
-            // if (layout.isRTL){
-            //     this.throw_away = true;
-            //     return;
-            // }
+            // if cannot curve (due to text shaping, etc), throw away
+            if (layout.no_curving){
+                this.throw_away = true;
+                return;
+            }
 
             // else try curved label
             label = new LabelLineCurved(size, lines, layout);
@@ -341,7 +341,7 @@ class LabelLineCurved {
         var min_index = total_costs.indexOf(min_total_cost);
         var min_avg_cost = avg_costs[min_index];
 
-        if (min_total_cost < MIN_TOTAL_COST && min_avg_cost < MIN_AVG_COST){
+        if (min_total_cost < CURVE_MIN_TOTAL_COST && min_avg_cost < CURVE_MIN_AVG_COST){
             // return index with best placement (least curvature)
             return total_costs.indexOf(min_total_cost);
         }
@@ -566,7 +566,7 @@ class LabelLineStraight {
         this.total_height = size[1];
         this.fitness = 0; // measure of quality of fit
         this.segment_index = 0;
-        this.tolerance = (layout.isRTL) ? LINE_EXCEED_STRAIGHT_RTL : LINE_EXCEED_STRAIGHT;
+        this.tolerance = (layout.no_curving) ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT;
         this.type = 'straight';
 
         lines = LabelLine.splitLineByOrientation(lines);

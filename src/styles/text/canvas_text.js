@@ -57,10 +57,16 @@ export default class CanvasText {
 
                     if (text_settings.can_articulate){
                         let segments = splitLabelText(text);
+
                         let rtl = isTextRTL(text);
+                        let shaped = isTextShaped(text);
 
                         text_info.isRTL = rtl;
-                        if (rtl) segments.reverse();
+                        text_info.no_curving = shaped;
+
+                        if (rtl) {
+                            segments.reverse();
+                        }
 
                         text_info.segments = segments;
                         text_info.size = [];
@@ -255,14 +261,8 @@ export default class CanvasText {
                         let type = text_info.type[i];
                         switch (type){
                             case 'straight':
-                                let word = (text_info.isRTL)
-                                    ? words.reduce(function(prev, next){ return next + prev; })
-                                    : words.reduce(function(prev, next){ return prev + next; });
-
+                                let word = words.reduce((text_info.isRTL) ? reduceLeft : reduceRight);
                                 let texcoord;
-
-                                if (CanvasText.text_cache[style][word] === undefined) debugger;
-                                if (CanvasText.texcoord_cache[tile_key][style][word] === undefined) debugger;
 
                                 if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
                                     texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
@@ -388,10 +388,7 @@ export default class CanvasText {
                         switch (type){
                             case 'straight':
                                 let size = [0, text_info.total_size.texture_size[1]];
-
-                                let word = (text_info.isRTL)
-                                    ? text_info.segments.reduce(function(prev, next){ return next + prev; })
-                                    : text_info.segments.reduce(function(prev, next){ return prev + next; });
+                                let word = text_info.segments.reduce((text_info.isRTL) ? reduceLeft : reduceRight);
 
                                 for (let i = 0; i < text_info.size.length; i++){
                                     size[0] += text_info.size[i].texture_size[0];
@@ -538,49 +535,55 @@ CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
 
-// Right-to-left / bi-directional text handling
-// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-function isCharRTL(s){
-    var weakChars       = '\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF',
-        rtlChars        = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC',
-        rtlDirCheck     = new RegExp('^['+weakChars+']*['+rtlChars+']');
-
-    return rtlDirCheck.test(s);
-}
+function reduceLeft (prev, next){ return next + prev; }
+function reduceRight (prev, next){ return prev + next; }
 
 // Contextual Shaping Languages - Unicode ranges
-// Arabic: 0600 - 06FF
-// Bengali: 0980 - 09FF
-// Burmese - 1000 - 109F
-// Khmer - 1780 - 17FF
-// Gujarati - 0A80 - 0AFF
-// Gurmukhi - 0A00 - 0A7F
-// Devanagari - 0900 - 097F
-// Kannada - 0C80 - OCFF
-// Lao - 0E80 - 0EFF
-// Mongolian - 1800 - 18AF
-// Oriya - 0B00 - 0B7F
-// Tamil - 0B80 - 0BFF
-// Telugu - 0C00 - 0C7F
-// Tibetan - 0F00 - 0FFF
+const context_langs = {
+    Arabic: "\u0600-\u06FF",
+    Bengali: "\u0980-\u09FF",
+    Burmese: "\u1000-\u109F",
+    Devanagari: "\u0900-\u097F",
+    Khmer: "\u1780-\u17FF",
+    Gujarati: "\u0A80-\u0AFF",
+    Gurmukhi: "\u0A00-\u0A7F",
+    Kannada: "\u0C80-\u0CFF",
+    Lao: "\u0E80-\u0EFF",
+    Mongolian: "\u1800-\u18AF",
+    Oriya: "\u0B00-\u0B7F",
+    Tamil: "\u0B80-\u0BFF",
+    Telugu: "\u0C00-\u0C7F",
+    Tibetan: "\u0F00-\u0FFF"
+};
 
-function hasContextualShaping(s){
-    // TODO
+let reg_ex_shaping = '[';
+for (let key in context_langs){
+    reg_ex_shaping += context_langs[key];
+}
+reg_ex_shaping += ']';
+
+let shaping_test = new RegExp(reg_ex_shaping);
+
+function isTextShaped(s){
+    return shaping_test.test(s);
 }
 
-function isTextRTL(text){
-    for (let i = 0; i < text.length; i++){
-        if (!isCharRTL(text[i])) {
-            return false;
-        }
-    }
-    return true;
+let weakChars = '\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF';
+let rtlChars = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC';
+let rtlDirCheck = new RegExp('^[' + weakChars + rtlChars+']+$');
+
+// Right-to-left / bi-directional text handling
+// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
+function isTextRTL(s){
+    return rtlDirCheck.test(s);
 }
 
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text){
     let codon_length = 2;
-    if (text.length < codon_length) return [text];
+    if (text.length < codon_length) {
+        return [text];
+    }
 
     let segments = [];
 
