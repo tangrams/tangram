@@ -217,10 +217,9 @@ class LabelLineCurved {
                         let offset_angle = angles[i];
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
-                        let offset_curve = offsets[i];
                         let angle_curve = pre_angle + offset_angle;
 
-                        let obb = getOBBCurved(position, width, height, this.offset, this.angle, offset_curve, angle_curve, upp);
+                        let obb = getOBBCurved(position, width, height, this.offset, this.angle, angle_curve, upp);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
@@ -478,44 +477,33 @@ class LabelLineCurved {
 
 // Private method to calculate oriented bounding box
 function getOBB(position, width, height, angle, offset, upp) {
-    let p0, p1;
+    let p0 = position[0];
+    let p1 = position[1];
+
     // apply offset, x positive, y pointing down
     if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
         offset = Vector.rot(offset, angle);
-        p0 = position[0] + offset[0] * upp;
-        p1 = position[1] - offset[1] * upp;
-    }
-    else {
-        p0 = position[0];
-        p1 = position[1];
+        p0 += offset[0] * upp;
+        p1 -= offset[1] * upp;
     }
 
     // the angle of the obb is negative since it's the tile system y axis is pointing down
     return new OBB(p0, p1, -angle, width, height);
 }
 
-function getOBBCurved(position, width, height, offset, angle, offset_curve, angle_curve, upp) {
-    let p0, p1;
+function getOBBCurved(position, width, height, offset, angle, angle_curve, upp) {
+    let p0 = position[0];
+    let p1 = position[1];
+
     // apply offset, x positive, y pointing down
     if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
         offset = Vector.rot(offset, angle);
-        p0 = position[0] + offset[0] * upp;
-        p1 = position[1] - offset[1] * upp;
-    }
-
-    if (offset_curve){
-        offset = Vector.rot(offset_curve, angle_curve);
-        p0 = position[0] + offset[0];
-        p1 = position[1] - offset[1];
-    }
-
-    if (!offset && !offset_curve){
-        p0 = position[0];
-        p1 = position[1];
+        p0 += offset[0] * upp;
+        p1 -= offset[1] * upp;
     }
 
     // the angle of the obb is negative since it's the tile system y axis is pointing down
-    return new OBB(p0, p1, -angle, width, height);
+    return new OBB(p0, p1, -angle_curve, width, height);
 }
 
 function calcFitness(line_length, label_length) {
