@@ -61,14 +61,6 @@ float mix4linear(float a, float b, float c, float d, float x ) {
                step(0.3,x));
 }
 
-float mix4smoothstep(float a, float b, float c, float d, float x ) {
-    return mix(mix(a,b,smoothstep(0.,.3,x)),
-               mix(b,
-                   mix(c,d,smoothstep(.6, .9, x)),
-                   smoothstep(.3,.6,x)),
-               step(.3,x));
-}
-
 void main() {
     // Initialize globals
     #pragma tangram: setup
