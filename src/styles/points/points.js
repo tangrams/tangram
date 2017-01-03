@@ -636,28 +636,26 @@ Object.assign(Points, {
 
         let offset = label.offset;
 
-        let curve = 0;
-
         this.buildQuad(
             [label.position],               // position
-            size,                     // size in pixels
-            angle,                    // angle in radians
-            null,
-            null,
+            size,                           // size in pixels
+            angle,                          // angle in radians
+            null,                           // placeholder for multiple angles
+            null,                           // placeholder for multiple pre_angles
             style.sampler,                  // texture sampler to use
-            offset,                   // offset from center in pixels
-            null,
-            texcoords,                // texture UVs
-            curve,
+            offset,                         // offset from center in pixels
+            null,                           // placeholder for multiple offsets
+            texcoords,                      // texture UVs
+            false,                          // if curved
             vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
 
     buildArticulatedLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
-        let curve = 1;
         let angle = label.angle;
 
+        // pass for stroke
         for (let i = 0; i < label.num_segments; i++){
             let size = style.size[label.type][i];
             let texcoord_stroke = style.texcoords_stroke[i];
@@ -670,20 +668,21 @@ Object.assign(Points, {
             let pre_angles = label.pre_angles[i];
 
             this.buildQuad(
-                [position],               // position
+                [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
-                angles,
-                pre_angles,
+                angles,                         // angles per segment
+                pre_angles,                     // pre_angle array (rotation applied before offseting)
                 style.sampler,                  // texture sampler to use
                 offset,                         // offset from center in pixels
-                offsets,
-                texcoord_stroke,                       // texture UVs
-                curve,
+                offsets,                        // offsets per segment
+                texcoord_stroke,                // texture UVs for stroked text
+                true,                           // if curved
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }
 
+        // pass for fill
         for (let i = 0; i < label.num_segments; i++){
             let size = style.size[label.type][i];
             let texcoord = style.texcoords[label.type][i];
@@ -696,16 +695,16 @@ Object.assign(Points, {
             let pre_angles = label.pre_angles[i];
 
             this.buildQuad(
-                [position],               // position
+                [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
-                angles,
-                pre_angles,
+                angles,                         // angles per segment
+                pre_angles,                     // pre_angle array (rotation applied before offseting)
                 style.sampler,                  // texture sampler to use
                 offset,                         // offset from center in pixels
-                offsets,
-                texcoord,                       // texture UVs
-                curve,
+                offsets,                        // offsets per segment
+                texcoord,                       // texture UVs for fill text
+                true,                           // if curved
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }

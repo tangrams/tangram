@@ -171,9 +171,8 @@ Object.assign(TextStyle, {
                 feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             }
             for (let i = 0; i < feature_labels.length; i++) {
-                let label = feature_labels[i];
                 let fql = Object.create(fq);
-                fql.label = label;
+                fql.label = feature_labels[i];
                 labels.push(fql);
             }
         }

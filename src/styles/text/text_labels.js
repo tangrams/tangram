@@ -139,8 +139,6 @@ export const TextLabels = {
                     text_info.align[q.label.align] = {};
                 }
                 else {
-                    text_info.num_segments = q.label.num_segments;
-
                     // consider making it a set
                     if (text_info.type && text_info.type.indexOf(q.label.type) === -1){
                         text_info.type.push(q.label.type);
