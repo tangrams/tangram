@@ -476,8 +476,7 @@ function extendLeaflet(options) {
                 centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
                 newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
 
-            var ret = map._move(newCenter, zoom, { flyTo: true });
-            return ret;
+            return map._move(newCenter, zoom, { flyTo: true });
         };
 
         // Create the layer class
