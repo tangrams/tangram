@@ -66,6 +66,11 @@ export default class FeatureSelection {
     // Request feature selection
     // Runs asynchronously, schedules selection buffer to be updated
     getFeatureAt(point) {
+        // ensure requested point is in canvas bounds
+        if (!point || point.x < 0 || point.y < 0 || point.x > 1 || point.y > 1) {
+            return Promise.resolve({ feature: null, changed: false });
+        }
+
         return new Promise((resolve, reject) => {
             // Queue requests for feature selection, and they will be picked up by the render loop
             this.selection_request_id = (this.selection_request_id + 1) || 0;
