@@ -140,11 +140,12 @@ export const TextLabels = {
                 }
                 else {
                     // consider making it a set
-                    if (text_info.type && text_info.type.indexOf(q.label.type) === -1){
-                        text_info.type.push(q.label.type);
+                    if (!text_info.type) {
+                        text_info.type = [];
                     }
-                    else {
-                        text_info.type = [q.label.type];
+
+                    if (text_info.type.indexOf(q.label.type) === -1){
+                        text_info.type.push(q.label.type);
                     }
                 }
             });
