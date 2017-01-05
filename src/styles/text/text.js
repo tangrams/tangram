@@ -119,14 +119,13 @@ Object.assign(TextStyle, {
 
                             if (q.label.type === 'straight'){
                                 style.size.straight = text_info.total_size.logical_size;
+                                style.texcoords.straight = text_info.texcoords.straight;
                             }
                             else{
                                 style.size.curved = text_info.size.map(function(size){ return size.logical_size; });
+                                style.texcoords_stroke = text_info.texcoords_stroke;
+                                style.texcoords.curved = text_info.texcoords.curved;
                             }
-
-                            style.texcoords.straight = text_info.texcoords.straight;
-                            style.texcoords.curved = text_info.texcoords.curved;
-                            style.texcoords_stroke = text_info.texcoords_stroke;
                         }
                         else {
                             style.size = text_info.size.logical_size;

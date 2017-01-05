@@ -285,7 +285,7 @@ export default class CanvasText {
                                 text_info.texcoords[type] = texcoord;
                                 break;
                             case 'curved':
-                                text_info.texcoords[type] = [];
+                                text_info.texcoords.curved = [];
                                 text_info.texcoords_stroke = [];
                                 for (let i = 0; i < words.length; i++){
                                     let word = words[i];
@@ -329,7 +329,7 @@ export default class CanvasText {
                                         text_info.texcoords_stroke.push(texcoord_stroke);
                                     }
 
-                                    text_info.texcoords[type].push(texcoord);
+                                    text_info.texcoords.curved.push(texcoord);
                                 }
                                 break;
                         }
