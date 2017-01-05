@@ -88,28 +88,12 @@ export default class TileManager {
 
     updateTilesForView() {
         // Find visible tiles and load new ones
-        let prev_coords = Object.keys(this.visible_coords);
         this.visible_coords = {};
         let tile_coords = this.view.findVisibleTileCoordinates();
         for (let c=0; c < tile_coords.length; c++) {
             const coords = tile_coords[c];
             this.queueCoordinate(coords);
             this.visible_coords[coords.key] = coords;
-        }
-
-        // Check if visible coords changed
-        // TODO: move to a new view manager object
-        let new_coords = Object.keys(this.visible_coords);
-        let coords_changed = false;
-        if (prev_coords.length !== new_coords.length) {
-            coords_changed = true;
-        }
-        else {
-            prev_coords.sort();
-            new_coords.sort();
-            if (!prev_coords.every((c, i) => new_coords[i] === c)) {
-                coords_changed = true;
-            }
         }
 
         this.updateTileStates();
