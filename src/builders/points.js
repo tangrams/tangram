@@ -9,7 +9,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
     { quad, quad_normalize, offset, angle, shape_w, outline_width, texcoord_scale, texcoord_normalize }) {
     quad_normalize = quad_normalize || 1;
 
-    if (outline_edge_index) {
+    if (outline_edge_index && outline_width) {
         let half_outline_width = outline_width === 1 ? outline_width : outline_width / 2;
 
         quad[0] += half_outline_width;
@@ -64,7 +64,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
             vertex_template[offset_index + 1] = offset[1];
 
             if (outline_edge_index) {
-                vertex_template[outline_edge_index] = 1.0 - (outline_width / Math.min(quad[0], quad[1]));
+                vertex_template[outline_edge_index] = outline_width ? 1.0 - (outline_width / Math.min(quad[0], quad[1])) : 0.0;
             }
 
             vertex_data.addVertex(vertex_template);

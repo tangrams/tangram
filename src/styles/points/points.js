@@ -126,8 +126,8 @@ Object.assign(Points, {
         let style = {};
         style.color = this.parseColor(draw.color, context);
 
-        style.outline_width = StyleParser.evalCachedProperty(draw.outline_width, context);
-        style.outline_color = this.parseColor(draw.outline_color, context);
+        style.outline_width = StyleParser.evalCachedProperty(draw.outline_width, context) || StyleParser.defaults.outline_width;
+        style.outline_color = this.parseColor(draw.outline_color, context) || StyleParser.defaults.outline_color;
         // Point styling
 
         // require color or texture
@@ -571,10 +571,10 @@ Object.assign(Points, {
 
         // border
         if (!this.texture) {
-            let outline_color = style.outline_color || StyleParser.default.outline_color;
+            let outline_color = style.outline_color || StyleParser.defaults.outline_color;
 
             this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
-            this.fillVertexTemplate('a_outline_edge', style.outline_width || StyleParser.default.outline_width, { size: 1 });
+            this.fillVertexTemplate('a_outline_edge', style.outline_width || StyleParser.defaults.outline_width, { size: 1 });
         }
 
         // selection color
