@@ -166,7 +166,7 @@ export default class View {
 
     // For a given view zoom, what tile zoom should be loaded?
     tileZoom (view_zoom) {
-        return this.baseZoom(view_zoom) - this.tile_simplification_level;
+        return Math.max(this.baseZoom(view_zoom) - this.tile_simplification_level, 0);
     }
 
     // For a given tile zoom, what style zoom should be used?
