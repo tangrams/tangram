@@ -60,10 +60,13 @@ void main (void) {
             float point_dist = length(uv);
 
             #ifdef TANGRAM_POINT_OUTLINE
-                color = mix(color, v_outline_color, smoothstep(v_outline_edge, v_outline_edge + ((1. - v_outline_edge) / 2.), point_dist));
-                color.a = color.a - step(1., point_dist);
-            #else
-                color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
+                if (v_outline_edge == 0.) {
+                    color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
+                }
+                else {
+                    color = mix(color, v_outline_color, smoothstep(v_outline_edge, v_outline_edge + ((1. - v_outline_edge) / 2.), point_dist));
+                    color.a = color.a - step(1., point_dist);
+                }
             #endif
 
         #endif
