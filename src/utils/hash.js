@@ -1,3 +1,4 @@
+// http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
 export default function hashString (string) {
     var hash = 0, i, chr, len;
 
@@ -11,4 +12,4 @@ export default function hashString (string) {
         hash |= 0; // Convert to 32bit integer
     }
     return hash;
-};
+}
