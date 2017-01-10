@@ -40,6 +40,10 @@ Object.assign(TextStyle, {
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
 
+        // Used to fade out curved labels
+        this.defines.TANGRAM_FADE_ON_ZOOM_IN = true;
+        this.defines.TANGRAM_FADE_ON_ZOOM_IN_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
+
         this.reset();
     },
 

@@ -3,6 +3,7 @@ uniform float u_time;
 uniform vec3 u_map_position;
 uniform vec4 u_tile_origin;
 uniform float u_tile_proxy_depth;
+uniform bool u_tile_fade_in;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 uniform float u_visible_time;
@@ -35,6 +36,7 @@ attribute vec2 a_offset;
 varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
+varying float v_alpha_factor;
 
 #ifdef TANGRAM_MULTI_SAMPLER
 varying float v_sampler;
@@ -80,6 +82,7 @@ void main() {
     // Initialize globals
     #pragma tangram: setup
 
+    v_alpha_factor = 1.0;
     v_color = a_color;
     v_texcoord = a_texcoord;
 
@@ -95,6 +98,10 @@ void main() {
 
     #ifdef TANGRAM_CURVED_POINT
         if (a_offsets[0] != 0.){
+            #ifdef TANGRAM_FADE_ON_ZOOM_IN
+                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);
+            #endif
+
             vec4 angles_scaled = (PI / 16384.) * a_angles;
             vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;
             vec4 offsets_scaled = (1. / 64.) * a_offsets;
@@ -109,16 +116,31 @@ void main() {
             shape += rotate2D(offset, theta);   // offset if specified in the scene file
         }
         else {
-             shape = rotate2D(shape + offset, theta);
+            shape = rotate2D(shape + offset, theta);
         }
     #else
         shape = rotate2D(shape + offset, theta);
     #endif
 
     #ifdef TANGRAM_MULTI_SAMPLER
-    v_sampler = a_shape.w; // texture sampler
+        v_sampler = a_shape.w; // texture sampler
     #endif
 
+    // Fade in (if requested) based on time mesh has been visible.
+    // Value passed to fragment shader in the v_alpha_factor varying
+    #ifdef TANGRAM_FADE_IN_RATE
+        if (u_tile_fade_in) {
+            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);
+        }
+    #endif
+
+    // Fade out when tile is zooming out, e.g. acting as proxy tiles
+    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels
+    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.
+    // Value passed to fragment shader in the v_alpha_factor varying
+    #ifdef TANGRAM_FADE_ON_ZOOM_OUT
+        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);
+    #endif
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * position;
