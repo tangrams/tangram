@@ -3,7 +3,6 @@ import Thread from './utils/thread';
 import Utils from './utils/utils';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
-import mergeObjects from './utils/merge';
 import Tile from './tile';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
@@ -44,8 +43,6 @@ Object.assign(self, {
     updateConfig ({ config, generation, introspection }) {
         config = JSON.parse(config);
 
-        self.last_config = mergeObjects({}, self.config);
-        self.config = mergeObjects({}, config);
         self.generation = generation;
         self.introspection = introspection;
 
@@ -87,7 +84,12 @@ Object.assign(self, {
 
     // Create data sources and clear tile cache if necessary
     createDataSources (config) {
-        config.sources = Utils.stringsToFunctions(config.sources); // parse new sources
+        // Save and compare previous sources
+        self.last_config_sources = self.config_sources;
+        self.config_sources = JSON.stringify(config.sources);
+
+        // Parse new sources
+        config.sources = Utils.stringsToFunctions(config.sources);
         self.sources = {}; // clear previous sources
         for (let name in config.sources) {
             let source;
@@ -105,11 +107,7 @@ Object.assign(self, {
         }
 
         // Clear tile cache if data source config changed
-        if (!self.config.sources ||
-            !self.last_config.sources ||
-            Object.keys(self.config.sources).some(s => {
-                return JSON.stringify(self.config.sources[s]) !== JSON.stringify(self.last_config.sources[s]);
-            })) {
+        if (self.config_sources !== self.last_config_sources) {
             self.tiles = {};
         }
     },
