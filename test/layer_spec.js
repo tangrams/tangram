@@ -7,7 +7,7 @@ describe('LayerLeaf', () => {
     const {LayerLeaf} = require('../src/styles/layer');
 
     it('returns an new instanceof', () => {
-        let subject = new LayerLeaf({name: 'test'});
+        let subject = new LayerLeaf({name: 'test', layer: {}});
         assert.instanceOf(subject, LayerLeaf);
         assert.propertyVal(subject, 'name', 'test');
     });
@@ -18,7 +18,7 @@ describe('LayerTree', () => {
     const {LayerTree} = require('../src/styles/layer');
 
     it('returns an new instanceof', () => {
-        let subject = new LayerTree({name: 'test'});
+        let subject = new LayerTree({name: 'test', layer: {}});
         assert.instanceOf(subject, LayerTree);
         assert.propertyVal(subject, 'name', 'test');
     });
