@@ -206,18 +206,18 @@ export default class Tile {
         for (let layer_name in layers) {
             let layer = layers[layer_name];
             // Skip layers with no data source defined
-            if (!layer || !layer.config.data) {
+            if (!layer || !layer.config_data) {
                 log('warn', `Layer ${layer_name} was defined without a geometry data source and will not be rendered.`);
                 continue;
             }
 
             // Source names don't match
-            if (layer.config.data.source !== tile.source) {
+            if (layer.config_data.source !== tile.source) {
                 continue;
             }
 
             // Get data for one or more layers from source
-            let source_layers = Tile.getDataForSource(data, layer.config.data, layer_name);
+            let source_layers = Tile.getDataForSource(data, layer.config_data, layer_name);
 
             // Render features in layer
             for (let s=0; s < source_layers.length; s++) {
