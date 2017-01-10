@@ -51,14 +51,29 @@ vec2 rotate2D(vec2 _st, float _angle) {
                 sin(_angle),cos(_angle)) * _st;
 }
 
+// #define STOPS vec4(0.0, 0.33, 0.66, 0.99)
+// #define INV_STOPS vec3(1. / (STOPS[1] - STOPS[0]), 1. / (STOPS[2] - STOPS[1]), 1. / (STOPS[3] - STOPS[2]))
 
-float mix4linear(float a, float b, float c, float d, float x ) {
-    float e = 1. / .3;
-    return mix(mix(a,b,clamp(x,0.,.3) * e),
+// General stop distribution formula
+// float mix4linear(float a, float b, float c, float d, float x) {
+//     return mix(
+//         mix(a, b, INV_STOPS[0] * (x - STOPS[0])),
+//         mix(b,
+//             mix(c, d, INV_STOPS[2] * (max(x, STOPS[2]) - STOPS[2])),
+//             INV_STOPS[1] * (clamp(x, STOPS[1], STOPS[2]) - STOPS[1])
+//         ),
+//         step(STOPS[1], x)
+//     );
+// }
+
+// Assumes stops are [0, 0.33, 0.66, 0.99];
+float mix4linear(float a, float b, float c, float d, float x) {
+    return mix(mix(a, b, 3. * x),
                mix(b,
-                   mix(c,d,(clamp(x,.6,.9)-.6) * e),
-                   (clamp(x,.3,.6)-.3) * e),
-               step(0.3,x));
+                   mix(c, d, 3. * (max(x, .66) - .66)),
+                   3. * (clamp(x, .33, .66) - .33)),
+               step(0.33, x)
+            );
 }
 
 void main() {

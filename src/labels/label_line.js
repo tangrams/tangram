@@ -2,7 +2,7 @@ import Label from './label';
 import Vector from '../vector';
 import OBB from '../utils/obb';
 
-const stops = [0, 0.3, 0.6, 0.9];
+const stops = [0, 0.33, 0.66, 0.99];
 const LINE_EXCEED_STRAIGHT = 0.3;           // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_STRAIGHT_NO_CURVE = 0.8;  // minimal ratio for straight labels that have no curved option
 const CURVE_MIN_TOTAL_COST = 1.3;
