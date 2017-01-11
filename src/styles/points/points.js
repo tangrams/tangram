@@ -257,7 +257,7 @@ Object.assign(Points, {
         }
 
         let queue = this.queues[tile.key];
-        this.queues[tile.key] = [];
+        delete this.queues[tile.key];
 
         // For each point feature, create one or more labels
         let text_objs = [];

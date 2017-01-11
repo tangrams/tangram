@@ -86,7 +86,10 @@ Object.assign(TextStyle, {
 
     // Override
     endData (tile) {
-        return this.prepareTextLabels(tile, this.name, this.queues[tile.key]).
+        let queue = this.queues[tile.key];
+        delete this.queues[tile.key];
+
+        return this.prepareTextLabels(tile, this.name, queue).
             then(labels => this.collideAndRenderTextLabels(tile, this.name, labels)).
             then(({ labels, texts, texture }) => {
                 if (texts) {

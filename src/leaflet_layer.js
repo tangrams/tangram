@@ -1,6 +1,7 @@
 import Thread from './utils/thread';
 import Scene from './scene';
 import Geo from './geo';
+import debounce from './utils/debounce';
 
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
@@ -26,6 +27,7 @@ function extendLeaflet(options) {
         let layerBaseClass = L.GridLayer ? L.GridLayer : L.TileLayer;
         let leafletVersion = layerBaseClass === L.GridLayer ? '1.x' : '0.7.x';
         let layerClassConfig = {};
+        let setZoomAroundNoMoveEnd, debounceMoveEnd; // alternate zoom functions defined below
 
         // If extending leaflet 0.7.x TileLayer, additional modifications are needed
         if (layerBaseClass === L.TileLayer) {
@@ -51,9 +53,7 @@ function extendLeaflet(options) {
                 this.createScene();
                 this.hooks = {};
                 this._updating_tangram = false;
-
-                // Force leaflet zoom animations off
-                this._zoomAnimated = false;
+                this._zoomAnimated = false; // turn leaflet zoom animations off for this layer
             },
 
             createScene () {
@@ -93,14 +93,20 @@ function extendLeaflet(options) {
                     if (this._updating_tangram) {
                         return;
                     }
-
                     this._updating_tangram = true;
+
+                    this.scene.view.setPanning(true);
                     var view = map.getCenter();
                     view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_view_max_zoom);
 
                     this.scene.view.setView(view);
-                    this.scene.immediateRedraw();
+                    if (this._mapLayerCount > 1) {
+                        // if there are other map pane layers active, redraw immediately to stay in better visual sync
+                        // otherwise, wait until next regular animation loop iteration
+                        this.scene.immediateRedraw();
+                    }
                     this.reverseTransform();
+
                     this._updating_tangram = false;
                 };
                 map.on('move', this.hooks.move);
@@ -116,23 +122,23 @@ function extendLeaflet(options) {
                 };
                 map.on('zoomstart', this.hooks.zoomstart);
 
-                this.hooks.dragstart = () => {
-                    this.scene.view.setPanning(true);
-                };
-                map.on('dragstart', this.hooks.dragstart);
-
                 this.hooks.moveend = () => {
                     this.scene.view.setPanning(false);
                     this.scene.requestRedraw();
                 };
                 map.on('moveend', this.hooks.moveend);
 
-                // Force leaflet zoom animations off
-                map._zoomAnimated = false;
-
                 // Modify default Leaflet behaviors
                 this.modifyScrollWheelBehavior(map);
                 this.modifyDoubleClickZoom(map);
+                debounceMoveEnd = debounce(
+                    function(map) {
+                        map._moveEnd(true);
+                        map.fire('viewreset'); // keep other leaflet layers in sync
+                    },
+                    map.options.wheelDebounceTime * 2
+                );
+                this.trackMapLayerCounts(map);
 
                 // Setup feature selection
                 this.setupSelectionEventHandlers(map);
@@ -172,10 +178,10 @@ function extendLeaflet(options) {
             onRemove (map) {
                 layerBaseClass.prototype.onRemove.apply(this, arguments);
 
+                map.off('layeradd layerremove overlayadd overlayremove', this._updateMapLayerCount);
                 map.off('resize', this.hooks.resize);
                 map.off('move', this.hooks.move);
                 map.off('zoomstart', this.hooks.zoomstart);
-                map.off('dragstart', this.hooks.dragstart);
                 map.off('moveend', this.hooks.moveend);
                 map.off('click', this.hooks.click);
                 map.off('mousemove', this.hooks.mousemove);
@@ -257,10 +263,11 @@ function extendLeaflet(options) {
                         if (!delta) { return; }
 
                         if (map.options.scrollWheelZoom === 'center') {
-                            map.setZoom(zoom + delta);
+                            setZoomAroundNoMoveEnd(map, map.getCenter(), zoom + delta);
                         } else {
-                            map.setZoomAround(this._lastMousePos, zoom + delta);
+                            setZoomAroundNoMoveEnd(map, this._lastMousePos, zoom + delta);
                         }
+                        debounceMoveEnd(map);
                     };
 
                     if (enabled) {
@@ -272,18 +279,6 @@ function extendLeaflet(options) {
             // Modify leaflet's default double-click zoom behavior, to match typical vector basemap products
             modifyDoubleClickZoom (map) {
                 if (this.scene.view.continuous_zoom && map.doubleClickZoom && this.options.modifyDoubleClickZoom !== false) {
-
-                    // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
-                    const setZoomAroundNoMoveEnd = function (map, latlng, zoom, options) {
-                        var scale = map.getZoomScale(zoom),
-                            viewHalf = map.getSize().divideBy(2),
-                            containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
-
-                            centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
-                            newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
-
-                        return map._move(newCenter, zoom, { flyTo: true });
-                    };
 
                     // Simplified version of Leaflet's flyTo, for short animations zooming around a point
                     const flyAround = function (map, targetCenter, targetZoom, options) {
@@ -453,9 +448,36 @@ function extendLeaflet(options) {
             // Event types are: `click`, `hover` (leaflet `mousemove`)
             setSelectionEvents (events) {
                 this._selection_events = Object.assign(this._selection_events, events);
+            },
+
+            // Track the # of layers in the map pane
+            // Used to optimize Tangram redraw sensitivity (redraw more frequently when needing to sync w/other layers)
+            trackMapLayerCounts (map) {
+                this._updateMapLayerCount = () => {
+                    let nodes = map.getPanes().mapPane.childNodes;
+                    this._mapLayerCount = 0;
+                    for (let i=0; i < nodes.length; i++) {
+                        this._mapLayerCount += nodes[i].childNodes.length;
+                    }
+                };
+
+                map.on('layeradd layerremove overlayadd overlayremove', this._updateMapLayerCount);
+                this._updateMapLayerCount();
             }
 
         });
+
+        // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
+        setZoomAroundNoMoveEnd = function (map, latlng, zoom) {
+            var scale = map.getZoomScale(zoom),
+                viewHalf = map.getSize().divideBy(2),
+                containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
+
+                centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
+                newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
+
+            return map._move(newCenter, zoom, { flyTo: true });
+        };
 
         // Create the layer class
         LeafletLayer = layerBaseClass.extend(layerClassConfig);

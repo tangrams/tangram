@@ -74,7 +74,7 @@ class Layer {
 
     constructor({ layer, name, parent, draw, visible, filter }) {
         this.id = Layer.id++;
-        this.config = layer;
+        this.config_data = layer.data;
         this.parent = parent;
         this.name = name;
         this.full_name = this.parent ? (this.parent.full_name + ':' + this.name) : this.name;
