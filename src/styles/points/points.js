@@ -385,6 +385,7 @@ Object.assign(Points, {
             draw.text.repeat_group = draw.text.repeat_group || draw.repeat_group; // inherit repeat group by default
             draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
+            draw.text.interactive = draw.text.interactive || draw.interactive; // inherits from point
         }
 
         return draw;
