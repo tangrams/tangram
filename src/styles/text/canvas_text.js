@@ -3,6 +3,8 @@ import Texture from '../../gl/texture';
 import FontManager from './font_manager';
 import debugSettings from '../../utils/debug_settings';
 
+const codon_length = 2; // length of chunks when breaking up label text
+
 export default class CanvasText {
 
     constructor () {
@@ -300,7 +302,6 @@ export default class CanvasText {
                                     }
                                     else {
                                         let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
-
                                         let size = CanvasText.text_cache[style][word].size;
                                         let line = CanvasText.text_cache[style][word].lines;
 
@@ -576,7 +577,6 @@ function isTextRTL(s){
 
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text){
-    let codon_length = 2;
     if (text.length < codon_length) {
         return [text];
     }
@@ -586,7 +586,7 @@ function splitLabelText(text){
     while (text.length){
         let segment = text.substring(0, codon_length);
 
-        if (segment.length === 1) {
+        if (segment.length <= Math.floor(0.5 * codon_length)) {
             segments[segments.length - 1] += segment;
         }
         else {
