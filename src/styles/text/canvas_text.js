@@ -387,12 +387,8 @@ export default class CanvasText {
                         let type = text_info.type[i];
                         switch (type){
                             case 'straight':
-                                let size = [0, text_info.total_size.texture_size[1]];
+                                let size = text_info.total_size.texture_size;
                                 let word = text_info.segments.reduce((text_info.isRTL) ? reduceLeft : reduceRight);
-
-                                for (let i = 0; i < text_info.size.length; i++){
-                                    size[0] += text_info.size[i].texture_size[0];
-                                }
 
                                 if (size[0] > column_width) {
                                     column_width = size[0];
@@ -415,7 +411,7 @@ export default class CanvasText {
                                 CanvasText.texcoord_cache[tile_key][style][word] = {
                                     texture_position: texture_position
                                 };
-                            break;
+                                break;
                             case 'curved':
                                 for (let i = 0; i < text_info.size.length; i++) {
                                     let word = text_info.segments[i];
@@ -447,7 +443,7 @@ export default class CanvasText {
                                         };
                                     }
                                 }
-                            break;
+                                break;
                         }
                     }
                 }
