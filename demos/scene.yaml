@@ -510,6 +510,11 @@ layers:
     pois:
         data: { source: mapzen }
 
+        # all POIs are interactive
+        draw:
+            icons:
+                interactive: true
+
         parks:
             filter:
                 kind: [park, cemetery, graveyard]
@@ -556,7 +561,6 @@ layers:
             draw:
                 icons:
                     size: [[13, 12px], [15, 18px]]
-                    interactive: true
                     priority: 6
 
             # add text label at higher zoom
