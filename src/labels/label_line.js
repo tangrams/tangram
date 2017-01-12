@@ -3,10 +3,11 @@ import Vector from '../vector';
 import OBB from '../utils/obb';
 
 const stops = [0, 0.33, 0.66, 0.99];
-const LINE_EXCEED_STRAIGHT = 0.3;           // minimal ratio for straight labels (label length) / (line length)
-const LINE_EXCEED_STRAIGHT_NO_CURVE = 0.8;  // minimal ratio for straight labels that have no curved option
+const LINE_EXCEED_STRAIGHT = 1.3;           // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_STRAIGHT_NO_CURVE = 1.8;  // minimal ratio for straight labels that have no curved option
 const CURVE_MIN_TOTAL_COST = 1.3;
 const CURVE_MIN_AVG_COST = 0.4;
+const CURVE_ANGLE_TOLERANCE = 0.02;
 
 export default class LabelLine {
     constructor (size, lines, layout, total_size) {
@@ -16,8 +17,8 @@ export default class LabelLine {
         var label = new LabelLineStraight(total_size, lines, layout);
 
         if (label.throw_away){
-            // if cannot curve (due to text shaping, etc), throw away
-            if (layout.no_curving){
+            // if cannot curve (due to text shaping, etc), or if line not curved, throw away
+            if (layout.no_curving || lines.length <= 2){
                 this.throw_away = true;
                 return;
             }
@@ -176,14 +177,15 @@ class LabelLineCurved {
         let height = size[0][1] * upp;
         let [start_index, end_index] = LabelLineCurved.checkTileBoundary(lines, line_lengths, height, line_angles_segments, this.offset, upp);
 
-        if (start_index === end_index){
+        // need two line segments for a curved label
+        if (end_index - start_index < 2){
             this.throw_away = true;
             return;
         }
 
         let anchor_index = LabelLineCurved.curvaturePlacement(lines, total_line_length, line_lengths, total_label_length, start_index, end_index);
 
-        if (anchor_index === -1){
+        if (anchor_index === -1 || end_index - anchor_index < 2){
             this.throw_away = true;
             return;
         }
@@ -238,11 +240,13 @@ class LabelLineCurved {
         let start = 0;
         let end = lines.length - 1;
 
-        let start_width = widths[0];
-        let end_width = widths[widths.length - 1];
+        height *= Label.epsilon;
+
+        let start_width = widths[start] * Label.epsilon;
+        let end_width = widths[widths.length - 1] * Label.epsilon;
 
         while (start < end){
-            let position = Vector.add(Vector.rot([start_width/2, 0], -angles[start]), lines[start]);
+            let position = Vector.add(Vector.rot([start_width/2, 0], angles[start]), lines[start]);
             let obb = getOBB(position, start_width, height, -angles[start], offset, upp);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
@@ -255,7 +259,7 @@ class LabelLineCurved {
         }
 
         while (end > start){
-            let position = Vector.add(Vector.rot([-end_width/2, 0], -angles[end]), lines[end]);
+            let position = Vector.add(Vector.rot([-end_width/2, 0], angles[end]), lines[end]);
             let obb = getOBB(position, end_width, height, -angles[end], offset, upp);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
@@ -277,7 +281,7 @@ class LabelLineCurved {
         var curvatures = []; // array of curvature values per line vertex
 
         // calculate curvature values
-        for (let i = 1; i < line.length - 1; i++){
+        for (let i = start_index + 1; i < end_index - 1; i++){
             var prev = line[i - 1];
             var curr = line[i];
             var next = line[i + 1];
@@ -298,7 +302,7 @@ class LabelLineCurved {
         // calculate curvature costs
         var total_costs = [];
         var avg_costs = [];
-        var line_index = 0;
+        var line_index = start_index;
         var position = 0;
 
         // move window along line, starting at first vertex
@@ -312,7 +316,7 @@ class LabelLineCurved {
             var cost = 0;
 
             // iterate through points on line intersecting window
-            while (ahead_index < line.length && line_position + line_lengths[ahead_index] < window_end){
+            while (ahead_index < end_index && line_position + line_lengths[ahead_index] < window_end){
                 cost += curvatures[ahead_index];
                 if (cost === Infinity) {
                     break; // no further progress can be made
@@ -507,7 +511,7 @@ function getOBBCurved(position, width, height, offset, angle, angle_curve, upp) 
 }
 
 function calcFitness(line_length, label_length) {
-    return 1 - line_length / label_length;
+    return label_length / line_length;
 }
 
 function norm(p, q){
@@ -568,8 +572,46 @@ class LabelLineStraight {
         this.aabbs = [];
 
         // First fitting segment
-        let segment = this.getNextFittingSegment(this.getCurrentSegment());
-        this.throw_away = (!segment);
+        let label_length = size[0] * layout.units_per_pixel;
+        this.throw_away = !this.fit(lines, label_length);
+
+        // let segment = this.getNextFittingSegment(this.getCurrentSegment());
+        // this.throw_away = (!segment);
+    }
+
+    fit (lines, label_length){
+        let currAngle = getAngleForSegment(lines[0], lines[1]);
+        let length = 0;
+        let placement = lines[0];
+
+        for (let i = 0; i < lines.length - 1; i++){
+            let curr = lines[i];
+            let next = lines[i+1];
+
+            let nextAngle = getAngleForSegment(curr, next);
+
+            if (Math.abs(currAngle - nextAngle) > CURVE_ANGLE_TOLERANCE){
+                length = 0;
+                placement = curr;
+            }
+
+            length += Vector.length(Vector.sub(next, curr));
+
+            if (calcFitness(length, label_length) < this.tolerance){
+                let currMid = Vector.mult(Vector.add(placement, next), 0.5);
+
+                this.angle = -nextAngle;
+                this.position = currMid;
+                this.updateBBoxes();
+                if (this.inTileBounds()) {
+                    return true;
+                }
+            }
+
+            currAngle = nextAngle;
+        }
+
+        return false;
     }
 
     // Iterate through the line geometry creating the next valid label.
