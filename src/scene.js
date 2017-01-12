@@ -1195,6 +1195,10 @@ export default class Scene {
                     counts[base] += style_counts[style];
                 }
                 return counts;
+            },
+
+            renderableTilesCount () {
+                return scene.tile_manager.getRenderableTiles().length;
             }
         };
     }

@@ -1,5 +1,4 @@
 // Manage rendering for primitives
-import log from '../utils/log';
 import ShaderProgram from './shader_program';
 import VertexArrayObject from './vao';
 
@@ -14,6 +13,7 @@ export default class VBOMesh  {
         this.element_data = element_data; // typed array
         this.vertex_layout = vertex_layout;
         this.vertex_buffer = this.gl.createBuffer();
+        this.buffer_size = this.vertex_data.byteLength;
         this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
         this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
         this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
@@ -23,15 +23,17 @@ export default class VBOMesh  {
         this.fade_in_time = options.fade_in_time || 0; // optional time to fade in mesh
 
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
+        this.element_count = 0;
         this.vaos = {}; // map of VertexArrayObjects, keyed by program
 
         this.toggle_element_array = false;
-        if (this.element_data){
+        if (this.element_data) {
             this.toggle_element_array = true;
             this.element_count = this.element_data.length;
             this.geometry_count = this.element_count / this.vertices_per_geometry;
             this.element_type = (this.element_data.constructor === Uint16Array) ? this.gl.UNSIGNED_SHORT: this.gl.UNSIGNED_INT;
             this.element_buffer = this.gl.createBuffer();
+            this.buffer_size += this.element_data.byteLength;
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
             this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, this.element_data, this.data_usage);
         }
@@ -114,7 +116,6 @@ export default class VBOMesh  {
             VertexArrayObject.destroy(this.gl, this.vaos[v]);
         }
 
-        log('trace', 'VBOMesh.destroy: delete buffer' + (this.vertex_data ? ` of size ${this.vertex_data.byteLength}` : ''));
 
         this.gl.deleteBuffer(this.vertex_buffer);
         this.vertex_buffer = null;

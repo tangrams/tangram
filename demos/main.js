@@ -142,10 +142,11 @@ Enjoy!
             values: {
                 frame: { caption: 'Total frame time (ms)', over: 10 },
                 raf: { caption: 'Time since last rAF (ms)' },
-                fps: { caption: 'Framerate (FPS)', below: 30 },
-                rendertiles: { caption: 'Rendered tiles' },
-                features: { caption: '# of geo features' },
-                glbuffers: { caption: 'GL buffers (MB)' }
+                fps: { caption: 'Framerate (FPS)', below: 40 },
+                tiles: { caption: 'Rendered tiles' },
+                geometry_count: { caption: '# geoms' },
+                feature_count: { caption: '# features' },
+                buffer_size: { caption: 'GL buffers (MB)' }
             },
             CSSPath : 'demos/lib/',
             plugins: [glS]
@@ -481,12 +482,10 @@ Enjoy!
         }
 
         // Profiling
-        if (will_render && rS) {
-            rS('frame').start();
-            // rS('raf').tick();
+        if (rS) {
             rS('fps').frame();
-
-            if (scene.dirty) {
+            if (will_render) {
+                rS('frame').start();
                 glS.start();
             }
         }
@@ -496,9 +495,10 @@ Enjoy!
     function postUpdate () {
         if (rS != null) { // rstats
             rS('frame').end();
-            rS('rendertiles').set(scene.renderable_tiles_count);
-            rS('glbuffers').set((scene.tile_manager.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
-            rS('features').set(scene.tile_manager.getDebugSum('features'));
+            rS('tiles').set(scene.debug.renderableTilesCount());
+            rS('buffer_size').set((scene.tile_manager.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
+            rS('geometry_count').set(scene.tile_manager.getDebugSum('geometry_count'));
+            rS('feature_count').set(scene.tile_manager.getDebugSum('feature_count'));
             rS().update();
         }
     }
