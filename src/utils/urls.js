@@ -1,46 +1,33 @@
 import log from './log';
 
-// Add a base URL for schemeless or protocol-less URLs
-// Defaults to adding current window protocol and base, or adds a custom base if specified
-// Maybe use https://github.com/medialize/URI.js if more robust functionality is needed
+// Adds a base origin to relative URLs
 export function addBaseURL (url, base) {
-    if (!url) {
-        return;
+    if (!url || !isRelativeURL(url)) {
+        return url;
     }
 
-    // Schemeless, add protocol
-    if (url.substr(0, 2) === '//') {
-        url = window.location.protocol + url;
+    var relative_path = (url[0] !== '/');
+    var base_info;
+    if (base) {
+        base_info = document.createElement('a'); // use a temporary element to parse URL
+        base_info.href = base;
     }
-    // No http(s) or data, add base
-    else if (url.search(/^(http|https|data|blob):/) < 0) {
-        var relative = (url[0] !== '/');
-        var base_info;
-        if (base) {
-            base_info = document.createElement('a'); // use a temporary element to parse URL
-            base_info.href = base;
-        }
-        else {
-            base_info = window.location;
-        }
+    else {
+        base_info = window.location;
+    }
 
-        if (relative) {
-            let path = pathForURL(base_info.href);
-            url = path + url;
-        }
-        else {
-            // Easy way
-            if (base_info.origin) {
-                url = base_info.origin + '/' + url;
-            }
-            // Hard way (IE11)
-            else {
-                var origin = url.match(/^((http|https|data|blob):\/\/[^\/]*\/)/);
-                origin = (origin && origin.length > 1) ? origin[0] : '';
-                url = origin + url;
-            }
-        }
+    if (relative_path) {
+        let path = pathForURL(base_info.href);
+        url = path + url;
     }
+    else {
+        let origin = base_info.origin;
+        if (!origin) {
+            origin = base_info.protocol + '//' + base_info.host; // IE11 doesn't have origin property
+        }
+        url = origin + url;
+    }
+
     return url;
 }
 
