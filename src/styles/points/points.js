@@ -569,10 +569,6 @@ Object.assign(Points, {
             this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
         }
 
-        this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
-        this.fillVertexTemplate('a_offsets', 0, { size: 4 });
-        this.fillVertexTemplate('a_angles', 0, { size: 4 });
-
         return this.vertex_template;
     },
 
