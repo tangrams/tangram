@@ -64,6 +64,8 @@ export default class Scene {
         this.last_render_count = 0;
         this.render_count_changed = false;
         this.frame = 0;
+        this.last_main_render = -1;         // frame counter for last main render pass
+        this.last_selection_render = -1;    // frame counter for last selection render pass
         this.media_capture = new MediaCapture();
         this.selection = null;
         this.introspection = false;
@@ -418,9 +420,11 @@ export default class Scene {
     }
 
     update() {
-        // Render on demand
+        // Determine which passes (if any) to render
+        let main = this.dirty;
+        let selection = this.selection.hasPendingRequests();
         var will_render = !(
-            this.dirty === false ||
+            (main === false && selection === false) ||
             this.initialized === false ||
             this.updating > 0 ||
             this.ready() === false
@@ -439,7 +443,7 @@ export default class Scene {
 
         // Render the scene
         this.updateDevicePixelRatio();
-        this.render();
+        this.render({ main, selection });
         this.updateViewComplete(); // fires event when rendered tile set or style changes
         this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
@@ -458,7 +462,8 @@ export default class Scene {
         return true;
     }
 
-    render() {
+    // Accepts flags indicating which render passes should be made
+    render({ main, selection }) {
         var gl = this.gl;
 
         // Update styles, camera, lights
@@ -466,16 +471,21 @@ export default class Scene {
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
         // Render main pass
-        this.render_count = this.renderPass();
+        if (main) {
+            this.render_count = this.renderPass();
+            this.last_main_render = this.frame;
+        }
 
         // Render selection pass (if needed)
-        if (this.selection.pendingRequests()) {
+        if (selection) {
             if (this.view.panning || this.view.zooming) {
                 this.selection.clearPendingRequests();
                 return;
             }
 
-            if (!this.selection.locked) {       // check if selection buffer is locked (e.g. building tiles)
+            // Only re-render if selection buffer is out of date (relative to main render buffer)
+            // and not locked (e.g. no tiles are actively building)
+            if (!this.selection.locked && this.last_selection_render < this.last_main_render) {
                 this.selection.bind();          // switch to FBO
                 this.renderPass(
                     'selection_program',        // render w/alternate program
@@ -484,6 +494,7 @@ export default class Scene {
                 // Reset to screen buffer
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                this.last_selection_render = this.frame;
             }
 
             this.selection.read(); // process any pending results from selection buffer
@@ -709,7 +720,6 @@ export default class Scene {
             y: pixel.y * Utils.device_pixel_ratio / this.view.size.device.height
         };
 
-        this.dirty = true; // need to make sure the scene re-renders for these to be processed
         return this.selection.getFeatureAt(point).
             then(selection => Object.assign(selection, { pixel })).
             catch(error => Promise.resolve({ error }));

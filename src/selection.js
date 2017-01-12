@@ -85,7 +85,11 @@ export default class FeatureSelection {
 
     // Any pending selection requests
     pendingRequests() {
-        return Object.keys(this.requests).length && this.requests;
+        return Object.keys(this.requests).length ? this.requests : null;
+    }
+
+    hasPendingRequests() {
+        return this.pendingRequests() != null;
     }
 
     clearPendingRequests() {
