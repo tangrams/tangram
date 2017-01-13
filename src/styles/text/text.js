@@ -238,15 +238,15 @@ Object.assign(TextStyle, {
                 let end = Math.floor((i + 1) * seg_per_div) + 1;
                 let line_segment = line.slice(start, end);
 
-                let label = new LabelLine(size, line_segment, layout, total_size);
-                if (!label.throw_away){
+                let label = LabelLine.create(size, total_size, line_segment, layout);
+                if (label){
                     labels.push(label);
                 }
             }
         }
         else {
-            let label = new LabelLine(size, line, layout, total_size);
-            if (!label.throw_away){
+            let label = LabelLine.create(size, total_size, line, layout);
+            if (label){
                 labels.push(label);
             }
         }

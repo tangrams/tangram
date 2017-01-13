@@ -9,47 +9,35 @@ const CURVE_MIN_TOTAL_COST = 1.3;
 const CURVE_MIN_AVG_COST = 0.4;
 const CURVE_ANGLE_TOLERANCE = 0.02;
 
-export default class LabelLine {
-    constructor (size, lines, layout, total_size) {
-        this.layout = layout;
-
+let LabelLine = {
+    create : function(segment_size, total_size, line, layout){
         // try straight label
-        var label = new LabelLineStraight(total_size, lines, layout);
+        let label = new LabelLineStraight(total_size, line, layout);
 
-        if (label.throw_away){
-            // if cannot curve (due to text shaping, etc), or if line not curved, throw away
-            if (layout.no_curving || lines.length <= 2){
-                this.throw_away = true;
-                return;
-            }
-
-            // else try curved label
-            label = new LabelLineCurved(size, lines, layout);
-
-            if (label.throw_away){
-                this.throw_away = true;
-                return;
-            }
-            else {
-                this.throw_away = false;
-                this.angles = label.angles;
-                this.offsets = label.offsets;
-                this.pre_angles = label.pre_angles;
-            }
-        }
-        else {
-            this.size = label.size;
+        if (!label.throw_away){
+            return label;
         }
 
-        this.angle = label.angle;
-        this.num_segments = label.num_segments;
-        this.offset = label.offset;
-        this.position = label.position;
-        this.obbs = label.obbs;
-        this.aabbs = label.aabbs;
-        this.type = label.type;
+        // try curved label if straight doesn't fit
+        // if cannot curve (due to text shaping, etc), or if line not curved, throw away
+        if (layout.no_curving || line.length <= 2){
+            return false;
+        }
+
+        label = new LabelLineCurved(segment_size, line, layout);
+
+        if (!label.throw_away){
+            return label;
+        }
+
+        // no label can fit
+        return false;
     }
+};
 
+export default LabelLine;
+
+class LabelLineBase {
     static splitLineByOrientation(line){
         let current_line = [line[0]];
         let current_length = 0;
@@ -141,9 +129,11 @@ export default class LabelLine {
     }
 }
 
-class LabelLineCurved {
+class LabelLineCurved extends LabelLineBase {
     constructor (size, lines, layout) {
-        lines = LabelLine.splitLineByOrientation(lines);
+        super();
+
+        lines = LabelLineBase.splitLineByOrientation(lines);
 
         let line_lengths = getLineLengths(lines);
         let line_angles_segments = getLineAnglesForSegments(lines);
@@ -549,8 +539,10 @@ function getLineLengths(line){
     return lengths;
 }
 
-class LabelLineStraight {
+class LabelLineStraight extends LabelLineBase {
     constructor (size, lines, layout){
+        super();
+
         this.size = size;
         this.layout = layout;
         this.num_segments = 0; // number of label segments
@@ -561,7 +553,7 @@ class LabelLineStraight {
         this.tolerance = (layout.no_curving) ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT;
         this.type = 'straight';
 
-        lines = LabelLine.splitLineByOrientation(lines);
+        lines = LabelLineBase.splitLineByOrientation(lines);
         this.lines = lines;
 
         // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
@@ -627,7 +619,7 @@ class LabelLineStraight {
         layout.segment_index = label.segment_index;
 
         // create new label
-        let nextLabel = new LabelLine(label.size, label.lines, layout);
+        let nextLabel = new LabelLineBase(label.size, label.lines, layout);
 
         return (nextLabel.throw_away) ? false : nextLabel;
     }
