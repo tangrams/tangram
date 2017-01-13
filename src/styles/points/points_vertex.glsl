@@ -37,11 +37,14 @@ varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 varying float v_alpha_factor;
-varying float v_outline_edge;
-varying vec4 v_outline_color;
+
+#ifdef TANGRAM_POINT_OUTLINE
+    varying float v_outline_edge;
+    varying vec4 v_outline_color;
+#endif
 
 #ifdef TANGRAM_MULTI_SAMPLER
-varying float v_sampler;
+    varying float v_sampler;
 #endif
 
 #pragma tangram: camera
@@ -72,8 +75,12 @@ void main() {
     v_alpha_factor = 1.0;
     v_color = a_color;
     v_texcoord = a_texcoord;
-    v_outline_color = a_outline_color;
-    v_outline_edge = a_outline_edge;
+
+    #ifdef TANGRAM_POINT_OUTLINE
+        v_outline_color = a_outline_color;
+        v_outline_edge = a_outline_edge;
+    #endif
+
     // Position
     vec4 position = u_modelView * vec4(a_position.xyz, 1.);
 
