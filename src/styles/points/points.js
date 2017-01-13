@@ -579,10 +579,9 @@ Object.assign(Points, {
         // color
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
 
-        // border
-        if (!this.texture) {
-            let outline_color = style.outline_color || StyleParser.default.outline_color;
-            this.defines.TANGRAM_POINT_OUTLINE = true;
+        // outline
+        if (this.defines.TANGRAM_POINT_OUTLINE) {
+            let outline_color = style.outline_color || StyleParser.defaults.outline_color;
             this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
             this.fillVertexTemplate('a_outline_edge', style.outline_width || StyleParser.defaults.outline_width, { size: 1 });
         }
