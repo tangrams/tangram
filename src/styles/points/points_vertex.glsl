@@ -27,8 +27,6 @@ attribute vec2 a_offset;
     attribute vec4 a_offsets;
     attribute vec4 a_pre_angles;
     attribute vec4 a_angles;
-#else
-    attribute float a_pre_angle;
 #endif
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
