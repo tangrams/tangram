@@ -16,13 +16,13 @@ Object.assign(TextStyle, {
     built_in: true,
 
     init(options = {}) {
-        options.attribs = [
+        let extra_attributes = [
             { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
             { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false }
         ];
 
-        this.super.init.call(this, options);
+        this.super.init.call(this, options, extra_attributes);
 
         // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
