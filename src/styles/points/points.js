@@ -38,7 +38,7 @@ Object.assign(Points, {
     collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
-    init(options = {}, extra_attributes) {
+    init(options = {}, extra_attributes = []) {
         Style.init.call(this, options);
 
         // Base shaders
@@ -53,7 +53,7 @@ Object.assign(Points, {
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
-        if (extra_attributes){
+        if (extra_attributes.length){
             Array.prototype.push.apply(attribs, extra_attributes);
         }
 
