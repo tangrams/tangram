@@ -12,4 +12,11 @@
 
     v_selection_color = a_selection_color;
     v_selection_group = a_selection_group;
+
+    if (u_selection_click_group == v_selection_group) {
+        v_color = u_selection_click_color;
+    }
+    else if (u_selection_hover_group == v_selection_group) {
+        v_color = u_selection_hover_color;
+    }
 #endif

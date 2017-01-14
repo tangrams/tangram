@@ -592,27 +592,27 @@ export default class Scene {
             if (this.last_selection_hover &&
                 this.last_selection_hover.selection_colors &&
                 this.last_selection_hover.selection_colors[worker_id]) {
-                program.uniform('4f', 'u_selection_hover', this.last_selection_hover.selection_colors[worker_id]);
+                program.uniform('4f', 'u_selection_hover_group', this.last_selection_hover.selection_colors[worker_id]);
 
                 if (this.last_selection_hover.feature.hover_color) {
                     program.uniform('4f', 'u_selection_hover_color', this.last_selection_hover.feature.hover_color);
                 }
             }
             else {
-                program.uniform('4f', 'u_selection_hover', [0, 0, 0, 0]);
+                program.uniform('4f', 'u_selection_hover_group', [0, 0, 0, 0]);
             }
 
             if (this.last_selection_click &&
                 this.last_selection_click.selection_colors &&
                 this.last_selection_click.selection_colors[worker_id]) {
-                program.uniform('4f', 'u_selection_click', this.last_selection_click.selection_colors[worker_id]);
+                program.uniform('4f', 'u_selection_click_group', this.last_selection_click.selection_colors[worker_id]);
 
                 if (this.last_selection_click.feature.click_color) {
                     program.uniform('4f', 'u_selection_click_color', this.last_selection_click.feature.click_color);
                 }
             }
             else {
-                program.uniform('4f', 'u_selection_click', [0, 0, 0, 0]);
+                program.uniform('4f', 'u_selection_click_group', [0, 0, 0, 0]);
             }
 
             // Render tile

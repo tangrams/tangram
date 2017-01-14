@@ -81,48 +81,29 @@ styles:
 
     buildings:
         base: polygons
-        mix: screendoor
-        shaders:
-            blocks:
-                color: |
-                    // Modify lighting
-                    material.ambient.rgb = vec3(2.);
-                    material.diffuse.rgb = vec3(.5);
+        # mix: screendoor
+        # shaders:
+        #     blocks:
+        #         color: |
+        #             // Modify lighting
+        #             material.ambient.rgb = vec3(2.);
+        #             material.diffuse.rgb = vec3(.5);
 
-                    // Shade by building height
-                    // color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
+        #             // Shade by building height
+        #             // color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
 
-                    if (u_selection_click == v_selection_group) {
-                        color.rgb = vec3(.8, 0., 0.);
-                        //if (isScreendoor()) {
-                        //    discard;
-                        //}
-                    }
-                    else if (u_selection_hover == v_selection_group) {
-                        color.rgb = vec3(.8, .8, 0.);
-                        if (isScreendoor()) {
-                            discard;
-                        }
-                    }
-
-    selected:
-        shaders:
-            blocks:
-                color: |
-                    if (u_selection_click == v_selection_group) {
-                        color = u_selection_click_color;
-                    }
-                    else if (u_selection_hover == v_selection_group) {
-                        color = u_selection_hover_color;
-                    }
-
-    selected-polygons:
-        base: polygons
-        mix: selected
-
-    selected-lines:
-        base: lines
-        mix: selected
+        #             if (u_selection_click == v_selection_group) {
+        #                 color.rgb = vec3(.8, 0., 0.);
+        #                 //if (isScreendoor()) {
+        #                 //    discard;
+        #                 //}
+        #             }
+        #             else if (u_selection_hover == v_selection_group) {
+        #                 color.rgb = vec3(.8, .8, 0.);
+        #                 if (isScreendoor()) {
+        #                     discard;
+        #                 }
+        #             }
 
     icons:
         base: points
@@ -259,8 +240,6 @@ layers:
         areas:
             draw:
                 polygons:
-                    # style: buildings
-                    style: selected-polygons
                     order: global.feature_order
                     interactive: true
                     color: honeydew
@@ -333,7 +312,6 @@ layers:
                 # color: Style.color.randomColor
                 width: 12
                 order: global.feature_order
-                style: selected-lines
                 interactive: true
                 selection_prop: function(){ return feature.kind + ':' + feature.kind_detail; }
                 hover_color: yellow
@@ -538,7 +516,6 @@ layers:
         draw:
             polygons:
                 # style: buildings
-                style: selected-polygons
                 # selection_prop: function() { return feature.name && feature.name[0]; }
                 # selection_prop: function() { return feature.height && feature.height > 25; }
                 # selection_prop: function() { return Math.ceil(feature.height/50); }

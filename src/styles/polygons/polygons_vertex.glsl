@@ -11,6 +11,11 @@ uniform mat4 u_modelView;
 uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
 
+uniform vec4 u_selection_hover_group;
+uniform vec4 u_selection_click_group;
+uniform vec4 u_selection_hover_color;
+uniform vec4 u_selection_click_color;
+
 attribute vec4 a_position;
 attribute vec4 a_color;
 
@@ -57,6 +62,8 @@ varying vec4 v_world_position;
 #pragma tangram: global
 
 void main() {
+    v_color = a_color;
+
     // Initialize globals
     #pragma tangram: setup
 
@@ -112,7 +119,6 @@ void main() {
     // Setup varyings
     v_position = position;
     v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);
-    v_color = a_color;
 
     #if defined(TANGRAM_LIGHTING_VERTEX)
         // Vertex lighting
