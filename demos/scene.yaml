@@ -81,29 +81,17 @@ styles:
 
     buildings:
         base: polygons
-        # mix: screendoor
-        # shaders:
-        #     blocks:
-        #         color: |
-        #             // Modify lighting
-        #             material.ambient.rgb = vec3(2.);
-        #             material.diffuse.rgb = vec3(.5);
-
-        #             // Shade by building height
-        #             // color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
-
-        #             if (u_selection_click == v_selection_group) {
-        #                 color.rgb = vec3(.8, 0., 0.);
-        #                 //if (isScreendoor()) {
-        #                 //    discard;
-        #                 //}
-        #             }
-        #             else if (u_selection_hover == v_selection_group) {
-        #                 color.rgb = vec3(.8, .8, 0.);
-        #                 if (isScreendoor()) {
-        #                     discard;
-        #                 }
-        #             }
+        mix: screendoor
+        animated: true
+        shaders:
+            blocks:
+                color: |
+                    if (isFeatureHover() && isScreendoor()) {
+                        discard;
+                    }
+                    else if (isFeatureClick()) {
+                        color.rgb *= 1. - (abs(sin(u_time * 1.)) * .6);
+                    }
 
     icons:
         base: points
@@ -243,8 +231,8 @@ layers:
                     order: global.feature_order
                     interactive: true
                     color: honeydew
-                    hover_color: yellow
-                    click_color: red
+                    # hover_color: yellow
+                    # click_color: red
 
 
             # parks:
@@ -515,14 +503,14 @@ layers:
 
         draw:
             polygons:
-                # style: buildings
+                style: buildings
                 # selection_prop: function() { return feature.name && feature.name[0]; }
                 # selection_prop: function() { return feature.height && feature.height > 25; }
                 # selection_prop: function() { return Math.ceil(feature.height/50); }
-                # hover_color: yellow
-                # click_color: red
-                hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
-                click_color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
+                hover_color: yellow
+                click_color: red
+                # hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
+                # click_color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
                 order: global.feature_order
                 color: [.7, .7, .7]
 
@@ -543,11 +531,11 @@ layers:
                     # color: grey
 
         # extrude 3d buildings
-        # extruded:
-        #     filter: { $zoom: { min: 15 } }
-        #     draw:
-        #         polygons:
-        #             extrude: function () { return feature.height > 20 || $zoom >= 16; }
+        extruded:
+            filter: { $zoom: { min: 15 } }
+            draw:
+                polygons:
+                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
         high-line:
             filter: { roof_material: grass }

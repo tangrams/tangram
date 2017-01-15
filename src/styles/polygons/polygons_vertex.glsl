@@ -11,11 +11,6 @@ uniform mat4 u_modelView;
 uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
 
-uniform vec4 u_selection_hover_group;
-uniform vec4 u_selection_click_group;
-uniform vec4 u_selection_hover_color;
-uniform vec4 u_selection_click_color;
-
 attribute vec4 a_position;
 attribute vec4 a_color;
 

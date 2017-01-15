@@ -6,5 +6,18 @@
 
 #if defined(TANGRAM_FEATURE_SELECTABLE)
     varying vec4 v_selection_color;
-    varying vec4 v_selection_group;
+    varying float v_selection_state;
+
+    uniform vec4 u_selection_hover_group;
+    uniform vec4 u_selection_click_group;
+    uniform vec4 u_selection_hover_color;
+    uniform vec4 u_selection_click_color;
+
+    bool isFeatureHover (void) {
+        return v_selection_state == 1.;
+    }
+
+    bool isFeatureClick (void) {
+        return v_selection_state == 2.;
+    }
 #endif
