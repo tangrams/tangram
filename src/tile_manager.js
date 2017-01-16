@@ -297,6 +297,7 @@ export default class TileManager {
             tile.buildMeshes(this.scene.styles, progress);
             this.updateTileStates();
             this.scene.requestRedraw();
+            this.scene.updateSelectionStates(); // TODO: tile could pass selection info directly to avoid additional main/worker roundtrips
         }
 
         if (progress.done) {

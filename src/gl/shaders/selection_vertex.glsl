@@ -14,11 +14,15 @@
     v_selection_state = 0.;
 
     if (u_selection_click_group == a_selection_group) {
+        if (u_selection_has_click_color) {
+            v_color = u_selection_click_color;
+        }
         v_selection_state = 2.;
-        v_color = u_selection_click_color;
     }
     else if (u_selection_hover_group == a_selection_group) {
-        v_color = u_selection_hover_color;
+        if (u_selection_has_hover_color) {
+            v_color = u_selection_hover_color;
+        }
         v_selection_state = 1.;
     }
 #endif

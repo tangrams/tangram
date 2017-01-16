@@ -14,6 +14,7 @@ export default class FeatureSelection {
     init() {
         // Selection state tracking
         this.requests = {}; // pending selection requests
+        this.states = {};
         this.feature = null; // currently selected feature
         this.read_delay = 0; // delay time from selection render to framebuffer sample, to avoid CPU/GPU sync lock
         this.read_delay_timer = null; // current timer (setTimeout) for delayed selection reads
@@ -65,7 +66,7 @@ export default class FeatureSelection {
 
     // Request feature selection
     // Runs asynchronously, schedules selection buffer to be updated
-    getFeatureAt(point) {
+    getFeatureAt(point, state) {
         // ensure requested point is in canvas bounds
         if (!point || point.x < 0 || point.y < 0 || point.x > 1 || point.y > 1) {
             return Promise.resolve({ feature: null, changed: false });
@@ -77,9 +78,15 @@ export default class FeatureSelection {
             this.requests[this.selection_request_id] = {
                 id: this.selection_request_id,
                 point,
+                state,
                 resolve,
                 reject
             };
+        }).then(selection => {
+            if (state) {
+                this.states[state] = selection;
+            }
+            return selection;
         });
     }
 
@@ -206,6 +213,29 @@ export default class FeatureSelection {
         }
     }
 
+    updateState (state_key) {
+        // Only request update:
+        // - once at a time for each state
+        // - if we don't have colors for this state from all worker threads yet
+        let state = this.states[state_key];
+        if (!state || !state.group ||
+            state.update_pending ||
+            state.selection_colors.filter(x => x).length === this.workers.length) {
+            return Promise.resolve();
+        }
+        state.update_pending = true;
+
+        return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionGroupColor', state.group.key)
+            .then(selection_colors => {
+                log('debug', 'Updated selection colors from workers', state_key, selection_colors);
+                state.selection_colors = selection_colors;
+                state.update_pending = false;
+            });
+    }
+
+    clearState (state_key) {
+        this.states[state_key] = null;
+    }
 
     // Selection map generation
     // Each worker will create its own independent, 'local' selection map
@@ -257,13 +287,10 @@ export default class FeatureSelection {
         let group_value, group_key;
         if (typeof selection_prop === 'function') {
             group_value = selection_prop(context);
-            // group_key = context.source + '/' + group_value;
         }
         else {
             group_value = feature.properties[selection_prop];
-            // group_key = context.source + '/' + selection_prop + '/' + group_value;
         }
-        // group_key = draw.key + ':' + group_value;
         group_key = draw.selection_group + ':' + group_value;
 
         let selector = this.createSelector(tile);

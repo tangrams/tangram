@@ -10,8 +10,12 @@
 
     uniform vec4 u_selection_hover_group;
     uniform vec4 u_selection_click_group;
+
     uniform vec4 u_selection_hover_color;
     uniform vec4 u_selection_click_color;
+
+    uniform bool u_selection_has_hover_color;
+    uniform bool u_selection_has_click_color;
 
     bool isFeatureHover (void) {
         return v_selection_state == 1.;

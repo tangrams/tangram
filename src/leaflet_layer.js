@@ -414,10 +414,9 @@ function extendLeaflet(options) {
 
                 this.hooks.click = (event) => {
                     if (typeof this._selection_events.click === 'function') {
-                        this.scene.getFeatureAt(event.containerPoint).
+                        this.scene.getFeatureAt(event.containerPoint, 'click').
                             then(selection => {
                                 let results = Object.assign({}, selection, { leaflet_event: event });
-                                this.scene.last_selection_click = selection;
                                 this._selection_events.click(results);
                             });
                     }
@@ -426,10 +425,9 @@ function extendLeaflet(options) {
 
                 this.hooks.mousemove = (event) => {
                     if (typeof this._selection_events.hover === 'function') {
-                        this.scene.getFeatureAt(event.containerPoint).
+                        this.scene.getFeatureAt(event.containerPoint, 'hover').
                             then(selection => {
                                 let results = Object.assign({}, selection, { leaflet_event: event });
-                                this.scene.last_selection_hover = selection;
                                 this._selection_events.hover(results);
                             });
                     }
@@ -439,7 +437,7 @@ function extendLeaflet(options) {
                 this.hooks.mouseout = (event) => {
                     // When mouse leaves map, send an additional selection event to indicate no feature is selected
                     if (typeof this._selection_events.hover === 'function') {
-                        this.scene.last_selection_hover = null;
+                        this.scene.selection.clearState('hover');
                         this._selection_events.hover({ changed: true, leaflet_event: event });
                     }
                 };

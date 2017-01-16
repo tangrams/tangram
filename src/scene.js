@@ -589,26 +589,37 @@ export default class Scene {
             this.view.setupTile(tile, program);
 
             let worker_id = tile.worker_id;
-            if (this.last_selection_hover &&
-                this.last_selection_hover.selection_colors &&
-                this.last_selection_hover.selection_colors[worker_id]) {
-                program.uniform('4f', 'u_selection_hover_group', this.last_selection_hover.selection_colors[worker_id]);
 
-                if (this.last_selection_hover.feature.hover_color) {
-                    program.uniform('4f', 'u_selection_hover_color', this.last_selection_hover.feature.hover_color);
+            let hover_state = this.selection.states.hover;
+            if (hover_state &&
+                hover_state.selection_colors &&
+                hover_state.selection_colors[worker_id]) {
+                program.uniform('4f', 'u_selection_hover_group', hover_state.selection_colors[worker_id]);
+
+                if (hover_state.feature.hover_color) {
+                    program.uniform('4f', 'u_selection_hover_color', hover_state.feature.hover_color);
+                    program.uniform('1i', 'u_selection_has_hover_color', true);
+                }
+                else {
+                    program.uniform('1i', 'u_selection_has_hover_color', false);
                 }
             }
             else {
                 program.uniform('4f', 'u_selection_hover_group', [0, 0, 0, 0]);
             }
 
-            if (this.last_selection_click &&
-                this.last_selection_click.selection_colors &&
-                this.last_selection_click.selection_colors[worker_id]) {
-                program.uniform('4f', 'u_selection_click_group', this.last_selection_click.selection_colors[worker_id]);
+            let click_state = this.selection.states.click;
+            if (click_state &&
+                click_state.selection_colors &&
+                click_state.selection_colors[worker_id]) {
+                program.uniform('4f', 'u_selection_click_group', click_state.selection_colors[worker_id]);
 
-                if (this.last_selection_click.feature.click_color) {
-                    program.uniform('4f', 'u_selection_click_color', this.last_selection_click.feature.click_color);
+                if (click_state.feature.click_color) {
+                    program.uniform('4f', 'u_selection_click_color', click_state.feature.click_color);
+                    program.uniform('1i', 'u_selection_has_click_color', true);
+                }
+                else {
+                    program.uniform('1i', 'u_selection_has_click_color', false);
                 }
             }
             else {
@@ -738,7 +749,7 @@ export default class Scene {
     }
 
     // Request feature selection at given pixel. Runs async and returns results via a promise.
-    getFeatureAt(pixel) {
+    getFeatureAt(pixel, state) {
         if (!this.initialized) {
             log('debug', "Scene.getFeatureAt() called before scene was initialized");
             return Promise.resolve();
@@ -750,13 +761,20 @@ export default class Scene {
             y: pixel.y * Utils.device_pixel_ratio / this.view.size.device.height
         };
 
-        return this.selection.getFeatureAt(point).
+        this.dirty = true; // need to make sure the scene re-renders for these to be processed
+        return this.selection.getFeatureAt(point, state).
             then(selection => {
                 Object.assign(selection, { pixel });
-                // this.last_selection = selection;
                 return selection;
             }).
             catch(error => Promise.resolve({ error }));
+    }
+
+    updateSelectionStates() {
+        return Promise.all([
+            this.selection.updateState('hover'),
+            this.selection.updateState('click')
+        ]);
     }
 
     // Rebuild geometry, without re-parsing the config or re-compiling styles
@@ -1059,8 +1077,8 @@ export default class Scene {
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
 
-        this.last_selection_hover = null;
-        this.last_selection_click = null;
+        this.selection.clearState('hover');
+        this.selection.clearState('click');
 
         // Optionally rebuild geometry
         let done = rebuild ?
