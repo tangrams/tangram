@@ -121,7 +121,7 @@ export default class Scene {
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
 
-                const updating = this.updateConfig({ serialize_funcs, fade_in: true });
+                const updating = this.updateConfig({ serialize_funcs, load_event: true, fade_in: true });
                 if (options.blocking === true) {
                     return updating;
                 }
@@ -821,7 +821,6 @@ export default class Scene {
         return SceneLoader.loadScene(this.config_source, this.config_path).then(({config, bundle}) => {
             this.config = config;
             this.config_bundle = bundle;
-            this.trigger('load', { config: this.config });
             return this.config;
         });
     }
@@ -1007,11 +1006,13 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ rebuild = true, serialize_funcs, fade_in = false } = {}) {
+    updateConfig({ load_event = false, rebuild = true, serialize_funcs, fade_in = false } = {}) {
         this.generation = ++Scene.generation;
         this.updating++;
 
         this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
+        this.trigger(load_event ? 'load' : 'update', { config: this.config });
+
         SceneLoader.hoistTextures(this.config); // move inline textures into global texture set
         this.style_manager.init();
         this.view.reset();
