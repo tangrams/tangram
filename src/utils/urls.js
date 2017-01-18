@@ -137,6 +137,25 @@ export function createObjectURL (url) {
     }
 }
 
+let _revokeObjectURL;
+export function revokeObjectURL (url) {
+    if (_revokeObjectURL === undefined) {
+        _revokeObjectURL = (window.URL && window.URL.revokeObjectURL) || (window.webkitURL && window.webkitURL.revokeObjectURL);
+
+        if (typeof _revokeObjectURL !== 'function') {
+            _revokeObjectURL = null;
+            log('warn', `window.URL.revokeObjectURL (or vendor prefix) not found, unable to create local blob URLs`);
+        }
+    }
+
+    if (_revokeObjectURL) {
+        return _revokeObjectURL(url);
+    }
+    else {
+        return url;
+    }
+}
+
 // Get URL that the current script was loaded from
 // If currentScript is not available, loops through <script> elements searching for a list of provided paths
 // e.g. findCurrentURL('tangram.debug.js', 'tangram.min.js');

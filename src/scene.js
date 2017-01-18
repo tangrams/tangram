@@ -320,6 +320,9 @@ export default class Scene {
             // Let VertexElements know if 32 bit indices for element arrays are available
             let Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
             WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', Uint32_flag);
+
+            // Free memory after worker initialization
+            URLs.revokeObjectURL(url);
         });
     }
 
