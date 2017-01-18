@@ -46,7 +46,6 @@ export default class Scene {
         this.config = null;
         this.config_source = config_source;
         this.config_bundle = null;
-        this.config_serialized = null;
         this.last_valid_config_source = null;
 
         this.styles = null;
@@ -1041,10 +1040,10 @@ export default class Scene {
     // Serialize config and send to worker
     syncConfigToWorker({ serialize_funcs = true } = {}) {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
-        this.config_serialized =
+        let config_serialized =
             serialize_funcs ? Utils.serializeWithFunctions(this.config) : JSON.stringify(this.config);
         return WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
-            config: this.config_serialized,
+            config: config_serialized,
             generation: this.generation,
             introspection: this.introspection
         });
