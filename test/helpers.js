@@ -1,4 +1,5 @@
 import Scene from '../src/scene';
+import * as URLs from '../src/utils/urls';
 
 /*
     Special web worker treatment:
@@ -33,6 +34,8 @@ let workerBody = loadWorkerContent(worker_url);
 sinon.stub(Scene.prototype, 'getWorkerUrl').returns(
     URL.createObjectURL(new Blob([workerBody], { type: 'application/javascript' }))
 );
+
+sinon.stub(URLs, 'revokeObjectURL').returns(null);
 
 let container = document.createElement('div');
 container.style.width = '250px';
