@@ -335,6 +335,17 @@ export default class TileManager {
         }
     }
 
+    // Get a debug property across tiles
+    getDebugProp(prop, filter) {
+        var vals = [];
+        for (var t in this.tiles) {
+            if (this.tiles[t].debug[prop] != null && (typeof filter !== 'function' || filter(this.tiles[t]) === true)) {
+                vals.push(this.tiles[t].debug[prop]);
+            }
+        }
+        return vals;
+    }
+
     // Sum of a debug property across tiles
     getDebugSum(prop, filter) {
         var sum = 0;

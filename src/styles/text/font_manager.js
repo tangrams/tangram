@@ -7,13 +7,15 @@ const FontManager = {
 
     // Font detection
     fonts_loaded: Promise.resolve(), // resolves when all requested fonts have been detected
+    last_loaded: null,               // tracks last set of fonts loaded
 
     // Load set of custom font faces
     // `fonts` is an object where the key is a font family name, and the value is one or more font face
     // definitions. The value can be either a single object, or an array of such objects.
     // If the special string value 'external' is used, it indicates the the font will be loaded via external CSS.
     loadFonts (fonts) {
-        if (fonts) {
+        let same = (JSON.stringify(fonts) === this.last_loaded);
+        if (fonts && !same) {
             let queue = [];
             for (let family in fonts) {
                 if (Array.isArray(fonts[family])) {
@@ -24,6 +26,7 @@ const FontManager = {
                 }
             }
 
+            this.last_loaded = JSON.stringify(fonts);
             this.fonts_loaded = Promise.all(queue.filter(x => x));
         }
         return this.fonts_loaded;

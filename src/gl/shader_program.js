@@ -201,6 +201,10 @@ export default class ShaderProgram {
             throw(new Error(`ShaderProgram.compile(): program ${this.id} (${this.name}) error:`, error));
         }
 
+        // Discard shader sources after successful compilation
+        this.computed_vertex_source = null;
+        this.computed_fragment_source = null;
+
         this.use();
         this.refreshUniforms();
         this.refreshAttributes();

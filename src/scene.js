@@ -46,7 +46,6 @@ export default class Scene {
         this.config = null;
         this.config_source = config_source;
         this.config_bundle = null;
-        this.config_serialized = null;
         this.last_valid_config_source = null;
 
         this.styles = null;
@@ -64,6 +63,8 @@ export default class Scene {
         this.last_render_count = 0;
         this.render_count_changed = false;
         this.frame = 0;
+        this.last_main_render = -1;         // frame counter for last main render pass
+        this.last_selection_render = -1;    // frame counter for last selection render pass
         this.media_capture = new MediaCapture();
         this.selection = null;
         this.introspection = false;
@@ -119,7 +120,7 @@ export default class Scene {
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
 
-                const updating = this.updateConfig({ serialize_funcs, fade_in: true });
+                const updating = this.updateConfig({ serialize_funcs, load_event: true, fade_in: true });
                 if (options.blocking === true) {
                     return updating;
                 }
@@ -319,6 +320,9 @@ export default class Scene {
             // Let VertexElements know if 32 bit indices for element arrays are available
             let Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
             WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', Uint32_flag);
+
+            // Free memory after worker initialization
+            URLs.revokeObjectURL(url);
         });
     }
 
@@ -418,9 +422,11 @@ export default class Scene {
     }
 
     update() {
-        // Render on demand
+        // Determine which passes (if any) to render
+        let main = this.dirty;
+        let selection = this.selection.hasPendingRequests();
         var will_render = !(
-            this.dirty === false ||
+            (main === false && selection === false) ||
             this.initialized === false ||
             this.updating > 0 ||
             this.ready() === false
@@ -439,7 +445,7 @@ export default class Scene {
 
         // Render the scene
         this.updateDevicePixelRatio();
-        this.render();
+        this.render({ main, selection });
         this.updateViewComplete(); // fires event when rendered tile set or style changes
         this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
@@ -458,7 +464,8 @@ export default class Scene {
         return true;
     }
 
-    render() {
+    // Accepts flags indicating which render passes should be made
+    render({ main, selection }) {
         var gl = this.gl;
 
         // Update styles, camera, lights
@@ -466,16 +473,21 @@ export default class Scene {
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
         // Render main pass
-        this.render_count = this.renderPass();
+        if (main) {
+            this.render_count = this.renderPass();
+            this.last_main_render = this.frame;
+        }
 
         // Render selection pass (if needed)
-        if (this.selection.pendingRequests()) {
+        if (selection) {
             if (this.view.panning || this.view.zooming) {
                 this.selection.clearPendingRequests();
                 return;
             }
 
-            if (!this.selection.locked) {       // check if selection buffer is locked (e.g. building tiles)
+            // Only re-render if selection buffer is out of date (relative to main render buffer)
+            // and not locked (e.g. no tiles are actively building)
+            if (!this.selection.locked && this.last_selection_render < this.last_main_render) {
                 this.selection.bind();          // switch to FBO
                 this.renderPass(
                     'selection_program',        // render w/alternate program
@@ -484,6 +496,7 @@ export default class Scene {
                 // Reset to screen buffer
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                this.last_selection_render = this.frame;
             }
 
             this.selection.read(); // process any pending results from selection buffer
@@ -709,7 +722,6 @@ export default class Scene {
             y: pixel.y * Utils.device_pixel_ratio / this.view.size.device.height
         };
 
-        this.dirty = true; // need to make sure the scene re-renders for these to be processed
         return this.selection.getFeatureAt(point).
             then(selection => Object.assign(selection, { pixel })).
             catch(error => Promise.resolve({ error }));
@@ -811,7 +823,6 @@ export default class Scene {
         return SceneLoader.loadScene(this.config_source, this.config_path).then(({config, bundle}) => {
             this.config = config;
             this.config_bundle = bundle;
-            this.trigger('load', { config: this.config });
             return this.config;
         });
     }
@@ -997,11 +1008,13 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ rebuild = true, serialize_funcs, fade_in = false } = {}) {
+    updateConfig({ load_event = false, rebuild = true, serialize_funcs, fade_in = false } = {}) {
         this.generation = ++Scene.generation;
         this.updating++;
 
         this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
+        this.trigger(load_event ? 'load' : 'update', { config: this.config });
+
         SceneLoader.hoistTextures(this.config); // move inline textures into global texture set
         this.style_manager.init();
         this.view.reset();
@@ -1030,10 +1043,10 @@ export default class Scene {
     // Serialize config and send to worker
     syncConfigToWorker({ serialize_funcs = true } = {}) {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
-        this.config_serialized =
+        let config_serialized =
             serialize_funcs ? Utils.serializeWithFunctions(this.config) : JSON.stringify(this.config);
         return WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
-            config: this.config_serialized,
+            config: config_serialized,
             generation: this.generation,
             introspection: this.introspection
         });
@@ -1185,6 +1198,10 @@ export default class Scene {
                     counts[base] += style_counts[style];
                 }
                 return counts;
+            },
+
+            renderableTilesCount () {
+                return scene.tile_manager.getRenderableTiles().length;
             }
         };
     }
