@@ -18,10 +18,10 @@
     uniform bool u_selection_has_click_color;
 
     bool isFeatureHover (void) {
-        return v_selection_state == 1.;
+        return abs(1. - v_selection_state) <= TANGRAM_EPSILON;
     }
 
     bool isFeatureClick (void) {
-        return v_selection_state == 2.;
+        return abs(2. - v_selection_state) <= TANGRAM_EPSILON;
     }
 #endif
