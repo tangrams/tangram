@@ -243,7 +243,8 @@ export default class Scene {
 
     // Get the URL to load the web worker from
     getWorkerUrl() {
-        let worker_url = this.worker_url || URLs.findCurrentURL('tangram.debug.js', 'tangram.min.js');
+        let worker_url = URLs.createObjectURL(new Blob(['(' + Tangram._worker_src + ')()'], { type: 'application/javascript' }));
+        delete Tangram._worker_src;
 
         if (!worker_url) {
             throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
