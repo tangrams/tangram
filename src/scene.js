@@ -19,6 +19,7 @@ import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
 import FontManager from './styles/text/font_manager';
 import MediaCapture from './utils/media_capture';
+import source from './source';
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
@@ -244,8 +245,16 @@ export default class Scene {
 
     // Get the URL to load the web worker from
     getWorkerUrl() {
-        let worker_url = URLs.createObjectURL(new Blob(['(' + Tangram._worker_src + ')()'], { type: 'application/javascript' }));
-        delete Tangram._worker_src;
+        let worker_url;
+        if (source._worker_src){
+            // load from source object using browserify shim (preferred)
+            worker_url = URLs.createObjectURL(new Blob(['(' + source._worker_src + ')()'], { type: 'application/javascript' }));
+            delete source._worker_src;
+        }
+        else {
+            // hardcode distribution build names (not preferred)
+            worker_url = this.worker_url || URLs.findCurrentURL('tangram.debug.js', 'tangram.min.js');
+        }
 
         if (!worker_url) {
             throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
