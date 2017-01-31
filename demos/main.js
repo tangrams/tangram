@@ -20,11 +20,14 @@ Enjoy!
 
 (function () {
 
-    var scene_url = 'demos/scene.yaml',
+    var scene_url = 'demos/bubble-wrap.yaml',
         osm_debug = false,
-        rS, url_hash, map_start_location, url_style;
+        rS, map_start_location, url_style;
 
-    getValuesFromUrl();
+
+    var URL_DELIMITER = '/';
+    var url_hash = getValuesFromUrl();
+    var map_start_location = url_hash || [16, 40.70531887544228, -74.00976419448853]; // NYC
 
     // default source, can be overriden by URL
     var
@@ -72,31 +75,15 @@ Enjoy!
     // #[lat],[lng],[zoom]
     // #[source],[lat],[lng],[zoom] (legacy)
     function getValuesFromUrl() {
-
-        url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
-
-        // Get location from URL
-        map_start_location = [40.70531887544228, -74.00976419448853, 16]; // NYC
-
-        if (url_hash.length >= 3) {
-            // Note: backwards compatibility with old demo links, deprecate?
-            if (typeof parseFloat(url_hash[0]) === 'number' && !isNaN(parseFloat(url_hash[0]))) {
-                map_start_location = url_hash.slice(0, 3);
-            }
-            else if (typeof parseFloat(url_hash[1]) === 'number' && !isNaN(parseFloat(url_hash[1]))) {
-                map_start_location = url_hash.slice(1, 4);
-            }
-        }
-
-        if (url_hash.length > 3) {
-            // Style on URL?
-            var re = new RegExp(/(?:style|mode)=(\w+)/);
-            url_hash.forEach(function(u) {
-                var match = u.match(re);
-                url_style = (match && match.length > 1 && match[1]);
+        var url_hash = window.location.hash.slice(1, window.location.hash.length).split(URL_DELIMITER);
+        if (url_hash.length === 3){
+            return url_hash.map(function(value){
+                return parseFloat(value);
             });
         }
-
+        else {
+            return false;
+        }
     }
 
     // Put current state on URL
@@ -106,7 +93,7 @@ Enjoy!
         clearTimeout(update_url_timeout);
         update_url_timeout = setTimeout(function() {
             var center = map.getCenter();
-            var url_options = [center.lat, center.lng, map.getZoom()];
+            var url_options = [map.getZoom(), center.lat, center.lng];
 
             if (rS) {
                 url_options.push('rstats');
@@ -116,7 +103,7 @@ Enjoy!
                 url_options.push('style=' + style_options.effect);
             }
 
-            window.location.hash = url_options.join(',');
+            window.location.hash = url_options.join(URL_DELIMITER);
         }, update_url_throttle);
     }
 
@@ -129,33 +116,34 @@ Enjoy!
 
     // Update URL hash on move
     map.attributionControl.setPrefix('');
-    map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+
+    map.setView(map_start_location.slice(1, 3), map_start_location[0]);
     map.on('move', updateURL);
 
     // Render/GL stats: http://spite.github.io/rstats/
     // Activate with 'rstats' anywhere in options list in URL
-    if (url_hash.indexOf('rstats') >= 0) {
-        var glS = new glStats();
-        glS.fractions = []; // turn this off till we need it
+    // if (url_hash.indexOf('rstats') >= 0) {
+    //     var glS = new glStats();
+    //     glS.fractions = []; // turn this off till we need it
 
-        rS = new rStats({
-            values: {
-                frame: { caption: 'Total frame time (ms)', over: 10 },
-                raf: { caption: 'Time since last rAF (ms)' },
-                fps: { caption: 'Framerate (FPS)', below: 30 },
-                rendertiles: { caption: 'Rendered tiles' },
-                features: { caption: '# of geo features' },
-                glbuffers: { caption: 'GL buffers (MB)' }
-            },
-            CSSPath : 'demos/lib/',
-            plugins: [glS]
-        });
+    //     rS = new rStats({
+    //         values: {
+    //             frame: { caption: 'Total frame time (ms)', over: 10 },
+    //             raf: { caption: 'Time since last rAF (ms)' },
+    //             fps: { caption: 'Framerate (FPS)', below: 30 },
+    //             rendertiles: { caption: 'Rendered tiles' },
+    //             features: { caption: '# of geo features' },
+    //             glbuffers: { caption: 'GL buffers (MB)' }
+    //         },
+    //         CSSPath : 'demos/lib/',
+    //         plugins: [glS]
+    //     });
 
-        // Move it to the bottom-left so it doesn't obscure zoom controls
-        var rSDOM = document.querySelector('.rs-base');
-        rSDOM.style.bottom = '0px';
-        rSDOM.style.top = 'inherit';
-    }
+    //     // Move it to the bottom-left so it doesn't obscure zoom controls
+    //     var rSDOM = document.querySelector('.rs-base');
+    //     rSDOM.style.bottom = '0px';
+    //     rSDOM.style.top = 'inherit';
+    // }
 
 
     // For easier debugging access
@@ -431,7 +419,7 @@ Enjoy!
             if (key.alt) {
                 var url = 'https://www.openstreetmap.org/edit?';
                 var center = map.getCenter();
-                url += '#map=' + map.getZoom() + '/' + center.lat + '/' + center.lng;
+                url += '#map=' + center.lat + URL_DELIMITER + center.lng + URL_DELIMITER + map.getZoom();
                 window.open(url, '_blank');
             }
         });
