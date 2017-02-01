@@ -7,7 +7,8 @@ const LINE_EXCEED_STRAIGHT = 1.5;           // minimal ratio for straight labels
 const LINE_EXCEED_STRAIGHT_NO_CURVE = 1.8;  // minimal ratio for straight labels that have no curved option
 const CURVE_MIN_TOTAL_COST = 1.3;
 const CURVE_MIN_AVG_COST = 0.4;
-const CURVE_ANGLE_TOLERANCE = 0.02;
+const CURVE_ANGLE_TOLERANCE = 0.1;
+const MAX_CURVATURE = 1;
 
 let LabelLine = {
     create : function(segment_size, total_size, line, layout){
@@ -185,18 +186,20 @@ class LabelLineStraight extends LabelLineBase {
         let upp = layout.units_per_pixel;
         line = LabelLineBase.splitLineByOrientation(line);
 
-        let currAngle = getAngleForSegment(line[0], line[1]);
+        let curr_angle = getAngleForSegment(line[0], line[1]);
         let length = 0;
         let placement = line[0];
         let label_length = size[0] * upp;
+        let curve_tolerance = 0;
 
         for (let i = 0; i < line.length - 1; i++){
             let curr = line[i];
             let next = line[i+1];
 
-            let nextAngle = getAngleForSegment(curr, next);
+            let next_angle = getAngleForSegment(curr, next);
+            curve_tolerance += curr_angle - next_angle;
 
-            if (Math.abs(currAngle - nextAngle) > CURVE_ANGLE_TOLERANCE){
+            if (Math.abs(curve_tolerance) > CURVE_ANGLE_TOLERANCE){
                 length = 0;
                 placement = curr;
             }
@@ -206,7 +209,8 @@ class LabelLineStraight extends LabelLineBase {
             if (calcFitness(length, label_length) < this.tolerance){
                 let currMid = Vector.mult(Vector.add(placement, next), 0.5);
 
-                this.angle = -nextAngle;
+                // TODO: modify angle if line chosen within curve_angle_tolerance
+                this.angle = -next_angle;
                 this.position = currMid;
                 this.updateBBoxes(size);
                 if (this.inTileBounds()) {
@@ -214,7 +218,7 @@ class LabelLineStraight extends LabelLineBase {
                 }
             }
 
-            currAngle = nextAngle;
+            curr_angle = next_angle;
         }
 
         return false;
@@ -380,7 +384,7 @@ class LabelLineCurved extends LabelLineBase {
         var curvatures = []; // array of curvature values per line vertex
 
         // calculate curvature values
-        for (let i = start_index + 1; i < end_index - 1; i++){
+        for (let i = start_index + 1; i < end_index; i++){
             var prev = line[i - 1];
             var curr = line[i];
             var next = line[i + 1];
@@ -389,7 +393,7 @@ class LabelLineCurved extends LabelLineBase {
             var norm_2 = Vector.perp(next, curr);
 
             var curvature = Vector.angleBetween(norm_1, norm_2);
-            if (curvature > 1) {
+            if (curvature > MAX_CURVATURE) {
                 curvature = Infinity;
             }
 
@@ -403,6 +407,10 @@ class LabelLineCurved extends LabelLineBase {
         var avg_costs = [];
         var line_index = start_index;
         var position = 0;
+
+        for (let i = 0; i < start_index; i++){
+            position += line_lengths[i];
+        }
 
         // move window along line, starting at first vertex
         while (position + label_length < total_line_length){
@@ -437,6 +445,10 @@ class LabelLineCurved extends LabelLineBase {
 
             position += line_lengths[line_index];
             line_index++;
+        }
+
+        if (total_costs.length === 0) {
+            return -1;
         }
 
         var min_total_cost = Math.min.apply(null, total_costs);
