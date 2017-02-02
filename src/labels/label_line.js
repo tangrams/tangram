@@ -199,7 +199,9 @@ class LabelLineStraight extends LabelLineBase {
 
     fit (size, line, layout){
         let upp = layout.units_per_pixel;
+
         line = LabelLineBase.splitLineByOrientation(line);
+        let line_lengths = getLineLengths(line);
 
         let curr_angle = getAngleForSegment(line[0], line[1]);
         let label_length = size[0] * upp;
@@ -229,7 +231,7 @@ class LabelLineStraight extends LabelLineBase {
                     break;
                 }
 
-                length += Vector.length(Vector.sub(ahead_next, ahead_curr));
+                length += line_lengths[ahead_index - 1];
 
                 if (calcFitness(length, label_length) < this.tolerance){
                     let currMid = Vector.mult(Vector.add(curr, ahead_next), 0.5);
