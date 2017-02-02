@@ -206,7 +206,9 @@ class LabelLineStraight extends LabelLineBase {
         let curr_angle = getAngleForSegment(line[0], line[1]);
         let label_length = size[0] * upp;
 
-        if (curr_angle <= Math.PI/2) curr_angle += 2 * Math.PI;
+        if (curr_angle <= Math.PI/2) {
+            curr_angle += 2 * Math.PI;
+        }
 
         for (let i = 0; i < line.length - 1; i++){
             let curr = line[i];
@@ -221,7 +223,10 @@ class LabelLineStraight extends LabelLineBase {
                 let ahead_next = line[ahead_index];
 
                 let next_angle = getAngleForSegment(ahead_curr, ahead_next);
-                if (next_angle <= Math.PI/2) next_angle += 2 * Math.PI;
+
+                if (next_angle <= Math.PI/2) {
+                    next_angle += 2 * Math.PI;
+                }
 
                 if (ahead_index !== i + 1){
                     curve_tolerance += next_angle - prev_angle;
