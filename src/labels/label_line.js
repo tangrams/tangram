@@ -60,13 +60,13 @@ class LabelLineBase {
         for (let i = 1; i < line.length; i++) {
             let pt = line[i];
             let prev_pt = line[i - 1];
+            let length = Vector.length(Vector.sub(pt, prev_pt));
 
-            if (pt[0] >= prev_pt[0]){
+            if (pt[0] > prev_pt[0]){
                 // positive orientation
                 if (orientation === 1){
                     current_line.push(pt);
-                    current_length += Vector.length(pt, prev_pt);
-
+                    current_length += length;
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
@@ -74,7 +74,7 @@ class LabelLineBase {
                 }
                 else {
                     current_line = [prev_pt, pt];
-                    current_length = Vector.length(pt, prev_pt);
+                    current_length = length;
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
@@ -82,11 +82,11 @@ class LabelLineBase {
                     orientation = 1;
                 }
             }
-            else {
+            else if (pt[0] < prev_pt[0]) {
                 // negative orientation
                 if (orientation === -1){
                     current_line.unshift(pt);
-                    current_length += Vector.length(pt, prev_pt);
+                    current_length += length;
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
@@ -95,12 +95,27 @@ class LabelLineBase {
                 else {
                     // add lines is reverse order
                     current_line = [pt, prev_pt];
-                    current_length = Vector.length(pt, prev_pt);
+                    current_length = length;
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
                     }
                     orientation = -1;
+                }
+            }
+            else {
+                // vertical line (doesn't change previous orientation)
+                current_length += length;
+                if (current_length > max_length){
+                    longest_line = current_line;
+                    max_length = current_length;
+                }
+                if (orientation === -1){
+                    current_line.unshift(pt);
+                }
+                else {
+                    current_line.push(pt);
+                    orientation = 1;
                 }
             }
         }
@@ -187,38 +202,50 @@ class LabelLineStraight extends LabelLineBase {
         line = LabelLineBase.splitLineByOrientation(line);
 
         let curr_angle = getAngleForSegment(line[0], line[1]);
-        let length = 0;
-        let placement = line[0];
         let label_length = size[0] * upp;
-        let curve_tolerance = 0;
+
+        if (curr_angle <= Math.PI/2) curr_angle += 2 * Math.PI;
 
         for (let i = 0; i < line.length - 1; i++){
             let curr = line[i];
-            let next = line[i+1];
 
-            let next_angle = getAngleForSegment(curr, next);
-            curve_tolerance += curr_angle - next_angle;
+            let curve_tolerance = 0;
+            let length = 0;
+            let ahead_index = i + 1;
+            let prev_angle;
 
-            if (Math.abs(curve_tolerance) > CURVE_ANGLE_TOLERANCE){
-                length = 0;
-                placement = curr;
-            }
+            while (ahead_index < line.length){
+                let ahead_curr = line[ahead_index - 1];
+                let ahead_next = line[ahead_index];
 
-            length += Vector.length(Vector.sub(next, curr));
+                let next_angle = getAngleForSegment(ahead_curr, ahead_next);
+                if (next_angle <= Math.PI/2) next_angle += 2 * Math.PI;
 
-            if (calcFitness(length, label_length) < this.tolerance){
-                let currMid = Vector.mult(Vector.add(placement, next), 0.5);
-
-                // TODO: modify angle if line chosen within curve_angle_tolerance
-                this.angle = -next_angle;
-                this.position = currMid;
-                this.updateBBoxes(size);
-                if (this.inTileBounds()) {
-                    return true;
+                if (ahead_index !== i + 1){
+                    curve_tolerance += next_angle - prev_angle;
                 }
-            }
 
-            curr_angle = next_angle;
+                if (Math.abs(curve_tolerance) > CURVE_ANGLE_TOLERANCE){
+                    break;
+                }
+
+                length += Vector.length(Vector.sub(ahead_next, ahead_curr));
+
+                if (calcFitness(length, label_length) < this.tolerance){
+                    let currMid = Vector.mult(Vector.add(curr, ahead_next), 0.5);
+
+                    // TODO: modify angle if line chosen within curve_angle_tolerance
+                    this.angle = -next_angle;
+                    this.position = currMid;
+                    this.updateBBoxes(size);
+                    if (this.inTileBounds()) {
+                        return true;
+                    }
+                }
+
+                prev_angle = next_angle;
+                ahead_index++;
+            }
         }
 
         return false;
