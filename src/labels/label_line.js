@@ -5,6 +5,7 @@ import OBB from '../utils/obb';
 const STOPS = [0, 0.33, 0.66, 0.99];
 const LINE_EXCEED_STRAIGHT = 1.5;           // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_STRAIGHT_NO_CURVE = 1.8;  // minimal ratio for straight labels that have no curved option
+const LINE_EXCEED_STAIGHT_LOOSE = 2;
 const CURVE_MIN_TOTAL_COST = 1.3;
 const CURVE_MIN_AVG_COST = 0.4;
 const CURVE_ANGLE_TOLERANCE = 0.1;
@@ -12,26 +13,27 @@ const MAX_CURVATURE = 1;
 
 let LabelLine = {
     create : function(segment_size, total_size, line, layout){
-        // try straight label
-        let label = new LabelLineStraight(total_size, line, layout);
+        const checks = [
+            { type: 'straight', tolerance : (layout.no_curving) ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT },
+            { type: 'curved' },
+            { type: 'straight', tolerance : LINE_EXCEED_STAIGHT_LOOSE }
+        ];
 
-        if (!label.throw_away){
-            return label;
+        for (let i = 0; i < checks.length; i++){
+            let check = checks[i];
+            let label;
+            if (check.type === 'straight'){
+                label = new LabelLineStraight(total_size, line, layout, check.tolerance);
+            }
+            else if (check.type === 'curved' && !layout.no_curving && line.length > 2){
+                label = new LabelLineCurved(segment_size, line, layout);
+            }
+
+            if (label && !label.throw_away) {
+                return label;
+            }
         }
 
-        // try curved label if straight doesn't fit
-        // if cannot curve (due to text shaping, etc), or if line not curved, throw away
-        if (layout.no_curving || line.length <= 2){
-            return false;
-        }
-
-        label = new LabelLineCurved(segment_size, line, layout);
-
-        if (!label.throw_away){
-            return label;
-        }
-
-        // no label can fit
         return false;
     }
 };
@@ -187,17 +189,16 @@ class LabelLineBase {
 }
 
 class LabelLineStraight extends LabelLineBase {
-    constructor (size, line, layout){
+    constructor (size, line, layout, tolerance){
         super(size, line, layout);
 
         this.num_segments = 0; // number of label segments
-        this.tolerance = (layout.no_curving) ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT;
         this.type = 'straight';
 
-        this.throw_away = !this.fit(size, line, layout);
+        this.throw_away = !this.fit(size, line, layout, tolerance);
     }
 
-    fit (size, line, layout){
+    fit (size, line, layout, tolerance){
         let upp = layout.units_per_pixel;
 
         line = LabelLineBase.splitLineByOrientation(line);
@@ -238,7 +239,7 @@ class LabelLineStraight extends LabelLineBase {
 
                 length += line_lengths[ahead_index - 1];
 
-                if (calcFitness(length, label_length) < this.tolerance){
+                if (calcFitness(length, label_length) < tolerance){
                     let currMid = Vector.mult(Vector.add(curr, ahead_next), 0.5);
 
                     // TODO: modify angle if line chosen within curve_angle_tolerance
