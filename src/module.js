@@ -34,7 +34,6 @@ import Collision from './labels/collision';
 import FeatureSelection from './selection';
 import CanvasText from './styles/text/canvas_text';
 import debugSettings from './utils/debug_settings';
-import source from './source'; // pointer to Tangram source code for loading workers
 
 import yaml from 'js-yaml';
 import JSZip from 'jszip';
@@ -80,6 +79,5 @@ if (Thread.is_main) {
 module.exports = {
     leafletLayer,
     debug,
-    version,
-    source
+    version
 };
