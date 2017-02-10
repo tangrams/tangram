@@ -5,7 +5,7 @@ import OBB from '../utils/obb';
 const STOPS = [0, 0.33, 0.66, 0.99];
 const LINE_EXCEED_STRAIGHT = 1.5;           // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_STRAIGHT_NO_CURVE = 1.8;  // minimal ratio for straight labels that have no curved option
-const LINE_EXCEED_STAIGHT_LOOSE = 3;
+const LINE_EXCEED_STAIGHT_LOOSE = 2.3;
 const CURVE_MIN_TOTAL_COST = 1.3;
 const CURVE_MIN_AVG_COST = 0.4;
 const CURVE_ANGLE_TOLERANCE = 0.1;
