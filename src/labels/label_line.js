@@ -2,25 +2,29 @@ import Label from './label';
 import Vector from '../vector';
 import OBB from '../utils/obb';
 
-const STOPS = [0, 0.33, 0.66, 0.99];
+const STOPS = [0, 0.33, 0.66, 0.99];        // zoom levels for curved label snapshot data (offsets and angles)
 const LINE_EXCEED_STRAIGHT = 1.5;           // minimal ratio for straight labels (label length) / (line length)
 const LINE_EXCEED_STRAIGHT_NO_CURVE = 1.8;  // minimal ratio for straight labels that have no curved option
-const LINE_EXCEED_STAIGHT_LOOSE = 2.3;
-const CURVE_MIN_TOTAL_COST = 1.3;
-const CURVE_MIN_AVG_COST = 0.4;
-const CURVE_ANGLE_TOLERANCE = 0.1;
-const MAX_CURVATURE = 1;
+const LINE_EXCEED_STAIGHT_LOOSE = 2.3;      // 2nd pass minimal ratio for straight labels
+const STRAIGHT_ANGLE_TOLERANCE = 0.1;       // multiple "almost straight" segments within this angle tolerance can be considered one straight segment
+const CURVE_MIN_TOTAL_COST = 1.3;           // curved line total curvature tolerance (sum)
+const CURVE_MIN_AVG_COST = 0.4;             // curved line average curvature tolerance (mean)
+const CURVE_MAX_ANGLE = 1;                  // curved line singular curvature tolerance (value)
 
 let LabelLine = {
+    // Given a label's bounding box size and size broken up into individual segments
+    // return a label that fits along a line geometry
     create : function(segment_size, total_size, line, layout){
-        const checks = [
+        // The passes done for fitting a label, and provided tolerances for each pass
+        const passes = [
             { type: 'straight', tolerance : (layout.no_curving) ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT },
             { type: 'curved' },
             { type: 'straight', tolerance : LINE_EXCEED_STAIGHT_LOOSE }
         ];
 
-        for (let i = 0; i < checks.length; i++){
-            let check = checks[i];
+        // loop through passes. first label found wins.
+        for (let i = 0; i < passes.length; i++){
+            let check = passes[i];
             let label;
             if (check.type === 'straight'){
                 label = new LabelLineStraight(total_size, line, layout, check.tolerance);
@@ -40,18 +44,20 @@ let LabelLine = {
 
 export default LabelLine;
 
+// Base class for a LabelLine
 class LabelLineBase {
-    constructor (size, line, layout) {
+    constructor (layout) {
         this.layout = layout;
         this.position = [];
         this.angle = 0;
         this.offset = layout.offset.slice();
         this.obbs = [];
         this.aabbs = [];
-        this.type = '';
-        this.num_segments = 0;
+        this.type = ''; // "curved" or "straight" to be set by parent class
     }
 
+    // Given a line, find the longest series of segments that maintains a constant orientation in the x-direction.
+    // This assures us that the line has no orientation flip, so text would not appear upside-down.
     static splitLineByOrientation(line){
         let current_line = [line[0]];
         let current_length = 0;
@@ -188,16 +194,16 @@ class LabelLineBase {
     }
 }
 
+// Class for straight labels
 class LabelLineStraight extends LabelLineBase {
     constructor (size, line, layout, tolerance){
-        super(size, line, layout);
-
-        this.num_segments = 0; // number of label segments
+        super(layout);
         this.type = 'straight';
-
         this.throw_away = !this.fit(size, line, layout, tolerance);
     }
 
+    // Determine if the label can fit the geometry within provided tolerances
+    // A straight label will "look ahead" to future segments if they are within an angle bound given by STRAIGHT_ANGLE_TOLERANCE
     fit (size, line, layout, tolerance){
         let upp = layout.units_per_pixel;
 
@@ -219,6 +225,7 @@ class LabelLineStraight extends LabelLineBase {
             let ahead_index = i + 1;
             let prev_angle;
 
+            // Look ahead to further line segments within an angle tolerance
             while (ahead_index < line.length){
                 let ahead_curr = line[ahead_index - 1];
                 let ahead_next = line[ahead_index];
@@ -233,7 +240,7 @@ class LabelLineStraight extends LabelLineBase {
                     curve_tolerance += next_angle - prev_angle;
                 }
 
-                if (Math.abs(curve_tolerance) > CURVE_ANGLE_TOLERANCE){
+                if (Math.abs(curve_tolerance) > STRAIGHT_ANGLE_TOLERANCE){
                     break;
                 }
 
@@ -280,15 +287,14 @@ class LabelLineStraight extends LabelLineBase {
 
 class LabelLineCurved extends LabelLineBase {
     constructor (size, line, layout) {
-        super(size, line, layout);
-
-        this.num_segments = size.length;
+        super(layout);
         this.type = 'curved';
 
         // extra data for curved labels
         this.angles = [];
         this.pre_angles = [];
         this.offsets = [];
+        this.num_segments = size.length;
 
         this.throw_away = !this.fit(size, line, layout);
     }
@@ -338,13 +344,13 @@ class LabelLineCurved extends LabelLineBase {
                 let [new_line, line_lengths] = LabelLineCurved.scaleLine(stop, line);
                 anchor = new_line[anchor_index];
 
-                let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtPosition(anchor, anchor_index, new_line, line_lengths, label_lengths);
+                let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtIndex(anchor_index, new_line, line_lengths, label_lengths);
 
                 let offsets1d = offsets.map(function(offset){
                     return Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp;
                 });
 
-                // use average angle
+                // use average angle for offsets (if offset is used)
                 this.angle = 1 / angles.length * angles.reduce(function(prev, next){ return prev + next; });
 
                 if (stop === 0){
@@ -372,6 +378,9 @@ class LabelLineCurved extends LabelLineBase {
         return true;
     }
 
+    // Test if line intersects tile boundary. Return indices at beginning and end of line that are within tile.
+    // Burn candle from both ends strategy - meaning shift and pop until vertices are within tile, but an interior vertex
+    // may still be outside of tile (can potentially result in label collision across tiles).
     static checkTileBoundary(line, widths, height, offset, upp){
         let start = 0;
         let end = line.length - 1;
@@ -381,6 +390,7 @@ class LabelLineCurved extends LabelLineBase {
         let start_width = widths[start] * Label.epsilon;
         let end_width = widths[widths.length - 1] * Label.epsilon;
 
+        // Burn candle from start
         while (start < end){
             let angle = getAngleForSegment(line[start], line[start + 1]);
             let position = Vector.add(Vector.rot([start_width/2, 0], angle), line[start]);
@@ -395,6 +405,7 @@ class LabelLineCurved extends LabelLineBase {
             }
         }
 
+        // Burn candle from end
         while (end > start){
             let angle = getAngleForSegment(line[end - 1], line[end]);
             let position = Vector.add(Vector.rot([-end_width/2, 0], angle), line[end]);
@@ -412,6 +423,11 @@ class LabelLineCurved extends LabelLineBase {
         return [start, end];
     }
 
+    // Find optimal starting segment for placing a curved label along a line within provided tolerances
+    // This is determined by calculating the curvature at each interior vertex of a line
+    // then construct a "window" whose breadth is the length of the label. Place this label at each vertex
+    // and add the curvatures of each vertex within the window. The vertex mimimizing this value is the "best" placement.
+    // Return -1 is no placement found.
     static curvaturePlacement(line, total_line_length, line_lengths, label_length, start_index, end_index){
         start_index = start_index || 0;
         end_index = end_index || line.length - 1;
@@ -428,7 +444,9 @@ class LabelLineCurved extends LabelLineBase {
             var norm_2 = Vector.perp(next, curr);
 
             var curvature = Vector.angleBetween(norm_1, norm_2);
-            if (curvature > MAX_CURVATURE) {
+
+            // If curvature at a vertex is greater than the tolerance, remove it from consideration
+            if (curvature > CURVE_MAX_ANGLE) {
                 curvature = Infinity;
             }
 
@@ -500,6 +518,7 @@ class LabelLineCurved extends LabelLineBase {
         }
     }
 
+    // Scale the line by a scale factor (used for computing the angles and offsets are fractional zoom levels)
     static scaleLine(scale, line){
         var new_line = [line[0]];
         var line_lengths = [];
@@ -518,7 +537,10 @@ class LabelLineCurved extends LabelLineBase {
         return [new_line, line_lengths];
     }
 
-    static placeAtPosition(anchor, anchor_index, line, line_lengths, label_lengths){
+    // Place a label at a given index
+    static placeAtIndex(anchor_index, line, line_lengths, label_lengths){
+        let anchor = line[anchor_index];
+
         // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
         let [indices, relative_offsets] = LabelLineCurved.getIndicesAndOffsets(anchor_index, line_lengths, label_lengths);
 
@@ -531,6 +553,16 @@ class LabelLineCurved extends LabelLineBase {
         return {positions, offsets, angles, pre_angles};
     }
 
+    // Given label lengths to place along a line broken into several lengths, computer what indices and at which offsets
+    // the labels will appear on the line. Assume the line is straight, as it is not necessary to consider angles.
+    //
+    // Label lengths:
+    // |-----|----|-----|-----------------|-------------|
+    //
+    // Line Lengths;
+    // |---------|---------|-------------|------------|----------|-------|
+    //
+    // Result: indices: [0,0,1,1,3,4]
     static getIndicesAndOffsets(line_index, line_lengths, label_lengths){
         let num_labels = label_lengths.length;
 
@@ -563,6 +595,7 @@ class LabelLineCurved extends LabelLineBase {
         return [indices, offsets];
     }
 
+    // Given indices and 1D offsets on a line, compute their 2D positions
     static getPositionsFromIndicesAndOffsets(line, indices, offsets){
         let positions = [];
         for (let i = 0; i < indices.length; i++){
@@ -580,6 +613,7 @@ class LabelLineCurved extends LabelLineBase {
         return positions;
     }
 
+    // Given indices and 1D offsets on a line, compute their angles and pre-angles from a reference anchor point
     static getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
         let angles = [];
         let pre_angles = [];
@@ -614,6 +648,8 @@ class LabelLineCurved extends LabelLineBase {
         return [offsets, angles, pre_angles];
     }
 
+    // Modify the LabelLineStraight method to include a distiction between an offset angle, and rotation angle
+    // as these may be different. (Offset angle is constant for the entire label, while rotation angles are not.)
     static createOBB (position, width, height, offset, angle, angle_curve, upp) {
         let p0 = position[0];
         let p1 = position[1];
@@ -630,6 +666,7 @@ class LabelLineCurved extends LabelLineBase {
     }
 }
 
+// Fitness function (label length / line length)
 function calcFitness(line_length, label_length) {
     return label_length / line_length;
 }
