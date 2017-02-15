@@ -247,14 +247,12 @@ export default class Scene {
         let worker_url;
         /* jshint -W117 */
         // ignore uninitialized worker src variable (defined in parent scope)
-        if (__worker_src__){
+        if (typeof __worker_src__ !== "undefined"){
             // load from source object using browserify shim (preferred)
-            worker_url = URLs.createObjectURL(new Blob(['(' + __worker_src__ + ')()'], { type: 'application/javascript' }));
+            var src_map_url = '\n//#' + ' sourceMappingURL=' + __worker_src_origin__ + '.map';
+            worker_url = URLs.createObjectURL(new Blob(['(' + __worker_src__ + ')()' + src_map_url], { type: 'application/javascript' }));
             __worker_src__ = null;
-        }
-        else {
-            // hardcode distribution build names (not preferred)
-            worker_url = this.worker_url || URLs.findCurrentURL('tangram.debug.js', 'tangram.min.js');
+            __worker_src_origin__ = null;
         }
         /* jshint +W117 */
 

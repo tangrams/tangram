@@ -16,6 +16,9 @@
     "WebGL",
     "OpenStreetMap"
   ],
+  "config": {
+    "output": ""
+  },
   "scripts": {
     "start": "npm run watch",
     "test": "npm run lint && npm run build-test && npm run test-local",
@@ -26,12 +29,12 @@
     "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome",
     "lint": "$(npm bin)/jshint src/ && jshint test/",
     "build": "npm run build-debug && npm run build-minify",
-    "build-test": "npm run build-bundle -- -o dist/tangram.test.js",
-    "build-debug": "npm run build-bundle -- -o dist/tangram.debug.js",
-    "build-bundle": "$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p browserify-derequire -p './build/quine.js' --debug",
+    "build-test": "npm run build-bundle --tangram:output=dist/tangram.test.js",
+    "build-debug": "npm run build-bundle --tangram:output=dist/tangram.debug.js",
+    "build-bundle": "$(npm bin)/browserify src/module.js -o /dev/null --debug -s Tangram -p ['./build/build.js' --output $npm_package_config_output]",
     "build-minify": "$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size",
     "build-size": "gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'",
-    "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -p './build/quine.js' -s Tangram"
+    "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -p './build/build.js' -s Tangram"
   },
   "author": {
     "name": "Mapzen",
@@ -65,6 +68,7 @@
     "brfs": "1.4.3",
     "csscolorparser": "1.0.3",
     "earcut": "2.1.1",
+    "exorcist": "^0.4.0",
     "fontfaceobserver": "1.7.1",
     "geojson-vt": "2.1.6",
     "gl-mat3": "1.0.0",
@@ -86,6 +90,7 @@
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
     "core-js": "2.4.1",
+    "exorcist": "0.4.0",
     "glob": "4.0.6",
     "jshint": "jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad",
     "karma": "0.12.23",
