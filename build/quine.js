@@ -14,34 +14,33 @@ var postfix = '})();';
 
 module.exports = function (browserify, opts) {
     // export a Browserify plugin
-    function source_map_plugin (browserify, opts) {
-        browserify.on("bundle", function(){
-            var prefixed = false;
-            var sourceMap = '';
+    browserify.on("bundle", function(){
+        var prefixed = false;
+        var sourceMap = '';
 
-            var wrap = through.obj(function(buf, enc, next) {
-                if(!prefixed) {
-                    this.push(prefix);
-                    prefixed = true;
-                }
+        var wrap = through.obj(function(buf, enc, next) {
+            if(!prefixed) {
+                this.push(prefix);
+                prefixed = true;
+            }
 
-                var str = buf.toString();
-                var match = str.match('\n//# sourceMappingURL=.*');
-                if (match && match.length > 0) {
-                    sourceMap = match[0];
-                }
-                else {
-                    this.push(buf);
-                }
+            var str = buf.toString();
 
-                next();
-            }, function(next){
-                this.push(postfix);
-                this.push(sourceMap);
-                next();
-            });
+            var match = str.match('\n//# sourceMappingURL=.*');
+            if (match && match.length > 0) {
+                sourceMap = match[0];
+            }
+            else {
+                this.push(buf);
+            }
 
-            browserify.pipeline.get('wrap').unshift(wrap);
+            next();
+        }, function(next){
+            this.push(postfix);
+            this.push(sourceMap);
+            next();
         });
-    };
+
+        browserify.pipeline.get('wrap').unshift(wrap);
+    });
 };
