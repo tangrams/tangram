@@ -83,6 +83,7 @@
     "browserify": "13.0.1",
     "browserify-derequire": "0.9.4",
     "budo": "8.2.1",
+    "build-bundle": "^2.0.8",
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
     "core-js": "2.4.1",
