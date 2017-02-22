@@ -283,6 +283,24 @@ export const TextLabels = {
         // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
         layout.italic = (text_settings.style !== 'normal');
 
+        var source = draw.text_source || 'name';
+
+        if (typeof source === 'string') {
+            text = source;
+        } else if (typeof source === 'function') {
+            text = source(context);
+        }
+
+        text = text.split(':');
+        if (text instanceof Array && text.length > 1) {
+            if (text[1] === 'right') {
+                layout.direction = 'right';
+            }
+            else if (text[1] === 'left'){
+                layout.direction = 'left';
+            }
+        }
+
         return layout;
     }
 
