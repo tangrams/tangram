@@ -134,6 +134,13 @@ styles:
             emission:
                 texture: images/sunset.jpg
                 mapping: spheremap
+    uv:
+        base: lines
+        texcoords: true
+        shaders:
+            blocks:
+                color: |
+                    color.rgb = vec3(v_texcoord.x, v_texcoord.y, 0.);
 
 sources:
     mapzen:
@@ -184,7 +191,6 @@ layers:
 
     earth:
         data: { source: mapzen }
-
         fill:
             filter: { $geometry: polygon }
             enabled: false
@@ -206,7 +212,34 @@ layers:
                         stroke: { color: white, width: 4 }
                         transform: uppercase
 
-
+    # region:
+    #     filter:
+    #         any:
+    #             - kind: [region,macroregion]
+    #             - kind_detail: [3,4]
+    #     draw:
+    #         lines:
+    #             # style: uvs
+    #             color: global.region_boundary
+    #             width: [[0, 0.5px], [2, 1.0px], [5, 1.25px], [6, 1.5px], [7, 1.75px], [8, 2.0px], [9, 3.5px], [14, 5.5px], [16, 6.5px], [17, 16m]]
+    #             width: 10px
+    #     labels-z9-up:
+    #         # filter: { name: true, $zoom: { min: 9 }, not: { maritime_boundary: true } }
+    #         draw:
+    #             text-blend-order:
+    #                 priority: 1
+    #                 # visible: true
+    #                 # text_source: global.ux_language_text_source_boundary_lines
+    #                 text_source: 'name:right'
+    #                 offset: [0, 12px]
+    #                 anchor: top
+    #                 font:
+    #                     # family: Varela
+    #                     size: 12px
+    #                     weight: 200
+    #                     fill: [0.4,0.4,0.4]
+    #                     # stroke: { color: global.text_stroke, width: 4 }
+    #                     transform: uppercase
     landuse:
         data: { source: mapzen }
         filter:
@@ -639,17 +672,35 @@ layers:
                 lines:
                     visible: true
                     color: [0.824, 0.651, 0.329, 1.00]
-            water:
-                filter: { maritime_boundary: true }
-                draw: { lines: { visible: false } }
 
         region:
             filter: { kind: [region, macroregion] }
-            draw: { lines: { visible: true } }
-            water:
-                filter: { maritime_boundary: true }
-                draw: { lines: { visible: false } }
-
+            visible: true
+            draw:
+                lines:
+                    style: uv
+                    width: 5px
+                points:
+                    color: red
+                    size: 5px
+                text1:
+                    style: text
+                    text_source: 'name:right'
+                    offset: [0, 10px]
+                    font:
+                        size: 12px
+                        weight: 200
+                        fill: [.4,.4,.4]
+                        transform: uppercase
+                text2:
+                    style: text
+                    text_source: 'name:left'
+                    offset: [0, 10px]
+                    font:
+                        size: 12px
+                        weight: 200
+                        fill: [.4,.4,.4]
+                        transform: uppercase
     places:
         data: { source: mapzen }
 

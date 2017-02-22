@@ -15,6 +15,9 @@ let LabelLine = {
     // Given a label's bounding box size and size broken up into individual segments
     // return a label that fits along a line geometry
     create : function(segment_size, total_size, line, layout){
+
+        // if (layout.text === 'Montana') debugger
+
         // The passes done for fitting a label, and provided tolerances for each pass
         const passes = [
             { type: 'straight', tolerance : (layout.no_curving) ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT },
@@ -62,8 +65,9 @@ class LabelLineBase {
         let current_line = [line[0]];
         let current_length = 0;
         let max_length = 0;
-        let orientation = 1;
+        let orientation = 0;
         let longest_line = current_line;
+        let longest_orientation = orientation;
 
         for (let i = 1; i < line.length; i++) {
             let pt = line[i];
@@ -78,6 +82,7 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
+                        longest_orientation = orientation;
                     }
                 }
                 else {
@@ -86,6 +91,7 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
+                        longest_orientation = 1;
                     }
                     orientation = 1;
                 }
@@ -107,17 +113,22 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
+                        longest_orientation = -1;
                     }
                     orientation = -1;
                 }
             }
             else {
                 // vertical line (doesn't change previous orientation)
+                orientation = (prev_pt[1] < pt[1]) ? 1 : -1;
+
                 current_length += length;
                 if (current_length > max_length){
                     longest_line = current_line;
                     max_length = current_length;
+                    longest_orientation = orientation;
                 }
+
                 if (orientation === -1){
                     current_line.unshift(pt);
                 }
@@ -125,10 +136,14 @@ class LabelLineBase {
                     current_line.push(pt);
                     orientation = 1;
                 }
+
+                if (longest_orientation === 0) {
+                    longest_orientation = orientation;
+                }
             }
         }
 
-        return longest_line;
+        return [longest_line, longest_orientation];
     }
 
     // Adds each segment to the collision pass as its own bounding box
@@ -184,7 +199,6 @@ class LabelLineBase {
 
         // apply offset, x positive, y pointing down
         if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-            offset = Vector.rot(offset, angle);
             p0 += offset[0] * upp;
             p1 -= offset[1] * upp;
         }
@@ -207,18 +221,17 @@ class LabelLineStraight extends LabelLineBase {
     fit (size, line, layout, tolerance){
         let upp = layout.units_per_pixel;
 
-        line = LabelLineBase.splitLineByOrientation(line);
-        let line_lengths = getLineLengths(line);
+        let [oriented_line, orientation] = LabelLineBase.splitLineByOrientation(line);
+        // let oriented_line = line;
+        // let orientation = 1;
 
-        let curr_angle = getAngleForSegment(line[0], line[1]);
+        let line_lengths = getLineLengths(oriented_line);
+
+        let curr_angle = getAngleForSegment(oriented_line[0], oriented_line[1]);
         let label_length = size[0] * upp;
 
-        if (curr_angle <= Math.PI/2) {
-            curr_angle += 2 * Math.PI;
-        }
-
-        for (let i = 0; i < line.length - 1; i++){
-            let curr = line[i];
+        for (let i = 0; i < oriented_line.length - 1; i++){
+            let curr = oriented_line[i];
 
             let curve_tolerance = 0;
             let length = 0;
@@ -226,18 +239,14 @@ class LabelLineStraight extends LabelLineBase {
             let prev_angle;
 
             // Look ahead to further line segments within an angle tolerance
-            while (ahead_index < line.length){
-                let ahead_curr = line[ahead_index - 1];
-                let ahead_next = line[ahead_index];
+            while (ahead_index < oriented_line.length){
+                let ahead_curr = oriented_line[ahead_index - 1];
+                let ahead_next = oriented_line[ahead_index];
 
                 let next_angle = getAngleForSegment(ahead_curr, ahead_next);
 
-                if (next_angle <= Math.PI/2) {
-                    next_angle += 2 * Math.PI;
-                }
-
                 if (ahead_index !== i + 1){
-                    curve_tolerance += next_angle - prev_angle;
+                    curve_tolerance += getAbsAngleDiff(next_angle, prev_angle);
                 }
 
                 if (Math.abs(curve_tolerance) > STRAIGHT_ANGLE_TOLERANCE){
@@ -250,9 +259,24 @@ class LabelLineStraight extends LabelLineBase {
                     let currMid = Vector.mult(Vector.add(curr, ahead_next), 0.5);
 
                     // TODO: modify angle if line chosen within curve_angle_tolerance
+
+                    if (this.layout.text === "Colorado") console.log(orientation)
+
                     this.angle = -next_angle;
+                    this.angle_offset = this.angle;
+
+                    if (orientation === -1){
+                        this.angle_offset += Math.PI;
+                    }
+
+                    if (layout.direction === 'left'){
+                        this.angle_offset += Math.PI;
+                    }
+
                     this.position = currMid;
-                    this.updateBBoxes(size);
+                    this.offset = Vector.rot(this.offset, this.angle_offset);
+
+                    this.updateBBoxes(this.position, size, this.angle, this.offset);
                     if (this.inTileBounds()) {
                         return true;
                     }
@@ -267,7 +291,7 @@ class LabelLineStraight extends LabelLineBase {
     }
 
     // Calculate bounding boxes
-    updateBBoxes(size) {
+    updateBBoxes(position, size, angle, offset) {
         let upp = this.layout.units_per_pixel;
 
         // reset bounding boxes
@@ -277,7 +301,7 @@ class LabelLineStraight extends LabelLineBase {
         let width = (size[0] + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
         let height = (size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;
 
-        let obb = LabelLineBase.createOBB(this.position, width, height, this.angle, this.offset, upp);
+        let obb = LabelLineBase.createOBB(position, width, height, angle, offset, upp);
         let aabb = obb.getExtent();
 
         this.obbs.push(obb);
@@ -301,9 +325,9 @@ class LabelLineCurved extends LabelLineBase {
 
     fit (size, line, layout){
         let upp = layout.units_per_pixel;
-        line = LabelLineBase.splitLineByOrientation(line);
+        let [oriented_line, orientation] = LabelLineBase.splitLineByOrientation(line);
 
-        let line_lengths = getLineLengths(line);
+        let line_lengths = getLineLengths(oriented_line);
         let label_lengths = size.map(function(size){ return size[0] * upp; });
 
         let total_line_length = line_lengths.reduce(function(prev, next){ return prev + next; }, 0);
@@ -315,20 +339,20 @@ class LabelLineCurved extends LabelLineBase {
 
         // starting position
         let height = size[0][1] * upp;
-        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp);
+        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(oriented_line, line_lengths, height, this.offset, upp);
 
         // need two line segments for a curved label
         if (end_index - start_index < 2){
             return false;
         }
 
-        let anchor_index = LabelLineCurved.curvaturePlacement(line, total_line_length, line_lengths, total_label_length, start_index, end_index);
+        let anchor_index = LabelLineCurved.curvaturePlacement(oriented_line, total_line_length, line_lengths, total_label_length, start_index, end_index);
 
         if (anchor_index === -1 || end_index - anchor_index < 2){
             return false;
         }
 
-        let anchor = line[anchor_index];
+        let anchor = oriented_line[anchor_index];
         this.position = anchor;
 
         // Can be made faster since we are computing every segment for every zoom stop
@@ -341,7 +365,7 @@ class LabelLineCurved extends LabelLineBase {
             for (var j = 0; j < STOPS.length; j++){
                 let stop = STOPS[j];
 
-                let [new_line, line_lengths] = LabelLineCurved.scaleLine(stop, line);
+                let [new_line, line_lengths] = LabelLineCurved.scaleLine(stop, oriented_line);
                 anchor = new_line[anchor_index];
 
                 let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtIndex(anchor_index, new_line, line_lengths, label_lengths);
@@ -394,7 +418,7 @@ class LabelLineCurved extends LabelLineBase {
         while (start < end){
             let angle = getAngleForSegment(line[start], line[start + 1]);
             let position = Vector.add(Vector.rot([start_width/2, 0], angle), line[start]);
-            let obb = LabelLineBase.createOBB(position, start_width, height, -angle, offset, upp);
+            let obb = LabelLineBase.createOBB(position, start_width, height, -angle, -angle, offset, upp);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
             if (in_tile) {
@@ -409,7 +433,7 @@ class LabelLineCurved extends LabelLineBase {
         while (end > start){
             let angle = getAngleForSegment(line[end - 1], line[end]);
             let position = Vector.add(Vector.rot([-end_width/2, 0], angle), line[end]);
-            let obb = LabelLineBase.createOBB(position, end_width, height, -angle, offset, upp);
+            let obb = LabelLineBase.createOBB(position, end_width, height, -angle, -angle, offset, upp);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
             if (in_tile) {
@@ -650,13 +674,13 @@ class LabelLineCurved extends LabelLineBase {
 
     // Modify the LabelLineStraight method to include a distiction between an offset angle, and rotation angle
     // as these may be different. (Offset angle is constant for the entire label, while rotation angles are not.)
-    static createOBB (position, width, height, offset, angle, angle_curve, upp) {
+    static createOBB (position, width, height, offset, angle_offset, angle_curve, upp) {
         let p0 = position[0];
         let p1 = position[1];
 
         // apply offset, x positive, y pointing down
         if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-            offset = Vector.rot(offset, angle);
+            offset = Vector.rot(offset, angle_offset);
             p0 += offset[0] * upp;
             p1 -= offset[1] * upp;
         }
@@ -689,4 +713,22 @@ function getLineLengths(line){
         lengths.push(length);
     }
     return lengths;
+}
+
+function getAbsAngleDiff(angle1, angle2){
+    let small, big;
+    if (angle1 > angle2){
+        small = angle2;
+        big = angle1;
+    }
+    else {
+        small = angle1;
+        big = angle2;
+    }
+
+    while (big - small > Math.PI){
+        small += 2 * Math.PI;
+    }
+
+    return Math.abs(big - small);
 }
