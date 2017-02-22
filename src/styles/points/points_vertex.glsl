@@ -23,7 +23,7 @@ attribute vec2 a_offset;
 
 #define PI 3.14159265359
 
-#ifdef TANGRAM_CURVED_POINT
+#ifdef TANGRAM_CURVED_LABEL
     attribute vec4 a_offsets;
     attribute vec4 a_pre_angles;
     attribute vec4 a_angles;
@@ -94,7 +94,7 @@ void main() {
     float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);
     float theta = a_shape.z / 4096.;
 
-    #ifdef TANGRAM_CURVED_POINT
+    #ifdef TANGRAM_CURVED_LABEL
         if (a_offsets[0] != 0.){
             #ifdef TANGRAM_FADE_ON_ZOOM_IN
                 v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);

@@ -28,7 +28,8 @@ Object.assign(TextStyle, {
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
 
-        this.defines.TANGRAM_CURVED_POINT = true;
+        // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
+        this.defines.TANGRAM_CURVED_LABEL = true;
 
         // Disable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = false;
