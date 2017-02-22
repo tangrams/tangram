@@ -328,6 +328,7 @@ Object.assign(Points, {
                         let style = this.feature_style;
                         style.label = q.label;
                         style.size = text_info.size.logical_size;
+                        style.angle = q.label.angle || 0;
                         style.texcoords = text_info.align[q.label.align].texcoords;
                         style.sampler = 1; // non-0 = labels
 
