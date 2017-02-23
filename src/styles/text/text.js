@@ -183,6 +183,7 @@ Object.assign(TextStyle, {
             if (text_info.text_settings.can_articulate){
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
                 fq.layout.no_curving = text_info.no_curving;
+                fq.layout.text = fq.text;
                 feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout, text_info.total_size.collision_size);
             }
             else {
