@@ -30,7 +30,7 @@ module.exports = function (config) {
                 included : false,
                 served : true
             },
-            'dist/tangram.test.js',
+            'dist/tangram.debug.js',
             'test/**/*.js'
         ],
 

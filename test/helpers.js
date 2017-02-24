@@ -9,7 +9,7 @@ import * as URLs from '../src/utils/urls';
     - Stub the worker so that we only load it once, to avoid flooding connections (was causing disconnnect errors).
 */
 
-let worker_url = '/tangram.test.js';
+let worker_url = '/tangram.debug.js';
 
 function loadWorkerContent(url) {
     let xhr = new XMLHttpRequest(), response;
