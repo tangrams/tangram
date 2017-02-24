@@ -144,6 +144,10 @@ export class GeoJSONSource extends NetworkSource {
             let centroid_properties = {"label_placement" : true};
 
             features.forEach(feature => {
+                if (feature.geometry == null) {
+                    return; // no geometry (which is valid GeoJSON)
+                }
+
                 let coordinates, centroid_feature;
                 switch (feature.geometry.type) {
                     case 'Polygon':
