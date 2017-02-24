@@ -3,6 +3,8 @@ import Texture from '../../gl/texture';
 import FontManager from './font_manager';
 import debugSettings from '../../utils/debug_settings';
 
+const codon_length = 2; // length of chunks when breaking up label text
+
 export default class CanvasText {
 
     constructor () {
@@ -43,7 +45,6 @@ export default class CanvasText {
 
                 let text_infos = texts[style];
                 let first = true;
-                let space_width;
 
                 for (let text in text_infos) {
                     let text_info = text_infos[text];
@@ -52,14 +53,21 @@ export default class CanvasText {
                     if (first) {
                         this.setFont(text_settings);
                         dpr = Utils.device_pixel_ratio * text_settings.supersample;
-                        space_width = this.context.measureText(' ').width / dpr;
                         first = false;
                     }
 
-                    text_info.space_width = space_width;
-
                     if (text_settings.can_articulate){
                         let segments = splitLabelText(text);
+
+                        let rtl = isTextRTL(text);
+                        let shaped = isTextShaped(text);
+
+                        text_info.isRTL = rtl;
+                        text_info.no_curving = shaped;
+
+                        if (rtl) {
+                            segments.reverse();
+                        }
 
                         text_info.segments = segments;
                         text_info.size = [];
@@ -75,6 +83,16 @@ export default class CanvasText {
                             }
                             text_info.size.push(CanvasText.text_cache[style][segment].size);
                         }
+
+                        // add full text as well
+                        if (!CanvasText.text_cache[style][text]) {
+                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
+                            CanvasText.cache_stats.misses++;
+                        }
+                        else {
+                            CanvasText.cache_stats.hits++;
+                        }
+                        text_info.total_size = CanvasText.text_cache[style][text].size;
                     }
                     else {
                         if (!CanvasText.text_cache[style][text]) {
@@ -137,12 +155,12 @@ export default class CanvasText {
     }
 
     // Draw multiple lines of text
-    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, transform, align, supersample }) {
+    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, transform, align, supersample }, type) {
         let line_height = size.line_height;
         let height = y;
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
-            this.drawTextLine(line, [x, height], size, { stroke, stroke_width, transform, align, supersample });
+            this.drawTextLine(line, [x, height], size, { stroke, stroke_width, transform, align, supersample }, type);
             height += line_height;
         }
 
@@ -159,6 +177,9 @@ export default class CanvasText {
             this.context.strokeStyle = 'blue';
             this.context.lineWidth = lineWidth;
             this.context.strokeRect(x + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
+            if (type === 'curved'){
+                this.context.strokeRect(x + size.texture_size[0] + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
+            }
 
             this.context.restore();
         }
@@ -174,12 +195,16 @@ export default class CanvasText {
             // stroke is applied internally, so the outer border is the edge of the texture
             this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
 
+            if (type === 'curved'){
+                this.context.strokeRect(x + lineWidth + size.texture_size[0], y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
+            }
+
             this.context.restore();
         }
     }
 
     // Draw single line of text at specified location, adjusting for buffer and baseline
-    drawTextLine (line, [x, y], size, { stroke, stroke_width = 0, transform, align, supersample }) {
+    drawTextLine (line, [x, y], size, { stroke, stroke_width = 0, transform, align, supersample }, type) {
         let dpr = Utils.device_pixel_ratio * supersample;
         align = align || 'center';
 
@@ -207,7 +232,8 @@ export default class CanvasText {
         let ty = y + vertical_buffer * 0.75 + line_height;
 
         if (stroke && stroke_width > 0) {
-            this.context.strokeText(str, tx, ty);
+            let shift = (type === 'curved') ? texture_size[0] : 0;
+            this.context.strokeText(str, tx + shift, ty);
         }
         this.context.fillText(str, tx, ty);
     }
@@ -229,32 +255,85 @@ export default class CanvasText {
 
                 if (text_settings.can_articulate){
                     let words = text_info.segments;
-                    text_info.texcoords = [];
 
-                    for (let i = 0; i < words.length; i++){
-                        let word = words[i];
-                        let texcoord;
+                    text_info.texcoords = {};
+                    for (let i = 0; i < text_info.type.length; i++){
 
-                        if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
-                            texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
+                        let type = text_info.type[i];
+                        switch (type){
+                            case 'straight':
+                                let word = words.reduce((text_info.isRTL) ? reduceLeft : reduceRight);
+                                let texcoord;
+
+                                if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
+                                    texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
+                                }
+                                else {
+                                    let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
+                                    let size = CanvasText.text_cache[style][word].size;
+                                    let line = CanvasText.text_cache[style][word].lines;
+
+                                    this.drawTextMultiLine(line, texture_position, size, text_settings, type);
+
+                                    texcoord = Texture.getTexcoordsForSprite(
+                                        texture_position,
+                                        size.texture_size,
+                                        texture_size
+                                    );
+
+                                    CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
+                                }
+
+                                text_info.texcoords[type] = texcoord;
+                                break;
+                            case 'curved':
+                                text_info.texcoords.curved = [];
+                                text_info.texcoords_stroke = [];
+                                for (let i = 0; i < words.length; i++){
+                                    let word = words[i];
+                                    let texcoord;
+                                    let texcoord_stroke;
+
+                                    if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
+                                        texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
+                                        texcoord_stroke = CanvasText.texcoord_cache[tile_key][style][word].texcoord_stroke;
+
+                                        text_info.texcoords_stroke.push(texcoord_stroke);
+                                    }
+                                    else {
+                                        let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
+                                        let size = CanvasText.text_cache[style][word].size;
+                                        let line = CanvasText.text_cache[style][word].lines;
+
+                                        this.drawTextMultiLine(line, texture_position, size, text_settings, type);
+
+                                        texcoord = Texture.getTexcoordsForSprite(
+                                            texture_position,
+                                            size.texture_size,
+                                            texture_size
+                                        );
+
+                                        let texture_position_stroke = [
+                                            texture_position[0] + size.texture_size[0],
+                                            texture_position[1]
+                                        ];
+
+                                        texcoord_stroke = Texture.getTexcoordsForSprite(
+                                            texture_position_stroke,
+                                            size.texture_size,
+                                            texture_size
+                                        );
+
+                                        CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
+                                        CanvasText.texcoord_cache[tile_key][style][word].texcoord_stroke = texcoord_stroke;
+
+                                        text_info.texcoords_stroke.push(texcoord_stroke);
+                                    }
+
+                                    text_info.texcoords.curved.push(texcoord);
+                                }
+                                break;
                         }
-                        else {
-                            let texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
-                            let size = CanvasText.text_cache[style][word].size;
-                            let line = CanvasText.text_cache[style][word].lines;
-
-                            this.drawTextMultiLine(line, texture_position, size, text_settings);
-
-                            texcoord = Texture.getTexcoordsForSprite(
-                                texture_position,
-                                size.texture_size,
-                                texture_size
-                            );
-
-                            CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
-                        }
-
-                        text_info.texcoords.push(texcoord);
                     }
                 }
                 else {
@@ -303,32 +382,68 @@ export default class CanvasText {
 
                 if (text_info.text_settings.can_articulate){
                     let texture_position;
-                    for (let i = 0; i < text_info.size.length; i++) {
-                        let word = text_info.segments[i];
 
-                        if (!CanvasText.texcoord_cache[tile_key][style][word]) {
-                            let size = text_info.size[i].texture_size;
-                            if (size[0] > column_width) {
-                                column_width = size[0];
-                            }
-                            if (cy + size[1] < max_texture_size) {
-                                texture_position = [cx, cy];
+                    for (let i = 0; i < text_info.type.length; i++){
+                        let type = text_info.type[i];
+                        switch (type){
+                            case 'straight':
+                                let size = text_info.total_size.texture_size;
+                                let word = text_info.segments.reduce((text_info.isRTL) ? reduceLeft : reduceRight);
 
-                                cy += size[1];
-                                if (cy > height) {
-                                    height = cy;
+                                if (size[0] > column_width) {
+                                    column_width = size[0];
                                 }
-                            }
-                            else { // start new column if taller than texture
-                                cx += column_width;
-                                column_width = 0;
-                                cy = 0;
-                                texture_position = [cx, cy];
-                            }
+                                if (cy + size[1] < max_texture_size) {
+                                    texture_position = [cx, cy];
 
-                            CanvasText.texcoord_cache[tile_key][style][word] = {
-                                texture_position: texture_position
-                            };
+                                    cy += size[1];
+                                    if (cy > height) {
+                                        height = cy;
+                                    }
+                                }
+                                else { // start new column if taller than texture
+                                    cx += column_width;
+                                    column_width = 0;
+                                    cy = 0;
+                                    texture_position = [cx, cy];
+                                }
+
+                                CanvasText.texcoord_cache[tile_key][style][word] = {
+                                    texture_position: texture_position
+                                };
+                                break;
+                            case 'curved':
+                                for (let i = 0; i < text_info.size.length; i++) {
+                                    let word = text_info.segments[i];
+
+                                    if (!CanvasText.texcoord_cache[tile_key][style][word]) {
+
+                                        let size = text_info.size[i].texture_size;
+                                        let width = 2 * size[0];
+                                        if (width > column_width) {
+                                            column_width = width;
+                                        }
+                                        if (cy + size[1] < max_texture_size) {
+                                            texture_position = [cx, cy];
+
+                                            cy += size[1];
+                                            if (cy > height) {
+                                                height = cy;
+                                            }
+                                        }
+                                        else { // start new column if taller than texture
+                                            cx += column_width;
+                                            column_width = 0;
+                                            cy = 0;
+                                            texture_position = [cx, cy];
+                                        }
+
+                                        CanvasText.texcoord_cache[tile_key][style][word] = {
+                                            texture_position: texture_position
+                                        };
+                                    }
+                                }
+                                break;
                         }
                     }
                 }
@@ -416,43 +531,68 @@ CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
 
-// Right-to-left / bi-directional text handling
-// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl#answer-19143254
-let rtlRegEx = /^[^\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]*?[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]/;
-function isRTL(s){
-    return rtlRegEx.test(s);
+function reduceLeft (prev, next){ return next + prev; }
+function reduceRight (prev, next){ return prev + next; }
+
+// Contextual Shaping Languages - Unicode ranges
+const context_langs = {
+    Arabic: "\u0600-\u06FF",
+    Bengali: "\u0980-\u09FF",
+    Burmese: "\u1000-\u109F",
+    Devanagari: "\u0900-\u097F",
+    Khmer: "\u1780-\u17FF",
+    Gujarati: "\u0A80-\u0AFF",
+    Gurmukhi: "\u0A00-\u0A7F",
+    Kannada: "\u0C80-\u0CFF",
+    Lao: "\u0E80-\u0EFF",
+    Mongolian: "\u1800-\u18AF",
+    Oriya: "\u0B00-\u0B7F",
+    Tamil: "\u0B80-\u0BFF",
+    Telugu: "\u0C00-\u0C7F",
+    Tibetan: "\u0F00-\u0FFF"
+};
+
+let reg_ex_shaping = '[';
+for (let key in context_langs){
+    reg_ex_shaping += context_langs[key];
+}
+reg_ex_shaping += ']';
+
+let shaping_test = new RegExp(reg_ex_shaping);
+
+function isTextShaped(s){
+    return shaping_test.test(s);
 }
 
-function reorderWordsLTR(words) {
-    let words_LTR = [];
-    let words_RTL = [];
-
-    // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
-    for (var i = 0; i < words.length; i++){
-        var str = words[i];
-        var rtl = isRTL(str);
-        if (rtl){
-            words_RTL.push(str);
-        }
-        else {
-            while (words_RTL.length > 0){
-                words_LTR.push(words_RTL.pop());
-            }
-            words_LTR.push(str);
-        }
-    }
-
-    while (words_RTL.length > 0){
-        words_LTR.push(words_RTL.pop());
-    }
-
-    return words_LTR;
+// Right-to-left / bi-directional text handling
+// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
+let rtlDirCheck = new RegExp('^[\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]+$');
+function isTextRTL(s){
+    return rtlDirCheck.test(s);
 }
 
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text){
-    let words = text.split(' ');
-    return reorderWordsLTR(words);
+    if (text.length < codon_length) {
+        return [text];
+    }
+
+    let segments = [];
+
+    while (text.length){
+        let segment = text.substring(0, codon_length);
+
+        if (segment.length <= Math.floor(0.5 * codon_length)) {
+            segments[segments.length - 1] += segment;
+        }
+        else {
+            segments.push(segment);
+        }
+
+        text = text.substring(codon_length);
+    }
+
+    return segments;
 }
 
 // Private class to arrange text labels into multiple lines based on
@@ -558,7 +698,8 @@ class MultiLine {
                     break;
                 }
 
-                let word = breaks[n].trim();
+                // let word = breaks[n].trim();
+                let word = breaks[n];
 
                 if (!word) {
                     continue;

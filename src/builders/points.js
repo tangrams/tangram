@@ -5,8 +5,8 @@ import { default_uvs } from './common';
 // properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
 // of a sprite between two zoom levels.
 export function buildQuadsForPoints (points, vertex_data, vertex_template,
-    { texcoord_index, position_index, shape_index, offset_index },
-    { quad, quad_normalize, offset, angle, shape_w, texcoord_scale, texcoord_normalize }) {
+    { texcoord_index, position_index, shape_index, offset_index, offsets_index, pre_angles_index, angles_index },
+    { quad, quad_normalize, offset, offsets, pre_angles, angle, angles, shape_w, curve, texcoord_scale, texcoord_normalize, pre_angles_normalize, angles_normalize, offsets_normalize }) {
     quad_normalize = quad_normalize || 1;
     let w2 = quad[0] / 2 * quad_normalize;
     let h2 = quad[1] / 2 * quad_normalize;
@@ -25,6 +25,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
         texcoord_normalize = texcoord_normalize || 1;
 
         var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
+
         texcoords = [
             [min_u, min_v],
             [max_u, min_v],
@@ -54,6 +55,31 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
 
             vertex_template[offset_index + 0] = offset[0];
             vertex_template[offset_index + 1] = offset[1];
+
+            if (curve){
+                // 1 byte (signed) range: [-127, 128]
+                // actual range: [-2pi, 2pi]
+                // total: multiply by 128 / (2 PI)
+                vertex_template[pre_angles_index + 0] = pre_angles_normalize * pre_angles[0];
+                vertex_template[pre_angles_index + 1] = pre_angles_normalize * pre_angles[1];
+                vertex_template[pre_angles_index + 2] = pre_angles_normalize * pre_angles[2];
+                vertex_template[pre_angles_index + 3] = pre_angles_normalize * pre_angles[3];
+
+                // 2 byte (signed) of resolution [-32767, 32768]
+                // actual range: [-2pi, 2pi]
+                // total: multiply by 32768 / (2 PI) = 16384 / PI
+                vertex_template[angles_index + 0] = angles_normalize * angles[0];
+                vertex_template[angles_index + 1] = angles_normalize * angles[1];
+                vertex_template[angles_index + 2] = angles_normalize * angles[2];
+                vertex_template[angles_index + 3] = angles_normalize * angles[3];
+
+                // offset range can be [0, 65535]
+                // actual range: [0, 1024]
+                vertex_template[offsets_index + 0] = offsets_normalize * offsets[0];
+                vertex_template[offsets_index + 1] = offsets_normalize * offsets[1];
+                vertex_template[offsets_index + 2] = offsets_normalize * offsets[2];
+                vertex_template[offsets_index + 3] = offsets_normalize * offsets[3];
+            }
 
             vertex_data.addVertex(vertex_template);
         }

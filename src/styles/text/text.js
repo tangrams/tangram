@@ -6,6 +6,7 @@ import {Points} from '../points/points';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
+import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 
 export let TextStyle = Object.create(Points);
 
@@ -14,12 +15,21 @@ Object.assign(TextStyle, {
     super: Points,
     built_in: true,
 
-    init() {
-        this.super.init.apply(this, arguments);
+    init(options = {}) {
+        let extra_attributes = [
+            { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
+            { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false }
+        ];
+
+        this.super.init.call(this, options, extra_attributes);
 
         // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
+
+        // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
+        this.defines.TANGRAM_CURVED_LABEL = true;
 
         // Disable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = false;
@@ -31,7 +41,25 @@ Object.assign(TextStyle, {
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
 
+        // Used to fade out curved labels
+        this.defines.TANGRAM_FADE_ON_ZOOM_IN = true;
+        this.defines.TANGRAM_FADE_ON_ZOOM_IN_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
+
         this.reset();
+    },
+
+    /**
+     * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
+     * A plain JS array matching the order of the vertex layout.
+     */
+    makeVertexTemplate(style){
+        this.super.makeVertexTemplate.call(this, style);
+
+        this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
+        this.fillVertexTemplate('a_offsets', 0, { size: 4 });
+        this.fillVertexTemplate('a_angles', 0, { size: 4 });
+
+        return this.vertex_template;
     },
 
     reset() {
@@ -108,12 +136,21 @@ Object.assign(TextStyle, {
 
                         if (text_info.text_settings.can_articulate){
                             // unpack logical sizes of each segment into an array for the style
-                            style.size = text_info.size.map(function(size){ return size.logical_size; });
-                            style.texcoords = text_info.texcoords;
+                            style.size = {};
+                            style.texcoords = {};
+
+                            if (q.label.type === 'straight'){
+                                style.size.straight = text_info.total_size.logical_size;
+                                style.texcoords.straight = text_info.texcoords.straight;
+                            }
+                            else{
+                                style.size.curved = text_info.size.map(function(size){ return size.logical_size; });
+                                style.texcoords_stroke = text_info.texcoords_stroke;
+                                style.texcoords.curved = text_info.texcoords.curved;
+                            }
                         }
                         else {
                             style.size = text_info.size.logical_size;
-                            style.angle = q.label.angle || 0;
                             style.texcoords = text_info.align[q.label.align].texcoords;
                         }
 
@@ -148,8 +185,8 @@ Object.assign(TextStyle, {
             let feature_labels;
             if (text_info.text_settings.can_articulate){
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
-                fq.layout.space_width = text_info.space_width;
-                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout);
+                fq.layout.no_curving = text_info.no_curving;
+                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout, text_info.total_size.collision_size);
             }
             else {
                 feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
@@ -164,15 +201,15 @@ Object.assign(TextStyle, {
     },
 
     // Builds one or more labels for a geometry
-    buildLabels (size, geometry, layout) {
+    buildLabels (size, geometry, layout, total_size) {
         let labels = [];
 
         if (geometry.type === "LineString") {
-            this.buildLineLabels(geometry.coordinates, size, layout, labels);
+            Array.prototype.push.apply(labels, this.buildLineLabels(geometry.coordinates, size, layout, total_size));
         } else if (geometry.type === "MultiLineString") {
             let lines = geometry.coordinates;
             for (let i = 0; i < lines.length; ++i) {
-                this.buildLineLabels(lines[i], size, layout, labels);
+                Array.prototype.push.apply(labels, this.buildLineLabels(lines[i], size, layout, total_size));
             }
         } else if (geometry.type === "Point") {
             labels.push(new LabelPoint(geometry.coordinates, size, layout));
@@ -193,84 +230,32 @@ Object.assign(TextStyle, {
     },
 
     // Build one or more labels for a line geometry
-    buildLineLabels (line, size, layout, labels) {
+    buildLineLabels (line, size, layout, total_size) {
+        let labels = [];
         let subdiv = Math.min(layout.subdiv, line.length - 1);
         if (subdiv > 1) {
             // Create multiple labels for line, with each allotted a range of segments
             // in which it will attempt to place
             let seg_per_div = (line.length - 1) / subdiv;
             for (let i = 0; i < subdiv; i++) {
-                layout.segment_start = Math.floor(i * seg_per_div);
-                layout.segment_end = Math.floor((i + 1) * seg_per_div);
+                let start = Math.floor(i * seg_per_div);
+                let end = Math.floor((i + 1) * seg_per_div) + 1;
+                let line_segment = line.slice(start, end);
 
-                labels.push(new LabelLine(size, line, layout));
-            }
-            layout.segment_start = null;
-            layout.segment_end = null;
-        }
-        else {
-            let label = new LabelLine(size, line, layout);
-            if (!label.throw_away){
-                let chosen_label = placementStrategy(label);
-                if (chosen_label){
-                    labels.push(chosen_label);
+                let label = LabelLine.create(size, total_size, line_segment, layout);
+                if (label){
+                    labels.push(label);
                 }
             }
         }
-    }
-
-});
-
-const TARGET_STRAIGHT = 0.4; // Optimistic target ratio for straight labels (label length / line length)
-const TARGET_KINKED = 0.5; // Optimistic target ratio for kinked labels (label length / line length)
-
-// Place labels according to the following strategy:
-// - choose the best straight label that satisfies the optimistic straight cutoff (if any)
-// - else choose the best kinked label that satisfies the optimistic kinked cutoff (if any)
-// - else choose the best straight label that satisfies its internal (less optimistic) cutoff (if any)
-// - else choose the best kinked labels that satisfies its internal (less optimistic) cutoff (if any)
-// - else don't place a label
-function placementStrategy(label){
-    let labels_straight = [];
-    let labels_kinked = [];
-    let best_straight_fitness = Infinity;
-    let best_kinked_fitness = Infinity;
-
-    // loop through all labels
-    while (label && !label.throw_away) {
-        if (label.kink_index > 0){
-            // check if articulated label is above lowest cutoff
-            if (label.fitness < best_kinked_fitness){
-                best_kinked_fitness = label.fitness;
-                labels_kinked.unshift(label);
-            }
-        }
         else {
-            // check if straight label is above lowest straight cutoff
-            if (label.fitness < best_straight_fitness){
-                best_straight_fitness = label.fitness;
-                labels_straight.unshift(label);
+            let label = LabelLine.create(size, total_size, line, layout);
+            if (label){
+                labels.push(label);
             }
         }
-
-        label = LabelLine.nextLabel(label);
+        return labels;
     }
-
-    let best_straight = labels_straight[0];
-    let best_kinked = labels_kinked[0];
-
-    if (labels_straight.length && best_straight.fitness < TARGET_STRAIGHT){
-        // return the best straight segment if it is above the stricter straight cutoff
-        return best_straight;
-    }
-    else if (labels_kinked.length && best_kinked.fitness < TARGET_KINKED){
-        // return the best kinked segment if it is above the stricter kinked cutoff
-        return best_kinked;
-    }
-    else {
-        // otherwise return best of what's left (if any)
-        return best_straight || best_kinked;
-    }
-}
+});
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures
