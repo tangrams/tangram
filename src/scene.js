@@ -35,7 +35,6 @@ export default class Scene {
         this.view = new View(this, options);
         this.tile_manager = new TileManager({ scene: this, view: this.view });
         this.num_workers = options.numWorkers || 2;
-        this.worker_url = options.workerUrl;
         if (options.disableVertexArrayObjects === true) {
             VertexArrayObject.disabled = true;
         }
