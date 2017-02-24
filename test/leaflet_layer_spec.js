@@ -13,8 +13,7 @@ map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it wil
 let makeOne = () => {
     let layer = leafletLayer({
         scene: sampleScene,
-        disableRenderLoop: true,
-        workerUrl: 'http://localhost:9876/tangram.debug.js'
+        disableRenderLoop: true
     });
 
     return layer;
