@@ -174,6 +174,7 @@ export class GeoJSONSource extends NetworkSource {
             });
 
             // append centroid features to features array
+            features_centroid = features_centroid.filter(x => x); // remove null features
             Array.prototype.push.apply(features, features_centroid);
         }
 
@@ -256,6 +257,9 @@ DataSource.register(GeoJSONTileSource, 'GeoJSON');      // prefered shorter name
 // Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
 function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
     let centroid = Geo.centroid(coordinates);
+    if (!centroid) {
+        return;
+    }
 
     // clone properties and mixix newProperties
     let centroid_properties = {};
