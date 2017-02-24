@@ -328,7 +328,7 @@ Object.assign(Points, {
                         let style = this.feature_style;
                         style.label = q.label;
                         style.size = text_info.size.logical_size;
-                        style.angle = q.label.angle || 0;
+                        style.angle = 0; // text attached to point is always upright
                         style.texcoords = text_info.align[q.label.align].texcoords;
                         style.sampler = 1; // non-0 = labels
 
