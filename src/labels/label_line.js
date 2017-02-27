@@ -68,6 +68,7 @@ class LabelLineBase {
         let orientation = 0;
         let longest_line = current_line;
         let longest_orientation = orientation;
+        let flip = false;
 
         for (let i = 1; i < line.length; i++) {
             let pt = line[i];
@@ -83,6 +84,7 @@ class LabelLineBase {
                         longest_line = current_line;
                         max_length = current_length;
                         longest_orientation = orientation;
+                        flip = false;
                     }
                 }
                 else {
@@ -92,6 +94,7 @@ class LabelLineBase {
                         longest_line = current_line;
                         max_length = current_length;
                         longest_orientation = 1;
+                        flip = false;
                     }
                     orientation = 1;
                 }
@@ -104,6 +107,7 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
+                        flip = true;
                     }
                 }
                 else {
@@ -114,21 +118,13 @@ class LabelLineBase {
                         longest_line = current_line;
                         max_length = current_length;
                         longest_orientation = -1;
+                        flip = true;
                     }
                     orientation = -1;
                 }
             }
             else {
                 // vertical line (doesn't change previous orientation)
-                orientation = (prev_pt[1] < pt[1]) ? 1 : -1;
-
-                current_length += length;
-                if (current_length > max_length){
-                    longest_line = current_line;
-                    max_length = current_length;
-                    longest_orientation = orientation;
-                }
-
                 if (orientation === -1){
                     current_line.unshift(pt);
                 }
@@ -137,13 +133,22 @@ class LabelLineBase {
                     orientation = 1;
                 }
 
+                current_length += length;
+                if (current_length > max_length){
+                    longest_line = current_line;
+                    max_length = current_length;
+                    longest_orientation = orientation;
+
+                    flip = (orientation === -1);
+                }
+
                 if (longest_orientation === 0) {
                     longest_orientation = orientation;
                 }
             }
         }
 
-        return [longest_line, longest_orientation];
+        return [longest_line, flip];
     }
 
     // Adds each segment to the collision pass as its own bounding box
@@ -221,13 +226,11 @@ class LabelLineStraight extends LabelLineBase {
     fit (size, line, layout, tolerance){
         let upp = layout.units_per_pixel;
 
-        let [oriented_line, orientation] = LabelLineBase.splitLineByOrientation(line);
+        let [oriented_line, flipped] = LabelLineBase.splitLineByOrientation(line);
         // let oriented_line = line;
-        // let orientation = 1;
+        // let flipped = false;
 
         let line_lengths = getLineLengths(oriented_line);
-
-        let curr_angle = getAngleForSegment(oriented_line[0], oriented_line[1]);
         let label_length = size[0] * upp;
 
         for (let i = 0; i < oriented_line.length - 1; i++){
@@ -259,24 +262,23 @@ class LabelLineStraight extends LabelLineBase {
                     let currMid = Vector.mult(Vector.add(curr, ahead_next), 0.5);
 
                     // TODO: modify angle if line chosen within curve_angle_tolerance
-
-                    if (this.layout.text === "Colorado") console.log(orientation)
-
                     this.angle = -next_angle;
                     this.angle_offset = this.angle;
 
-                    if (orientation === -1){
+                    if (flipped){
                         this.angle_offset += Math.PI;
+                        this.offset[1] *= -1;
                     }
 
                     if (layout.direction === 'left'){
                         this.angle_offset += Math.PI;
+                        this.offset[1] *= -1;
                     }
 
                     this.position = currMid;
-                    this.offset = Vector.rot(this.offset, this.angle_offset);
+                    var offset = Vector.rot(this.offset, this.angle_offset);
 
-                    this.updateBBoxes(this.position, size, this.angle, this.offset);
+                    this.updateBBoxes(this.position, size, this.angle, offset);
                     if (this.inTileBounds()) {
                         return true;
                     }
@@ -325,7 +327,7 @@ class LabelLineCurved extends LabelLineBase {
 
     fit (size, line, layout){
         let upp = layout.units_per_pixel;
-        let [oriented_line, orientation] = LabelLineBase.splitLineByOrientation(line);
+        let [oriented_line] = LabelLineBase.splitLineByOrientation(line);
 
         let line_lengths = getLineLengths(oriented_line);
         let label_lengths = size.map(function(size){ return size[0] * upp; });
