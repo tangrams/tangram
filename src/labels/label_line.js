@@ -225,16 +225,12 @@ class LabelLineStraight extends LabelLineBase {
 
         let [oriented_line, orientation] = LabelLineBase.splitLineByOrientation(line);
         // let oriented_line = line;
-        // let orientation = 1;
+        // let orientation = -1;
 
         let line_lengths = getLineLengths(oriented_line);
 
         let curr_angle = getAngleForSegment(oriented_line[0], oriented_line[1]);
         let label_length = size[0] * upp;
-
-        if (curr_angle <= Math.PI/2) {
-            curr_angle += 2 * Math.PI;
-        }
 
         for (let i = 0; i < oriented_line.length - 1; i++){
             let curr = oriented_line[i];
@@ -251,12 +247,8 @@ class LabelLineStraight extends LabelLineBase {
 
                 let next_angle = getAngleForSegment(ahead_curr, ahead_next);
 
-                if (next_angle <= Math.PI/2) {
-                    next_angle += 2 * Math.PI;
-                }
-
                 if (ahead_index !== i + 1){
-                    curve_tolerance += next_angle - prev_angle;
+                    curve_tolerance += getAbsAngleDiff(next_angle, prev_angle);
                 }
 
                 if (Math.abs(curve_tolerance) > STRAIGHT_ANGLE_TOLERANCE){
@@ -275,22 +267,12 @@ class LabelLineStraight extends LabelLineBase {
                     this.angle = -next_angle;
                     this.angle_offset = this.angle;
 
-                    // this.angle += Math.PI;
-
-                    if (layout.direction === 'right'){
-                        if (orientation === -1) {
-                            this.angle_offset += Math.PI;
-                            // this.angle += Math.PI;
-                        }
+                    if (orientation === -1){
+                        this.angle_offset += Math.PI;
                     }
 
                     if (layout.direction === 'left'){
-                        if (orientation === -1) {
-                            this.angle_offset += Math.PI;
-                            // this.angle += Math.PI;
-                        }
                         this.angle_offset += Math.PI;
-                        // this.angle = 0;
                     }
 
                     this.position = currMid;
@@ -733,4 +715,21 @@ function getLineLengths(line){
         lengths.push(length);
     }
     return lengths;
+}
+
+function getAbsAngleDiff(angle1, angle2){
+    if (angle1 > angle2){
+        small = angle2;
+        big = angle1;
+    }
+    else {
+        small = angle1;
+        big = angle2;
+    }
+
+    while (big - small > Math.PI){
+        small += 2 * Math.PI;
+    }
+
+    return Math.abs(big - small);
 }
