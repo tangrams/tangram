@@ -99,10 +99,10 @@ void main() {
             shape += rotate2D(offset, theta);   // offset if specified in the scene file
         }
         else {
-            shape = rotate2D(shape, theta) + offset;
+            shape = rotate2D(shape + offset, theta);
         }
     #else
-        shape = rotate2D(shape, theta) + offset;
+        shape = rotate2D(shape + offset, theta);
     #endif
 
     #ifdef TANGRAM_MULTI_SAMPLER

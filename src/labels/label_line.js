@@ -270,16 +270,18 @@ class LabelLineStraight extends LabelLineBase {
 
                     if (flipped){
                         this.angle_offset += Math.PI;
+                        this.offset[1] *= -1;
                     }
 
                     if (layout.direction === 'left'){
                         this.angle_offset += Math.PI;
+                        this.offset[1] *= -1;
                     }
 
                     this.position = currMid;
-                    this.offset = Vector.rot(this.offset, this.angle_offset);
+                    var offset = Vector.rot(this.offset, this.angle_offset);
 
-                    this.updateBBoxes(this.position, size, this.angle, this.offset);
+                    this.updateBBoxes(this.position, size, this.angle, offset);
                     if (this.inTileBounds()) {
                         return true;
                     }
