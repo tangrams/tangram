@@ -127,6 +127,13 @@ styles:
             emission:
                 texture: images/sunset.jpg
                 mapping: spheremap
+    uv:
+        base: lines
+        texcoords: true
+        shaders:
+            blocks:
+                color: |
+                    color.rgb = vec3(v_texcoord.x, v_texcoord.y, 0.);
 
 sources:
     mapzen:
@@ -641,7 +648,6 @@ layers:
 
     boundaries:
         data: { source: mapzen}
-        visible: false
         draw:
             lines:
                 order: global.feature_order
@@ -654,17 +660,17 @@ layers:
             draw:
                 lines:
                     color: [0.824, 0.651, 0.329, 1.00]
-            water:
-                filter: { maritime_boundary: true }
-                visible: false
 
         region:
             filter: { kind: [region, macroregion] }
             visible: true
             draw:
                 lines:
-                    color: white
+                    style: uv
                     width: 5px
+                points:
+                    color: red
+                    size: 5px
                 text1:
                     style: text
                     text_source: 'name:right'
@@ -722,7 +728,6 @@ layers:
                         fill: [0, 0, 0, .8]
                         stroke: { color: white, width: 4 }
                         transform: uppercase
-            visible: false
 
             countries:
                 filter:
