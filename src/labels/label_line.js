@@ -166,7 +166,6 @@ class LabelLineBase {
     // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
     // TODO: label group
     discard(bboxes, exclude = null) {
-        return false;
         if (this.throw_away) {
             return true;
         }
@@ -232,8 +231,6 @@ class LabelLineStraight extends LabelLineBase {
         // let flipped = false;
 
         let line_lengths = getLineLengths(oriented_line);
-
-        let curr_angle = getAngleForSegment(oriented_line[0], oriented_line[1]);
         let label_length = size[0] * upp;
 
         for (let i = 0; i < oriented_line.length - 1; i++){
@@ -330,7 +327,7 @@ class LabelLineCurved extends LabelLineBase {
 
     fit (size, line, layout){
         let upp = layout.units_per_pixel;
-        let [oriented_line, flip] = LabelLineBase.splitLineByOrientation(line);
+        let [oriented_line] = LabelLineBase.splitLineByOrientation(line);
 
         let line_lengths = getLineLengths(oriented_line);
         let label_lengths = size.map(function(size){ return size[0] * upp; });
