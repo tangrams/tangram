@@ -161,7 +161,6 @@ class LabelLineBase {
     // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
     // TODO: label group
     discard(bboxes, exclude = null) {
-        return false;
         if (this.throw_away) {
             return true;
         }
@@ -182,7 +181,6 @@ class LabelLineBase {
     // Checks each segment to see if it is within the tile. If any segment fails this test, they all fail.
     // TODO: label group
     inTileBounds() {
-        return true;
         for (let i = 0; i < this.aabbs.length; i++) {
             let aabb = this.aabbs[i];
             let obj = { aabb };
@@ -225,7 +223,7 @@ class LabelLineStraight extends LabelLineBase {
 
         let [oriented_line, orientation] = LabelLineBase.splitLineByOrientation(line);
         // let oriented_line = line;
-        // let orientation = -1;
+        // let orientation = 1;
 
         let line_lengths = getLineLengths(oriented_line);
 
@@ -718,6 +716,7 @@ function getLineLengths(line){
 }
 
 function getAbsAngleDiff(angle1, angle2){
+    let small, big;
     if (angle1 > angle2){
         small = angle2;
         big = angle1;
