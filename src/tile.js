@@ -196,10 +196,10 @@ export default class Tile {
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
     static buildGeometry (tile, { scene_id, layers, styles, global }) {
+        let data = tile.source_data;
+
         tile.debug.rendering = +new Date();
         tile.debug.feature_count = 0;
-
-        let data = tile.source_data;
 
         Collision.startTile(tile.key);
 
@@ -361,7 +361,7 @@ export default class Tile {
     static getDataForSource (source_data, source_config, default_layer = null) {
         var layers = [];
 
-        if (source_config != null) {
+        if (source_config != null && source_data != null && source_data.layers != null) {
             // If no layer specified, and a default source layer exists
             if (!source_config.layer && source_data.layers._default) {
                 layers.push({

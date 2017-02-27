@@ -22,6 +22,11 @@ const shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.g
 
 const PLACEMENT = LabelPoint.PLACEMENT;
 
+const pre_angles_normalize = 128 / Math.PI;
+const angles_normalize = 16384 / Math.PI;
+const offsets_normalize = 64;
+const texcoord_normalize = 65535;
+
 export var Points = Object.create(Style);
 
 // Mixin text label methods
@@ -33,8 +38,8 @@ Object.assign(Points, {
     collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
-    init(options = {}) {
-        Style.init.apply(this, arguments);
+    init(options = {}, extra_attributes = []) {
+        Style.init.call(this, options);
 
         // Base shaders
         this.vertex_shader_src = shaderSrc_pointsVertex;
@@ -47,6 +52,10 @@ Object.assign(Points, {
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
+
+        if (extra_attributes.length){
+            Array.prototype.push.apply(attribs, extra_attributes);
+        }
 
         // Feature selection
         this.selection = true;
@@ -177,7 +186,7 @@ Object.assign(Points, {
         }
 
         // Angle parameter (can be a number or the string "auto")
-        style.angle = StyleParser.evalProperty(draw.angle, context);
+        style.angle = StyleParser.evalProperty(draw.angle, context) || 0;
 
         // points can be placed off the ground
         style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
@@ -328,8 +337,8 @@ Object.assign(Points, {
                         let style = this.feature_style;
                         style.label = q.label;
                         style.size = text_info.size.logical_size;
+                        style.angle = 0; // text attached to point is always upright
                         style.texcoords = text_info.align[q.label.align].texcoords;
-                        style.angle = q.label.angle || 0;
                         style.sampler = 1; // non-0 = labels
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
@@ -586,7 +595,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, sampler, offset, outline_width, texcoord_scale, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, outline_width, curve, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -596,17 +605,26 @@ Object.assign(Points, {
                 position_index: this.vertex_layout.index.a_position,
                 shape_index: this.vertex_layout.index.a_shape,
                 offset_index: this.vertex_layout.index.a_offset,
-                outline_edge_index: this.vertex_layout.index.a_outline_edge
+                outline_edge_index: this.vertex_layout.index.a_outline_edge,
+                pre_angles_index: this.vertex_layout.index.a_pre_angles,
+                angles_index: this.vertex_layout.index.a_angles
             },
             {
                 quad: size,
                 quad_normalize: 256,    // values have an 8-bit fraction
                 offset,
+                offsets,
+                pre_angles: pre_angles,
                 angle: angle * 4096,    // values have a 12-bit fraction
+                angles: angles,
                 shape_w: sampler,
                 outline_width: outline_width,
+                curve,
                 texcoord_scale,
-                texcoord_normalize: 65535
+                texcoord_normalize,
+                pre_angles_normalize,
+                angles_normalize,
+                offsets_normalize
             }
         );
     },
@@ -614,7 +632,7 @@ Object.assign(Points, {
     // Build quad for point sprite
     build (style, vertex_data) {
         let label = style.label;
-        if (label.num_segments) {
+        if (label.type === 'curved') {
             this.buildArticulatedLabel(label, style, vertex_data);
         }
         else {
@@ -626,35 +644,89 @@ Object.assign(Points, {
         let vertex_template = this.makeVertexTemplate(style);
         let angle = label.angle || style.angle;
 
+        let size, texcoords;
+        if (label.type){
+            size = style.size[label.type];
+            texcoords = style.texcoords[label.type];
+        }
+        else {
+            size = style.size;
+            texcoords = style.texcoords;
+        }
+
+        let offset = label.offset;
+
         this.buildQuad(
             [label.position],               // position
-            style.size,                     // size in pixels
+            size,                           // size in pixels
             angle,                          // angle in radians
+            null,                           // placeholder for multiple angles
+            null,                           // placeholder for multiple pre_angles
             style.sampler,                  // texture sampler to use
-            label.offset,                   // offset from center in pixels
-            style.outline_width,
-            style.texcoords,                // texture UVs
+            offset,                         // offset from center in pixels
+            null,                           // placeholder for multiple offsets
+            texcoords,                      // texture UVs
+            style.outline_width,            // Outline width
+            false,                          // if curved
             vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
 
     buildArticulatedLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
+        let angle = label.angle;
 
-        for (var i = 0; i < label.num_segments; i++){
-            let angle = label.angle[i];
-            let size = style.size[i];
-            let offset = label.offsets[i];
-            let texcoord = style.texcoords[i];
+        // pass for stroke
+        for (let i = 0; i < label.num_segments; i++){
+            let size = style.size[label.type][i];
+            let texcoord_stroke = style.texcoords_stroke[i];
+
+            let offset = label.offset || [0,0];
+            let position = label.position;
+
+            let angles = label.angles[i];
+            let offsets = label.offsets[i];
+            let pre_angles = label.pre_angles[i];
 
             this.buildQuad(
-                [label.position],               // position
+                [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
+                angles,                         // angles per segment
+                pre_angles,                     // pre_angle array (rotation applied before offseting)
                 style.sampler,                  // texture sampler to use
                 offset,                         // offset from center in pixels
-                style.outline_width,
-                texcoord,                       // texture UVs
+                offsets,                        // offsets per segment
+                texcoord_stroke,                // texture UVs for stroked text
+                true,                           // if curved
+                vertex_data, vertex_template    // VBO and data for current vertex
+            );
+        }
+
+        // pass for fill
+        for (let i = 0; i < label.num_segments; i++){
+            let size = style.size[label.type][i];
+            let texcoord = style.texcoords[label.type][i];
+
+            let offset = label.offset || [0,0];
+            let position = label.position;
+
+            let angles = label.angles[i];
+            let offsets = label.offsets[i];
+            let pre_angles = label.pre_angles[i];
+
+            this.buildQuad(
+                [position],                     // position
+                size,                           // size in pixels
+                angle,                          // angle in degrees
+                angles,                         // angles per segment
+                pre_angles,                     // pre_angle array (rotation applied before offseting)
+                style.sampler,                  // texture sampler to use
+                offset,                         // offset from center in pixels
+                offsets,                        // offsets per segment
+                texcoord,                       // texture UVs for fill text
+                style.outline_width,            // Outline width
+                true,                           // if curved
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }

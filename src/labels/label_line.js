@@ -2,410 +2,133 @@ import Label from './label';
 import Vector from '../vector';
 import OBB from '../utils/obb';
 
-const PLACEMENT = {
-    MID_POINT: 0,
-    CORNER: 1
+const STOPS = [0, 0.33, 0.66, 0.99];        // zoom levels for curved label snapshot data (offsets and angles)
+const LINE_EXCEED_STRAIGHT = 1.5;           // minimal ratio for straight labels (label length) / (line length)
+const LINE_EXCEED_STRAIGHT_NO_CURVE = 1.8;  // minimal ratio for straight labels that have no curved option
+const LINE_EXCEED_STAIGHT_LOOSE = 2.3;      // 2nd pass minimal ratio for straight labels
+const STRAIGHT_ANGLE_TOLERANCE = 0.1;       // multiple "almost straight" segments within this angle tolerance can be considered one straight segment
+const CURVE_MIN_TOTAL_COST = 1.3;           // curved line total curvature tolerance (sum)
+const CURVE_MIN_AVG_COST = 0.4;             // curved line average curvature tolerance (mean)
+const CURVE_MAX_ANGLE = 1;                  // curved line singular curvature tolerance (value)
+
+let LabelLine = {
+    // Given a label's bounding box size and size broken up into individual segments
+    // return a label that fits along a line geometry
+    create : function(segment_size, total_size, line, layout){
+        // The passes done for fitting a label, and provided tolerances for each pass
+        const passes = [
+            { type: 'straight', tolerance : (layout.no_curving) ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT },
+            { type: 'curved' },
+            { type: 'straight', tolerance : LINE_EXCEED_STAIGHT_LOOSE }
+        ];
+
+        // loop through passes. first label found wins.
+        for (let i = 0; i < passes.length; i++){
+            let check = passes[i];
+            let label;
+            if (check.type === 'straight'){
+                label = new LabelLineStraight(total_size, line, layout, check.tolerance);
+            }
+            else if (check.type === 'curved' && !layout.no_curving && line.length > 2){
+                label = new LabelLineCurved(segment_size, line, layout);
+            }
+
+            if (label && !label.throw_away) {
+                return label;
+            }
+        }
+
+        return false;
+    }
 };
 
-const MAX_ANGLE = Math.PI / 2;      // maximum angle for articulated labels
-const LINE_EXCEED_STRAIGHT = 0.7;   // minimal ratio for straight labels (label length) / (line length)
-const LINE_EXCEED_KINKED = 0.6;     // minimal ratio for kinked labels
+export default LabelLine;
 
-export default class LabelLine {
-
-    constructor (size, lines, layout) {
-        this.size = size;
+// Base class for a LabelLine
+class LabelLineBase {
+    constructor (layout) {
         this.layout = layout;
-        this.lines = lines;
-        this.space_width = layout.space_width; // width of space for the font used
-        this.num_segments = size.length; // number of label segments
-        this.total_length = size.reduce(function(prev, next){ return prev + next[0]; }, 0) + (size.length - 1) * this.space_width;
-        this.total_height = size[0][1];
-        this.placement = (layout.placement === undefined) ? PLACEMENT.MID_POINT : layout.placement;
-
-        this.kink_index = 0; // index at which an articulated label will kink (e.g., 1 means a kink _after_ the first segment)
-        this.spread_factor = 0.5; // spaces out adjacent words to prevent overlap
-        this.fitness = 0; // measure of quality of fit
-
-        // Arrays for Label properties. TODO: create array of Label types, where LabelLine acts as a "grouped label"
         this.position = [];
-        this.angle = [];
-        this.offsets = [];
+        this.angle = 0;
+        this.offset = layout.offset.slice();
         this.obbs = [];
         this.aabbs = [];
-
-        // optionally limit the line segments that the label may be placed in, by specifying a segment index range
-        // used as a coarse subdivide for placing multiple labels per line geometry
-        this.segment_index = layout.segment_index || layout.segment_start || 0;
-        this.segment_max = layout.segment_end || this.lines.length;
-
-        // First fitting segment
-        let segment = this.getNextFittingSegment(this.getCurrentSegment());
-        this.throw_away = (!segment);
+        this.type = ''; // "curved" or "straight" to be set by parent class
     }
 
-    // Iterate through the line geometry creating the next valid label.
-    static nextLabel(label) {
-        // increment segment
-        let hasNext = label.getNextSegment();
-        if (!hasNext) {
-            return false;
-        }
+    // Given a line, find the longest series of segments that maintains a constant orientation in the x-direction.
+    // This assures us that the line has no orientation flip, so text would not appear upside-down.
+    static splitLineByOrientation(line){
+        let current_line = [line[0]];
+        let current_length = 0;
+        let max_length = 0;
+        let orientation = 1;
+        let longest_line = current_line;
 
-        // clone options
-        let layout = Object.create(label.layout);
-        layout.segment_index = label.segment_index;
-        layout.placement = label.placement;
+        for (let i = 1; i < line.length; i++) {
+            let pt = line[i];
+            let prev_pt = line[i - 1];
+            let length = Vector.length(Vector.sub(pt, prev_pt));
 
-        // create new label
-        let nextLabel = new LabelLine(label.size, label.lines, layout);
-
-        return (nextLabel.throw_away) ? false : nextLabel;
-    }
-
-    // Strategy for returning the next segment. Assumes an "ordering" of possible segments
-    // taking into account both straight and articulated segments. Returns false if all possibilities
-    // have been exhausted
-    getNextSegment() {
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                this.placement = PLACEMENT.MID_POINT;
-                break;
-            case PLACEMENT.MID_POINT:
-                if (this.segment_index >= this.lines.length - 2) {
-                    return false;
+            if (pt[0] > prev_pt[0]){
+                // positive orientation
+                if (orientation === 1){
+                    current_line.push(pt);
+                    current_length += length;
+                    if (current_length > max_length){
+                        longest_line = current_line;
+                        max_length = current_length;
+                    }
                 }
-                else if (this.size.length > 1) {
-                    this.placement = PLACEMENT.CORNER;
+                else {
+                    current_line = [prev_pt, pt];
+                    current_length = length;
+                    if (current_length > max_length){
+                        longest_line = current_line;
+                        max_length = current_length;
+                    }
+                    orientation = 1;
                 }
-                this.segment_index++;
-                break;
-        }
-
-        return this.getCurrentSegment();
-    }
-
-    // Returns the line segments necessary for other calculations at the current line segment index.
-    // This is the current and next segment for a straight line, and the previous, current and next
-    // for an articulated segment.
-    getCurrentSegment() {
-        let p1, p2, segment;
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                p1 = this.lines[this.segment_index - 1];
-                p2 = this.lines[this.segment_index];
-                let p3 = this.lines[this.segment_index + 1];
-                segment = [ p1, p2, p3 ];
-                break;
-            case PLACEMENT.MID_POINT:
-                p1 = this.lines[this.segment_index];
-                p2 = this.lines[this.segment_index + 1];
-                segment = [ p1, p2 ];
-                break;
-        }
-
-        return segment;
-    }
-
-    // Returns next segment that is valid (within tile, inside angle requirements and within line geometry).
-    getNextFittingSegment(segment) {
-        segment = segment || this.getNextSegment();
-        if (!segment) {
-            return false;
-        }
-
-        if (this.doesSegmentFit(segment)) {
-            this.update();
-            if (this.inTileBounds() && this.inAngleBounds()) {
-                return segment;
+            }
+            else if (pt[0] < prev_pt[0]) {
+                // negative orientation
+                if (orientation === -1){
+                    current_line.unshift(pt);
+                    current_length += length;
+                    if (current_length > max_length){
+                        longest_line = current_line;
+                        max_length = current_length;
+                    }
+                }
+                else {
+                    // add lines is reverse order
+                    current_line = [pt, prev_pt];
+                    current_length = length;
+                    if (current_length > max_length){
+                        longest_line = current_line;
+                        max_length = current_length;
+                    }
+                    orientation = -1;
+                }
+            }
+            else {
+                // vertical line (doesn't change previous orientation)
+                current_length += length;
+                if (current_length > max_length){
+                    longest_line = current_line;
+                    max_length = current_length;
+                }
+                if (orientation === -1){
+                    current_line.unshift(pt);
+                }
+                else {
+                    current_line.push(pt);
+                    orientation = 1;
+                }
             }
         }
 
-        return this.getNextFittingSegment();
-    }
-
-    // Returns boolean indicating whether current segment is valid
-    doesSegmentFit(segment) {
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                return this.fitKinkedSegment(segment);
-            case PLACEMENT.MID_POINT:
-                return this.fitStraightSegment(segment);
-        }
-    }
-
-    // Returns boolean indicating whether kinked segment is valid
-    // Cycles through various ways of kinking the labels around the segment's pivot,
-    // finding the best fit, and determines the kink_index.
-    fitKinkedSegment(segment) {
-        let upp = this.layout.units_per_pixel;
-
-        let p0p1 = Vector.sub(segment[0], segment[1]);
-        let p1p2 = Vector.sub(segment[1], segment[2]);
-
-        // Don't fit if segment doesn't pass the vertical line test, resulting in upside-down labels
-        if (p0p1[0] * p1p2[0] < 0 && p0p1[1] * p1p2[1] > 0) {
-            return false;
-        }
-
-        let line_length1 = Vector.length(p0p1) / upp;
-        let line_length2 = Vector.length(p1p2) / upp;
-
-        // break up multiple segments into two chunks (N-1 options)
-        let label_length1 = this.total_length;
-        let label_length2 = 0;
-        let width, fitness = 0;
-        let kink_index = this.num_segments - 1;
-        let fitnesses = [];
-
-        while (kink_index > 0) {
-            width = this.size[kink_index][0] + this.space_width;
-
-            label_length1 -= width;
-            label_length2 += width;
-
-            fitness = Math.max(calcFitness(line_length1, label_length1), calcFitness(line_length2, label_length2));
-            fitnesses.unshift(fitness);
-
-            kink_index--;
-        }
-
-        let max_fitness = Math.max.apply(null, fitnesses);
-
-        if (max_fitness < LINE_EXCEED_KINKED) {
-            this.kink_index = fitnesses.indexOf(max_fitness) + 1;
-            this.fitness = max_fitness;
-            return true;
-        }
-        else {
-            this.kink_index = 0;
-            return false;
-        }
-    }
-
-    // Returns boolean indicating whether straight segment is valid
-    // A straight segment is placed at the midpoint and is valid if the label's length is greater than a
-    // factor (LINE_EXCEED_STRAIGHT) of the line segment's length
-    fitStraightSegment(segment) {
-        let upp = this.layout.units_per_pixel;
-        let line_length = Vector.length(Vector.sub(segment[0], segment[1])) / upp;
-        let fitness = calcFitness(line_length, this.total_length);
-
-        if (fitness < LINE_EXCEED_STRAIGHT){
-            this.fitness = fitness;
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-    // Once a fitting segment is found, determine its angles, positions and bounding boxes
-    update() {
-        this.angle = this.getCurrentAngle();
-        this.position = this.getCurrentPosition();
-        this.updateBBoxes();
-    }
-
-    getCurrentAngle() {
-        let segment = this.getCurrentSegment();
-        let angles = [];
-
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                let theta1 = getAngleFromSegment(segment[0], segment[1]);
-                let theta2 = getAngleFromSegment(segment[1], segment[2]);
-
-                let p0p1 = Vector.sub(segment[0], segment[1]);
-                let p1p2 = Vector.sub(segment[1], segment[2]);
-
-                let orientation = (p0p1[0] >= 0 && p1p2[0] >= 0) ? 1 : -1;
-                let angle;
-
-                for (let i = 0; i < this.num_segments; i++){
-                    if (i < this.kink_index){
-                        angle = (orientation > 0) ? theta2 : theta1;
-                    }
-                    else {
-                        angle = (orientation > 0) ? theta1 : theta2;
-                    }
-                    angles.push(angle);
-                }
-                break;
-            case PLACEMENT.MID_POINT:
-                let theta = getAngleFromSegment(segment[0], segment[1]);
-                for (let i = 0; i < this.num_segments; i++){
-                    angles.push(theta);
-                }
-                break;
-        }
-
-        return angles;
-    }
-
-    // Return the position of the center of the label
-    getCurrentPosition() {
-        let segment = this.getCurrentSegment();
-        let position;
-
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                position = segment[1].slice();
-                break;
-            case PLACEMENT.MID_POINT:
-                position = [
-                    0.5 * (segment[0][0] + segment[1][0]),
-                    0.5 * (segment[0][1] + segment[1][1])
-                ];
-                break;
-        }
-
-        return position;
-    }
-
-    // Check for articulated labels to be within an angle range [-MAX_ANGLE, +MAX_ANGLE]
-    inAngleBounds() {
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                let angle0 = this.angle[0];
-                if (angle0 < 0) {
-                    angle0 += 2 * Math.PI;
-                }
-
-                let angle1 = this.angle[1];
-                if (angle1 < 0) {
-                    angle1 += 2 * Math.PI;
-                }
-
-                let theta = Math.abs(angle1 - angle0);
-                theta = Math.min(2 * Math.PI - theta, theta);
-
-                return theta <= MAX_ANGLE;
-            case PLACEMENT.MID_POINT:
-                return true;
-        }
-    }
-
-    // Calculate bounding boxes
-    updateBBoxes() {
-        let upp = this.layout.units_per_pixel;
-        let height = (this.total_height + this.layout.buffer[1] * 2) * upp * Label.epsilon;
-
-        // reset bounding boxes
-        this.obbs = [];
-        this.aabbs = [];
-
-        // fudge width value as text may overflow bounding box if it has italic, bold, etc style
-        let italics_buffer = (this.layout.italic) ? 5 * upp : 0;
-
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                let angle0 = this.angle[this.kink_index - 1]; // angle before kink
-                let angle1 = this.angle[this.kink_index]; // angle after kink
-                let theta = Math.abs(angle1 - angle0); // angle delta
-
-                // A spread factor of 0 pivots the boxes on their horizontal center, looking like: "X"
-                // a spread factor of 1 offsets the boxes so that their corners touch, looking like: "\/" or "/\"
-                let dx = this.spread_factor * Math.abs(this.total_height * Math.tan(0.5 * theta));
-                let nudge = 0.5 * (-dx - this.space_width);
-
-                // Place labels backwards from kink index
-                for (let i = this.kink_index - 1; i >= 0; i--) {
-                    let width_px = this.size[i][0];
-                    let angle = this.angle[i];
-
-                    let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-
-                    nudge -= 0.5 * width_px;
-
-                    let offset = Vector.rot([nudge * upp, 0], -angle);
-                    let position = Vector.add(this.position, offset);
-
-                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
-                    let aabb = obb.getExtent();
-
-                    this.obbs.push(obb);
-                    this.aabbs.push(aabb);
-
-                    this.offsets[i] = [
-                        this.layout.offset[0] + nudge,
-                        this.layout.offset[1]
-                    ];
-
-                    nudge -= 0.5 * width_px + this.space_width;
-                }
-
-                // Place labels forwards from kink index
-                nudge = 0.5 * (dx + this.space_width);
-
-                for (let i = this.kink_index; i < this.num_segments; i++){
-                    let width_px = this.size[i][0];
-                    let angle = this.angle[i];
-
-                    let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-
-                    nudge += 0.5 * width_px;
-
-                    let offset = Vector.rot([nudge * upp, 0], -angle);
-                    let position = Vector.add(this.position, offset);
-
-                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
-                    let aabb = obb.getExtent();
-
-                    this.obbs.push(obb);
-                    this.aabbs.push(aabb);
-
-                    this.offsets[i] = [
-                        this.layout.offset[0] + nudge,
-                        this.layout.offset[1]
-                    ];
-
-                    nudge += 0.5 * width_px + this.space_width;
-                }
-                break;
-            case PLACEMENT.MID_POINT:
-                let shift = -0.5 * this.total_length; // shift for centering the labels
-
-                for (let i = 0; i < this.num_segments; i++){
-                    let width_px = this.size[i][0];
-                    let width = (width_px + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
-                    let angle = this.angle[i];
-
-                    shift += 0.5 * width_px;
-
-                    let offset = Vector.rot([shift * upp, 0], -angle);
-                    let position = Vector.add(this.position, offset);
-
-                    let obb = getOBB(position, width + italics_buffer, height, angle, this.offset, upp);
-                    let aabb = obb.getExtent();
-
-                    this.obbs.push(obb);
-                    this.aabbs.push(aabb);
-
-                    this.offsets[i] = [
-                        this.layout.offset[0] + shift,
-                        this.layout.offset[1]
-                    ];
-
-                    shift += 0.5 * width_px + this.space_width;
-                }
-
-                break;
-        }
-    }
-
-    // Checks each segment to see if it is within the tile. If any segment fails this test, they all fail.
-    // TODO: label group
-    inTileBounds() {
-        for (let i = 0; i < this.aabbs.length; i++) {
-            let aabb = this.aabbs[i];
-            let obj = { aabb };
-            let in_bounds = Label.prototype.inTileBounds.call(obj);
-            if (!in_bounds) {
-                return false;
-            }
-        }
-        return true;
+        return longest_line;
     }
 
     // Adds each segment to the collision pass as its own bounding box
@@ -439,48 +162,531 @@ export default class LabelLine {
         }
         return false;
     }
+
+    // Checks each segment to see if it is within the tile. If any segment fails this test, they all fail.
+    // TODO: label group
+    inTileBounds() {
+        for (let i = 0; i < this.aabbs.length; i++) {
+            let aabb = this.aabbs[i];
+            let obj = { aabb };
+            let in_bounds = Label.prototype.inTileBounds.call(obj);
+            if (!in_bounds) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Method to calculate oriented bounding box
+    static createOBB (position, width, height, angle, offset, upp) {
+        let p0 = position[0];
+        let p1 = position[1];
+
+        // apply offset, x positive, y pointing down
+        if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
+            offset = Vector.rot(offset, angle);
+            p0 += offset[0] * upp;
+            p1 -= offset[1] * upp;
+        }
+
+        // the angle of the obb is negative since it's the tile system y axis is pointing down
+        return new OBB(p0, p1, -angle, width, height);
+    }
 }
 
-// Private method to calculate oriented bounding box
-function getOBB(position, width, height, angle, offset, upp) {
-    let p0, p1;
-    // apply offset, x positive, y pointing down
-    if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-        offset = Vector.rot(offset, angle);
-        p0 = position[0] + (offset[0] * upp);
-        p1 = position[1] - (offset[1] * upp);
-    }
-    else {
-        p0 = position[0];
-        p1 = position[1];
+// Class for straight labels
+class LabelLineStraight extends LabelLineBase {
+    constructor (size, line, layout, tolerance){
+        super(layout);
+        this.type = 'straight';
+        this.throw_away = !this.fit(size, line, layout, tolerance);
     }
 
-    // the angle of the obb is negative since it's the tile system y axis is pointing down
-    return new OBB(p0, p1, -angle, width, height);
+    // Determine if the label can fit the geometry within provided tolerances
+    // A straight label will "look ahead" to future segments if they are within an angle bound given by STRAIGHT_ANGLE_TOLERANCE
+    fit (size, line, layout, tolerance){
+        let upp = layout.units_per_pixel;
+
+        line = LabelLineBase.splitLineByOrientation(line);
+        let line_lengths = getLineLengths(line);
+
+        let curr_angle = getAngleForSegment(line[0], line[1]);
+        let label_length = size[0] * upp;
+
+        if (curr_angle <= Math.PI/2) {
+            curr_angle += 2 * Math.PI;
+        }
+
+        for (let i = 0; i < line.length - 1; i++){
+            let curr = line[i];
+
+            let curve_tolerance = 0;
+            let length = 0;
+            let ahead_index = i + 1;
+            let prev_angle;
+
+            // Look ahead to further line segments within an angle tolerance
+            while (ahead_index < line.length){
+                let ahead_curr = line[ahead_index - 1];
+                let ahead_next = line[ahead_index];
+
+                let next_angle = getAngleForSegment(ahead_curr, ahead_next);
+
+                if (next_angle <= Math.PI/2) {
+                    next_angle += 2 * Math.PI;
+                }
+
+                if (ahead_index !== i + 1){
+                    curve_tolerance += next_angle - prev_angle;
+                }
+
+                if (Math.abs(curve_tolerance) > STRAIGHT_ANGLE_TOLERANCE){
+                    break;
+                }
+
+                length += line_lengths[ahead_index - 1];
+
+                if (calcFitness(length, label_length) < tolerance){
+                    let currMid = Vector.mult(Vector.add(curr, ahead_next), 0.5);
+
+                    // TODO: modify angle if line chosen within curve_angle_tolerance
+                    this.angle = -next_angle;
+                    this.position = currMid;
+                    this.updateBBoxes(size);
+                    if (this.inTileBounds()) {
+                        return true;
+                    }
+                }
+
+                prev_angle = next_angle;
+                ahead_index++;
+            }
+        }
+
+        return false;
+    }
+
+    // Calculate bounding boxes
+    updateBBoxes(size) {
+        let upp = this.layout.units_per_pixel;
+
+        // reset bounding boxes
+        this.obbs = [];
+        this.aabbs = [];
+
+        let width = (size[0] + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
+        let height = (size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;
+
+        let obb = LabelLineBase.createOBB(this.position, width, height, this.angle, this.offset, upp);
+        let aabb = obb.getExtent();
+
+        this.obbs.push(obb);
+        this.aabbs.push(aabb);
+    }
 }
 
-// Private method to calculate the angle of a segment.
-// Transforms the angle to lie within the range [0, PI/2] and [3*PI/2, 2*PI] (1st or 4th quadrants)
-// as other ranges produce "upside down" labels
-function getAngleFromSegment(pt1, pt2) {
-    let PI = Math.PI;
-    let PI_2 = PI / 2;
-    let p1p2 = Vector.sub(pt1, pt2);
-    let theta = Math.atan2(p1p2[0], p1p2[1]) + PI_2;
+class LabelLineCurved extends LabelLineBase {
+    constructor (size, line, layout) {
+        super(layout);
+        this.type = 'curved';
 
-    if (theta > PI_2) {
-        // If in 2nd quadrant, move to 4th quadrant
-        theta += PI;
-        theta %= 2 * Math.PI;
-    }
-    else if (theta < 0) {
-        // If in 4th quadrant, make a positive angle
-        theta += 2 * PI;
+        // extra data for curved labels
+        this.angles = [];
+        this.pre_angles = [];
+        this.offsets = [];
+        this.num_segments = size.length;
+
+        this.throw_away = !this.fit(size, line, layout);
     }
 
-    return theta;
+    fit (size, line, layout){
+        let upp = layout.units_per_pixel;
+        line = LabelLineBase.splitLineByOrientation(line);
+
+        let line_lengths = getLineLengths(line);
+        let label_lengths = size.map(function(size){ return size[0] * upp; });
+
+        let total_line_length = line_lengths.reduce(function(prev, next){ return prev + next; }, 0);
+        let total_label_length = label_lengths.reduce(function(prev, next){ return prev + next; }, 0);
+
+        if (total_label_length > total_line_length){
+            return false;
+        }
+
+        // starting position
+        let height = size[0][1] * upp;
+        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp);
+
+        // need two line segments for a curved label
+        if (end_index - start_index < 2){
+            return false;
+        }
+
+        let anchor_index = LabelLineCurved.curvaturePlacement(line, total_line_length, line_lengths, total_label_length, start_index, end_index);
+
+        if (anchor_index === -1 || end_index - anchor_index < 2){
+            return false;
+        }
+
+        let anchor = line[anchor_index];
+        this.position = anchor;
+
+        // Can be made faster since we are computing every segment for every zoom stop
+        // We can skip a segment's calculation once a segment's angle equals its fully zoomed angle
+        for (var i = 0; i < label_lengths.length; i++){
+            this.offsets[i] = [];
+            this.angles[i] = [];
+            this.pre_angles[i] = [];
+
+            for (var j = 0; j < STOPS.length; j++){
+                let stop = STOPS[j];
+
+                let [new_line, line_lengths] = LabelLineCurved.scaleLine(stop, line);
+                anchor = new_line[anchor_index];
+
+                let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtIndex(anchor_index, new_line, line_lengths, label_lengths);
+
+                let offsets1d = offsets.map(function(offset){
+                    return Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp;
+                });
+
+                // use average angle for offsets (if offset is used)
+                this.angle = 1 / angles.length * angles.reduce(function(prev, next){ return prev + next; });
+
+                if (stop === 0){
+                    for (let i = 0; i < positions.length; i++){
+                        let position = positions[i];
+                        let offset_angle = angles[i];
+                        let pre_angle = pre_angles[i];
+                        let width = label_lengths[i];
+                        let angle_curve = pre_angle + offset_angle;
+
+                        let obb = LabelLineCurved.createOBB(position, width, height, this.offset, this.angle, angle_curve, upp);
+                        let aabb = obb.getExtent();
+
+                        this.obbs.push(obb);
+                        this.aabbs.push(aabb);
+                    }
+                }
+
+                this.offsets[i].push(offsets1d[i]);
+                this.angles[i].push(angles[i]);
+                this.pre_angles[i].push(pre_angles[i]);
+            }
+        }
+
+        return true;
+    }
+
+    // Test if line intersects tile boundary. Return indices at beginning and end of line that are within tile.
+    // Burn candle from both ends strategy - meaning shift and pop until vertices are within tile, but an interior vertex
+    // may still be outside of tile (can potentially result in label collision across tiles).
+    static checkTileBoundary(line, widths, height, offset, upp){
+        let start = 0;
+        let end = line.length - 1;
+
+        height *= Label.epsilon;
+
+        let start_width = widths[start] * Label.epsilon;
+        let end_width = widths[widths.length - 1] * Label.epsilon;
+
+        // Burn candle from start
+        while (start < end){
+            let angle = getAngleForSegment(line[start], line[start + 1]);
+            let position = Vector.add(Vector.rot([start_width/2, 0], angle), line[start]);
+            let obb = LabelLineBase.createOBB(position, start_width, height, -angle, offset, upp);
+            let aabb = obb.getExtent();
+            let in_tile = Label.prototype.inTileBounds.call({ aabb });
+            if (in_tile) {
+                break;
+            }
+            else {
+                start++;
+            }
+        }
+
+        // Burn candle from end
+        while (end > start){
+            let angle = getAngleForSegment(line[end - 1], line[end]);
+            let position = Vector.add(Vector.rot([-end_width/2, 0], angle), line[end]);
+            let obb = LabelLineBase.createOBB(position, end_width, height, -angle, offset, upp);
+            let aabb = obb.getExtent();
+            let in_tile = Label.prototype.inTileBounds.call({ aabb });
+            if (in_tile) {
+                break;
+            }
+            else {
+                end--;
+            }
+        }
+
+        return [start, end];
+    }
+
+    // Find optimal starting segment for placing a curved label along a line within provided tolerances
+    // This is determined by calculating the curvature at each interior vertex of a line
+    // then construct a "window" whose breadth is the length of the label. Place this label at each vertex
+    // and add the curvatures of each vertex within the window. The vertex mimimizing this value is the "best" placement.
+    // Return -1 is no placement found.
+    static curvaturePlacement(line, total_line_length, line_lengths, label_length, start_index, end_index){
+        start_index = start_index || 0;
+        end_index = end_index || line.length - 1;
+
+        var curvatures = []; // array of curvature values per line vertex
+
+        // calculate curvature values
+        for (let i = start_index + 1; i < end_index; i++){
+            var prev = line[i - 1];
+            var curr = line[i];
+            var next = line[i + 1];
+
+            var norm_1 = Vector.perp(curr, prev);
+            var norm_2 = Vector.perp(next, curr);
+
+            var curvature = Vector.angleBetween(norm_1, norm_2);
+
+            // If curvature at a vertex is greater than the tolerance, remove it from consideration
+            if (curvature > CURVE_MAX_ANGLE) {
+                curvature = Infinity;
+            }
+
+            curvatures.push(curvature);
+        }
+
+        curvatures.push(Infinity); // Infinite penalty for going off end of line
+
+        // calculate curvature costs
+        var total_costs = [];
+        var avg_costs = [];
+        var line_index = start_index;
+        var position = 0;
+
+        for (let i = 0; i < start_index; i++){
+            position += line_lengths[i];
+        }
+
+        // move window along line, starting at first vertex
+        while (position + label_length < total_line_length){
+            // define window breadth
+            var window_start = position;
+            var window_end = window_start + label_length;
+
+            var line_position = window_start;
+            var ahead_index = line_index;
+            var cost = 0;
+
+            // iterate through points on line intersecting window
+            while (ahead_index < end_index && line_position + line_lengths[ahead_index] < window_end){
+                cost += curvatures[ahead_index];
+                if (cost === Infinity) {
+                    break; // no further progress can be made
+                }
+
+                line_position += line_lengths[ahead_index];
+                ahead_index++;
+            }
+
+            // if optimal cost, break out
+            if (cost === 0) {
+                return line_index;
+            }
+
+            var avg_cost = cost / (ahead_index - line_index);
+
+            total_costs.push(cost);
+            avg_costs.push(avg_cost);
+
+            position += line_lengths[line_index];
+            line_index++;
+        }
+
+        if (total_costs.length === 0) {
+            return -1;
+        }
+
+        var min_total_cost = Math.min.apply(null, total_costs);
+        var min_index = total_costs.indexOf(min_total_cost);
+        var min_avg_cost = avg_costs[min_index];
+
+        if (min_total_cost < CURVE_MIN_TOTAL_COST && min_avg_cost < CURVE_MIN_AVG_COST){
+            // return index with best placement (least curvature)
+            return total_costs.indexOf(min_total_cost);
+        }
+        else {
+            // if tolerances aren't satisfied, throw away tile
+            return -1;
+        }
+    }
+
+    // Scale the line by a scale factor (used for computing the angles and offsets are fractional zoom levels)
+    static scaleLine(scale, line){
+        var new_line = [line[0]];
+        var line_lengths = [];
+
+        line.forEach(function(pt, i){
+            if (i === line.length - 1) {
+                return;
+            }
+            var v = Vector.sub(line[i+1], line[i]);
+            var delta = Vector.mult(v, 1 + scale);
+
+            new_line.push(Vector.add(new_line[i], delta));
+            line_lengths.push(Vector.length(delta));
+        });
+
+        return [new_line, line_lengths];
+    }
+
+    // Place a label at a given index
+    static placeAtIndex(anchor_index, line, line_lengths, label_lengths){
+        let anchor = line[anchor_index];
+
+        // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
+        let [indices, relative_offsets] = LabelLineCurved.getIndicesAndOffsets(anchor_index, line_lengths, label_lengths);
+
+        // get 2D positions based on "flat" indices and offsets
+        let positions = LabelLineCurved.getPositionsFromIndicesAndOffsets(line, indices, relative_offsets);
+
+        // get 2d offsets, angles and pre_angles relative to anchor
+        let [offsets, angles, pre_angles] = LabelLineCurved.getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
+
+        return {positions, offsets, angles, pre_angles};
+    }
+
+    // Given label lengths to place along a line broken into several lengths, computer what indices and at which offsets
+    // the labels will appear on the line. Assume the line is straight, as it is not necessary to consider angles.
+    //
+    // Label lengths:
+    // |-----|----|-----|-----------------|-------------|
+    //
+    // Line Lengths;
+    // |---------|---------|-------------|------------|----------|-------|
+    //
+    // Result: indices: [0,0,1,1,3,4]
+    static getIndicesAndOffsets(line_index, line_lengths, label_lengths){
+        let num_labels = label_lengths.length;
+
+        let indices = [];
+        let offsets = [];
+
+        let label_index = 0;
+        let label_offset = 0;
+        let line_offset = 0;
+
+        // iterate along line
+        while (label_index < num_labels){
+            let label_length = label_lengths[label_index];
+
+            // iterate along labels within the line segment
+            while (label_index < num_labels && label_offset + 0.5 * label_length <= line_offset + line_lengths[line_index]){
+                let offset = label_offset - line_offset + 0.5 * label_length;
+                offsets.push(offset);
+                indices.push(line_index);
+
+                label_offset += label_length;
+                label_index++;
+                label_length = label_lengths[label_index];
+            }
+
+            line_offset += line_lengths[line_index];
+            line_index++;
+        }
+
+        return [indices, offsets];
+    }
+
+    // Given indices and 1D offsets on a line, compute their 2D positions
+    static getPositionsFromIndicesAndOffsets(line, indices, offsets){
+        let positions = [];
+        for (let i = 0; i < indices.length; i++){
+            let index = indices[i];
+            let offset = offsets[i];
+
+            let angle = getAngleForSegment(line[index], line[index + 1]);
+
+            let offset2d = Vector.rot([offset, 0], angle);
+            let position = Vector.add(line[index], offset2d);
+
+            positions.push(position);
+        }
+
+        return positions;
+    }
+
+    // Given indices and 1D offsets on a line, compute their angles and pre-angles from a reference anchor point
+    static getAnglesFromIndicesAndOffsets(anchor, indices, line, positions){
+        let angles = [];
+        let pre_angles = [];
+        let offsets = [];
+
+        for (let i = 0; i < positions.length; i++){
+            let position = positions[i];
+            let index = indices[i];
+
+            let offset = Vector.sub(position, anchor);
+            let offset_angle = -Vector.angle(offset);
+
+            let angle = getTextAngleForSegment(line[index], line[index + 1]);
+            let pre_angle = angle - offset_angle;
+
+            if (i > 0){
+                let prev_angle = angles[i - 1];
+                let prev_pre_angle = pre_angles[i - 1];
+                if (Math.abs(offset_angle - prev_angle) > Math.PI) {
+                    offset_angle += (offset_angle > prev_angle) ? -2 * Math.PI : 2 * Math.PI;
+                }
+                if (Math.abs(prev_pre_angle - pre_angle) > Math.PI) {
+                    pre_angle += (pre_angle > prev_pre_angle) ? -2 * Math.PI : 2 * Math.PI;
+                }
+            }
+
+            angles.push(offset_angle);
+            pre_angles.push(pre_angle);
+            offsets.push(offset);
+        }
+
+        return [offsets, angles, pre_angles];
+    }
+
+    // Modify the LabelLineStraight method to include a distiction between an offset angle, and rotation angle
+    // as these may be different. (Offset angle is constant for the entire label, while rotation angles are not.)
+    static createOBB (position, width, height, offset, angle, angle_curve, upp) {
+        let p0 = position[0];
+        let p1 = position[1];
+
+        // apply offset, x positive, y pointing down
+        if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
+            offset = Vector.rot(offset, angle);
+            p0 += offset[0] * upp;
+            p1 -= offset[1] * upp;
+        }
+
+        // the angle of the obb is negative since it's the tile system y axis is pointing down
+        return new OBB(p0, p1, -angle_curve, width, height);
+    }
 }
 
-function calcFitness(line_length, label_length){
-    return 1 - line_length / label_length;
+// Fitness function (label length / line length)
+function calcFitness(line_length, label_length) {
+    return label_length / line_length;
+}
+
+function getAngleForSegment(p, q){
+    let pq = Vector.sub(q,p);
+    return Vector.angle(pq);
+}
+
+function getTextAngleForSegment(pt1, pt2) {
+    return -getAngleForSegment(pt1, pt2);
+}
+
+function getLineLengths(line){
+    let lengths = [];
+    for (let i = 0; i < line.length - 1; i++){
+        let p = line[i];
+        let q = line[i+1];
+        let length = Math.hypot(p[0] - q[0], p[1] - q[1]);
+        lengths.push(length);
+    }
+    return lengths;
 }

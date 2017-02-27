@@ -424,7 +424,7 @@ export default class Scene {
     update() {
         // Determine which passes (if any) to render
         let main = this.dirty;
-        let selection = this.selection.hasPendingRequests();
+        let selection = this.selection ? this.selection.hasPendingRequests() : false;
         var will_render = !(
             (main === false && selection === false) ||
             this.initialized === false ||

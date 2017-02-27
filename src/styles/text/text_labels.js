@@ -138,6 +138,16 @@ export const TextLabels = {
                     text_info.align = text_info.align || {};
                     text_info.align[q.label.align] = {};
                 }
+                else {
+                    // consider making it a set
+                    if (!text_info.type) {
+                        text_info.type = [];
+                    }
+
+                    if (text_info.type.indexOf(q.label.type) === -1){
+                        text_info.type.push(q.label.type);
+                    }
+                }
             });
 
             // second call to main thread, for rasterizing the set of texts

@@ -179,6 +179,10 @@ Geo.geometryType = function(type) {
 };
 
 Geo.centroid = function (polygon) {
+    if (!polygon || polygon.length === 0) {
+        return;
+    }
+
     // Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
     let x = 0, y = 0, area = 0;
     let ring = polygon[0]; // only use first ring for now
@@ -234,6 +238,9 @@ Geo.polygonRingArea = function (ring) {
 
 // TODO: subtract inner rings
 Geo.polygonArea = function (polygon) {
+    if (!polygon) {
+        return;
+    }
     return Geo.polygonRingArea(polygon[0]);
 };
 
