@@ -382,6 +382,8 @@ export function calculateDraw(layer) {
 
 export function parseLayerTree(name, layer, parent, styles) {
 
+    layer = (layer == null) ? {} : layer;
+
     let properties = { name, layer, parent };
     let [whiteListed, nonWhiteListed] = groupProps(layer);
     let empty = isEmpty(nonWhiteListed);
