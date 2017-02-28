@@ -67,7 +67,6 @@ class LabelLineBase {
         let max_length = 0;
         let orientation = 0;
         let longest_line = current_line;
-        let longest_orientation = orientation;
         let flip = false;
 
         for (let i = 1; i < line.length; i++) {
@@ -83,7 +82,6 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
-                        longest_orientation = orientation;
                         flip = false;
                     }
                 }
@@ -93,7 +91,6 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
-                        longest_orientation = 1;
                         flip = false;
                     }
                     orientation = 1;
@@ -117,7 +114,6 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
-                        longest_orientation = -1;
                         flip = true;
                     }
                     orientation = -1;
@@ -137,13 +133,8 @@ class LabelLineBase {
                 if (current_length > max_length){
                     longest_line = current_line;
                     max_length = current_length;
-                    longest_orientation = orientation;
 
                     flip = (orientation === -1);
-                }
-
-                if (longest_orientation === 0) {
-                    longest_orientation = orientation;
                 }
             }
         }
@@ -228,8 +219,6 @@ class LabelLineStraight extends LabelLineBase {
         let upp = layout.units_per_pixel;
 
         let [oriented_line, flipped] = LabelLineBase.splitLineByOrientation(line);
-        // let oriented_line = line;
-        // let flipped = false;
 
         let offset = this.offset.slice();
 
