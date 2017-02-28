@@ -86,7 +86,8 @@ class Layer {
         // Denormalize layer name to draw groups
         if (this.draw) {
             for (let group in this.draw) {
-                if (this.draw[group] == null || typeof this.draw[group] !== 'object') {
+                this.draw[group] = (this.draw[group] == null) ? {} : this.draw[group];
+                if (typeof this.draw[group] !== 'object') {
                     // Invalid draw group
                     let msg = `Draw group '${group}' for layer ${this.full_name} is invalid, must be an object, `;
                     msg += `but was set to \`${group}: ${this.draw[group]}\` instead`;
