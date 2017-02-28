@@ -67,7 +67,6 @@ class LabelLineBase {
         let max_length = 0;
         let orientation = 0;
         let longest_line = current_line;
-        let longest_orientation = orientation;
         let flip = false;
 
         for (let i = 1; i < line.length; i++) {
@@ -83,7 +82,6 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
-                        longest_orientation = orientation;
                         flip = false;
                     }
                 }
@@ -93,7 +91,6 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
-                        longest_orientation = 1;
                         flip = false;
                     }
                     orientation = 1;
@@ -117,7 +114,6 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
-                        longest_orientation = -1;
                         flip = true;
                     }
                     orientation = -1;
@@ -137,13 +133,8 @@ class LabelLineBase {
                 if (current_length > max_length){
                     longest_line = current_line;
                     max_length = current_length;
-                    longest_orientation = orientation;
 
                     flip = (orientation === -1);
-                }
-
-                if (longest_orientation === 0) {
-                    longest_orientation = orientation;
                 }
             }
         }
@@ -198,12 +189,13 @@ class LabelLineBase {
     }
 
     // Method to calculate oriented bounding box
-    static createOBB (position, width, height, angle, offset, upp) {
+    static createOBB (position, width, height, angle, angle_offset, offset, upp) {
         let p0 = position[0];
         let p1 = position[1];
 
         // apply offset, x positive, y pointing down
         if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
+            offset = Vector.rot(offset, angle_offset);
             p0 += offset[0] * upp;
             p1 -= offset[1] * upp;
         }
@@ -227,8 +219,16 @@ class LabelLineStraight extends LabelLineBase {
         let upp = layout.units_per_pixel;
 
         let [oriented_line, flipped] = LabelLineBase.splitLineByOrientation(line);
-        // let oriented_line = line;
-        // let flipped = false;
+
+        let offset = this.offset.slice();
+
+        if (flipped){
+            this.offset[1] *= -1;
+        }
+
+        if (layout.direction == 'left'){
+            this.offset[1] *= -1;
+        }
 
         let line_lengths = getLineLengths(oriented_line);
         let label_length = size[0] * upp;
@@ -263,22 +263,20 @@ class LabelLineStraight extends LabelLineBase {
 
                     // TODO: modify angle if line chosen within curve_angle_tolerance
                     this.angle = -next_angle;
-                    this.angle_offset = this.angle;
+                    let angle_offset = this.angle;
 
                     if (flipped){
-                        this.angle_offset += Math.PI;
-                        this.offset[1] *= -1;
+                        angle_offset += Math.PI;
                     }
 
                     if (layout.direction === 'left'){
-                        this.angle_offset += Math.PI;
-                        this.offset[1] *= -1;
+                        angle_offset += Math.PI;
                     }
 
                     this.position = currMid;
-                    var offset = Vector.rot(this.offset, this.angle_offset);
 
-                    this.updateBBoxes(this.position, size, this.angle, offset);
+                    this.updateBBoxes(this.position, size, this.angle, angle_offset, offset);
+
                     if (this.inTileBounds()) {
                         return true;
                     }
@@ -293,7 +291,7 @@ class LabelLineStraight extends LabelLineBase {
     }
 
     // Calculate bounding boxes
-    updateBBoxes(position, size, angle, offset) {
+    updateBBoxes(position, size, angle, angle_offset, offset) {
         let upp = this.layout.units_per_pixel;
 
         // reset bounding boxes
@@ -303,7 +301,7 @@ class LabelLineStraight extends LabelLineBase {
         let width = (size[0] + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
         let height = (size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;
 
-        let obb = LabelLineBase.createOBB(position, width, height, angle, offset, upp);
+        let obb = LabelLineBase.createOBB(position, width, height, angle, angle_offset, offset, upp);
         let aabb = obb.getExtent();
 
         this.obbs.push(obb);
