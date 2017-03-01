@@ -15,9 +15,6 @@ let LabelLine = {
     // Given a label's bounding box size and size broken up into individual segments
     // return a label that fits along a line geometry
     create : function(segment_size, total_size, line, layout){
-
-        // if (layout.text === 'Montana') debugger
-
         // The passes done for fitting a label, and provided tolerances for each pass
         const passes = [
             { type: 'straight', tolerance : (layout.no_curving) ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT },
@@ -217,8 +214,9 @@ class LabelLineStraight extends LabelLineBase {
     // A straight label will "look ahead" to future segments if they are within an angle bound given by STRAIGHT_ANGLE_TOLERANCE
     fit (size, line, layout, tolerance){
         let upp = layout.units_per_pixel;
+        let flipped;
 
-        let [oriented_line, flipped] = LabelLineBase.splitLineByOrientation(line);
+        [line, flipped] = LabelLineBase.splitLineByOrientation(line);
 
         let offset = this.offset.slice();
 
@@ -226,15 +224,15 @@ class LabelLineStraight extends LabelLineBase {
             this.offset[1] *= -1;
         }
 
-        if (layout.orientation == 'left'){
+        if (layout.orientation === -1){
             this.offset[1] *= -1;
         }
 
-        let line_lengths = getLineLengths(oriented_line);
+        let line_lengths = getLineLengths(line);
         let label_length = size[0] * upp;
 
-        for (let i = 0; i < oriented_line.length - 1; i++){
-            let curr = oriented_line[i];
+        for (let i = 0; i < line.length - 1; i++){
+            let curr = line[i];
 
             let curve_tolerance = 0;
             let length = 0;
@@ -242,9 +240,9 @@ class LabelLineStraight extends LabelLineBase {
             let prev_angle;
 
             // Look ahead to further line segments within an angle tolerance
-            while (ahead_index < oriented_line.length){
-                let ahead_curr = oriented_line[ahead_index - 1];
-                let ahead_next = oriented_line[ahead_index];
+            while (ahead_index < line.length){
+                let ahead_curr = line[ahead_index - 1];
+                let ahead_next = line[ahead_index];
 
                 let next_angle = getAngleForSegment(ahead_curr, ahead_next);
 
@@ -269,7 +267,7 @@ class LabelLineStraight extends LabelLineBase {
                         angle_offset += Math.PI;
                     }
 
-                    if (layout.orientation === 'left'){
+                    if (layout.orientation === -1){
                         angle_offset += Math.PI;
                     }
 
@@ -325,7 +323,9 @@ class LabelLineCurved extends LabelLineBase {
 
     fit (size, line, layout){
         let upp = layout.units_per_pixel;
-        let [oriented_line, flipped] = LabelLineBase.splitLineByOrientation(line);
+        let flipped;
+
+        [line, flipped] = LabelLineBase.splitLineByOrientation(line);
 
         let offset = this.offset.slice();
 
@@ -333,11 +333,11 @@ class LabelLineCurved extends LabelLineBase {
             this.offset[1] *= -1;
         }
 
-        if (layout.orientation == 'left'){
+        if (layout.orientation === -1){
             this.offset[1] *= -1;
         }
 
-        let line_lengths = getLineLengths(oriented_line);
+        let line_lengths = getLineLengths(line);
         let label_lengths = size.map(function(size){ return size[0] * upp; });
 
         let total_line_length = line_lengths.reduce(function(prev, next){ return prev + next; }, 0);
@@ -349,20 +349,20 @@ class LabelLineCurved extends LabelLineBase {
 
         // starting position
         let height = size[0][1] * upp;
-        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(oriented_line, line_lengths, height, this.offset, upp);
+        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp);
 
         // need two line segments for a curved label
         if (end_index - start_index < 2){
             return false;
         }
 
-        let anchor_index = LabelLineCurved.curvaturePlacement(oriented_line, total_line_length, line_lengths, total_label_length, start_index, end_index);
+        let anchor_index = LabelLineCurved.curvaturePlacement(line, total_line_length, line_lengths, total_label_length, start_index, end_index);
 
         if (anchor_index === -1 || end_index - anchor_index < 2){
             return false;
         }
 
-        let anchor = oriented_line[anchor_index];
+        let anchor = line[anchor_index];
         this.position = anchor;
 
         // Can be made faster since we are computing every segment for every zoom stop
@@ -375,7 +375,7 @@ class LabelLineCurved extends LabelLineBase {
             for (var j = 0; j < STOPS.length; j++){
                 let stop = STOPS[j];
 
-                let [new_line, line_lengths] = LabelLineCurved.scaleLine(stop, oriented_line);
+                let [new_line, line_lengths] = LabelLineCurved.scaleLine(stop, line);
                 anchor = new_line[anchor_index];
 
                 let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtIndex(anchor_index, new_line, line_lengths, label_lengths);
@@ -390,7 +390,6 @@ class LabelLineCurved extends LabelLineBase {
                 if (stop === 0){
                     for (let i = 0; i < positions.length; i++){
                         let position = positions[i];
-
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
                         let angle_curve = pre_angle + angles[i];
@@ -400,7 +399,7 @@ class LabelLineCurved extends LabelLineBase {
                             angle_offset += Math.PI;
                         }
 
-                        if (layout.orientation === 'left'){
+                        if (layout.orientation === -1){
                             angle_offset += Math.PI;
                         }
 

@@ -92,15 +92,32 @@ Object.assign(TextStyle, {
             return;
         }
 
-        q.feature = feature;
-        q.context = context;
-        q.layout.vertex = false; // vertex placement option not applicable to standalone labels
+        // text can be an array if a `left` or `right` orientation key is defined for the text source
+        // in which case, push both text sources to the queue
+        if (q instanceof Array){
+            q.forEach(function(q){
+                q.feature = feature;
+                q.context = context;
+                q.layout.vertex = false; // vertex placement option not applicable to standalone labels
 
-        // Queue the feature for processing
-        if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
-            this.startData(tile);
+                // Queue the feature for processing
+                if (!this.tile_data[tile.key]) {
+                    this.startData(tile);
+                }
+                this.queues[tile.key].push(q);
+            }.bind(this));
         }
-        this.queues[tile.key].push(q);
+        else {
+            q.feature = feature;
+            q.context = context;
+            q.layout.vertex = false; // vertex placement option not applicable to standalone labels
+
+            // Queue the feature for processing
+            if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
+                this.startData(tile);
+            }
+            this.queues[tile.key].push(q);
+        }
 
         // Register with collision manager
         Collision.addStyle(this.name, tile.key);
@@ -186,7 +203,6 @@ Object.assign(TextStyle, {
             if (text_info.text_settings.can_articulate){
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
                 fq.layout.no_curving = text_info.no_curving;
-                fq.layout.text = fq.text;
                 feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout, text_info.total_size.collision_size);
             }
             else {
