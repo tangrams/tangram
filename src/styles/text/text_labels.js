@@ -293,10 +293,10 @@ export const TextLabels = {
         let oriented_text = text_source.split(':');
         if (oriented_text instanceof Array && oriented_text.length > 1) {
             if (oriented_text[1] === 'right') {
-                layout.orientation = 'right';
+                layout.orientation = 1;
             }
             else if (oriented_text[1] === 'left'){
-                layout.orientation = 'left';
+                layout.orientation = -1;
             }
         }
 
