@@ -283,21 +283,20 @@ export const TextLabels = {
         // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
         layout.italic = (text_settings.style !== 'normal');
 
-        var source = draw.text_source || 'name';
+        // used to determine orientation of text if the text_source is a value like "name:left"
+        let text_source = draw.text_source || 'name';
 
-        if (typeof source === 'string') {
-            text = source;
-        } else if (typeof source === 'function') {
-            text = source(context);
+        if (typeof text_source === 'function') {
+            text_source = text_source(context);
         }
 
-        text = text.split(':');
-        if (text instanceof Array && text.length > 1) {
-            if (text[1] === 'right') {
-                layout.direction = 'right';
+        let oriented_text = text_source.split(':');
+        if (oriented_text instanceof Array && oriented_text.length > 1) {
+            if (oriented_text[1] === 'right') {
+                layout.orientation = 'right';
             }
-            else if (text[1] === 'left'){
-                layout.direction = 'left';
+            else if (oriented_text[1] === 'left'){
+                layout.orientation = 'left';
             }
         }
 

@@ -226,7 +226,7 @@ class LabelLineStraight extends LabelLineBase {
             this.offset[1] *= -1;
         }
 
-        if (layout.direction == 'left'){
+        if (layout.orientation == 'left'){
             this.offset[1] *= -1;
         }
 
@@ -269,7 +269,7 @@ class LabelLineStraight extends LabelLineBase {
                         angle_offset += Math.PI;
                     }
 
-                    if (layout.direction === 'left'){
+                    if (layout.orientation === 'left'){
                         angle_offset += Math.PI;
                     }
 
@@ -333,7 +333,7 @@ class LabelLineCurved extends LabelLineBase {
             this.offset[1] *= -1;
         }
 
-        if (layout.direction == 'left'){
+        if (layout.orientation == 'left'){
             this.offset[1] *= -1;
         }
 
@@ -400,7 +400,7 @@ class LabelLineCurved extends LabelLineBase {
                             angle_offset += Math.PI;
                         }
 
-                        if (layout.direction === 'left'){
+                        if (layout.orientation === 'left'){
                             angle_offset += Math.PI;
                         }
 
