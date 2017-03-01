@@ -76,10 +76,9 @@ Object.assign(Points, {
             this.shaders.uniforms.u_texture = this.texture;
         }
         else {
-            this.defines.TANGRAM_POINT_OUTLINE = true;
-
-            attribs.push({ name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true});
-            attribs.push({ name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: true});
+            this.defines.TANGRAM_SHADER_POINT = true;
+            attribs.push({ name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+            attribs.push({ name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false });
         }
 
         this.vertex_layout = new VertexLayout(attribs);
