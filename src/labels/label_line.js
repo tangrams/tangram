@@ -325,7 +325,17 @@ class LabelLineCurved extends LabelLineBase {
 
     fit (size, line, layout){
         let upp = layout.units_per_pixel;
-        let [oriented_line] = LabelLineBase.splitLineByOrientation(line);
+        let [oriented_line, flipped] = LabelLineBase.splitLineByOrientation(line);
+
+        let offset = this.offset.slice();
+
+        if (flipped){
+            this.offset[1] *= -1;
+        }
+
+        if (layout.direction == 'left'){
+            this.offset[1] *= -1;
+        }
 
         let line_lengths = getLineLengths(oriented_line);
         let label_lengths = size.map(function(size){ return size[0] * upp; });
@@ -380,12 +390,21 @@ class LabelLineCurved extends LabelLineBase {
                 if (stop === 0){
                     for (let i = 0; i < positions.length; i++){
                         let position = positions[i];
-                        let offset_angle = angles[i];
+
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
-                        let angle_curve = pre_angle + offset_angle;
+                        let angle_curve = pre_angle + angles[i];
+                        let angle_offset = this.angle;
 
-                        let obb = LabelLineCurved.createOBB(position, width, height, this.offset, this.angle, angle_curve, upp);
+                        if (flipped){
+                            angle_offset += Math.PI;
+                        }
+
+                        if (layout.direction === 'left'){
+                            angle_offset += Math.PI;
+                        }
+
+                        let obb = LabelLineCurved.createOBB(position, width, height, offset, angle_offset, angle_curve, upp);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
