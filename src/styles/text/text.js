@@ -26,7 +26,7 @@ Object.assign(TextStyle, {
 
         // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
-        this.defines.TANGRAM_POINT_TEXTURE = true;
+        this.defines.TANGRAM_TEXTURE_POINT = true;
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;

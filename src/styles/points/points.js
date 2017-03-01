@@ -72,7 +72,7 @@ Object.assign(Points, {
         this.shaders.uniforms.u_label_texture = Texture.default;
 
         if (this.texture) {
-            this.defines.TANGRAM_POINT_TEXTURE = true;
+            this.defines.TANGRAM_TEXTURE_POINT = true;
             this.shaders.uniforms.u_texture = this.texture;
         }
         else {
@@ -131,12 +131,11 @@ Object.assign(Points, {
             return;
         }
 
+        // Point styling
         let style = {};
         style.color = this.parseColor(draw.color, context);
-
         style.outline_width = StyleParser.evalCachedProperty(draw.outline_width, context) || StyleParser.defaults.outline_width;
         style.outline_color = this.parseColor(draw.outline_color, context) || StyleParser.defaults.outline_color;
-        // Point styling
 
         // require color or texture
         if (!style.color && !this.texture) {
@@ -579,7 +578,7 @@ Object.assign(Points, {
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
 
         // outline
-        if (this.defines.TANGRAM_POINT_OUTLINE) {
+        if (this.defines.TANGRAM_SHADER_POINT) {
             let outline_color = style.outline_color || StyleParser.defaults.outline_color;
             this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
             this.fillVertexTemplate('a_outline_edge', style.outline_width || StyleParser.defaults.outline_width, { size: 1 });

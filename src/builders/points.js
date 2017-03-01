@@ -9,14 +9,18 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
     { quad, quad_normalize, offset, offsets, pre_angles, angle, angles, shape_w, outline_width, curve, texcoord_scale, texcoord_normalize, pre_angles_normalize, angles_normalize, offsets_normalize }) {
     quad_normalize = quad_normalize || 1;
 
-    if (outline_edge_index) {
-        let half_outline_width = outline_width / 2;
-        quad[0] += half_outline_width;
-        quad[1] += half_outline_width;
-    }
+    let w2 = quad[0];
+    let h2 = quad[1];
 
-    let w2 = quad[0] / 2 * quad_normalize;
-    let h2 = quad[1] / 2 * quad_normalize;
+    if (outline_edge_index && outline_width) {
+        outline_width += 1; // bump outline by 1px to balance out antialiasing
+        w2 += outline_width;
+        h2 += outline_width;
+    }
+    let outline_edge_pct = outline_width / Math.min(w2, h2) * 2; // UV distance at which outline starts
+
+    w2 = w2 / 2 * quad_normalize;
+    h2 = h2 / 2 * quad_normalize;
     let scaling = [
         [-w2, -h2],
         [w2, -h2],
@@ -89,7 +93,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
             }
 
             if (outline_edge_index) {
-                vertex_template[outline_edge_index] = outline_width ? 1.0 - (outline_width / Math.min(quad[0], quad[1])) : 0.0;
+                vertex_template[outline_edge_index] = outline_edge_pct;
             }
 
             vertex_data.addVertex(vertex_template);
