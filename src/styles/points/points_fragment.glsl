@@ -63,7 +63,7 @@ void main (void) {
             vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge
             float point_dist = length(uv);
             #ifdef TANGRAM_POINT_OUTLINE
-            color = mix(color, v_outline_color, (smoothstep(v_outline_edge*.5-v_aa_factor, v_outline_edge*.5, point_dist)) * step(.01,v_outline_edge) );
+            color = mix(color, v_outline_color, (smoothstep(v_outline_edge-v_aa_factor, v_outline_edge, point_dist)) * step(.000001,v_outline_edge) );
             #endif
             color.a = mix(color.a, 0., (smoothstep(1.-v_aa_factor, 1., point_dist)));
 
