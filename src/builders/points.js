@@ -11,7 +11,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
     quad_normalize = quad_normalize || 1;
 
     if (outline_edge_index && outline_width) {
-        let half_outline_width = outline_width === 1 ? outline_width : outline_width / 2;
+        let half_outline_width = outline_width === 1.0 ? outline_width : outline_width / 2;
 
         quad[0] += half_outline_width;
         quad[1] += half_outline_width;
@@ -65,8 +65,10 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
             vertex_template[offset_index + 0] = offset[0];
             vertex_template[offset_index + 1] = offset[1];
 
-            if (outline_edge_index) {
-                vertex_template[outline_edge_index] = outline_width ? 1.0 - (outline_width / Math.min(quad[0], quad[1])) : 0.0;
+            if (outline_edge_index && outline_width) {
+                let edge = 1.0 - (outline_width / Math.min(quad[0], quad[1]));
+                edge = edge < 0 ? 0.0000001 : edge;
+                vertex_template[outline_edge_index] = outline_width ? edge : 0.0;
             }
 
             if (curve){
