@@ -40,6 +40,7 @@ export default class CanvasText {
     textSizes (texts) {
         let dpr;
         return FontManager.loadFonts().then(() => {
+            debugger
             for (let style in texts) {
                 CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
 

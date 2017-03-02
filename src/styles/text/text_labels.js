@@ -45,12 +45,25 @@ export const TextLabels = {
         let sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
 
         // unique text strings, grouped by text drawing style
-        if (!sizes[text]) {
-            // first label with this text/style/tile combination, make a new label entry
-            sizes[text] = {
-                text_settings,
-                ref: 0 // # of times this text/style combo appears in tile
-            };
+        if (text instanceof Array){
+            text.forEach(function(text){
+                if (!sizes[text]) {
+                    // first label with this text/style/tile combination, make a new label entry
+                    sizes[text] = {
+                        text_settings,
+                        ref: 0 // # of times this text/style combo appears in tile
+                    };
+                }
+            });
+        }
+        else {
+            if (!sizes[text]) {
+                // first label with this text/style/tile combination, make a new label entry
+                sizes[text] = {
+                    text_settings,
+                    ref: 0 // # of times this text/style combo appears in tile
+                };
+            }
         }
 
         return {
@@ -83,8 +96,18 @@ export const TextLabels = {
         }
         else if (typeof source === 'string') {
             text = feature.properties[source];
-        } else if (typeof source === 'function') {
+        } else if (source instanceof Function) {
             text = source(context);
+        }
+        else if (source instanceof Object){
+            text = [];
+            for (let key in source){
+                if (typeof source[key] === 'string') {
+                    text.push(feature.properties[source[key]]);
+                } else if (typeof source[key] === 'function') {
+                    text.push(source[key](context));
+                }
+            }
         }
         return text;
     },
@@ -210,9 +233,10 @@ export const TextLabels = {
             canvas.rasterize(texts, texture_size, tile_key);
         }
         else {
-            log('error', [
-                `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
-                `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join(''));
+            // log('error', [
+            //     `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
+            //     `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join('')
+            // );
         }
 
         // create a texture
@@ -272,6 +296,9 @@ export const TextLabels = {
 
         // repeat rules include the text
         if (layout.repeat_distance) {
+            if (text instanceof Array){
+                text = text.join('-');
+            }
             layout.repeat_group += '/' + text;
         }
 
@@ -290,15 +317,15 @@ export const TextLabels = {
             text_source = text_source(context);
         }
 
-        let oriented_text = text_source.split(':');
-        if (oriented_text instanceof Array && oriented_text.length > 1) {
-            if (oriented_text[1] === 'right') {
-                layout.orientation = 1;
-            }
-            else if (oriented_text[1] === 'left'){
-                layout.orientation = -1;
-            }
-        }
+        // let oriented_text = text_source.split(':');
+        // if (oriented_text instanceof Array && oriented_text.length > 1) {
+        //     if (oriented_text[1] === 'right') {
+        //         layout.orientation = 1;
+        //     }
+        //     else if (oriented_text[1] === 'left'){
+        //         layout.orientation = -1;
+        //     }
+        // }
 
         return layout;
     }
