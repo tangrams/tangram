@@ -134,6 +134,11 @@ export class StyleManager {
         style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x)); // internal defines (not user-defined)
         style.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
 
+        let draws = sources.map(x => x.draw).filter(x => x); // draw defaults
+        if (draws.length > 0) {
+            style.draw = mergeObjects({}, ...draws);
+        }
+
         // Mix shader properties
         this.mixShaders(style, styles, sources);
         return style;

@@ -89,6 +89,13 @@ styles:
                 filter: |
                     color.rgb *= 1.25; // pump up the colors
                     color.a = 0.5;     // translucent
+        draw: # default draw parameters
+            color: function() { return feature.colour || 'gray'; }
+            width: 6px
+            outline:
+                color: [.8, .8, .8]
+                width: 1px
+            interactive: true
 
     rainbow:
         base: polygons
@@ -747,18 +754,6 @@ layers:
             lines:
                 style: transit-lines
                 order: 400
-                color: gray
-                width: 6px
-                outline:
-                    color: [.8, .8, .8]
-                    width: 1px
-                interactive: true
-
-        colored:
-            filter: { colour: true }
-            draw:
-                lines:
-                    color: function() { return feature.colour; }
 
     # schools:
     #     data: { source: schools }
