@@ -22,19 +22,18 @@
   },
   "scripts": {
     "start": "npm run watch",
-    "test": "npm run lint && npm run build-debug && npm run test-local",
-    "test-ci": "npm run lint && npm run build-debug && npm run test-remote",
+    "test": "npm run lint && npm run build-bundle && npm run test-local",
+    "test-ci": "npm run lint && npm run build-bundle && npm run test-remote",
     "test-remote": "./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
     "test-local": "./node_modules/karma/bin/karma start --browsers Chrome --single-run",
     "karma-start": "./node_modules/karma/bin/karma start --browsers Chrome --no-watch",
     "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome",
     "lint": "$(npm bin)/jshint src/ && jshint test/",
-    "build": "npm run build-debug && npm run build-minify",
-    "build-debug": "npm run build-bundle --tangram:output=dist/tangram.debug.js --tangram:output_map=dist/tangram.debug.js.map",
-    "build-bundle": "$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p './build/quine.js' | exorcist $npm_package_config_output_map > $npm_package_config_output",
+    "build": "npm run build-bundle && npm run build-minify",
+    "build-bundle": "$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p './build/quine.js' -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js",
     "build-minify": "$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size",
     "build-size": "gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'",
-    "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -s Tangram -p ['./build/quine_browserify.js' --output_map 'dist/tangram.debug.js.map']"
+    "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p './build/quine.js' -p [ mapstraction 'dist/tangram.debug.js.map' ]"
   },
   "author": {
     "name": "Mapzen",
@@ -68,7 +67,6 @@
     "brfs": "1.4.3",
     "csscolorparser": "1.0.3",
     "earcut": "2.1.1",
-    "exorcist": "^0.4.0",
     "fontfaceobserver": "1.7.1",
     "geojson-vt": "2.1.6",
     "gl-mat3": "1.0.0",
@@ -90,7 +88,6 @@
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
     "core-js": "2.4.1",
-    "exorcist": "0.4.0",
     "glob": "4.0.6",
     "jshint": "jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad",
     "karma": "0.12.23",
@@ -100,9 +97,10 @@
     "karma-mocha-reporter": "1.0.0",
     "karma-sauce-launcher": "tangrams/karma-sauce-launcher#firefox-profiles",
     "karma-sinon": "1.0.4",
+    "mapstraction": "1.0.1",
     "mocha": "1.21.4",
     "sinon": "1.10.3",
-    "through2": "^2.0.3",
+    "through2": "2.0.3",
     "uglify-js": "2.4.14",
     "yargs": "1.3.2"
   }
