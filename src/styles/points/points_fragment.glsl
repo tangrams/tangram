@@ -34,12 +34,6 @@ varying float v_aa_factor;
 #define TANGRAM_ALPHA_TEST 0.5
 #endif
 
- // Alpha fade range for edges of points
- #ifndef TANGRAM_FADE_RANGE
- #define TANGRAM_FADE_RANGE .15
- #endif
- #define TANGRAM_FADE_START (1. - TANGRAM_FADE_RANGE)
-
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
