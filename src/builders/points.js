@@ -8,12 +8,8 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
     { texcoord_index, position_index, shape_index, offset_index, offsets_index, pre_angles_index, angles_index },
     { quad, quad_normalize, offset, offsets, pre_angles, angle, angles, shape_w, curve, texcoord_scale, texcoord_normalize, pre_angles_normalize, angles_normalize, offsets_normalize }) {
     quad_normalize = quad_normalize || 1;
-
-    let w2 = quad[0];
-    let h2 = quad[1];
-
-    w2 = w2 / 2 * quad_normalize;
-    h2 = h2 / 2 * quad_normalize;
+    let w2 = quad[0] / 2 * quad_normalize;
+    let h2 = quad[1] / 2 * quad_normalize;
     let scaling = [
         [-w2, -h2],
         [w2, -h2],
