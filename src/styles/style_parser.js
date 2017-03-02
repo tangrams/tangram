@@ -46,6 +46,8 @@ StyleParser.defaults = {
     min_height: 0,
     order: 0,
     z: 0,
+    outline_color: [0, 0, 0, 0],
+    outline_width: 0,
     material: {
         ambient: 1,
         diffuse: 1

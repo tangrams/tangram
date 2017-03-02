@@ -18,6 +18,8 @@ uniform mat3 u_inverseNormalMatrix;
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
+attribute float a_outline_edge;
+attribute vec4 a_outline_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
 
@@ -34,6 +36,8 @@ attribute vec2 a_offset;
 varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
+varying float v_outline_edge;
+varying vec4 v_outline_color;
 varying float v_alpha_factor;
 
 #ifdef TANGRAM_MULTI_SAMPLER
@@ -68,7 +72,8 @@ void main() {
     v_alpha_factor = 1.0;
     v_color = a_color;
     v_texcoord = a_texcoord;
-
+    v_outline_color = a_outline_color;
+    v_outline_edge = a_outline_edge;
     // Position
     vec4 position = u_modelView * vec4(a_position.xyz, 1.);
 

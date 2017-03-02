@@ -61,7 +61,6 @@ Object.assign(Points, {
         this.selection = true;
         attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
 
-        this.vertex_layout = new VertexLayout(attribs);
 
         // If we're not rendering as overlay, we need a layer attribute
         if (this.blend !== 'overlay') {
@@ -76,6 +75,14 @@ Object.assign(Points, {
             this.defines.TANGRAM_POINT_TEXTURE = true;
             this.shaders.uniforms.u_texture = this.texture;
         }
+        else {
+            this.defines.TANGRAM_POINT_OUTLINE = true;
+
+            attribs.push({ name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true});
+            attribs.push({ name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: true});
+        }
+
+        this.vertex_layout = new VertexLayout(attribs);
 
         // Enable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = true;
@@ -128,6 +135,8 @@ Object.assign(Points, {
         let style = {};
         style.color = this.parseColor(draw.color, context);
 
+        style.outline_width = StyleParser.evalCachedProperty(draw.outline_width, context) || StyleParser.defaults.outline_width;
+        style.outline_color = this.parseColor(draw.outline_color, context) || StyleParser.defaults.outline_color;
         // Point styling
 
         // require color or texture
@@ -354,6 +363,10 @@ Object.assign(Points, {
 
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
+
+        draw.outline_color = StyleParser.createColorPropertyCache(draw.outline_color);
+        draw.outline_width = StyleParser.createPropertyCache(draw.outline_width, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
 
         // Size (1d value or 2d array)
@@ -566,6 +579,14 @@ Object.assign(Points, {
         // color
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
 
+        // border
+        if (!this.texture) {
+            let outline_color = style.outline_color || StyleParser.defaults.outline_color;
+
+            this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
+            this.fillVertexTemplate('a_outline_edge', style.outline_width || StyleParser.defaults.outline_width, { size: 1 });
+        }
+
         // selection color
         if (this.selection) {
             this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
@@ -574,7 +595,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, outline_width, curve, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -584,7 +605,7 @@ Object.assign(Points, {
                 position_index: this.vertex_layout.index.a_position,
                 shape_index: this.vertex_layout.index.a_shape,
                 offset_index: this.vertex_layout.index.a_offset,
-                offsets_index: this.vertex_layout.index.a_offsets,
+                outline_edge_index: this.vertex_layout.index.a_outline_edge,
                 pre_angles_index: this.vertex_layout.index.a_pre_angles,
                 angles_index: this.vertex_layout.index.a_angles
             },
@@ -597,6 +618,7 @@ Object.assign(Points, {
                 angle: angle * 4096,    // values have a 12-bit fraction
                 angles: angles,
                 shape_w: sampler,
+                outline_width: outline_width,
                 curve,
                 texcoord_scale,
                 texcoord_normalize,
@@ -644,6 +666,7 @@ Object.assign(Points, {
             offset,                         // offset from center in pixels
             null,                           // placeholder for multiple offsets
             texcoords,                      // texture UVs
+            style.outline_width,            // Outline width
             false,                          // if curved
             vertex_data, vertex_template    // VBO and data for current vertex
         );
@@ -702,6 +725,7 @@ Object.assign(Points, {
                 offset,                         // offset from center in pixels
                 offsets,                        // offsets per segment
                 texcoord,                       // texture UVs for fill text
+                style.outline_width,            // Outline width
                 true,                           // if curved
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
