@@ -166,12 +166,24 @@ Object.assign(Points, {
         }
         else {
             style.size = StyleParser.evalCachedProperty(style.size, context);
+            if (typeof style.size === 'number') {
+                style.size = [style.size, style.size]; // convert 1d size to 2d
+            }
+        }
+
+        // incorporate outline into size
+        style.outline_edge_pct = 0;
+        if (style.outline_width) {
+            let outline_width = style.outline_width + 1;
+            style.size[0] += outline_width; // bump outline by 1px to balance out antialiasing
+            style.size[1] += outline_width;
+            style.outline_edge_pct = outline_width / Math.min(style.size[0], style.size[1]) * 2; // UV distance at which outline starts
         }
 
         // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
         style.size = [
-            Math.min(style.size[0] != null ? style.size[0] : style.size, 256),
-            Math.min(style.size[1] != null ? style.size[1] : style.size, 256)
+            Math.min(style.size[0], 256),
+            Math.min(style.size[1], 256)
         ];
 
         // Placement strategy
@@ -581,7 +593,7 @@ Object.assign(Points, {
         if (this.defines.TANGRAM_SHADER_POINT) {
             let outline_color = style.outline_color || StyleParser.defaults.outline_color;
             this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
-            this.fillVertexTemplate('a_outline_edge', style.outline_width || StyleParser.defaults.outline_width, { size: 1 });
+            this.fillVertexTemplate('a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline_width, { size: 1 });
         }
 
         // selection color
@@ -592,7 +604,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad(points, size, outline_width, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -617,7 +629,6 @@ Object.assign(Points, {
                 angles: angles,
                 shape_w: sampler,
                 curve,
-                outline_width,
                 texcoord_scale,
                 texcoord_normalize,
                 pre_angles_normalize,
@@ -657,7 +668,6 @@ Object.assign(Points, {
         this.buildQuad(
             [label.position],               // position
             size,                           // size in pixels
-            style.outline_width,            // outline width
             angle,                          // angle in radians
             null,                           // placeholder for multiple angles
             null,                           // placeholder for multiple pre_angles
@@ -689,7 +699,6 @@ Object.assign(Points, {
             this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
-                0,                              // outline width
                 angle,                          // angle in degrees
                 angles,                         // angles per segment
                 pre_angles,                     // pre_angle array (rotation applied before offseting)
@@ -717,7 +726,6 @@ Object.assign(Points, {
             this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
-                0,                              // outline width
                 angle,                          // angle in degrees
                 angles,                         // angles per segment
                 pre_angles,                     // pre_angle array (rotation applied before offseting)

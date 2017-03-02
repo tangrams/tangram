@@ -5,19 +5,12 @@ import { default_uvs } from './common';
 // properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
 // of a sprite between two zoom levels.
 export function buildQuadsForPoints (points, vertex_data, vertex_template,
-    { texcoord_index, position_index, shape_index, outline_edge_index, offset_index, offsets_index, pre_angles_index, angles_index },
-    { quad, quad_normalize, offset, offsets, pre_angles, angle, angles, shape_w, outline_width, curve, texcoord_scale, texcoord_normalize, pre_angles_normalize, angles_normalize, offsets_normalize }) {
+    { texcoord_index, position_index, shape_index, offset_index, offsets_index, pre_angles_index, angles_index },
+    { quad, quad_normalize, offset, offsets, pre_angles, angle, angles, shape_w, curve, texcoord_scale, texcoord_normalize, pre_angles_normalize, angles_normalize, offsets_normalize }) {
     quad_normalize = quad_normalize || 1;
 
     let w2 = quad[0];
     let h2 = quad[1];
-
-    if (outline_edge_index && outline_width) {
-        outline_width += 1; // bump outline by 1px to balance out antialiasing
-        w2 += outline_width;
-        h2 += outline_width;
-    }
-    let outline_edge_pct = outline_width / Math.min(w2, h2) * 2; // UV distance at which outline starts
 
     w2 = w2 / 2 * quad_normalize;
     h2 = h2 / 2 * quad_normalize;
@@ -90,10 +83,6 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
                 vertex_template[offsets_index + 1] = offsets_normalize * offsets[1];
                 vertex_template[offsets_index + 2] = offsets_normalize * offsets[2];
                 vertex_template[offsets_index + 3] = offsets_normalize * offsets[3];
-            }
-
-            if (outline_edge_index) {
-                vertex_template[outline_edge_index] = outline_edge_pct;
             }
 
             vertex_data.addVertex(vertex_template);
