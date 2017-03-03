@@ -134,8 +134,11 @@ Object.assign(Points, {
         // Point styling
         let style = {};
         style.color = this.parseColor(draw.color, context);
-        style.outline_width = StyleParser.evalCachedProperty(draw.outline_width, context) || StyleParser.defaults.outline_width;
-        style.outline_color = this.parseColor(draw.outline_color, context) || StyleParser.defaults.outline_color;
+
+        if (draw.outline) {
+            style.outline_width = StyleParser.evalCachedProperty(draw.outline.width, context) || StyleParser.defaults.outline_width;
+            style.outline_color = this.parseColor(draw.outline.color, context) || StyleParser.defaults.outline_color;
+        }
 
         // require color or texture
         if (!style.color && !this.texture) {
@@ -374,8 +377,10 @@ Object.assign(Points, {
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
 
-        draw.outline_color = StyleParser.createColorPropertyCache(draw.outline_color);
-        draw.outline_width = StyleParser.createPropertyCache(draw.outline_width, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+        if (draw.outline) {
+            draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
+            draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+        }
 
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
 
