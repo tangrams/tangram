@@ -24,9 +24,9 @@ Object.assign(TextStyle, {
 
         this.super.init.call(this, options, extra_attributes);
 
-        // Point style (parent class) requires texturing to be turned on
-        // (labels are always drawn with textures)
-        this.defines.TANGRAM_TEXTURE_POINT = true;
+        // Set texture/point config (override parent Point class)
+        this.defines.TANGRAM_TEXTURE_POINT = true;  // standalone text is always sampled from a texture
+        this.defines.TANGRAM_SHADER_POINT = false;  // standalone text neevr draws a shader point
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;

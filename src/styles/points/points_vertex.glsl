@@ -70,6 +70,20 @@ float mix4linear(float a, float b, float c, float d, float x) {
             );
 }
 
+// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)
+bool isShaderPoint() {
+    #ifdef TANGRAM_SHADER_POINT
+        #ifdef TANGRAM_MULTI_SAMPLER
+            if (v_sampler == 0.) { // sprite sampler
+                return true;
+            }
+        #else
+            return true;
+        #endif
+    #endif
+    return false;
+}
+
 void main() {
     // Initialize globals
     #pragma tangram: setup
@@ -160,8 +174,9 @@ void main() {
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
 
-    // Snap to pixel grid - only applied to fully upright sprites/labels, while panning is not active
-    if (!u_view_panning && abs(theta) < TANGRAM_EPSILON) {
+    // Snap to pixel grid
+    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active
+    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {
         vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);
         vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);
 
