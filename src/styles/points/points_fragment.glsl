@@ -20,6 +20,12 @@ varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 varying float v_alpha_factor;
+varying float v_aa_factor;
+
+#ifdef TANGRAM_SHADER_POINT
+    varying vec4 v_outline_color;
+    varying float v_outline_edge;
+#endif
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
@@ -27,12 +33,6 @@ varying float v_alpha_factor;
 #ifndef TANGRAM_ALPHA_TEST
 #define TANGRAM_ALPHA_TEST 0.5
 #endif
-
-// Alpha fade range for edges of points
-#ifndef TANGRAM_FADE_RANGE
-#define TANGRAM_FADE_RANGE .15
-#endif
-#define TANGRAM_FADE_START (1. - TANGRAM_FADE_RANGE)
 
 #pragma tangram: camera
 #pragma tangram: material
@@ -49,14 +49,20 @@ void main (void) {
     #ifdef TANGRAM_MULTI_SAMPLER
     if (v_sampler == 0.) { // sprite sampler
     #endif
-        #ifdef TANGRAM_POINT_TEXTURE
+        #ifdef TANGRAM_TEXTURE_POINT
             // Draw sprite
             color *= texture2D(u_texture, v_texcoord);
         #else
             // Draw a point
             vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge
             float point_dist = length(uv);
-            color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
+            color = mix(
+                color,
+                v_outline_color,
+                (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)
+            );
+            color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));
+
         #endif
     #ifdef TANGRAM_MULTI_SAMPLER
     }

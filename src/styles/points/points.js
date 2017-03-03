@@ -61,7 +61,6 @@ Object.assign(Points, {
         this.selection = true;
         attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
 
-        this.vertex_layout = new VertexLayout(attribs);
 
         // If we're not rendering as overlay, we need a layer attribute
         if (this.blend !== 'overlay') {
@@ -73,9 +72,16 @@ Object.assign(Points, {
         this.shaders.uniforms.u_label_texture = Texture.default;
 
         if (this.texture) {
-            this.defines.TANGRAM_POINT_TEXTURE = true;
+            this.defines.TANGRAM_TEXTURE_POINT = true;
             this.shaders.uniforms.u_texture = this.texture;
         }
+        else {
+            this.defines.TANGRAM_SHADER_POINT = true;
+            attribs.push({ name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+            attribs.push({ name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false });
+        }
+
+        this.vertex_layout = new VertexLayout(attribs);
 
         // Enable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = true;
@@ -125,10 +131,9 @@ Object.assign(Points, {
             return;
         }
 
+        // Point styling
         let style = {};
         style.color = this.parseColor(draw.color, context);
-
-        // Point styling
 
         // require color or texture
         if (!style.color && !this.texture) {
@@ -159,12 +164,29 @@ Object.assign(Points, {
         }
         else {
             style.size = StyleParser.evalCachedProperty(style.size, context);
+            if (typeof style.size === 'number') {
+                style.size = [style.size, style.size]; // convert 1d size to 2d
+            }
+        }
+
+        // incorporate outline into size
+        if (draw.outline) {
+            style.outline_width = StyleParser.evalCachedProperty(draw.outline.width, context) || StyleParser.defaults.outline.width;
+            style.outline_color = this.parseColor(draw.outline.color, context);
+        }
+
+        style.outline_edge_pct = 0;
+        if (style.outline_width && style.outline_color) {
+            let outline_width = style.outline_width + 1;
+            style.size[0] += outline_width; // bump outline by 1px to balance out antialiasing
+            style.size[1] += outline_width;
+            style.outline_edge_pct = outline_width / Math.min(style.size[0], style.size[1]) * 2; // UV distance at which outline starts
         }
 
         // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
         style.size = [
-            Math.min(style.size[0] != null ? style.size[0] : style.size, 256),
-            Math.min(style.size[1] != null ? style.size[1] : style.size, 256)
+            Math.min(style.size[0], 256),
+            Math.min(style.size[1], 256)
         ];
 
         // Placement strategy
@@ -354,6 +376,12 @@ Object.assign(Points, {
 
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
+
+        if (draw.outline) {
+            draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
+            draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+        }
+
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
 
         // Size (1d value or 2d array)
@@ -566,6 +594,13 @@ Object.assign(Points, {
         // color
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
 
+        // outline
+        if (this.defines.TANGRAM_SHADER_POINT) {
+            let outline_color = style.outline_color || StyleParser.defaults.outline.color;
+            this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
+            this.fillVertexTemplate('a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, { size: 1 });
+        }
+
         // selection color
         if (this.selection) {
             this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
@@ -586,7 +621,8 @@ Object.assign(Points, {
                 offset_index: this.vertex_layout.index.a_offset,
                 offsets_index: this.vertex_layout.index.a_offsets,
                 pre_angles_index: this.vertex_layout.index.a_pre_angles,
-                angles_index: this.vertex_layout.index.a_angles
+                angles_index: this.vertex_layout.index.a_angles,
+                outline_edge_index: sampler ? null : this.vertex_layout.index.a_outline_edge
             },
             {
                 quad: size,

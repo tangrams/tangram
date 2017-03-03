@@ -18,6 +18,8 @@ uniform mat3 u_inverseNormalMatrix;
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
+attribute float a_outline_edge;
+attribute vec4 a_outline_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
 
@@ -30,14 +32,21 @@ attribute vec2 a_offset;
 #endif
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
+#define TANGRAM_PX_FADE_RANGE 2.
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 varying float v_alpha_factor;
+varying float v_aa_factor;
+
+#ifdef TANGRAM_SHADER_POINT
+    varying float v_outline_edge;
+    varying vec4 v_outline_color;
+#endif
 
 #ifdef TANGRAM_MULTI_SAMPLER
-varying float v_sampler;
+    varying float v_sampler;
 #endif
 
 #pragma tangram: camera
@@ -61,6 +70,20 @@ float mix4linear(float a, float b, float c, float d, float x) {
             );
 }
 
+// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)
+bool isShaderPoint() {
+    #ifdef TANGRAM_SHADER_POINT
+        #ifdef TANGRAM_MULTI_SAMPLER
+            if (v_sampler == 0.) { // sprite sampler
+                return true;
+            }
+        #else
+            return true;
+        #endif
+    #endif
+    return false;
+}
+
 void main() {
     // Initialize globals
     #pragma tangram: setup
@@ -68,6 +91,12 @@ void main() {
     v_alpha_factor = 1.0;
     v_color = a_color;
     v_texcoord = a_texcoord;
+    v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;
+
+    #ifdef TANGRAM_SHADER_POINT
+        v_outline_color = a_outline_color;
+        v_outline_edge = a_outline_edge;
+    #endif
 
     // Position
     vec4 position = u_modelView * vec4(a_position.xyz, 1.);
@@ -145,8 +174,9 @@ void main() {
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
 
-    // Snap to pixel grid - only applied to fully upright sprites/labels, while panning is not active
-    if (!u_view_panning && abs(theta) < TANGRAM_EPSILON) {
+    // Snap to pixel grid
+    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active
+    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {
         vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);
         vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);
 
