@@ -217,7 +217,10 @@ StyleParser.parseUnits = function (val) {
 // (caching the result for future use)
 // { value: original, zoom: { z: meters }, dynamic: function(){...} }
 StyleParser.evalCachedDistanceProperty = function(val, context) {
-    if (val.dynamic) {
+    if (val == null) {
+        return;
+    }
+    else if (val.dynamic) {
         let v = val.dynamic(context);
         return v;
     }
@@ -272,7 +275,10 @@ StyleParser.colorForString = function(string) {
 // (caching the result for future use)
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
 StyleParser.evalCachedColorProperty = function(val, context = {}) {
-    if (val.dynamic) {
+    if (val == null) {
+        return;
+    }
+    else if (val.dynamic) {
         let v = val.dynamic(context);
 
         if (typeof v === 'string') {
