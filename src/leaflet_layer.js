@@ -437,7 +437,9 @@ function extendLeaflet(options) {
                 this.hooks.mouseout = (event) => {
                     // When mouse leaves map, send an additional selection event to indicate no feature is selected
                     if (typeof this._selection_events.hover === 'function') {
-                        this.scene.selection.clearState('hover');
+                        if (this.scene.selection) {
+                            this.scene.selection.clearState('hover');
+                        }
                         this._selection_events.hover({ changed: true, leaflet_event: event });
                     }
                 };
