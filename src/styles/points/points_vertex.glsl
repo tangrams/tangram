@@ -62,9 +62,6 @@ float mix4linear(float a, float b, float c, float d, float x) {
 }
 
 void main() {
-    // Initialize globals
-    #pragma tangram: setup
-
     v_alpha_factor = 1.0;
     v_color = a_color;
     v_texcoord = a_texcoord;
