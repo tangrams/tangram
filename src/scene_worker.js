@@ -85,13 +85,20 @@ Object.assign(self, {
     // Create data sources and clear tile cache if necessary
     createDataSources (config) {
         // Save and compare previous sources
-        self.last_config_sources = self.config_sources;
-        self.config_sources = JSON.stringify(config.sources);
+        self.last_config_sources = self.config_sources || {};
+        self.config_sources = config.sources;
+        let last_sources = self.sources;
+        let changed = false;
 
         // Parse new sources
         config.sources = Utils.stringsToFunctions(config.sources);
         self.sources = {}; // clear previous sources
         for (let name in config.sources) {
+            if (JSON.stringify(self.last_config_sources[name]) === JSON.stringify(config.sources[name])) {
+                self.sources[name] = last_sources[name];
+                continue;
+            }
+
             let source;
             try {
                 source = DataSource.create(Object.assign({}, config.sources[name], {name}), self.sources);
@@ -104,10 +111,11 @@ Object.assign(self, {
                 continue;
             }
             self.sources[name] = source;
+            changed = true;
         }
 
-        // Clear tile cache if data source config changed
-        if (self.config_sources !== self.last_config_sources) {
+        // Clear tile cache if any data sources changed
+        if (changed) {
             self.tiles = {};
         }
     },
