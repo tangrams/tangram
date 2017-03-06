@@ -323,7 +323,7 @@ Object.assign(Lines, {
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
-                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
+                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 2
             }
         );
     },
