@@ -596,13 +596,13 @@ export default class Scene {
                 hover_state.selection_colors[worker_id]) {
                 program.uniform('4f', 'u_selection_hover_group', hover_state.selection_colors[worker_id]);
 
-                if (hover_state.feature.hover_color) {
-                    program.uniform('4f', 'u_selection_hover_color', hover_state.feature.hover_color);
-                    program.uniform('1i', 'u_selection_has_hover_color', true);
-                }
-                else {
-                    program.uniform('1i', 'u_selection_has_hover_color', false);
-                }
+                // if (hover_state.feature.hover_color) {
+                //     program.uniform('4f', 'u_selection_hover_color', hover_state.feature.hover_color);
+                //     program.uniform('1i', 'u_selection_has_hover_color', true);
+                // }
+                // else {
+                //     program.uniform('1i', 'u_selection_has_hover_color', false);
+                // }
             }
             else {
                 program.uniform('4f', 'u_selection_hover_group', [0, 0, 0, 0]);
@@ -614,13 +614,13 @@ export default class Scene {
                 click_state.selection_colors[worker_id]) {
                 program.uniform('4f', 'u_selection_click_group', click_state.selection_colors[worker_id]);
 
-                if (click_state.feature.click_color) {
-                    program.uniform('4f', 'u_selection_click_color', click_state.feature.click_color);
-                    program.uniform('1i', 'u_selection_has_click_color', true);
-                }
-                else {
-                    program.uniform('1i', 'u_selection_has_click_color', false);
-                }
+                // if (click_state.feature.click_color) {
+                //     program.uniform('4f', 'u_selection_click_color', click_state.feature.click_color);
+                //     program.uniform('1i', 'u_selection_has_click_color', true);
+                // }
+                // else {
+                //     program.uniform('1i', 'u_selection_has_click_color', false);
+                // }
             }
             else {
                 program.uniform('4f', 'u_selection_click_group', [0, 0, 0, 0]);

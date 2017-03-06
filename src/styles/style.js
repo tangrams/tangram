@@ -225,8 +225,8 @@ export var Style = {
                 if (selectable) {
                     style.selection_prop = draw.selection_prop;
                     style.selection_group = draw.selection_group;
-                    style.hover_color = (draw.hover_color && StyleParser.evalCachedColorProperty(draw.hover_color, context));
-                    style.click_color = (draw.click_color && StyleParser.evalCachedColorProperty(draw.click_color, context));
+                    style.hover_color = StyleParser.evalCachedColorProperty(draw.hover_color, context);
+                    style.click_color = StyleParser.evalCachedColorProperty(draw.click_color, context);
 
                     let selector = FeatureSelection.getSelector(feature, style, context.tile, context);
                     if (selector) {
@@ -236,6 +236,8 @@ export var Style = {
                 }
                 style.selection_color = style.selection_color || FeatureSelection.defaultColor;
                 style.selection_group_index = style.selection_group_index || FeatureSelection.defaultColor;
+                style.hover_color = style.hover_color || [0, 0, 0, 0];
+                style.click_color = style.click_color || [0, 0, 0, 0];
             }
 
             return style;

@@ -267,7 +267,7 @@ layers:
         data: { source: mapzen }
         draw:
             polygons:
-                # interactive: true
+                interactive: true
                 order: global.feature_order
                 color: '#9dc3de'
 
@@ -310,8 +310,8 @@ layers:
                     width: [[15, 0], [16, 2]]
                     order: 352 # put all outlines below all roads
                     # interactive: true
-                    hover_color: purple
-                    click_color: orange
+                    # hover_color: purple
+                    # click_color: orange
                     # selection_group: same
 
         rounded:
@@ -338,7 +338,7 @@ layers:
             filter: { kind: major_road, $zoom: { min: 10 } }
             draw:
                 lines:
-                    hover_color: green
+                    # hover_color: green
                     width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
                     outline:
                         width: [[16, 0], [17, 1]]
@@ -503,16 +503,19 @@ layers:
 
         draw:
             polygons:
-                style: buildings
+                # style: buildings
                 # selection_prop: function() { return feature.name && feature.name[0]; }
                 # selection_prop: function() { return feature.height && feature.height > 25; }
-                # selection_prop: function() { return Math.ceil(feature.height/50); }
-                hover_color: yellow
-                click_color: red
-                # hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
-                # click_color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
+                selection_prop: function() { return Math.ceil((feature.height > 50 && feature.height)/50); }
+                # selection_prop: function() { return Math.ceil(Math.random()*10); }
+                selection_group: buildings
+                # hover_color: yellow
+                # click_color: red
+                hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
+                click_color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
                 order: global.feature_order
-                color: [.7, .7, .7]
+                # color: [.7, .7, .7]
+                color: function() { if (feature.height > 50) { return [.9, .7, .9]; } else { return [.7, .7, .7] }; }
 
         # tall:
         #     filter: { height: { min: 100 } }
@@ -567,6 +570,7 @@ layers:
         draw:
             icons:
                 interactive: true
+                hover_color: yellow
 
         parks:
             filter:
@@ -807,7 +811,7 @@ layers:
                 outline:
                     color: [.8, .8, .8]
                     width: 1px
-                # interactive: true
+                interactive: true
 
         colored:
             filter: { colour: true }

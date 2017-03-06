@@ -14,14 +14,16 @@
     v_selection_state = 0.;
 
     if (u_selection_click_group == a_selection_group) {
-        if (u_selection_has_click_color) {
-            v_color = u_selection_click_color;
+        // if (u_selection_has_click_color) {
+        if (a_selection_click_color != vec4(0.)) {
+            v_color = a_selection_click_color;
         }
         v_selection_state = 2.;
     }
     else if (u_selection_hover_group == a_selection_group) {
-        if (u_selection_has_hover_color) {
-            v_color = u_selection_hover_color;
+        // if (u_selection_has_hover_color) {
+        if (a_selection_hover_color != vec4(0.)) {
+            v_color = a_selection_hover_color;
         }
         v_selection_state = 1.;
     }
