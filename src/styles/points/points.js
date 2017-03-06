@@ -231,7 +231,7 @@ Object.assign(Points, {
         }
 
         // Queue the feature for processing
-        if (!this.tile_data[tile.key]) {
+        if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
             this.startData(tile);
         }
 
@@ -275,7 +275,7 @@ Object.assign(Points, {
     endData (tile) {
         if (tile.canceled) {
             log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}`);
-            return;
+            return Promise.resolve();
         }
 
         let queue = this.queues[tile.key];
