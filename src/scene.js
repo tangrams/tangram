@@ -164,11 +164,6 @@ export default class Scene {
         return this.initializing;
     }
 
-    // For API compatibility
-    reload(config_source = null, config_path = null) {
-        return this.load(config_source, config_path);
-    }
-
     destroy() {
         this.initialized = false;
         this.render_loop_stop = true; // schedule render loop to stop
@@ -727,16 +722,10 @@ export default class Scene {
             catch(error => Promise.resolve({ error }));
     }
 
-    // Rebuild geometry, without re-parsing the config or re-compiling styles
-    // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
-    rebuild(options) {
-        return this.rebuildGeometry(options);
-    }
-
-    // Rebuild all tiles
+    // Rebuild all tiles, without re-parsing the config or re-compiling styles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuildGeometry({ sync = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
+    rebuild({ sync = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
