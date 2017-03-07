@@ -12,6 +12,7 @@ const LEVELS = {
 };
 
 const methods = {};
+let logged_once = {};
 
 function methodForLevel (level) {
     if (Thread.is_main) {
@@ -20,21 +21,29 @@ function methodForLevel (level) {
     }
 }
 
-export default function log (msg_level, ...msg) {
-    if (LEVELS[msg_level] <= LEVELS[log.level]) {
+export default function log (opts, ...msg) {
+    let level = (typeof opts === 'object') ? opts.level : opts;
+    if (LEVELS[level] <= LEVELS[log.level]) {
         if (Thread.is_worker) {
             // Proxy to main thread
-            WorkerBroker.postMessage('_logProxy', msg_level, ...msg);
+            WorkerBroker.postMessage('_logProxy', opts, ...msg);
         }
         else {
-            let logger = methodForLevel(msg_level);
+            // Only log message once?
+            if (typeof opts === 'object' && opts.once === true) {
+                if (logged_once[JSON.stringify(msg)]) {
+                    return;
+                }
+                logged_once[JSON.stringify(msg)] = true;
+            }
 
             // Write to console (on main thread)
+            let logger = methodForLevel(level);
             if (msg.length > 1) {
-                logger(`Tangram ${version} [${msg_level}]: ${msg[0]}`, ...msg.slice(1));
+                logger(`Tangram ${version} [${level}]: ${msg[0]}`, ...msg.slice(1));
             }
             else {
-                logger(`Tangram ${version} [${msg_level}]: ${msg[0]}`);
+                logger(`Tangram ${version} [${level}]: ${msg[0]}`);
             }
         }
     }
@@ -56,7 +65,9 @@ if (Thread.is_main) {
         log.workers = workers;
     };
 
-
+    log.reset = function () {
+        logged_once = {};
+    };
 }
 
 WorkerBroker.addTarget('_logProxy', log);                   // proxy log messages from worker to main thread

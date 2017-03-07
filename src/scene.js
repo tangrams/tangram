@@ -83,6 +83,7 @@ export default class Scene {
 
         this.log_level = options.logLevel || 'warn';
         log.setLevel(this.log_level);
+        log.reset();
     }
 
     static create (config, options = {}) {
@@ -97,6 +98,7 @@ export default class Scene {
         if (this.initializing) {
             return this.initializing;
         }
+        log.reset();
 
         this.updating++;
         this.initialized = false;
@@ -201,6 +203,7 @@ export default class Scene {
         this.destroyWorkers();
         this.tile_manager.destroy();
         this.tile_manager = null;
+        log.reset();
     }
 
     createCanvas() {
