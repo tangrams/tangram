@@ -200,8 +200,12 @@ export var Style = {
                 return;
             }
 
-            // Calculate order if it was not cached
+            // Calculate order
             style.order = this.parseOrder(draw.order, context);
+            if (style.order == null && this.blend !== 'overlay') {
+                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': 'order' parameter is required unless blend mode is 'overlay'`);
+                return;
+            }
 
             // Feature selection (only if style supports it)
             var selectable = false;
