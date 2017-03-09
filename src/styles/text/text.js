@@ -92,15 +92,30 @@ Object.assign(TextStyle, {
             return;
         }
 
-        q.feature = feature;
-        q.context = context;
-        q.layout.vertex = false; // vertex placement option not applicable to standalone labels
+        if (q instanceof Array){
+            q.forEach(function(q){
+                q.feature = feature;
+                q.context = context;
+                q.layout.vertex = false; // vertex placement option not applicable to standalone labels
 
-        // Queue the feature for processing
-        if (!this.tile_data[tile.key]) {
-            this.startData(tile);
+                // Queue the feature for processing
+                if (!this.tile_data[tile.key]) {
+                    this.startData(tile);
+                }
+                this.queues[tile.key].push(q);
+            }.bind(this));
         }
-        this.queues[tile.key].push(q);
+        else {
+            q.feature = feature;
+            q.context = context;
+            q.layout.vertex = false; // vertex placement option not applicable to standalone labels
+
+            // Queue the feature for processing
+            if (!this.tile_data[tile.key]) {
+                this.startData(tile);
+            }
+            this.queues[tile.key].push(q);
+        }
 
         // Register with collision manager
         Collision.addStyle(this.name, tile.key);

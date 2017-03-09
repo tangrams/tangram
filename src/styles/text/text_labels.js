@@ -38,15 +38,19 @@ export const TextLabels = {
         // Compute text style and layout settings for this feature label
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
-        let layout = this.computeTextLayout({}, feature, draw, context, tile, text, text_settings);
 
         // first label in tile, or with this style?
         this.texts[tile.key] = this.texts[tile.key] || {};
         let sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
 
         // unique text strings, grouped by text drawing style
-        if (text instanceof Array){
-            text.forEach(function(text){
+        if (text instanceof Object){
+            var results = [];
+            for (var key in text){
+                var current_text = text[key];
+                if (!current_text) continue;
+
+                let layout = this.computeTextLayout({}, feature, draw, context, tile, current_text, text_settings, key);
                 if (!sizes[text]) {
                     // first label with this text/style/tile combination, make a new label entry
                     sizes[text] = {
@@ -54,9 +58,18 @@ export const TextLabels = {
                         ref: 0 // # of times this text/style combo appears in tile
                     };
                 }
-            });
+
+                results.push({
+                    draw, text : current_text, text_settings_key, layout
+                });
+            }
+
+            if (results.length === 0) return false;
+
+            return results;
         }
         else {
+            let layout = this.computeTextLayout({}, feature, draw, context, tile, text, text_settings);
             if (!sizes[text]) {
                 // first label with this text/style/tile combination, make a new label entry
                 sizes[text] = {
@@ -64,11 +77,11 @@ export const TextLabels = {
                     ref: 0 // # of times this text/style combo appears in tile
                 };
             }
-        }
 
-        return {
-            draw, text, text_settings_key, layout
-        };
+            return {
+                draw, text, text_settings_key, layout
+            };
+        }
     },
 
     // Compute the label text, default is value of feature.properties.name
@@ -100,12 +113,12 @@ export const TextLabels = {
             text = source(context);
         }
         else if (source instanceof Object){
-            text = [];
+            text = {};
             for (let key in source){
                 if (typeof source[key] === 'string') {
-                    text.push(feature.properties[source[key]]);
-                } else if (typeof source[key] === 'function') {
-                    text.push(source[key](context));
+                    text[key] = feature.properties[source[key]];
+                } else if (source[key] instanceof Function) {
+                    text[key] = source[key](context);
                 }
             }
         }
@@ -282,7 +295,7 @@ export const TextLabels = {
     },
 
     // Additional text-specific layout settings
-    computeTextLayout (target, feature, draw, context, tile, text, text_settings) {
+    computeTextLayout (target, feature, draw, context, tile, text, text_settings, orientation) {
         let layout = target || {};
 
         // common settings w/points
@@ -317,15 +330,12 @@ export const TextLabels = {
             text_source = text_source(context);
         }
 
-        // let oriented_text = text_source.split(':');
-        // if (oriented_text instanceof Array && oriented_text.length > 1) {
-        //     if (oriented_text[1] === 'right') {
-        //         layout.orientation = 1;
-        //     }
-        //     else if (oriented_text[1] === 'left'){
-        //         layout.orientation = -1;
-        //     }
-        // }
+        if (orientation === 'right') {
+            layout.orientation = 1;
+        }
+        else if (orientation === 'left'){
+            layout.orientation = -1;
+        }
 
         return layout;
     }
