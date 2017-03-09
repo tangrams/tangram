@@ -31,6 +31,7 @@ export const TextLabels = {
     parseTextFeature (feature, draw, context, tile) {
         // Compute label text
         let text = this.parseTextSource(feature, draw, context);
+
         if (text == null || text === '') {
             return; // no text for this feature
         }
@@ -46,14 +47,14 @@ export const TextLabels = {
         // unique text strings, grouped by text drawing style
         if (text instanceof Object){
             var results = [];
-            for (var key in text){
+            for (let key in text){
                 var current_text = text[key];
                 if (!current_text) continue;
 
                 let layout = this.computeTextLayout({}, feature, draw, context, tile, current_text, text_settings, key);
-                if (!sizes[text]) {
+                if (!sizes[current_text]) {
                     // first label with this text/style/tile combination, make a new label entry
-                    sizes[text] = {
+                    sizes[current_text] = {
                         text_settings,
                         ref: 0 // # of times this text/style combo appears in tile
                     };
@@ -324,12 +325,6 @@ export const TextLabels = {
         layout.italic = (text_settings.style !== 'normal');
 
         // used to determine orientation of text if the text_source is a value like "name:left"
-        let text_source = draw.text_source || 'name';
-
-        if (typeof text_source === 'function') {
-            text_source = text_source(context);
-        }
-
         if (orientation === 'right') {
             layout.orientation = 1;
         }
