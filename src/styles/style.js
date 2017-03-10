@@ -337,10 +337,17 @@ export var Style = {
             selection_defines.TANGRAM_FEATURE_SELECTION = true;
         }
 
-        // Get any custom code blocks, uniform dependencies, etc.
+        // Shader blocks
         var blocks = (this.shaders && this.shaders.blocks);
         var block_scopes = (this.shaders && this.shaders.block_scopes);
+
+        // Uniforms
         var uniforms = Object.assign({}, this.shaders && this.shaders.uniforms);
+        for (let u in uniforms) { // validate uniforms
+            if (uniforms[u] == null) {
+                log({ level: 'warn', once: true }, `Style '${this.name}' has invalid uniform '${u}': uniform values must be non-null`);
+            }
+        }
 
         // Accept a single extension, or an array of extensions
         var extensions = (this.shaders && this.shaders.extensions);
