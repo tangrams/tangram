@@ -62,8 +62,9 @@ class LabelLineBase {
         let current_line = [line[0]];
         let current_length = 0;
         let max_length = 0;
-        let orientation = 1;
+        let orientation = 0;
         let longest_line = current_line;
+        let flip = false;
 
         for (let i = 1; i < line.length; i++) {
             let pt = line[i];
@@ -78,6 +79,7 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
+                        flip = false;
                     }
                 }
                 else {
@@ -86,6 +88,7 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
+                        flip = false;
                     }
                     orientation = 1;
                 }
@@ -98,6 +101,7 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
+                        flip = true;
                     }
                 }
                 else {
@@ -107,17 +111,13 @@ class LabelLineBase {
                     if (current_length > max_length){
                         longest_line = current_line;
                         max_length = current_length;
+                        flip = true;
                     }
                     orientation = -1;
                 }
             }
             else {
                 // vertical line (doesn't change previous orientation)
-                current_length += length;
-                if (current_length > max_length){
-                    longest_line = current_line;
-                    max_length = current_length;
-                }
                 if (orientation === -1){
                     current_line.unshift(pt);
                 }
@@ -125,10 +125,18 @@ class LabelLineBase {
                     current_line.push(pt);
                     orientation = 1;
                 }
+
+                current_length += length;
+                if (current_length > max_length){
+                    longest_line = current_line;
+                    max_length = current_length;
+
+                    flip = (orientation === -1);
+                }
             }
         }
 
-        return longest_line;
+        return [longest_line, flip];
     }
 
     // Adds each segment to the collision pass as its own bounding box
@@ -178,13 +186,13 @@ class LabelLineBase {
     }
 
     // Method to calculate oriented bounding box
-    static createOBB (position, width, height, angle, offset, upp) {
+    static createOBB (position, width, height, angle, angle_offset, offset, upp) {
         let p0 = position[0];
         let p1 = position[1];
 
         // apply offset, x positive, y pointing down
         if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-            offset = Vector.rot(offset, angle);
+            offset = Vector.rot(offset, angle_offset);
             p0 += offset[0] * upp;
             p1 -= offset[1] * upp;
         }
@@ -206,16 +214,22 @@ class LabelLineStraight extends LabelLineBase {
     // A straight label will "look ahead" to future segments if they are within an angle bound given by STRAIGHT_ANGLE_TOLERANCE
     fit (size, line, layout, tolerance){
         let upp = layout.units_per_pixel;
+        let flipped;
 
-        line = LabelLineBase.splitLineByOrientation(line);
-        let line_lengths = getLineLengths(line);
+        [line, flipped] = LabelLineBase.splitLineByOrientation(line);
 
-        let curr_angle = getAngleForSegment(line[0], line[1]);
-        let label_length = size[0] * upp;
+        let offset = this.offset.slice();
 
-        if (curr_angle <= Math.PI/2) {
-            curr_angle += 2 * Math.PI;
+        if (flipped){
+            this.offset[1] *= -1;
         }
+
+        if (layout.orientation === -1){
+            this.offset[1] *= -1;
+        }
+
+        let line_lengths = getLineLengths(line);
+        let label_length = size[0] * upp;
 
         for (let i = 0; i < line.length - 1; i++){
             let curr = line[i];
@@ -232,12 +246,8 @@ class LabelLineStraight extends LabelLineBase {
 
                 let next_angle = getAngleForSegment(ahead_curr, ahead_next);
 
-                if (next_angle <= Math.PI/2) {
-                    next_angle += 2 * Math.PI;
-                }
-
                 if (ahead_index !== i + 1){
-                    curve_tolerance += next_angle - prev_angle;
+                    curve_tolerance += getAbsAngleDiff(next_angle, prev_angle);
                 }
 
                 if (Math.abs(curve_tolerance) > STRAIGHT_ANGLE_TOLERANCE){
@@ -251,8 +261,20 @@ class LabelLineStraight extends LabelLineBase {
 
                     // TODO: modify angle if line chosen within curve_angle_tolerance
                     this.angle = -next_angle;
+                    let angle_offset = this.angle;
+
+                    if (flipped){
+                        angle_offset += Math.PI;
+                    }
+
+                    if (layout.orientation === -1){
+                        angle_offset += Math.PI;
+                    }
+
                     this.position = currMid;
-                    this.updateBBoxes(size);
+
+                    this.updateBBoxes(this.position, size, this.angle, angle_offset, offset);
+
                     if (this.inTileBounds()) {
                         return true;
                     }
@@ -267,7 +289,7 @@ class LabelLineStraight extends LabelLineBase {
     }
 
     // Calculate bounding boxes
-    updateBBoxes(size) {
+    updateBBoxes(position, size, angle, angle_offset, offset) {
         let upp = this.layout.units_per_pixel;
 
         // reset bounding boxes
@@ -277,7 +299,7 @@ class LabelLineStraight extends LabelLineBase {
         let width = (size[0] + 2 * this.layout.buffer[0]) * upp * Label.epsilon;
         let height = (size[1] + 2 * this.layout.buffer[1]) * upp * Label.epsilon;
 
-        let obb = LabelLineBase.createOBB(this.position, width, height, this.angle, this.offset, upp);
+        let obb = LabelLineBase.createOBB(position, width, height, angle, angle_offset, offset, upp);
         let aabb = obb.getExtent();
 
         this.obbs.push(obb);
@@ -301,7 +323,19 @@ class LabelLineCurved extends LabelLineBase {
 
     fit (size, line, layout){
         let upp = layout.units_per_pixel;
-        line = LabelLineBase.splitLineByOrientation(line);
+        let flipped;
+
+        [line, flipped] = LabelLineBase.splitLineByOrientation(line);
+
+        let offset = this.offset.slice();
+
+        if (flipped){
+            this.offset[1] *= -1;
+        }
+
+        if (layout.orientation === -1){
+            this.offset[1] *= -1;
+        }
 
         let line_lengths = getLineLengths(line);
         let label_lengths = size.map(function(size){ return size[0] * upp; });
@@ -356,12 +390,20 @@ class LabelLineCurved extends LabelLineBase {
                 if (stop === 0){
                     for (let i = 0; i < positions.length; i++){
                         let position = positions[i];
-                        let offset_angle = angles[i];
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
-                        let angle_curve = pre_angle + offset_angle;
+                        let angle_curve = pre_angle + angles[i];
+                        let angle_offset = this.angle;
 
-                        let obb = LabelLineCurved.createOBB(position, width, height, this.offset, this.angle, angle_curve, upp);
+                        if (flipped){
+                            angle_offset += Math.PI;
+                        }
+
+                        if (layout.orientation === -1){
+                            angle_offset += Math.PI;
+                        }
+
+                        let obb = LabelLineCurved.createOBB(position, width, height, offset, angle_offset, angle_curve, upp);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
@@ -394,7 +436,7 @@ class LabelLineCurved extends LabelLineBase {
         while (start < end){
             let angle = getAngleForSegment(line[start], line[start + 1]);
             let position = Vector.add(Vector.rot([start_width/2, 0], angle), line[start]);
-            let obb = LabelLineBase.createOBB(position, start_width, height, -angle, offset, upp);
+            let obb = LabelLineBase.createOBB(position, start_width, height, -angle, -angle, offset, upp);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
             if (in_tile) {
@@ -409,7 +451,7 @@ class LabelLineCurved extends LabelLineBase {
         while (end > start){
             let angle = getAngleForSegment(line[end - 1], line[end]);
             let position = Vector.add(Vector.rot([-end_width/2, 0], angle), line[end]);
-            let obb = LabelLineBase.createOBB(position, end_width, height, -angle, offset, upp);
+            let obb = LabelLineBase.createOBB(position, end_width, height, -angle, -angle, offset, upp);
             let aabb = obb.getExtent();
             let in_tile = Label.prototype.inTileBounds.call({ aabb });
             if (in_tile) {
@@ -650,13 +692,13 @@ class LabelLineCurved extends LabelLineBase {
 
     // Modify the LabelLineStraight method to include a distiction between an offset angle, and rotation angle
     // as these may be different. (Offset angle is constant for the entire label, while rotation angles are not.)
-    static createOBB (position, width, height, offset, angle, angle_curve, upp) {
+    static createOBB (position, width, height, offset, angle_offset, angle_curve, upp) {
         let p0 = position[0];
         let p1 = position[1];
 
         // apply offset, x positive, y pointing down
         if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-            offset = Vector.rot(offset, angle);
+            offset = Vector.rot(offset, angle_offset);
             p0 += offset[0] * upp;
             p1 -= offset[1] * upp;
         }
@@ -689,4 +731,22 @@ function getLineLengths(line){
         lengths.push(length);
     }
     return lengths;
+}
+
+function getAbsAngleDiff(angle1, angle2){
+    let small, big;
+    if (angle1 > angle2){
+        small = angle2;
+        big = angle1;
+    }
+    else {
+        small = angle1;
+        big = angle2;
+    }
+
+    while (big - small > Math.PI){
+        small += 2 * Math.PI;
+    }
+
+    return Math.abs(big - small);
 }
