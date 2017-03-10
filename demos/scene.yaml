@@ -473,29 +473,34 @@ layers:
         data: { source: mapzen }
         filter: { $zoom: { min: 14 } }
 
-        draw:
-            polygons:
-                order: global.feature_order
-                color: [.83, .83, .83]
-
-        # turn interactive feature selection on for buildings with names
-        interactive:
-            filter: { name: true }
-            draw: { polygons: { interactive: true } }
-
-        # extrude 3d buildings
-        extruded:
-            filter: { $zoom: { min: 15 } }
+        # building footprints and extrusions
+        polygons:
+            filter: { $geometry: polygon }
             draw:
                 polygons:
-                    style: buildings
-                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
+                    order: global.feature_order
+                    color: [.83, .83, .83]
 
-        high-line:
-            filter: { roof_material: grass }
-            draw:
-                polygons:
-                    color: '#bddec5'
+            # turn interactive feature selection on for buildings with names
+            interactive:
+                filter: { name: true }
+                draw: { polygons: { interactive: true } }
+
+            # extrude 3d buildings
+            extruded:
+                filter: { $zoom: { min: 15 } }
+                draw:
+                    polygons:
+                        style: buildings
+                        extrude: function () { return feature.height > 20 || $zoom >= 16; }
+
+            # grass rooftops, e.g. NYC Highline
+            grass:
+                filter: { roof_material: grass }
+                draw:
+                    polygons:
+                        style: polygons # disable building height shader
+                        color: '#bddec5'
 
         # point labels for buildings
         labels:
