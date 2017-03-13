@@ -48,7 +48,9 @@ export const TextLabels = {
             let results = [];
             for (let key in text){
                 let current_text = text[key];
-                if (!current_text) continue;
+                if (!current_text) {
+                    continue;
+                }
 
                 let layout = this.computeTextLayout({}, feature, draw, context, tile, current_text, text_settings, key);
                 if (!sizes[current_text]) {
