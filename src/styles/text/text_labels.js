@@ -44,11 +44,10 @@ export const TextLabels = {
         this.texts[tile.key] = this.texts[tile.key] || {};
         let sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
 
-        // unique text strings, grouped by text drawing style
         if (text instanceof Object){
-            var results = [];
+            let results = [];
             for (let key in text){
-                var current_text = text[key];
+                let current_text = text[key];
                 if (!current_text) continue;
 
                 let layout = this.computeTextLayout({}, feature, draw, context, tile, current_text, text_settings, key);
@@ -65,11 +64,10 @@ export const TextLabels = {
                 });
             }
 
-            if (results.length === 0) return false;
-
             return results;
         }
         else {
+            // unique text strings, grouped by text drawing style
             let layout = this.computeTextLayout({}, feature, draw, context, tile, text, text_settings);
             if (!sizes[text]) {
                 // first label with this text/style/tile combination, make a new label entry
@@ -247,10 +245,10 @@ export const TextLabels = {
             canvas.rasterize(texts, texture_size, tile_key);
         }
         else {
-            // log('error', [
-            //     `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
-            //     `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join('')
-            // );
+            log('error', [
+                `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
+                `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join('')
+            );
         }
 
         // create a texture
@@ -324,7 +322,7 @@ export const TextLabels = {
         // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
         layout.italic = (text_settings.style !== 'normal');
 
-        // used to determine orientation of text if the text_source is a value like "name:left"
+        // used to determine orientation of text if the text_source has a `left` or `right` key
         if (orientation === 'right') {
             layout.orientation = 1;
         }
