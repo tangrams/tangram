@@ -3,6 +3,7 @@ import Geo from '../geo';
 import {MethodNotImplemented} from '../utils/errors';
 import Utils from '../utils/utils';
 import * as URLs from '../utils/urls';
+import log from '../utils/log';
 
 export default class DataSource {
 
@@ -193,8 +194,16 @@ export class NetworkSource extends DataSource {
 
     constructor (source, sources) {
         super(source, sources);
-        this.url = URLs.addParamsToURL(source.url, source.url_params);
         this.response_type = ""; // use to set explicit XHR type
+
+        // Add extra URL params, and warn on duplicates
+        let [url, dupes] = URLs.addParamsToURL(source.url, source.url_params);
+        this.url = url;
+        dupes.forEach(([param, value]) => {
+            log({ level: 'warn', once: true },
+                `Data source '${this.name}': parameter '${param}' already present in URL '${source.url}', ` +
+                `skipping value '${param}=${value}' specified in 'url_params'`);
+        });
 
         if (this.url == null) {
             throw Error('Network data source must provide a `url` property');
