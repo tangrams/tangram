@@ -81,7 +81,12 @@ class Layer {
         this.draw = draw;
         this.filter = filter;
         this.is_built = false;
-        this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
+        if (this.parent && this.parent.visible === false) {
+            this.visible = false; // all descendants of invisible layer are also invisible
+        }
+        else {
+            this.visible = (visible !== false); // layer is visible unless explicitly set to invisible
+        }
 
         // Denormalize layer name to draw groups
         if (this.draw) {
@@ -228,6 +233,10 @@ class Layer {
     }
 
     doesMatch (context) {
+        if (!this.visible) {
+            return false;
+        }
+
         if (!this.is_built) {
             this.build();
         }
@@ -397,32 +406,34 @@ export function parseLayerTree(name, layer, parent, styles) {
 
     let r = new Create(Object.assign(properties, whiteListed));
 
-    if (parent) {
-        parent.addLayer(r);
-    }
-
-    if (!empty) {
-        for (let key in nonWhiteListed) {
-            let property = nonWhiteListed[key];
-            if (typeof property === 'object' && !Array.isArray(property)) {
-                parseLayerTree(key, property, r, styles);
-            } else {
-                // Invalid layer
-                let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(property)}'`;
-                msg += `, under parent layer '${r.full_name}'.`;
-
-                // If the parent is a style name, this may be an incorrectly nested layer
-                if (styles[r.name]) {
-                    msg += ` The parent name '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
-                    if (parent) {
-                        msg += ` under '${parent.name}'`;
-                    }
-                    msg += ` instead?`;
-                }
-                log('warn', msg); // TODO: fire external event that clients to subscribe to
-            }
+    // only process child layers if this layer is visible
+    if (r.visible) {
+        if (parent) {
+            parent.addLayer(r);
         }
 
+        if (!empty) {
+            for (let key in nonWhiteListed) {
+                let property = nonWhiteListed[key];
+                if (typeof property === 'object' && !Array.isArray(property)) {
+                    parseLayerTree(key, property, r, styles);
+                } else {
+                    // Invalid layer
+                    let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(property)}'`;
+                    msg += `, under parent layer '${r.full_name}'.`;
+
+                    // If the parent is a style name, this may be an incorrectly nested layer
+                    if (styles[r.name]) {
+                        msg += ` The parent name '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
+                        if (parent) {
+                            msg += ` under '${parent.name}'`;
+                        }
+                        msg += ` instead?`;
+                    }
+                    log('warn', msg); // TODO: fire external event that clients to subscribe to
+                }
+            }
+        }
     }
 
     return r;
