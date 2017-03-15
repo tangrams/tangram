@@ -55,7 +55,7 @@ Instead of loading traditional bitmap tiles, Tangram draws its own tiles from sc
 
 Mapzen provides a free [vector tile service](https://mapzen.com/documentation/vector-tiles/) based on open data from [OpenStreetMap](https://openstreetmap.org/), [Natural Earth](http://www.naturalearthdata.com/), [Who's On First](https://whosonfirst.mapzen.com/) and other projects,  with worldwide coverage updated continuously -- [sign up for an API key here](https://mapzen.com/developers).
 
-Tangram currently supports [GeoJSON](http://geojson.org/) & [TopoJSON](https://github.com/mbostock/topojson)-based tiles, as well as Mapbox's [binary format](https://github.com/mapbox/vector-tile-spec), all of which are available from the [Mapzen vector tile service](http://mapzen.com/vector/). (Here's an [example GeoJSON tile](http://vector.mapzen.com/osm/all/14/4826/6161.json).)
+Tangram currently supports [GeoJSON](http://geojson.org/) & [TopoJSON](https://github.com/mbostock/topojson)-based tiles, as well as Mapbox's [binary format](https://github.com/mapbox/vector-tile-spec), all of which are available from the [Mapzen vector tile service](http://mapzen.com/vector/). (Here's an [example GeoJSON tile](http://tile.mapzen.com/mapzen/vector/v1/all/14/4826/6161.json).)
 
 ## Styling
 
