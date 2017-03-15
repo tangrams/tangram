@@ -114,7 +114,7 @@ function parseFilter(filter, options) {
         } else if (value == null) {
             filterAST.push(nullValue(key, value));
         } else {
-            throw new Error('Unknown Query sytnax: ' + value);
+            throw new Error('Unknown Query syntax: ' + value);
         }
     }
 
