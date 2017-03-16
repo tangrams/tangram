@@ -4,7 +4,8 @@ import log from '../utils/log';
 import mergeObjects from '../utils/merge';
 import {buildFilter} from './filter';
 
-export const whiteList = ['filter', 'draw', 'visible', 'data'];
+// N.B.: 'visible' is legacy compatibility for 'enabled'
+export const whiteList = ['filter', 'draw', 'visible', 'enabled', 'data'];
 
 export const layer_cache = {};
 
@@ -72,7 +73,7 @@ const blacklist = ['any', 'all', 'not', 'none'];
 
 class Layer {
 
-    constructor({ layer, name, parent, draw, visible, filter }) {
+    constructor({ layer, name, parent, draw, visible, enabled, filter }) {
         this.id = Layer.id++;
         this.config_data = layer.data;
         this.parent = parent;
@@ -81,11 +82,13 @@ class Layer {
         this.draw = draw;
         this.filter = filter;
         this.is_built = false;
+
+        enabled = (enabled === undefined) ? visible : enabled; // `visible` property is backwards compatible for `enabled`
         if (this.parent && this.parent.visible === false) {
-            this.visible = false; // all descendants of invisible layer are also invisible
+            this.enabled = false; // all descendants of disabled layer are also disabled
         }
         else {
-            this.visible = (visible !== false); // layer is visible unless explicitly set to invisible
+            this.enabled = (enabled !== false); // layer is enabled unless explicitly set to disabled
         }
 
         // Denormalize layer name to draw groups
@@ -233,7 +236,7 @@ class Layer {
     }
 
     doesMatch (context) {
-        if (!this.visible) {
+        if (!this.enabled) {
             return false;
         }
 
@@ -406,8 +409,8 @@ export function parseLayerTree(name, layer, parent, styles) {
 
     let r = new Create(Object.assign(properties, whiteListed));
 
-    // only process child layers if this layer is visible
-    if (r.visible) {
+    // only process child layers if this layer is enabled
+    if (r.enabled) {
         if (parent) {
             parent.addLayer(r);
         }
