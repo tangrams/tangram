@@ -56,6 +56,13 @@ export function extensionForURL (url) {
     }
 }
 
+export function isLocalURL (url) {
+    if (typeof url !== 'string') {
+        return;
+    }
+    return (url.search(/^(data|blob):/) > -1);
+}
+
 export function isRelativeURL (url) {
     if (typeof url !== 'string') {
         return;
