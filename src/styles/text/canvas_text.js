@@ -59,11 +59,35 @@ export default class CanvasText {
                     if (text_settings.can_articulate){
                         let segments = splitLabelText(text);
 
-                        let rtl = isTextRTL(text);
+                        let words = text.split(' ');
+
+                        // RTL is true if every word is RTL
+                        // BIDI is true if there is RTL and LTR
+                        let hasRTL = false;
+                        let hasLTR = false;
+                        let bidi = false;
+                        for (var i = 0; i < words.length; i++){
+                            if (isTextRTL(words[i])) {
+                                if (hasLTR){
+                                    bidi = true;
+                                    break;
+                                }
+                                hasRTL = true;
+                            }
+                            else {
+                                if (hasRTL){
+                                    bidi = true;
+                                    break;
+                                }
+                                hasLTR = true;
+                            }
+                        }
+
+                        let rtl = (hasRTL && !hasLTR) && !bidi;
                         let shaped = isTextShaped(text);
 
                         text_info.isRTL = rtl;
-                        text_info.no_curving = shaped;
+                        text_info.no_curving = bidi || shaped;
 
                         if (rtl) {
                             segments.reverse();
