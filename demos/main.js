@@ -212,10 +212,10 @@ Enjoy!
                         }
                     }
 
-                    scene.config.layers.earth.visible = true; // some custom shaders may need to render earth
+                    scene.config.layers.earth.fill.enabled = true; // some custom shaders may need to render earth
                 }
                 else {
-                    scene.config.layers.earth.visible = false; // don't need earth layer in default style
+                    scene.config.layers.earth.fill.enabled = false; // don't need earth layer in default style
                 }
             }
 
@@ -236,21 +236,21 @@ Enjoy!
             },
             'rainbow': {
                 setup: function (style) {
-                    scene.config.layers.earth.draw.polygons.color = '#333';
+                    scene.config.layers.earth.fill.draw.polygons.color = '#333';
                     scene.config.layers.roads.draw.lines.color = '#777';
-                    scene.config.layers.pois.visible = false;
-                    scene.config.layers.buildings.draw.polygons.style = style;
-                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
+                    scene.config.layers.pois.enabled = false;
+                    scene.config.layers.buildings.polygons.draw.polygons.style = style;
+                    scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
                 }
             },
             'popup': {
                 setup: function (style) {
-                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
+                    scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
                 }
             },
             'elevator': {
                 setup: function (style) {
-                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
+                    scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
                 }
             },
             'halftone': {
@@ -258,19 +258,19 @@ Enjoy!
                     scene.config.scene.background.color = 'black';
 
                     var layers = scene.config.layers;
-                    layers.earth.draw.polygons.style = 'halftone_polygons';
+                    layers.earth.fill.draw.polygons.style = 'halftone_polygons';
                     layers.water.draw.polygons.style = 'halftone_polygons';
                     layers.landuse.areas.draw.polygons.style = 'halftone_polygons';
-                    layers.buildings.draw.polygons.style = 'halftone_polygons';
-                    layers.buildings.extruded.draw.polygons.style = 'halftone_polygons';
-                    layers.buildings.draw.polygons.color = 'Style.color.pseudoRandomColor()';
+                    layers.buildings.polygons.draw.polygons.style = 'halftone_polygons';
+                    layers.buildings.polygons.extruded.draw.polygons.style = 'halftone_polygons';
+                    layers.buildings.polygons.draw.polygons.color = 'Style.color.pseudoRandomColor()';
                     layers.roads.draw.lines.style = 'halftone_lines';
-                    layers.pois.visible = false;
+                    layers.pois.enabled = false;
 
-                    var visible_layers = ['landuse', 'water', 'roads', 'buildings'];
+                    var enabled_layers = ['landuse', 'water', 'roads', 'buildings'];
                     Object.keys(layers).forEach(function(l) {
-                        if (visible_layers.indexOf(l) === -1) {
-                            layers[l].visible = false;
+                        if (enabled_layers.indexOf(l) === -1) {
+                            layers[l].enabled = false;
                         }
                     });
                 }
@@ -278,28 +278,28 @@ Enjoy!
             'windows': {
                 camera: 'isometric', // force isometric
                 setup: function (style) {
-                    scene.config.layers.earth.draw.polygons.color = '#333';
+                    scene.config.layers.earth.fill.draw.polygons.color = '#333';
                     scene.config.layers.roads.draw.lines.color = '#777';
-                    scene.config.layers.pois.visible = false;
+                    scene.config.layers.pois.enabled = false;
 
-                    scene.config.layers.buildings.draw.polygons.style = style;
-                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
-                    // scene.config.layers.pois.visible = false;
+                    scene.config.layers.buildings.polygons.draw.polygons.style = style;
+                    scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
+                    // scene.config.layers.pois.enabled = false;
                 }
             },
             'envmap': {
                 setup: function (style) {
-                    scene.config.layers.earth.draw.polygons.color = '#333';
+                    scene.config.layers.earth.fill.draw.polygons.color = '#333';
                     scene.config.layers.roads.draw.lines.color = '#777';
 
-                    scene.config.layers.buildings.draw.polygons.style = style;
-                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
+                    scene.config.layers.buildings.polygons.draw.polygons.style = style;
+                    scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
 
                     var envmaps = {
-                        'Sunset': 'images/sunset.jpg',
-                        'Chrome': 'images/LitSphere_test_02.jpg',
-                        'Matte Red': 'images/matball01.jpg',
-                        'Color Wheel': 'images/wheel.png'
+                        'Sunset': 'demos/images/sunset.jpg',
+                        'Chrome': 'demos/images/LitSphere_test_02.jpg',
+                        'Matte Red': 'demos/images/matball01.jpg',
+                        'Color Wheel': 'demos/images/wheel.png'
                     };
 
                     this.state.envmap = envmaps['Sunset'];
@@ -414,11 +414,11 @@ Enjoy!
                 return;
             }
 
-            layer_controls[l] = !(layer.scene.config.layers[l].visible == false);
+            layer_controls[l] = !(layer.scene.config.layers[l].enabled == false);
             layer_gui.
                 add(layer_controls, l).
                 onChange(function(value) {
-                    layer.scene.config.layers[l].visible = value;
+                    layer.scene.config.layers[l].enabled = value;
                     layer.scene.rebuild();
                 });
         });
