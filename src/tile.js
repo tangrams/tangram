@@ -79,7 +79,7 @@ export default class Tile {
 
     static normalizedCoordinate (coords, source, style_zoom) {
         if (source.zoom_bias) {
-            coords = Tile.coordinateAtZoom(coords, coords.z - source.zoom_bias); // TODO: what about z0?
+            coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
         }
         return Tile.coordinateWithMaxZoom(coords, source.max_zoom);
     }
