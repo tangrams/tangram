@@ -39,7 +39,7 @@ export default class DataSource {
         // overzoom will apply for zooms higher than this
         this.max_zoom = (config.max_zoom != null) ? config.max_zoom : Geo.default_source_max_zoom;
 
-        this.zoom_bias = 1; // TODO: MAKE CONFIGURABLE
+        this.zoom_bias = config.zoom_bias || 0;
         this.max_coord_zoom = this.max_zoom + this.zoom_bias;
 
         // no tiles will be requested or displayed outside of these min/max values
