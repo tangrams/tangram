@@ -249,13 +249,11 @@ export default class Scene {
             // load from source object using browserify shim (preferred)
             var src_map_url = '\n//#' + ' sourceMappingURL=' + __worker_src_origin__ + '.map';
             worker_url = URLs.createObjectURL(new Blob(['(' + __worker_src__ + ')()' + src_map_url], { type: 'application/javascript' }));
-            __worker_src__ = null;
-            __worker_src_origin__ = null;
         }
         /* jshint +W117 */
 
         if (!worker_url) {
-            throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
+            throw new Error("Couldn't find internal Tangram source variable (may indicate the library did not build correctly)");
         }
 
         // Import custom data source scripts alongside core library
