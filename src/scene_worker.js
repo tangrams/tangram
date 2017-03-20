@@ -9,7 +9,8 @@ import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
-import {parseLayers} from './styles/layer';
+import {parseLayers, FilterOptions} from './styles/layer';
+import {buildFilter} from './styles/filter';
 import Texture from './gl/texture';
 import VertexElements from './gl/vertex_elements';
 
@@ -222,6 +223,33 @@ Object.assign(self, {
             delete self.tiles[key];
             log('trace', `remove tile from cache for ${key}`);
         }
+    },
+
+    // Query features within visible tiles, with optional filter conditions
+    queryFeatures ({ filter, tile_keys }) {
+        let features = [];
+        let tiles = tile_keys.map(t => self.tiles[t]).filter(t => t);
+
+        filter = Utils.stringsToFunctions(filter, StyleParser.wrapFunction);
+        filter = buildFilter(filter, FilterOptions);
+
+        tiles.forEach(tile => {
+            for (let layer in tile.source_data.layers) {
+                let data = tile.source_data.layers[layer];
+                data.features.forEach(feature => {
+                    let context = StyleParser.getFeatureParseContext(feature, tile, self.global);
+                    context.source = tile.source;  // add data source name
+                    context.layer = layer;         // add data source layer name
+
+                    if (!filter(context)) {
+                       return;
+                    }
+
+                    features.push(feature);
+                });
+            }
+        });
+        return features;
     },
 
     // Get a feature from the selection map
