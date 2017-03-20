@@ -365,7 +365,7 @@ export class LayerTree extends Layer {
 
 }
 
-const FilterOptions = {
+export const FilterOptions = {
     // Handle unit conversions on filter ranges
     rangeTransform(val) {
         if (typeof val === 'string' && val.trim().slice(-3) === 'px2') {

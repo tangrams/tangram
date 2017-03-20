@@ -17,6 +17,7 @@ StyleParser.wrapFunction = function (func) {
         var global = context.global;
         var $zoom = context.zoom;
         var $layer = context.layer;
+        var $source = context.source;
         var $geometry = context.geometry;
         var $meters_per_pixel = context.meters_per_pixel;
 

@@ -746,6 +746,26 @@ export default class Scene {
             catch(error => Promise.resolve({ error }));
     }
 
+    // Query features within visible tiles, with optional filter conditions
+    queryFeatures({ filter, unique = false } = {}) {
+        let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
+        return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, tile_keys }).then(results => {
+            let features = [];
+            let keys = {};
+            results.forEach(r => r.forEach(feature => {
+                if (unique) {
+                    let str = JSON.stringify(feature.properties);
+                    if (keys[str]) {
+                        return;
+                    }
+                    keys[str] = true;
+                }
+                features.push(feature);
+            }));
+            return features;
+        });
+    }
+
     // Rebuild all tiles, without re-parsing the config or re-compiling styles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
