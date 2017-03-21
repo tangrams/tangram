@@ -95,7 +95,7 @@ Object.assign(TextStyle, {
         // text can be an array if a `left` or `right` orientation key is defined for the text source
         // in which case, push both text sources to the queue
         if (q instanceof Array){
-            q.forEach(function(q){
+            q.forEach(q => {
                 q.feature = feature;
                 q.context = context;
                 q.layout.vertex = false; // vertex placement option not applicable to standalone labels
@@ -105,7 +105,7 @@ Object.assign(TextStyle, {
                     this.startData(tile);
                 }
                 this.queues[tile.key].push(q);
-            }.bind(this));
+            });
         }
         else {
             q.feature = feature;
