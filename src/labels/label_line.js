@@ -10,6 +10,7 @@ const STRAIGHT_ANGLE_TOLERANCE = 0.1;       // multiple "almost straight" segmen
 const CURVE_MIN_TOTAL_COST = 1.3;           // curved line total curvature tolerance (sum)
 const CURVE_MIN_AVG_COST = 0.4;             // curved line average curvature tolerance (mean)
 const CURVE_MAX_ANGLE = 1;                  // curved line singular curvature tolerance (value)
+const ORIENTED_LABEL_OFFSET_FACTOR = 1.2;   // multiply offset by this amount to avoid linked label collision
 
 let LabelLine = {
     // Given a label's bounding box size and size broken up into individual segments
@@ -218,6 +219,10 @@ class LabelLineStraight extends LabelLineBase {
 
         [line, flipped] = LabelLineBase.splitLineByOrientation(line);
 
+        if (typeof layout.orientation === 'number'){
+            this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
+        }
+
         let offset = this.offset.slice();
 
         if (flipped){
@@ -326,6 +331,10 @@ class LabelLineCurved extends LabelLineBase {
         let flipped;
 
         [line, flipped] = LabelLineBase.splitLineByOrientation(line);
+
+        if (typeof layout.orientation === 'number'){
+            this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
+        }
 
         let offset = this.offset.slice();
 

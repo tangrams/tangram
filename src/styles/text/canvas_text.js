@@ -88,6 +88,7 @@ export default class CanvasText {
 
                         text_info.isRTL = rtl;
                         text_info.no_curving = bidi || shaped;
+                        text_info.vertical_buffer = this.vertical_text_buffer;
 
                         if (rtl) {
                             segments.reverse();
