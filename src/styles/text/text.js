@@ -200,6 +200,9 @@ Object.assign(TextStyle, {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
             let feature_labels;
+
+            fq.layout.vertical_buffer = text_info.vertical_buffer;
+
             if (text_info.text_settings.can_articulate){
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
                 fq.layout.no_curving = text_info.no_curving;
