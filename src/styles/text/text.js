@@ -99,24 +99,14 @@ Object.assign(TextStyle, {
                 q.feature = feature;
                 q.context = context;
                 q.layout.vertex = false; // vertex placement option not applicable to standalone labels
-
-                // Queue the feature for processing
-                if (!this.tile_data[tile.key]) {
-                    this.startData(tile);
-                }
-                this.queues[tile.key].push(q);
+                this.queueFeature(q, tile); // queue the feature for later processing
             });
         }
         else {
             q.feature = feature;
             q.context = context;
             q.layout.vertex = false; // vertex placement option not applicable to standalone labels
-
-            // Queue the feature for processing
-            if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
-                this.startData(tile);
-            }
-            this.queues[tile.key].push(q);
+            this.queueFeature(q, tile); // queue the feature for later processing
         }
 
         // Register with collision manager
