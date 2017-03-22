@@ -46,13 +46,19 @@ export const TextLabels = {
 
         if (text instanceof Object){
             let results = [];
+
+            // add both left/right text elements to repeat group to improve repeat culling
+            // avoids one component of a boundary label (e.g. Colorado) being culled too aggressively when it also
+            // appears in nearby boundary labels (e.g. Colorado/Utah & Colorado/New Mexico repeat as separate groups)
+            let repeat_group_prefix = text.left + '-' + text.right; // NB: should be all text keys, not just left/right
+
             for (let key in text){
                 let current_text = text[key];
                 if (!current_text) {
                     continue;
                 }
 
-                let layout = this.computeTextLayout({}, feature, draw, context, tile, current_text, text_settings, key);
+                let layout = this.computeTextLayout({}, feature, draw, context, tile, current_text, text_settings, repeat_group_prefix, key);
                 if (!sizes[current_text]) {
                     // first label with this text/style/tile combination, make a new label entry
                     sizes[current_text] = {
@@ -305,7 +311,7 @@ export const TextLabels = {
     },
 
     // Additional text-specific layout settings
-    computeTextLayout (target, feature, draw, context, tile, text, text_settings, orientation) {
+    computeTextLayout (target, feature, draw, context, tile, text, text_settings, repeat_group_prefix, orientation) {
         let layout = target || {};
 
         // common settings w/points
@@ -319,8 +325,8 @@ export const TextLabels = {
 
         // repeat rules include the text
         if (layout.repeat_distance) {
-            if (text instanceof Array){
-                text = text.join('-');
+            if (repeat_group_prefix) {
+                layout.repeat_group += '/' + repeat_group_prefix;
             }
             layout.repeat_group += '/' + text;
         }
