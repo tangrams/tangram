@@ -216,6 +216,13 @@ Object.assign(Points, {
             draw.text.visible !== false && // explicitly handle `visible` property for nested text
             this.parseTextFeature(feature, draw.text, context, tile);
 
+        if (Array.isArray(tf)) {
+            tf = null; // NB: boundary labels not supported for point label attachments, should log warning
+            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+                `cannot use boundary labels (e.g. 'text_source: { left: ..., right: ... }') for 'text' labels attached to 'points'; ` +
+                `provided 'text_source' value was '${JSON.stringify(draw.text.text_source)}'`);
+        }
+
         if (tf) {
             tf.layout.parent = style; // parent point will apply additional anchor/offset to text
 
