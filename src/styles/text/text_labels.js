@@ -95,6 +95,23 @@ export const TextLabels = {
         let text;
         let source = draw.text_source || 'name';
 
+        if (source != null && typeof source === 'object') {
+            // left/right boundary labels
+            text = {};
+            for (let key in source) {
+                text[key] = this.parseTextSourceValue(source[key], feature, context);
+            }
+        }
+        else {
+            // single label
+            text = this.parseTextSourceValue(source, feature, context);
+        }
+
+        return text;
+    },
+
+    parseTextSourceValue (source, feature, context) {
+        let text;
         if (Array.isArray(source)) {
             for (let s=0; s < source.length; s++) {
                 if (typeof source[s] === 'string') {
@@ -104,25 +121,17 @@ export const TextLabels = {
                 }
 
                 if (text) {
-                    break; // stop if we found a text property
+                    return text; // stop if we found a text property
                 }
             }
         }
         else if (typeof source === 'string') {
             text = feature.properties[source];
-        } else if (source instanceof Function) {
+        }
+        else if (source instanceof Function) {
             text = source(context);
         }
-        else if (source instanceof Object){
-            text = {};
-            for (let key in source){
-                if (typeof source[key] === 'string') {
-                    text[key] = feature.properties[source[key]];
-                } else if (source[key] instanceof Function) {
-                    text[key] = source[key](context);
-                }
-            }
-        }
+
         return text;
     },
 
