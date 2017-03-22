@@ -650,6 +650,27 @@ layers:
                 filter: { maritime_boundary: true }
                 draw: { lines: { visible: false } }
 
+        labels:
+            filter: { kind: [region, macroregion, country] }
+            draw:
+                text:
+                    interactive: true
+                    text_source: global.language_text_source
+                    font:
+                        family: Montserrat
+                        transform: uppercase
+                        fill: black
+
+            # dual-sided border labels where available
+            dual:
+                filter: { 'name:left': true, 'name:right': true }
+                draw:
+                    text:
+                        priority: 1
+                        text_source:
+                            left: ['name:left:en', 'name:left']
+                            right: ['name:right:en', 'name:right']
+
     places:
         data: { source: mapzen }
 
