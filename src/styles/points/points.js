@@ -230,15 +230,7 @@ Object.assign(Points, {
             Collision.addStyle(this.collision_group_text, tile.key);
         }
 
-        // Queue the feature for processing
-        if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
-            this.startData(tile);
-        }
-
-        this.queues[tile.key].push({
-            feature, draw, context, style,
-            text_feature: tf
-        });
+        this.queueFeature({ feature, draw, context, style, text_feature: tf }, tile); // queue the feature for later processing
 
         // Register with collision manager
         Collision.addStyle(this.collision_group_points, tile.key);
@@ -263,6 +255,14 @@ Object.assign(Points, {
         let sprite = StyleParser.evalProperty(draw.sprite, context);
         let sprite_info = this.getSpriteInfo(sprite) || this.getSpriteInfo(draw.sprite_default);
         return sprite_info;
+    },
+
+    // Queue features for deferred processing (collect all features first so we can do collision on the whole group)
+    queueFeature (q, tile) {
+        if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
+            this.startData(tile);
+        }
+        this.queues[tile.key].push(q);
     },
 
     // Override
