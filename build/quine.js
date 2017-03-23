@@ -8,7 +8,7 @@ var prefix = '(function(){';
     prefix += 'var target = (typeof module !== "undefined" && module.exports) || (typeof window !== "undefined");';
     prefix += 'if (target) {';
     prefix += 'var ' + source_variable + ' = arguments.callee.toString();';
-    prefix += 'var ' + source_origin + ' = document.currentScript.src;';
+    prefix += 'var ' + source_origin + ' = document.currentScript !== undefined ? document.currentScript.src : \'\';';
     prefix += '};';
 
 
