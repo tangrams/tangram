@@ -2,8 +2,7 @@
 
 import {Style} from '../style';
 import {StyleParser} from '../style_parser';
-import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
-import VertexLayout from '../../gl/vertex_layout';
+import gl from '../../gl/constants'; // import GL constants since workers can't access GL context
 import {buildPolygons, buildExtrudedPolygons} from '../../builders/polygons';
 import Geo from '../../geo';
 
@@ -51,7 +50,7 @@ Object.assign(Polygons, {
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
         }
 
-        this.vertex_layout = new VertexLayout(attribs);
+        this.makeVertexLayout(attribs);
     },
 
     _parseFeature (feature, draw, context) {
@@ -138,6 +137,8 @@ Object.assign(Polygons, {
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
         }
+
+        Style.makeVertexTemplate.call(this, style, i);
 
         return this.vertex_template;
     },

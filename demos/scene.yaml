@@ -63,6 +63,10 @@ styles:
     buildings:
         base: polygons
         shaders:
+            attributes:
+                test:
+                    type: float
+                    # varying: false
             blocks:
                 color: |
                     // Modify lighting
@@ -70,7 +74,11 @@ styles:
                     material.diffuse.rgb = vec3(.5);
 
                     // Shade by building height
-                    color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
+                    //color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
+                    color.rgb = vec3(min(v_test / 100., 1.), 0., 0.);
+        draw:
+            attributes:
+                test: function() { return feature.height; }
 
     icons:
         base: points

@@ -2,7 +2,9 @@
 
 import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
+import gl from '../gl/constants'; // import GL constants since workers can't access GL context
 import ShaderProgram from '../gl/shader_program';
+import VertexLayout from '../gl/vertex_layout';
 import VBOMesh from '../gl/vbo_mesh';
 import Texture from '../gl/texture';
 import Material from '../material';
@@ -105,6 +107,36 @@ export var Style = {
         for (let i = 0; i < size; ++i) {
             let v = value.length > i ? value[i] : value;
             this.vertex_template[index + i + offset] = v;
+        }
+    },
+
+    makeVertexLayout(attribs) {
+        // Custom attributes
+        if (this.shaders.attributes) {
+            for (let aname in this.shaders.attributes) {
+                let attrib = this.shaders.attributes[aname];
+
+                if (attrib.type === 'float') {
+                    attribs.push({ name: `a_${aname}`, size: 1, type: gl.FLOAT, normalized: false });
+                    this.addShaderBlock('attributes', `attribute float a_${aname};`);
+
+                    if (attrib.varying !== false) {
+                        this.addShaderBlock('varyings', `varying float v_${aname};`);
+                        this.addShaderBlock('setup', `#ifdef TANGRAM_VERTEX_SHADER\nv_${aname} = a_${aname};\n#endif`);
+                    }
+                }
+            }
+        }
+
+        this.vertex_layout = new VertexLayout(attribs);
+    },
+
+    makeVertexTemplate(draw, index) {
+        if (this.shaders.attributes) {
+            for (let aname in this.shaders.attributes) {
+                // let attrib = this.shaders.attributes[aname];
+                this.vertex_template[index++] = draw.attributes[aname] || 0;
+            }
         }
     },
 
@@ -222,6 +254,14 @@ export var Style = {
                 style.selection_color = FeatureSelection.defaultColor;
             }
 
+            // Custom attributes
+            if (this.shaders.attributes) {
+                for (let aname in this.shaders.attributes) {
+                    style.attributes = style.attributes || {};
+                    style.attributes[aname] = StyleParser.evalCachedProperty(draw.attributes[aname], context);
+                }
+            }
+
             // Subclass implementation
             style = this._parseFeature(feature, draw, context);
 
@@ -248,6 +288,15 @@ export var Style = {
             if (!draw) {
                 return;
             }
+
+            // Custom attributes
+            if (this.shaders.attributes) {
+                for (let aname in this.shaders.attributes) {
+                    draw.attributes = draw.attributes || {};
+                    draw.attributes[aname] = StyleParser.createPropertyCache(draw.attributes[aname] || 0);
+                }
+            }
+
             draw.preprocessed = true;
         }
         return draw;
