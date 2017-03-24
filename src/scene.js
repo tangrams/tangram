@@ -246,9 +246,12 @@ export default class Scene {
         /* jshint -W117 */
         // ignore uninitialized worker src variable (defined in parent scope)
         if (typeof __worker_src__ !== "undefined"){
-            // load from source object using browserify shim (preferred)
-            var src_map_url = '\n//#' + ' sourceMappingURL=' + __worker_src_origin__ + '.map';
-            worker_url = URLs.createObjectURL(new Blob(['(' + __worker_src__ + ')()' + src_map_url], { type: 'application/javascript' }));
+            let source = '(' + __worker_src__ + ')()';
+            if (__worker_src_origin__) {
+                let origin = __worker_src_origin__.slice(0, __worker_src_origin__.lastIndexOf('/')+1);
+                source += '\n//#' + ' sourceMappingURL=' + origin + __worker_src_map__;
+            }
+            worker_url = URLs.createObjectURL(new Blob([source], { type: 'application/javascript' }));
         }
         /* jshint +W117 */
 
