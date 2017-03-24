@@ -4,6 +4,7 @@ import debugSettings from './utils/debug_settings';
 import * as URLs from './utils/urls';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
+import sliceObject from './utils/slice';
 import Context from './gl/context';
 import Texture from './gl/texture';
 import ShaderProgram from './gl/shader_program';
@@ -752,9 +753,13 @@ export default class Scene {
         return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, tile_keys }).then(results => {
             let features = [];
             let keys = {};
+
+            unique = (typeof unique === 'string') ? [unique] : unique;
+            const uniqueify = obj => JSON.stringify(Array.isArray(unique) ? sliceObject(obj, unique) : obj);
+
             results.forEach(r => r.forEach(feature => {
                 if (unique) {
-                    let str = JSON.stringify(feature.properties);
+                    let str = uniqueify(feature.properties);
                     if (keys[str]) {
                         return;
                     }
