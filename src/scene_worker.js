@@ -24,8 +24,6 @@ Object.assign(self, {
     styles: {},
     layers: {},
     tiles: {},
-    objects: {},
-    config: {},     // raw config (e.g. functions, etc. not expanded)
 
     // Initialize worker
     init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio) {
