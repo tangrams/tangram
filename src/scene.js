@@ -1199,6 +1199,28 @@ export default class Scene {
                 return counts;
             },
 
+            geometrySizeByStyle () {
+                let sizes = {};
+                scene.tile_manager.getRenderableTiles().forEach(tile => {
+                    for (let style in tile.meshes) {
+                        sizes[style] = sizes[style] || 0;
+                        sizes[style] += tile.meshes[style].buffer_size;
+                    }
+                });
+                return sizes;
+            },
+
+            geometrySizeByBaseStyle () {
+                let style_sizes = scene.debug.geometrySizeByStyle();
+                let sizes = {};
+                for (let style in style_sizes) {
+                    let base = scene.styles[style].baseStyle();
+                    sizes[base] = sizes[base] || 0;
+                    sizes[base] += style_sizes[style];
+                }
+                return sizes;
+            },
+
             renderableTilesCount () {
                 return scene.tile_manager.getRenderableTiles().length;
             }
