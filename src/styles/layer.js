@@ -277,10 +277,9 @@ class Layer {
         }
 
         if (match) {
-            if (this.children) {
-                parseLayerChildren(this, this.children, this.styles);
-                this.parsed_children = true;
-                delete this.children;
+            if (this.children_to_parse) {
+                parseLayerChildren(this, this.children_to_parse, this.styles);
+                delete this.children_to_parse;
             }
 
             return true;
@@ -432,7 +431,7 @@ export function parseLayerNode(name, layer, parent, styles) {
         if (parent) {
             parent.addLayer(r);
         }
-        r.children = empty ? null : children;
+        r.children_to_parse = empty ? null : children;
     }
 
     return r;
