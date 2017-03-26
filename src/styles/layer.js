@@ -76,7 +76,7 @@ const blacklist = ['any', 'all', 'not', 'none'];
 
 class Layer {
 
-    constructor({ layer, name, parent, draw, visible, enabled, filter }) {
+    constructor({ layer, name, parent, draw, visible, enabled, filter, styles }) {
         this.id = Layer.id++;
         this.config_data = layer.data;
         this.parent = parent;
@@ -84,6 +84,7 @@ class Layer {
         this.full_name = this.parent ? (this.parent.full_name + ':' + this.name) : this.name;
         this.draw = draw;
         this.filter = filter;
+        this.styles = styles;
         this.is_built = false;
 
         enabled = (enabled === undefined) ? visible : enabled; // `visible` property is backwards compatible for `enabled`
@@ -258,9 +259,10 @@ class Layer {
         }
 
         // any remaining filter (more complex matches or dynamic function)
+        let match;
         if (this.filter instanceof Function){
             try {
-                return this.filter(context);
+                match = this.filter(context);
             }
             catch (error) {
                 // Filter function error
@@ -270,8 +272,19 @@ class Layer {
             }
         }
         else {
-            return this.filter == null;
+            match = this.filter == null;
         }
+
+        if (match) {
+            if (this.children) {
+                parseLayerChildren(this, this.children, this.styles);
+                this.parsed_children = true;
+                delete this.children;
+            }
+
+            return true;
+        }
+        return false;
     }
 
 }
@@ -395,11 +408,11 @@ export function calculateDraw(layer) {
     return draw;
 }
 
-export function parseLayerTree(name, layer, parent, styles) {
+export function parseLayerNode(name, layer, parent, styles) {
 
     layer = (layer == null) ? {} : layer;
 
-    let properties = { name, layer, parent };
+    let properties = { name, layer, parent, styles };
     let [reserved, children] = groupProps(layer);
     let empty = isEmpty(children);
     let Create;
@@ -417,32 +430,33 @@ export function parseLayerTree(name, layer, parent, styles) {
         if (parent) {
             parent.addLayer(r);
         }
-
-        if (!empty) {
-            for (let key in children) {
-                let child = children[key];
-                if (typeof child === 'object' && !Array.isArray(child)) {
-                    parseLayerTree(key, child, r, styles);
-                } else {
-                    // Invalid layer
-                    let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(child)}'`;
-                    msg += `, under parent layer '${r.full_name}'.`;
-
-                    // If the parent is a style name, this may be an incorrectly nested layer
-                    if (styles[r.name]) {
-                        msg += ` The parent name '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
-                        if (parent) {
-                            msg += ` under '${parent.name}'`;
-                        }
-                        msg += ` instead?`;
-                    }
-                    log('warn', msg); // TODO: fire external event that clients to subscribe to
-                }
-            }
-        }
+        r.children = empty ? null : children;
     }
 
     return r;
+}
+
+function parseLayerChildren (parent, children, styles) {
+    for (let key in children) {
+        let child = children[key];
+        if (typeof child === 'object' && !Array.isArray(child)) {
+            parseLayerNode(key, child, parent, styles);
+        } else {
+            // Invalid layer
+            let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(child)}'`;
+            msg += `, under parent layer '${parent.full_name}'.`;
+
+            // If the parent is a style name, this may be an incorrectly nested layer
+            if (styles[parent.name]) {
+                msg += ` The parent name '${parent.name}' is also the name of a style, did you mean to create a 'draw' group`;
+                if (parent.parent) {
+                    msg += ` under '${parent.parent.name}'`;
+                }
+                msg += ` instead?`;
+            }
+            log('warn', msg); // TODO: fire external event that clients to subscribe to
+        }
+    }
 }
 
 
@@ -453,7 +467,7 @@ export function parseLayers (layers, styles) {
     for (let key in layers) {
         let layer = layers[key];
         if (layer) {
-            layer_trees[key] = parseLayerTree(key, layer, null, styles);
+            layer_trees[key] = parseLayerNode(key, layer, null, styles);
         }
     }
 
