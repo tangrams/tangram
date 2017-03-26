@@ -28,10 +28,6 @@ function cacheKey (layers) {
 export function mergeTrees(matchingTrees, group) {
     let draws, treeDepth = 0;
 
-    let draw = {
-        visible: true // visible by default
-    };
-
     // Find deepest tree
     for (let t=0; t < matchingTrees.length; t++) {
         if (matchingTrees[t].length > treeDepth) {
@@ -43,6 +39,11 @@ export function mergeTrees(matchingTrees, group) {
     if (treeDepth === 0) {
         return null;
     }
+
+    // Merged draw group object
+    let draw = {
+        visible: true, // visible by default
+    };
 
     // Iterate trees in parallel
     for (let x=0; x < treeDepth; x++) {
@@ -326,12 +327,12 @@ export class LayerTree extends Layer {
                 let draw_keys = {};
 
                 for (let r=0; r < draw_groups.length; r++) {
-                    let layer = draw_groups[r];
-                    if (!layer) {
+                    let stack = draw_groups[r];
+                    if (!stack) {
                         continue;
                     }
-                    for (let g=0; g < layer.length; g++) {
-                        let group = layer[g];
+                    for (let g=0; g < stack.length; g++) {
+                        let group = stack[g];
                         for (let key in group) {
                             draw_keys[key] = true;
                         }
@@ -350,6 +351,7 @@ export class LayerTree extends Layer {
                     else {
                         layer_cache[cache_key][draw_key].key = cache_key + '/' + draw_key;
                         layer_cache[cache_key][draw_key].layers = layers.map(x => x && x.full_name);
+                        layer_cache[cache_key][draw_key].group = draw_key;
                     }
                 }
 

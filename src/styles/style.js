@@ -203,7 +203,13 @@ export var Style = {
             // Calculate order
             style.order = this.parseOrder(draw.order, context);
             if (style.order == null && this.blend !== 'overlay') {
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': 'order' parameter is required unless blend mode is 'overlay'`);
+                let msg = `Layer '${draw.layers.join(', ')}', draw group '${draw.group}': `;
+                msg += `'order' parameter is required unless blend mode is 'overlay'`;
+                if (draw.order != null) {
+                    msg += `; 'order' was set to a dynamic value (e.g. string tied to feature property, `;
+                    msg += `or JS function), but evaluated to null for one or more features`;
+                }
+                log({ level: 'warn', once: true }, msg);
                 return;
             }
 
