@@ -7,7 +7,10 @@ import {buildFilter} from './filter';
 // N.B.: 'visible' is legacy compatibility for 'enabled'
 export const whiteList = ['filter', 'draw', 'visible', 'enabled', 'data'];
 
-export const layer_cache = {};
+let layer_cache = {};
+export function layerCache () {
+    return layer_cache;
+}
 
 function cacheKey (layers) {
     if (layers.length > 1) {
@@ -444,6 +447,7 @@ export function parseLayerTree(name, layer, parent, styles) {
 
 
 export function parseLayers (layers, styles) {
+    layer_cache = {}; // clear layer cache
     let layer_trees = {};
 
     for (let key in layers) {
