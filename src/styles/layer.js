@@ -5,7 +5,7 @@ import mergeObjects from '../utils/merge';
 import {buildFilter} from './filter';
 
 // N.B.: 'visible' is legacy compatibility for 'enabled'
-export const whiteList = ['filter', 'draw', 'visible', 'enabled', 'data'];
+export const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
 
 let layer_cache = {};
 export function layerCache () {
@@ -361,8 +361,8 @@ const FilterOptions = {
     }
 };
 
-function isWhiteListed(key) {
-    return whiteList.indexOf(key) > -1;
+function isReserved(key) {
+    return reserved.indexOf(key) > -1;
 }
 
 function isEmpty(obj) {
@@ -370,16 +370,16 @@ function isEmpty(obj) {
 }
 
 export function groupProps(obj) {
-    let whiteListed = {}, nonWhiteListed = {};
+    let reserved = {}, children = {};
 
     for (let key in obj) {
-        if (isWhiteListed(key)) {
-            whiteListed[key] = obj[key];
+        if (isReserved(key)) {
+            reserved[key] = obj[key];
         } else {
-            nonWhiteListed[key] = obj[key];
+            children[key] = obj[key];
         }
     }
-    return [whiteListed, nonWhiteListed];
+    return [reserved, children];
 }
 
 export function calculateDraw(layer) {
@@ -400,8 +400,8 @@ export function parseLayerTree(name, layer, parent, styles) {
     layer = (layer == null) ? {} : layer;
 
     let properties = { name, layer, parent };
-    let [whiteListed, nonWhiteListed] = groupProps(layer);
-    let empty = isEmpty(nonWhiteListed);
+    let [reserved, children] = groupProps(layer);
+    let empty = isEmpty(children);
     let Create;
 
     if (empty && parent != null) {
@@ -410,7 +410,7 @@ export function parseLayerTree(name, layer, parent, styles) {
         Create = LayerTree;
     }
 
-    let r = new Create(Object.assign(properties, whiteListed));
+    let r = new Create(Object.assign(properties, reserved));
 
     // only process child layers if this layer is enabled
     if (r.enabled) {
@@ -419,13 +419,13 @@ export function parseLayerTree(name, layer, parent, styles) {
         }
 
         if (!empty) {
-            for (let key in nonWhiteListed) {
-                let property = nonWhiteListed[key];
-                if (typeof property === 'object' && !Array.isArray(property)) {
-                    parseLayerTree(key, property, r, styles);
+            for (let key in children) {
+                let child = children[key];
+                if (typeof child === 'object' && !Array.isArray(child)) {
+                    parseLayerTree(key, child, r, styles);
                 } else {
                     // Invalid layer
-                    let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(property)}'`;
+                    let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(child)}'`;
                     msg += `, under parent layer '${r.full_name}'.`;
 
                     // If the parent is a style name, this may be an incorrectly nested layer
