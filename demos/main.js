@@ -51,6 +51,7 @@ Enjoy!
     layer.scene.subscribe({
         load: function (msg) {
             // scene was loaded
+            injectAPIKey(msg.config);
         },
         view_complete: function (msg) {
             // new set of map tiles was rendered
@@ -63,6 +64,20 @@ Enjoy!
         }
     });
 
+    function injectAPIKey(config) {
+        if (config.global.sdk_mapzen_api_key) {
+            config.global.sdk_mapzen_api_key = 'mapzen-T3tPjn7';
+        }
+        else {
+            for (var name in config.sources) {
+                var source = config.sources[name];
+                if (source.url.search('mapzen.com')) {
+                    source.url_params = source.url_params || {};
+                    source.url_params.api_key = 'mapzen-T3tPjn7';
+                }
+            }
+        }
+    }
 
     /***** GUI/debug controls *****/
 
