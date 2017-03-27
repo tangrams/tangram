@@ -95,7 +95,7 @@ function extendLeaflet(options) {
 
                     this.scene.view.setPanning(true);
                     var view = map.getCenter();
-                    view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_view_max_zoom);
+                    view.zoom = Math.max(Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_view_max_zoom), map.getMinZoom());
 
                     this.scene.view.setView(view);
                     if (this._mapLayerCount > 1) {
@@ -257,6 +257,9 @@ function extendLeaflet(options) {
                         if ((zoom + delta) >= this._map.getMaxZoom()) {
                             delta = this._map.getMaxZoom() - zoom; // don't go past max zoom
                         }
+                        else if ((zoom + delta) <= this._map.getMinZoom()) {
+                            delta = this._map.getMinZoom() - zoom; // don't go past min zoom
+                        }
 
                         if (!delta) { return; }
 
@@ -347,7 +350,7 @@ function extendLeaflet(options) {
 
             updateView () {
                 var view = this._map.getCenter();
-                view.zoom = Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.default_view_max_zoom);
+                view.zoom = Math.max(Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.default_view_max_zoom), this._map.getMinZoom());
                 this.scene.view.setView(view);
             },
 
