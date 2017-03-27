@@ -250,7 +250,6 @@ export const TextLabels = {
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts (tile_key, texts) {
         let canvas = new CanvasText();
-        canvas.clearTexcoordCache(tile_key);
 
         let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size, tile_key);
         log('trace', `text summary for tile ${tile_key}: fits in ${texture_size[0]}x${texture_size[1]}px`);

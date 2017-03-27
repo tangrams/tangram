@@ -381,13 +381,13 @@ export default class CanvasText {
                 }
             }
         }
+        CanvasText.clearTexcoordCache(tile_key);
     }
 
     // Place text labels within an atlas of the given max size
     setTextureTextPositions (texts, max_texture_size, tile_key) {
-        if (!CanvasText.texcoord_cache[tile_key]) {
-            CanvasText.texcoord_cache[tile_key] = {};
-        }
+        CanvasText.clearTexcoordCache(tile_key);
+        CanvasText.texcoord_cache[tile_key] = {};
 
         // Keep track of column width
         let column_width = 0;
@@ -542,8 +542,8 @@ export default class CanvasText {
         return px_size;
     }
 
-    clearTexcoordCache (tile_key) {
-        CanvasText.texcoord_cache[tile_key] = {};
+    static clearTexcoordCache (tile_key) {
+        delete CanvasText.texcoord_cache[tile_key];
     }
 
 }
