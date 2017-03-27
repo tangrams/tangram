@@ -68,8 +68,8 @@ function extendLeaflet(options) {
                         highDensityDisplay: this.options.highDensityDisplay,
                         logLevel: this.options.logLevel,
                         introspection: this.options.introspection,
-                        // advanced option, app will have to manually called scene.update() per frame
-                        disableRenderLoop: this.options.disableRenderLoop
+                        webGLContextOptions: this.options.webGLContextOptions, // override/supplement WebGL context options
+                        disableRenderLoop: this.options.disableRenderLoop // app must call scene.update() per frame
                     });
             },
 

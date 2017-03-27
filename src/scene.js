@@ -70,6 +70,8 @@ export default class Scene {
         this.resetTime();
 
         this.container = options.container;
+        this.canvas = null;
+        this.contextOptions = options.webGLContextOptions;
 
         this.lights = null;
         this.background = null;
@@ -221,10 +223,10 @@ export default class Scene {
         this.container.appendChild(this.canvas);
 
         try {
-            this.gl = Context.getContext(this.canvas, {
-                alpha: true, premultipliedAlpha: true, // TODO: vary w/scene alpha
+            this.gl = Context.getContext(this.canvas, Object.assign({
+                alpha: true, premultipliedAlpha: true,
                 device_pixel_ratio: Utils.device_pixel_ratio
-            });
+            }, this.contextOptions));
         }
         catch(e) {
             throw new Error(
