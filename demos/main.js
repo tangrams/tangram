@@ -370,6 +370,7 @@ Enjoy!
             'German': 'de',
             'French': 'fr',
             'Arabic': 'ar',
+            'Hindi': 'hi',
             'Spanish': 'es'
         };
         gui.language = 'en';
