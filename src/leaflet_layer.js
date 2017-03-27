@@ -64,7 +64,7 @@ function extendLeaflet(options) {
                         preUpdate: this.options.preUpdate,
                         postUpdate: this.options.postUpdate,
                         continuousZoom: (LeafletLayer.leafletVersion === '1.x'),
-                        wrapView: !(this.options.noWrap === true),
+                        wrapView: (this.options.noWrap === true ? false : true),
                         highDensityDisplay: this.options.highDensityDisplay,
                         logLevel: this.options.logLevel,
                         introspection: this.options.introspection,
