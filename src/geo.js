@@ -97,13 +97,6 @@ Geo.latLngToMeters = function([x, y]) {
     return [x, y];
 };
 
-Geo.wrapLng = function(x) {
-    if (x > 180 || x < -180) {
-        x = ((x + 180) % 360 + 360) % 360 - 180;
-    }
-    return x;
-};
-
 // Run an in-place transform function on each cooordinate in a GeoJSON geometry
 Geo.transformGeometry = function (geometry, transform) {
     if (geometry == null) {
