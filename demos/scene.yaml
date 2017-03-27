@@ -624,6 +624,7 @@ layers:
 
     boundaries:
         data: { source: mapzen}
+        filter: { maritime_boundary: false }
         draw:
             lines:
                 visible: false
@@ -637,16 +638,10 @@ layers:
                 lines:
                     visible: true
                     color: [0.824, 0.651, 0.329, 1.00]
-            water:
-                filter: { maritime_boundary: true }
-                draw: { lines: { visible: false } }
 
         region:
             filter: { kind: [region, macroregion] }
             draw: { lines: { visible: true } }
-            water:
-                filter: { maritime_boundary: true }
-                draw: { lines: { visible: false } }
 
         labels:
             filter: { kind: [region, macroregion, country] }
