@@ -99,39 +99,17 @@ export default class CanvasText {
 
                         if (!text_info.no_curving) {
                             for (let i = 0; i < segments.length; i++){
-                                let segment = segments[i];
-                                if (!CanvasText.text_cache[style][segment]) {
-                                    CanvasText.text_cache[style][segment] = this.textSize(segment, text_settings);
-                                    CanvasText.cache_stats.misses++;
-                                }
-                                else {
-                                    CanvasText.cache_stats.hits++;
-                                }
-                                text_info.size.push(CanvasText.text_cache[style][segment].size);
+                                text_info.size.push(this.textSize(style, segments[i], text_settings).size);
                             }
                         }
 
                         // add full text as well
-                        if (!CanvasText.text_cache[style][text]) {
-                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
-                            CanvasText.cache_stats.misses++;
-                        }
-                        else {
-                            CanvasText.cache_stats.hits++;
-                        }
-                        text_info.total_size = CanvasText.text_cache[style][text].size;
+                        text_info.total_size = this.textSize(style, text, text_settings).size;
                     }
                     else {
-                        if (!CanvasText.text_cache[style][text]) {
-                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
-                            CanvasText.cache_stats.misses++;
-                        }
-                        else {
-                            CanvasText.cache_stats.hits++;
-                        }
                         // Only send text sizes back to worker (keep computed text line info
                         // on main thread, for future rendering)
-                        text_info.size = CanvasText.text_cache[style][text].size;
+                        text_info.size = this.textSize(style, text, text_settings).size;
                     }
                 }
             }
@@ -142,7 +120,15 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
+    textSize (style, text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
+        // Check cache first
+        if (CanvasText.text_cache[style][text]) {
+            CanvasText.cache_stats.hits++;
+            return CanvasText.text_cache[style][text];
+        }
+        CanvasText.cache_stats.misses++;
+
+        // Calc and store in cache
         let dpr = Utils.device_pixel_ratio * supersample;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
@@ -175,10 +161,11 @@ export default class CanvasText {
         ];
 
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
-        return {
+        CanvasText.text_cache[style][text] = {
             lines,
             size: { collision_size, texture_size, logical_size, line_height }
         };
+        return CanvasText.text_cache[style][text];
     }
 
     // Draw multiple lines of text
