@@ -628,9 +628,6 @@ class MultiLine {
         this.height = 0;
         this.lines = [];
 
-        this.ellipsis = '...';
-        this.ellipsis_width = Math.ceil(context.measureText(this.ellipsis).width);
-
         this.max_lines = max_lines;
         this.text_wrap = text_wrap;
         this.context = context;
@@ -679,9 +676,10 @@ class MultiLine {
 
     addEllipsis (){
         let last_line = this.lines[this.lines.length - 1];
+        let ellipsis_width = Math.ceil(this.context.measureText(MultiLine.ellipsis).width);
 
-        last_line.append(this.ellipsis);
-        last_line.width += this.ellipsis_width;
+        last_line.append(MultiLine.ellipsis);
+        last_line.width += ellipsis_width;
 
         if (last_line.width > this.width) {
             this.width = last_line.width;
@@ -760,6 +758,8 @@ class MultiLine {
         return multiline;
     }
 }
+
+MultiLine.ellipsis = '...';
 
 // A Private class used by MultiLine to contain the logic for a single line
 // including character count, width, height and text
