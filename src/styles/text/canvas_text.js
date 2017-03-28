@@ -372,7 +372,6 @@ export default class CanvasText {
                 }
             }
         }
-        CanvasText.pruneTextCache();
         CanvasText.clearTexcoordCache(tile_key);
     }
 
@@ -546,7 +545,7 @@ export default class CanvasText {
         if (CanvasText.text_cache_count > CanvasText.text_cache_count_max) {
             CanvasText.text_cache = {};
             CanvasText.text_cache_count = 0;
-            log('trace', 'CanvasText: pruning text cache');
+            log('debug', 'CanvasText: pruning text cache');
         }
     }
 
@@ -558,7 +557,7 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.text_cache_count = 0;     // current size of cache (measured as # of entries)
-CanvasText.text_cache_count_max = 3000; // prune cache when it exceeds this size
+CanvasText.text_cache_count_max = 5000; // prune cache when it exceeds this size
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
 

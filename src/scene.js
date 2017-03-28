@@ -17,6 +17,7 @@ import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
+import CanvasText from './styles/text/canvas_text';
 import FontManager from './styles/text/font_manager';
 import MediaCapture from './utils/media_capture';
 
@@ -1118,6 +1119,7 @@ export default class Scene {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
             !this.tile_manager.isLoadingVisibleTiles()) {
             this.last_complete_generation = this.generation;
+            CanvasText.pruneTextCache();
             this.trigger('view_complete');
         }
     }
