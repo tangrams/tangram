@@ -97,16 +97,18 @@ export default class CanvasText {
                         text_info.segments = segments;
                         text_info.size = [];
 
-                        for (let i = 0; i < segments.length; i++){
-                            let segment = segments[i];
-                            if (!CanvasText.text_cache[style][segment]) {
-                                CanvasText.text_cache[style][segment] = this.textSize(segment, text_settings);
-                                CanvasText.cache_stats.misses++;
+                        if (!text_info.no_curving) {
+                            for (let i = 0; i < segments.length; i++){
+                                let segment = segments[i];
+                                if (!CanvasText.text_cache[style][segment]) {
+                                    CanvasText.text_cache[style][segment] = this.textSize(segment, text_settings);
+                                    CanvasText.cache_stats.misses++;
+                                }
+                                else {
+                                    CanvasText.cache_stats.hits++;
+                                }
+                                text_info.size.push(CanvasText.text_cache[style][segment].size);
                             }
-                            else {
-                                CanvasText.cache_stats.hits++;
-                            }
-                            text_info.size.push(CanvasText.text_cache[style][segment].size);
                         }
 
                         // add full text as well
