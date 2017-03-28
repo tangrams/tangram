@@ -276,6 +276,14 @@ class LabelLineStraight extends LabelLineBase {
                         angle_offset += Math.PI;
                     }
 
+                    // all vertical labels point up (not down)
+                    if (Math.abs(this.angle - Math.PI/2) < .01) {
+                        // flip angle and offset
+                        this.angle = -Math.PI/2;
+                        offset[1] *= -1;
+                        this.offset[1] *= -1;
+                    }
+
                     this.position = currMid;
 
                     this.updateBBoxes(this.position, size, this.angle, angle_offset, offset);
