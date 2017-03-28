@@ -1,3 +1,4 @@
+import log from '../../utils/log';
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
 import FontManager from './font_manager';
@@ -41,7 +42,7 @@ export default class CanvasText {
         let dpr;
         return FontManager.loadFonts().then(() => {
             for (let style in texts) {
-                CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                CanvasText.initTextCache(style);
 
                 let text_infos = texts[style];
                 let first = true;
@@ -127,6 +128,7 @@ export default class CanvasText {
             return CanvasText.text_cache[style][text];
         }
         CanvasText.cache_stats.misses++;
+        CanvasText.text_cache_count++;
 
         // Calc and store in cache
         let dpr = Utils.device_pixel_ratio * supersample;
@@ -370,6 +372,7 @@ export default class CanvasText {
                 }
             }
         }
+        CanvasText.pruneTextCache();
         CanvasText.clearTexcoordCache(tile_key);
     }
 
@@ -535,6 +538,18 @@ export default class CanvasText {
         delete CanvasText.texcoord_cache[tile_key];
     }
 
+    static initTextCache (style) {
+        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+    }
+
+    static pruneTextCache () {
+        if (CanvasText.text_cache_count > CanvasText.text_cache_count_max) {
+            CanvasText.text_cache = {};
+            CanvasText.text_cache_count = 0;
+            log('trace', 'CanvasText: pruning text cache');
+        }
+    }
+
 }
 
 // Extract font size and units
@@ -542,6 +557,8 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
+CanvasText.text_cache_count = 0;     // current size of cache (measured as # of entries)
+CanvasText.text_cache_count_max = 3000; // prune cache when it exceeds this size
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
 
