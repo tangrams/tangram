@@ -11,6 +11,7 @@ const CURVE_MIN_TOTAL_COST = 1.3;           // curved line total curvature toler
 const CURVE_MIN_AVG_COST = 0.4;             // curved line average curvature tolerance (mean)
 const CURVE_MAX_ANGLE = 1;                  // curved line singular curvature tolerance (value)
 const ORIENTED_LABEL_OFFSET_FACTOR = 1.2;   // multiply offset by this amount to avoid linked label collision
+const VERTICAL_ANGLE_TOLERANCE = 0.01;      // nearly vertical lines considered vertical within this angle tolerance
 
 let LabelLine = {
     // Given a label's bounding box size and size broken up into individual segments
@@ -277,7 +278,7 @@ class LabelLineStraight extends LabelLineBase {
                     }
 
                     // all vertical labels point up (not down)
-                    if (Math.abs(this.angle - Math.PI/2) < .01) {
+                    if (Math.abs(this.angle - Math.PI/2) < VERTICAL_ANGLE_TOLERANCE) {
                         // flip angle and offset
                         this.angle = -Math.PI/2;
                         offset[1] *= -1;
