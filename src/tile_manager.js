@@ -103,7 +103,6 @@ export default class TileManager {
     updateTileStates () {
         this.forEachTile(tile => {
             this.updateVisibility(tile);
-            tile.update();
         });
 
         this.loadQueuedCoordinates();
@@ -273,16 +272,10 @@ export default class TileManager {
         }
     }
 
-    // Sort and build a list of tiles
-    buildTiles(tiles) {
-        Tile.sort(tiles).forEach(tile => this.buildTile(tile));
-        this.checkBuildQueue();
-    }
-
+    // Start tile build process
     buildTile(tile, options) {
         this.tileBuildStart(tile.key);
         this.updateVisibility(tile);
-        tile.update();
         tile.build(this.scene.generation, options);
     }
 

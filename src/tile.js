@@ -115,15 +115,6 @@ export default class Tile {
         return false;
     }
 
-    // Sort a set of tile instances (which already have a distance from center tile computed)
-    static sort(tiles) {
-        return tiles.sort((a, b) => {
-            let ad = a.center_dist;
-            let bd = b.center_dist;
-            return (bd > ad ? -1 : (bd === ad ? 0 : 1));
-        });
-    }
-
     // Free resources owned by tile
     freeResources () {
         for (let m in this.meshes) {
@@ -500,15 +491,6 @@ export default class Tile {
         }
     }
 
-    // Update relative to view
-    update () {
-        let coords = this.coords;
-        if (coords.z !== this.view.center.tile.z) {
-            coords = Tile.coordinateAtZoom(coords, this.view.center.tile.z);
-        }
-        this.center_dist = Math.abs(this.view.center.tile.x - coords.x) + Math.abs(this.view.center.tile.y - coords.y);
-    }
-
     // Set as a proxy tile for another tile
     setProxyFor (tile) {
         if (tile) {
@@ -517,7 +499,6 @@ export default class Tile {
             this.proxy_for.push(tile);
             this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
             tile.proxied_as = (tile.style_zoom > this.style_zoom ? 'child' : 'parent');
-            this.update();
         }
         else {
             this.proxy_for = null;
