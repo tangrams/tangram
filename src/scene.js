@@ -104,6 +104,7 @@ export default class Scene {
 
         this.updating++;
         this.initialized = false;
+        this.initial_build_time = null;
 
         // Backwards compatibilty for passing `config_path` string as second argument
         // (since transitioned to using options argument to accept more parameters)
@@ -797,6 +798,10 @@ export default class Scene {
         if (this.building) {
             log('info', `Scene: build geometry finished`);
             if (this.building.resolve) {
+                if (this.initial_build_time == null) {
+                    this.initial_build_time = (+new Date()) - this.start_time;
+                    log('debug', `Scene: initial build time: ${this.initial_build_time}`);
+                }
                 this.building.resolve(true);
             }
 
