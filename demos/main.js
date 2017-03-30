@@ -56,6 +56,10 @@ Enjoy!
             // scene was loaded
             injectAPIKey(msg.config);
         },
+        update: function (msg) {
+            // scene was updated
+            injectAPIKey(msg.config);
+        },
         view_complete: function (msg) {
             // new set of map tiles was rendered
         },
