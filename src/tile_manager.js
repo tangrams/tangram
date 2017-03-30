@@ -1,5 +1,6 @@
 import Tile from './tile';
 import TilePyramid from './tile_pyramid';
+import Geo from './geo';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker';
 
@@ -217,8 +218,23 @@ export default class TileManager {
 
         // Sort queued tiles from center tile
         this.queued_coords.sort((a, b) => {
-            let ad = Math.abs(this.view.center.tile.x - a.x) + Math.abs(this.view.center.tile.y - a.y);
-            let bd = Math.abs(this.view.center.tile.x - b.x) + Math.abs(this.view.center.tile.y - b.y);
+            let center = this.view.center.meters;
+            let half_span = Geo.metersPerTile(a.z) / 2;
+
+            let ac = Geo.metersForTile(a);
+            ac.x += half_span;
+            ac.y -= half_span;
+
+            let bc = Geo.metersForTile(b);
+            bc.x += half_span;
+            bc.y -= half_span;
+
+            let ad = Math.abs(center.x - ac.x) + Math.abs(center.y - ac.y);
+            let bd = Math.abs(center.x - bc.x) + Math.abs(center.y - bc.y);
+
+            a.center_dist = ad;
+            b.center_dist = bd;
+
             return (bd > ad ? -1 : (bd === ad ? 0 : 1));
         });
         this.queued_coords.forEach(coords => this.loadCoordinate(coords));
@@ -242,6 +258,7 @@ export default class TileManager {
 
             let key = Tile.key(coords, source, this.view.tile_zoom);
             if (key && !this.hasTile(key)) {
+                log('trace', `load tile ${key}, distance from view center: ${coords.center_dist}`);
                 let tile = Tile.create({
                     source,
                     coords,
