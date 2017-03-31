@@ -89,7 +89,7 @@ void main() {
 
         // Interpolate between zoom levels
         width += sign(width) * dwdz * dz;
-        width += 100. * sin(u_time);
+        width += 200. * sin(u_time);
         // width += 100.;
 
         // Scale pixel dimensions to be consistent in screen space
