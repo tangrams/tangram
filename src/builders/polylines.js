@@ -457,11 +457,13 @@ function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, con
     }
 }
 
-//  Tessalate a FAN geometry between points A       B
-//  using their normals from a center        \ . . /
+//  Tesselate a FAN geometry between points A-------B
+//  using their normals from a center p      \ . . /
 //  and interpolating their UVs               \ p /
 //                                             \./
+//                                              C
 function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
+    // coord = center point p
     // nA = Vector.neg(nA);
     // nB = Vector.neg(nB);
     // nC = Vector.neg(nC);
