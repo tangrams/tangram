@@ -480,6 +480,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     if (numTriangles < 1) {
         return;
     }
+    numTriangles = 1;
 
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
