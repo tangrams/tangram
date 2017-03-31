@@ -457,7 +457,7 @@ function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, con
     }
 }
 
-//  Tesselate a FAN geometry between points A-------B
+//  Tesselate a fan geometry between points A ----- B
 //  using their normals from a center p      \ . . /
 //  and interpolating their UVs               \ p /
 //                                             \./
@@ -467,11 +467,14 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     // nA = Vector.neg(nA);
     // nB = Vector.neg(nB);
     // nC = Vector.neg(nC);
+    var rotA = Vector.rot(nA, 180. * Math.PI/180);
+    var rotC = Vector.rot(nC, 180. * Math.PI/180);
 
     var cross = nA[0] * nB[1] - nA[1] * nB[0];
     var dot = Vector.dot(nA, nB);
 
     var angle = Math.atan2(cross, dot);
+
     while (angle >= Math.PI) {
         angle -= 2*Math.PI;
     }
@@ -480,13 +483,19 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     if (numTriangles < 1) {
         return;
     }
-    numTriangles = 1;
+    // numTriangles = 1;
 
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
 
-    addVertex(coord, nC, uvC, context); //, true);
-    addVertex(coord, nA, uvA, context); //, true);
+
+    if (angle < 0) { // cw
+        addVertex(coord, nC, uvC, context);
+        addVertex(coord, rotA, uvA, context, true);
+    } else { // ccw
+        addVertex(coord, rotC, uvC, context, true);
+        addVertex(coord, nA, uvA, context);
+    }
 
     var blade = nA;
 
@@ -503,8 +512,12 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     }
 
     var angle_step = angle / numTriangles;
-    // blade = Vector.neg(blade);
+
     for (var i = 0; i < numTriangles; i++) {
+        if (i == 0 && angle < 0) {
+            blade = Vector.rot(blade, 180* Math.PI/180);            
+        }
+
         blade = Vector.rot(blade, angle_step);
 
         if (context.texcoord_index !== undefined) {
@@ -519,8 +532,11 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
                 uvCurr = Vector.add(uvCurr, uv_delta);
             }
         }
-
-        addVertex(coord, blade, uvCurr, context); //, true);
+        if (angle < 0) { // cw
+            addVertex(coord, blade, uvCurr, context, true);
+        } else { // ccw
+            addVertex(coord, blade, uvCurr, context);
+        }
 
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 2 : 1));
         vertex_elements.push(pivotIndex);
@@ -530,8 +546,8 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
 
 //  addBevel    A ----- B
 //             / \     / \
-//           /   /\   /\  \
-//              /  \ /  \  \
+//            /  /\   /\  \
+//           /  /  \ /  \  \
 //                / C \
 function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
     var pivotIndex = context.vertex_data.vertex_count;
@@ -555,14 +571,15 @@ function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
     }
 }
 
-//  Function to add the vertex need for line caps,
-//  because re-use the buffers needs to be at the end
+//  Function to add the vertices needed for line caps,
+//  because to re-use the buffers they need to be at the end
 function addCap (coord, v, normal, type, isBeginning, context) {
     var neg_normal = Vector.neg(normal);
 
     switch (type){
         case CAP_TYPE.square:
             var tangent;
+            // first vertex on the lineString
             if (isBeginning){
                 tangent = [normal[1], -normal[0]];
 
@@ -577,6 +594,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 addVertex(coord, normal, [0, v], context, true);
                 // addVertex(coord, neg_normal, [0, v], context);
             }
+            // last vertex on the lineString
             else {
                 tangent = [-normal[1], normal[0]];
 
@@ -596,6 +614,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
             break;
         case CAP_TYPE.round:
             var nA, nB, uvA, uvB, uvC;
+            // first vertex on the lineString
             if (isBeginning) {
                 nA = normal;
                 nB = neg_normal;
@@ -607,9 +626,11 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                     uvC = [0.5, v];
                 }
             }
+            // last vertex on the lineString - flip the direction of the cap
             else {
                 nA = neg_normal;
                 nB = normal;
+                // nB = Vector.rot(nA, -180 * Math.PI/180);
 
                 if (context.texcoord_index !== undefined){
                     uvA = [0, v];
