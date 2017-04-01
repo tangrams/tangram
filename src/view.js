@@ -37,7 +37,6 @@ export default class View {
         this.buffer = 0;
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
         this.wrap = (options.wrapView === false) ? false : true;
-        this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.preserve_tiles_within_zoom = 1;
 
         this.reset();
@@ -138,7 +137,7 @@ export default class View {
         }
 
         let last_tile_zoom = this.tile_zoom;
-        let tile_zoom = this.tileZoom(zoom);
+        let tile_zoom = this.baseZoom(zoom);
         if (!this.continuous_zoom) {
             zoom = tile_zoom;
         }
@@ -163,16 +162,6 @@ export default class View {
     // Choose the base zoom level to use for a given fractional zoom
     baseZoom (zoom) {
         return Math.floor(zoom);
-    }
-
-    // For a given view zoom, what tile zoom should be loaded?
-    tileZoom (view_zoom) {
-        return Math.max(this.baseZoom(view_zoom) - this.tile_simplification_level, 0);
-    }
-
-    // For a given tile zoom, what style zoom should be used?
-    styleZoom (tile_zoom) {
-        return this.baseZoom(tile_zoom) + this.tile_simplification_level;
     }
 
     setPanning (panning) {
