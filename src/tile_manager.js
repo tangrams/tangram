@@ -262,7 +262,7 @@ export default class TileManager {
                     source,
                     coords,
                     worker: this.scene.getWorkerForDataSource(source),
-                    style_zoom: this.view.styleZoom(coords.z),
+                    style_zoom: this.view.baseZoom(coords.z),
                     view: this.view
                 });
 
