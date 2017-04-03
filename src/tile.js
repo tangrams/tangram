@@ -455,6 +455,7 @@ export default class Tile {
             for (let m in this.meshes) {
                 if (this.new_mesh_styles.indexOf(m) === -1) {
                     this.meshes[m].destroy();
+                    delete this.meshes[m];
                 }
             }
             this.new_mesh_styles = [];
