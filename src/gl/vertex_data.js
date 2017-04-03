@@ -20,27 +20,25 @@ export default class VertexData {
     constructor (vertex_layout, { prealloc = 500 } = {}) {
         this.vertex_layout = vertex_layout;
         this.vertex_elements = new VertexElements();
+        this.stride = this.vertex_layout.stride;
 
         if (VertexData.array_pool.length > 0) {
             this.vertex_buffer = VertexData.array_pool.pop();
             this.byte_length = this.vertex_buffer.byteLength;
-            this.size = Math.floor(this.byte_length / this.vertex_layout.stride);
+            this.size = Math.floor(this.byte_length / this.stride);
             log('trace', `VertexData: reused buffer of bytes ${this.byte_length}, ${this.size} vertices`);
         }
         else {
             this.size = prealloc; // # of vertices to allocate
-            this.byte_length = this.vertex_layout.stride * this.size;
+            this.byte_length = this.stride * this.size;
             this.vertex_buffer = new Uint8Array(this.byte_length);
         }
         this.offset = 0;             // byte offset into currently allocated buffer
 
-        this.components = [];
-        for (let c=0; c < this.vertex_layout.components.length; c++) {
-            this.components.push([...this.vertex_layout.components[c]]);
-        }
         this.vertex_count = 0;
         this.realloc_count = 0;
         this.setBufferViews();
+        this.setAddVertexFunction();
     }
 
     // (Re-)allocate typed views into the main buffer - only create the types we need for this layout
@@ -56,20 +54,14 @@ export default class VertexData {
                 this.views[attrib.type] = new array_type(this.vertex_buffer.buffer);
             }
         }
-
-        // Update component buffer pointers
-        for (let c=0; c < this.components.length; c++) {
-            const component = this.components[c];
-            component[1] = this.views[component[0]];
-        }
     }
 
     // Check allocated buffer size, expand/realloc buffer if needed
     checkBufferSize () {
-        if ((this.offset + this.vertex_layout.stride) > this.byte_length) {
+        if ((this.offset + this.stride) > this.byte_length) {
             this.size = Math.floor(this.size * 1.5);
             this.size -= this.size % 4;
-            this.byte_length = this.vertex_layout.stride * this.size;
+            this.byte_length = this.stride * this.size;
             var new_view = new Uint8Array(this.byte_length);
             new_view.set(this.vertex_buffer); // copy existing data to new buffer
             VertexData.array_pool.push(this.vertex_buffer); // save previous buffer for use by next tile
@@ -80,21 +72,16 @@ export default class VertexData {
         }
     }
 
-    // Add a vertex, copied from a plain JS array of elements matching the order of the vertex layout.
-    // Note: uses pre-calculated info about each attribute, including pointer to appropriate typed array
-    // view and offset into it. This was the fastest method profiled so far for filling a mixed-type
-    // vertex layout (though still slower than the previous method that only supported Float32Array attributes).
+    // Initialize the add vertex function (lazily compiled by vertex layout)
+    setAddVertexFunction () {
+        this.vertexLayoutAddVertex = this.vertex_layout.getAddVertexFunction();
+    }
+
+    // Add a vertex, copied from a plain JS array of elements matching the order of the vertex layout
     addVertex (vertex) {
         this.checkBufferSize();
-        var i=0;
-
-        var clen = this.components.length;
-        for (var c=0; c < clen; c++) {
-            var component = this.components[c];
-            component[1][(this.offset >> component[2]) + component[3]] = vertex[i++];
-        }
-
-        this.offset += this.vertex_layout.stride;
+        this.vertexLayoutAddVertex(vertex, this.views, this.offset);
+        this.offset += this.stride;
         this.vertex_count++;
     }
 
