@@ -75,6 +75,7 @@ void main() {
 
     // Position
     vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
+
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         float width = a_extrude.z;
@@ -91,13 +92,8 @@ void main() {
 
         // extrude += sin(u_time);
         // vec2 perp = extrude * vec2(extrude.y, -extrude.x);
-        float a = sin(u_time) * 90. * 3.14156 / 180.;
-        float s = sin(a);
-        float c = cos(a);
-        mat2 m = mat2(c, -s, s, c);
-        vec2 perp = m * extrude;
-        extrude += perp;
-        // extrude += sin(u_time) * perp;
+        vec2 perp = extrude * vec2(extrude.y, -extrude.x);
+        extrude += sin(u_time) * perp;
         // width += 200. * sin(u_time);
         // width += 100.;
 
