@@ -26,6 +26,7 @@ Object.assign(Lines, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_normal', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -254,23 +255,31 @@ Object.assign(Lines, {
     makeVertexTemplate(style) {
         let i = 0;
 
-        // position - x & y coords will be filled in per-vertex below
+        // a_position.xyz - x & y coords will be filled in per-vertex below
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = style.z || 0;
 
-        // layer order - w coord of 'position' attribute (for packing efficiency)
+        // a_position.w - layer order
         this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // extrusion vector
+        // a_extrude.xyz - extrusion vector
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
 
-        // scaling to previous and next zoom
+        // a_extrude.w - scaling to previous and next zoom
         this.vertex_template[i++] = style.next_width;
 
-        // color
+        // a_normal.xy - normal vector
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        // a_normal.z - is_cap
+        this.vertex_template[i++] = 0;
+        // a_normal.w - unused
+        this.vertex_template[i++] = 0;
+
+        // a_color.rgba
         this.vertex_template[i++] = style.color[0] * 255;
         this.vertex_template[i++] = style.color[1] * 255;
         this.vertex_template[i++] = style.color[2] * 255;
@@ -278,6 +287,7 @@ Object.assign(Lines, {
 
         // selection color
         if (this.selection) {
+            // a_selection_color.rgba
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
             this.vertex_template[i++] = style.selection_color[2] * 255;
@@ -286,6 +296,7 @@ Object.assign(Lines, {
 
         // Add texture UVs to template only if needed
         if (this.texcoords) {
+            // a_texcoord.uv
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
         }
@@ -317,6 +328,8 @@ Object.assign(Lines, {
                 miter_limit: style.miter_limit,
                 scaling_index: this.vertex_layout.index.a_extrude,
                 scaling_normalize: 256, // values have an 8-bit fraction
+                normal_index: this.vertex_layout.index.a_normal,
+                normal_normalize: 256, // values have an 8-bit fraction
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 texcoord_width: (style.width || style.next_width) / context.tile.overzoom2, // UVs can't calc for zero-width, use next zoom width in that case
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
