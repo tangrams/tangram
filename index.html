@@ -16,10 +16,6 @@ http://mapzen.com/tangram
 
   <body>
     <div id="map"></div>
-
-    <!-- Use leaflet 0.7.x (continuous zoom will be disabled) -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/leaflet.js"></script> -->
-
     <!-- Use leaflet 1.x (continuous zoom will be enabled) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.0.1/leaflet.js"></script>
 
@@ -41,17 +37,20 @@ http://mapzen.com/tangram
 
     <!-- Tangram demo code -->
     <script src="demos/main.js"></script>
+    <script src="demos/gui.js"></script>
 
     <!-- Mapzen map UI -->
     <script src='//mapzen.com/common/ui/mapzen-ui.min.js'></script>
-    <script>
+
+    <!-- Mapzen analytics -->
+    <!--<script>
       MPZN.bug({
         name: 'Tangram',
         link: 'https://mapzen.com/projects/tangram',
         tweet: 'Tangram: real-time WebGL maps from @mapzen',
         repo: 'https://github.com/tangrams/tangram'
       });
-    </script>
+    </script>-->
 
   </body>
 
