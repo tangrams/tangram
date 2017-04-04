@@ -91,14 +91,14 @@ Enjoy!
     /*** URL parsing ***/
 
     // URL hash pattern is one of:
-    // #[lat],[lng],[zoom]
-    // #[source],[lat],[lng],[zoom] (legacy)
+    // #[zoom],[lat],[lng]
+    // #[source],[zoom],[lat],[lng] (legacy)
     function getValuesFromUrl() {
 
-        url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
+        url_hash = window.location.hash.slice(1, window.location.hash.length).split('/');
 
         // Get location from URL
-        map_start_location = [40.70531887544228, -74.00976419448853, 16]; // NYC
+        map_start_location = [16, 40.70531887544228, -74.00976419448853]; // NYC
 
         if (url_hash.length >= 3) {
             // Note: backwards compatibility with old demo links, deprecate?
@@ -128,7 +128,7 @@ Enjoy!
         clearTimeout(update_url_timeout);
         update_url_timeout = setTimeout(function() {
             var center = map.getCenter();
-            var url_options = [center.lat, center.lng, map.getZoom()];
+            var url_options = [map.getZoom(), center.lat, center.lng];
 
             if (rS) {
                 url_options.push('rstats');
@@ -138,7 +138,7 @@ Enjoy!
                 url_options.push('style=' + style_options.effect);
             }
 
-            window.location.hash = url_options.join(',');
+            window.location.hash = url_options.join('/');
         }, update_url_throttle);
     }
 
@@ -151,7 +151,7 @@ Enjoy!
 
     // Update URL hash on move
     map.attributionControl.setPrefix('');
-    map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+    map.setView(map_start_location.slice(1, 3), map_start_location[0]);
     map.on('move', updateURL);
 
     // Render/GL stats: http://spite.github.io/rstats/
