@@ -156,7 +156,8 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
-    normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
+    normNext = Vector.normalize(Vector.perp(coordCurr, coordNext))
+    normNext[2] = 1.;
 
     // Skip tile boundary lines and append a new line if needed
     if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
@@ -315,9 +316,9 @@ function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
         }
 
         if (join_type === JOIN_TYPE.miter) {
-            addVertex(coordCurr, miterVec, miterVec, [1, v], context);
-            addVertex(coordCurr, miterVec, miterVec, [0, v], context, true);
-            // addVertex(coordCurr, Vector.neg(miterVec), Vector.neg(miterVec), [0, v], context);
+            addVertex(coordCurr, miterVec, normPrev, [1, v], context);
+            addVertex(coordCurr, miterVec, normPrev, [0, v], context, true);
+            // addVertex(coordCurr, Vector.neg(miterVec), normPrev, [0, v], context);
             indexPairs(1, context);
         }
         else {
@@ -376,21 +377,22 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
+                // extrude normal
                 Vector.neg(normPrev), miterVec, Vector.neg(normNext),
-                // todo: replace below with line normal
-                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
+                // line normal
+                normPrev[0], normPrev[1], normPrev[2],
                 [0, v], [1, v], [0, v],
                 false, context
             );
         }
 
-        addVertex(coordCurr, miterVec, miterVec, [1, v], context);
+        addVertex(coordCurr, miterVec, normNext, [1, v], context);
         addVertex(coordCurr, normNext, normNext, [0, v], context, true);
         // addVertex(coordCurr, Vector.neg(normNext), Vector.neg(normNext), [0, v], context);
     }
     else {
         addVertex(coordCurr, normPrev, normPrev, [1, v], context);
-        addVertex(coordCurr, miterVec, miterVec, [0, v], context, true);
+        addVertex(coordCurr, miterVec, normPrev, [0, v], context, true);
         // addVertex(coordCurr, Vector.neg(miterVec), Vector.neg(miterVec), [0, v], context);
 
         if (!isBeginning) {
@@ -406,16 +408,17 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
+                // extrude normal
                 normPrev, Vector.neg(miterVec), normNext,
-                // replace below with line normal
-                normPrev, Vector.neg(miterVec), normNext,
+                // line normal
+                normPrev[0], normPrev[1], normPrev[2],
                 [1, v], [0, v], [1, v],
                 false, context
             );
         }
 
         addVertex(coordCurr, normNext, normNext, [1, v], context);
-        addVertex(coordCurr, miterVec, miterVec, [0, v], context, true);
+        addVertex(coordCurr, miterVec, normNext, [0, v], context, true);
         // addVertex(coordCurr, Vector.neg(miterVec), Vector.neg(miterVec), [0, v], context);
     }
 }
@@ -438,7 +441,7 @@ function indexPairs(num_pairs, context){
 }
 
 function addVertex(coordinate, extrude, normal, uv, context, flip) {
-    // console.log(normal)
+    console.log('av normal:', normal);
     var vertex_template = context.vertex_template;
     var vertex_data = context.vertex_data;
 
@@ -447,6 +450,7 @@ function addVertex(coordinate, extrude, normal, uv, context, flip) {
 }
 
 function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_coord, context, flip) {
+    console.log('bvt normal:', normal);
     // set vertex position
     vertex_template[0] = vertex[0];
     vertex_template[1] = vertex[1];
@@ -465,11 +469,12 @@ function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_co
     }
     // set Normal value (X, Y line normal direction + Z i_cap toggle
     if (context.normal_index) {
-        vertex_template[context.normal_index + 0] = normal * context.normal_normalize;
-        vertex_template[context.normal_index + 1] = normal * context.normal_normalize;
-        console.log(context)
+        vertex_template[context.normal_index + 0] = normal[0] * context.normal_normalize;
+        vertex_template[context.normal_index + 1] = normal[1] * context.normal_normalize;
+        // console.log(context)
         // vertex_template[context.normal_index + 2] = context.isCap; // is_cap
-        vertex_template[context.normal_index + 2] = 1.; // is_cap
+        vertex_template[context.normal_index + 2] = normal[2]; // is_cap
+        console.log('normal[2]:', normal[2]);
         vertex_template[context.normal_index + 3] = 0.; // unused
     }
 }
@@ -487,6 +492,7 @@ function addFan (coord, eA, eC, eB, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     // nA = Vector.neg(nA);
     // nB = Vector.neg(nB);
     // nC = Vector.neg(nC);
+    console.log("\n>>> isCap:", isCap);
     var rotA = Vector.rot(eA, 180. * Math.PI/180);
     var rotC = Vector.rot(eC, 180. * Math.PI/180);
 
@@ -514,10 +520,12 @@ function addFan (coord, eA, eC, eB, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     nC = eC;
     nB = eB;
 
-    // set isCap flag
-    nA.z = isCap ? 1. : 0.;
-    nC.z = isCap ? 1. : 0.;
-    nB.z = isCap ? 1. : 0.;
+    // set isCap flag at .z coordinate
+    nA[2] = isCap ? 1. : 0.;
+    nC[2] = isCap ? 1. : 0.;
+    console.log('eA:', eA);
+    console.log('nA:', nA);
+    // nB.z = isCap ? 0. : 1.;
 
     if (angle < 0) { // cw
         addVertex(coord, eC, nC, uvC, context);
@@ -527,7 +535,7 @@ function addFan (coord, eA, eC, eB, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         addVertex(coord, eA, nA, uvA, context);
     }
 
-    var blade = eA;
+    var blade = nA;
 
     if (context.texcoord_index !== undefined) {
         var uvCurr;
@@ -549,6 +557,7 @@ function addFan (coord, eA, eC, eB, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         }
 
         blade = Vector.rot(blade, angle_step);
+        blade[2] = isCap ? 1. : 0.;
 
         if (context.texcoord_index !== undefined) {
             if (isCap){
@@ -562,6 +571,7 @@ function addFan (coord, eA, eC, eB, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
                 uvCurr = Vector.add(uvCurr, uv_delta);
             }
         }
+        console.log('blade?', blade);
         if (angle < 0) { // cw
             addVertex(coord, blade, blade, uvCurr, context, true);
         } else { // ccw
@@ -613,8 +623,8 @@ function addCap (coord, v, normal, type, isBeginning, context) {
             if (isBeginning){
                 tangent = [normal[1], -normal[0]];
 
-                addVertex(coord, Vector.add(normal, tangent), Vector.add(normal, tangent), [1, v], context);
-                addVertex(coord, Vector.add(normal, tangent), Vector.add(normal, tangent), [0, v], context, true);
+                addVertex(coord, Vector.add(normal, tangent), normal, [1, v], context);
+                addVertex(coord, Vector.add(normal, tangent), normal, [0, v], context, true);
                 // addVertex(coord, Vector.add(neg_normal, tangent), Vector.add(neg_normal, tangent), [0, v], context);
 
                 // Add length of square cap to texture coordinate
@@ -635,8 +645,8 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 // Add length of square cap to texture coordinate
                 v += 0.5 * context.texcoord_width * context.v_scale;
 
-                addVertex(coord, Vector.add(normal, tangent), Vector.add(normal, tangent), [1, v], context);
-                addVertex(coord, Vector.add(normal, tangent), Vector.add(normal, tangent), [0, v], context, true);
+                addVertex(coord, Vector.add(normal, tangent), normal, [1, v], context);
+                addVertex(coord, Vector.add(normal, tangent), normal, [0, v], context, true);
                 // addVertex(coord, Vector.add(neg_normal, tangent), Vector.add(neg_normal, tangent), [0, v], context);
             }
 
@@ -668,11 +678,14 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                     uvC = [0.5, v];
                 }
             }
-
+            var normrot = Vector.neg(normal);
             addFan(coord,
+                // extrusion normal
                 nA, zero_vec2, nB,
-                // todo: replace below with line normal
-                nA, zero_vec2, nB,
+                // line normal, for offsets
+                // [0, 0], [0, 0], [0, 0],
+                // [1, 1], [1, 1], [1, 1],
+                normal, normal, normal,
                 uvA, uvC, uvB,
                 true, context
             );

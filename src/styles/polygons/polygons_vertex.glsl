@@ -84,7 +84,7 @@ void main() {
         float dwdz = a_extrude.w;
         vec2 normal = a_normal.xy / 256.;
         float offset_scale = a_normal.z; // don't use offset if this is set to 1 – only scale width
-        // float offset_scale = 1.; // don't use offset if this is set to 1 – only scale width
+        // float offset_scale = 0.; // don't use offset if this is set to 1 – only scale width
 
         // Adjust line width based on zoom level, to prevent proxied lines from being either too small or too big.
         // "Flattens" the zoom between 1-2 to peg it to 1 (keeps lines from prematurely shrinking), then interpolate
@@ -94,6 +94,7 @@ void main() {
 
         // Interpolate between zoom levels
         width += sign(width) * dwdz * dz;
+        // width += 200. * sin(u_time) * 1.;
 
         // extrude += sin(u_time);
         // vec2 perp = extrude * vec2(extrude.y, -extrude.x);
@@ -102,9 +103,8 @@ void main() {
 
         // when this is a cap, this shouldn't go, so offset_scale will be 0
         // when this is a line, it should, so offset_scale will be 1
-        width += 200. * sin(u_time) * offset_scale;
+        width += 200. * sin(u_time) * (1. - offset_scale);
         // width *= offset_scale + .5;
-        // width += 200. * sin(u_time) * 1.;
         // width += 100.;
 
         // Scale pixel dimensions to be consistent in screen space
@@ -115,9 +115,14 @@ void main() {
         // perp += 1. * sin(u_time);
         // when this is a cap, this should go, so offset_scale will be 0
         // when this is a line, it shouldn't, so offset_scale will be 1
-        // vec2 offset = perp * width * (1. - offset_scale);
-        vec2 offset = normal * width * (1. - offset_scale);
-        offset += 200. * sin(u_time);
+
+        // vec2 offset = vec2(0.);
+        // vec2 offset = perp * width * (offset_scale) * sin(u_time);
+        vec2 offset = perp * width / 2. * (offset_scale) * sin(u_time);
+        // offset = vec2(-offset[0], -offset[1]);
+
+        // vec2 offset = normal * width * (1. - offset_scale);
+        // offset += 200. * sin(u_time) * (1. - offset_scale);
 
         // Modify line width before extrusion
         #pragma tangram: width
