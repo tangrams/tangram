@@ -2,6 +2,13 @@
 var gui = new dat.GUI({ autoPlace: true });
 gui.domElement.parentNode.style.zIndex = 10000;
 
+window.addEventListener('load', function () {
+        // Scene initialized
+    layer.on('init', function() {
+        addGUI();
+    });
+});
+
 gui.removeFolder = function(name) {
     var folder = this.__folders[name];
     if (folder == null) {
