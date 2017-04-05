@@ -22,6 +22,21 @@ function addGUI () {
     setScreenshot(gui, scene);
     setLayers(gui, scene);
     setEffects(gui);
+    setScene(gui);
+}
+
+function setScene(gui){
+    var scenes = {
+        default: '//demos/scene.yaml',
+        tron: 'https://mapzen.com/carto/tron-style/2/tron-style.zip',
+        bubble_wrap: 'https://mapzen.com/carto/bubble-wrap-style/bubble-wrap.zip',
+        walkabout: 'https://mapzen.com/carto/walkabout-style/walkabout-style.yaml'
+    };
+
+    gui.scene = scenes.default;
+    gui.add(gui, 'scene', scenes).onChange(function(value) {
+        scene.load(value);
+    });
 }
 
 function setLanguage(gui, scene){
@@ -180,7 +195,7 @@ function setEffects(gui){
 
             // Recompile/rebuild
             scene.updateConfig();
-            updateURL();
+            // updateURL();
 
             // Force-update dat.gui
             for (var i in gui.__controllers) {
@@ -284,5 +299,8 @@ function setEffects(gui){
     };
 
     gui.add(style_options, 'effect', style_options.options)
-        .onChange(style_options.setup.bind(style_options));
+        .onChange(function(value){
+            style_options.saveInitial();
+            style_options.setup(value);
+        });
 }

@@ -27,8 +27,7 @@ Enjoy!
     // default source, can be overriden by URL
     var map = L.map('map', {
         maxZoom: 20,
-        zoomSnap: 0,
-        trackResize: true
+        zoomSnap: 0
     });
 
     var layer = Tangram.leafletLayer({
@@ -38,7 +37,7 @@ Enjoy!
         },
         preUpdate: preUpdate,
         postUpdate: postUpdate,
-        logLevel: 'debug',
+        // logLevel: 'debug',
         attribution: '<a href="https://mapzen.com/tangram" target="_blank">Tangram</a> | &copy; OSM contributors | <a href="https://mapzen.com/" target="_blank">Mapzen</a>'
     });
 
@@ -63,9 +62,7 @@ Enjoy!
 
     /*** URL parsing ***/
 
-    // URL hash pattern is one of:
-    // #[zoom],[lat],[lng]
-    // #[source],[zoom],[lat],[lng] (legacy)
+    // URL hash pattern #[zoom]/[lat]/[lng]
     function getValuesFromUrl() {
         var url_hash = window.location.hash.slice(1, window.location.hash.length).split('/');
 
@@ -77,15 +74,6 @@ Enjoy!
             else if (typeof parseFloat(url_hash[1]) === 'number' && !isNaN(parseFloat(url_hash[1]))) {
                 map_start_location = url_hash.slice(1, 4);
             }
-        }
-
-        if (url_hash.length > 3) {
-            // Style on URL?
-            var re = new RegExp(/(?:style|mode)=(\w+)/);
-            url_hash.forEach(function(u) {
-                var match = u.match(re);
-                url_style = (match && match.length > 1 && match[1]);
-            });
         }
 
         return url_hash;
@@ -102,10 +90,6 @@ Enjoy!
 
             if (rStats_debug) {
                 url_options.push('rstats');
-            }
-
-            if (style_options && style_options.effect != '') {
-                url_options.push('style=' + style_options.effect);
             }
 
             window.location.hash = url_options.join('/');
@@ -214,11 +198,6 @@ Enjoy!
         // Scene initialized
         layer.on('init', function() {
             addGUI();
-
-            style_options.saveInitial();
-            if (url_style) {
-                style_options.setup(url_style);
-            }
             updateURL();
         });
         layer.addTo(map);
