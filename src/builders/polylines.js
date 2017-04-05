@@ -374,6 +374,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
+                // extrude normal
                 Vector.neg(normPrev), miterVec, Vector.neg(normNext),
                 [0, v], [1, v], [0, v],
                 context
@@ -405,6 +406,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
+                // exrude normal
                 normPrev, Vector.neg(miterVec), normNext,
                 [1, v], [0, v], [1, v],
                 context
@@ -570,26 +572,37 @@ function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, context) {
 //            /  /\   /\  \
 //           /  /  \ /  \  \
 //                / C \
-function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
+function addBevel (coord, eA, eC, eB, uA, uC, uB, context) {
     var pivotIndex = context.vertex_data.vertex_count;
 
-    addVertex(coord, nC, nC, uC, context);
-    addVertex(coord, nA, nA, uA, context);
-    addVertex(coord, nB, nB, uB, context);
+    var empty = [0, 0];
 
-    var orientation = nA[0] * nB[1] - nA[1] * nB[0] > 0;
+    // ccw or cw bend?
+    var cross = eA[0] * eB[1] - eA[1] * eB[0] > 0;
+
+    if (cross) {
+        // ccw bend
+        // pivot
+        addVertex(coord, Vector.neg(eC), empty, uC, context, true);
+        // first outside corner
+        addVertex(coord, eA, empty, uA, context);
+        // second outside corner
+        addVertex(coord, eB, empty, uB, context);
+    } else {
+        // cw bend
+        // pivot point
+        addVertex(coord, eC, empty, uC, context);
+        // first outside corner
+        addVertex(coord, Vector.neg(eA), empty, uA, context, true);
+        // second outside corner
+        addVertex(coord, Vector.neg(eB), empty, uB, context, true);
+    }
 
     var vertex_elements = context.vertex_data.vertex_elements;
 
-    if (orientation) {
-        vertex_elements.push(pivotIndex + 2);
-        vertex_elements.push(pivotIndex + 0);
-        vertex_elements.push(pivotIndex + 1);
-    } else {
-        vertex_elements.push(pivotIndex + 1);
-        vertex_elements.push(pivotIndex + 0);
-        vertex_elements.push(pivotIndex + 2);
-    }
+    vertex_elements.push(pivotIndex + (cross ? 2 : 1));
+    vertex_elements.push(pivotIndex);
+    vertex_elements.push(pivotIndex + (cross ? 1 : 2));
 }
 
 //  Function to add the vertices needed for line caps,
