@@ -82,47 +82,46 @@ void main() {
         vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         float width = a_extrude.z;
         float dwdz = a_extrude.w;
-        vec2 normal = a_normal.xy / 256.;
-        float offset_scale = a_normal.z; // don't use offset if this is set to 1 – only scale width
-        // float offset_scale = 0.; // don't use offset if this is set to 1 – only scale width
+        vec2 normal = a_normal.xy;
+        float isCap = a_normal.z; // isCap: 0 or 1
+        // float isCap = 1.;
 
-        // Adjust line width based on zoom level, to prevent proxied lines from being either too small or too big.
-        // "Flattens" the zoom between 1-2 to peg it to 1 (keeps lines from prematurely shrinking), then interpolate
-        // and clamp to 4 (keeps lines from becoming too small when far away).
+        // Adjust line width based on zoom level, to prevent proxied lines
+        // from being either too small or too big.
+        // "Flattens" the zoom between 1-2 to peg it to 1 (keeps lines from
+        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines
+        // from becoming too small when far away).
         float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);
         dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
 
         // Interpolate between zoom levels
         width += sign(width) * dwdz * dz;
-        // width += 200. * sin(u_time) * 1.;
 
-        // extrude += sin(u_time);
-        // vec2 perp = extrude * vec2(extrude.y, -extrude.x);
-        // vec2 perp = normal * vec2(normal.y, -normal.x);
-        // extrude += sin(u_time) * perp;
+        // stand-in for variable offset value
+        float distance = 400. * sin(u_time * 1.);
 
-        // when this is a cap, this shouldn't go, so offset_scale will be 0
-        // when this is a line, it should, so offset_scale will be 1
-        width += 200. * sin(u_time) * (1. - offset_scale);
-        // width *= offset_scale + .5;
-        // width += 100.;
+        width += distance * (1. - isCap); // lines only
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
         width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
-        vec2 perp = normal * vec2(normal.y, -normal.x);
-        // perp += 1. * sin(u_time);
-        // when this is a cap, this should go, so offset_scale will be 0
-        // when this is a line, it shouldn't, so offset_scale will be 1
+        // offset caps in a direction perpendicular to the line normal
+        vec2 perp = normalize(normal * vec2(normal.y, -normal.x)) * -1.;
 
-        // vec2 offset = vec2(0.);
-        // vec2 offset = perp * width * (offset_scale) * sin(u_time);
-        vec2 offset = perp * width / 2. * (offset_scale) * sin(u_time);
-        // offset = vec2(-offset[0], -offset[1]);
+        // get angle of perpendicular
+        // float angle = atan(perp[1], perp[0]);
+        // ...or maybe not
+        float angle = atan(normal[1], normal[0]);
+        // todo: figure out why this is working
+        // might be accidental
 
-        // vec2 offset = normal * width * (1. - offset_scale);
-        // offset += 200. * sin(u_time) * (1. - offset_scale);
+        // vector = angle and distance
+        vec2 offset = vec2(cos(angle) * distance, sin(angle) * distance) * isCap; // caps only
+
+        // Scale pixel dimensions to be consistent in screen space
+        // Scale from style zoom units back to tile zoom
+        offset *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
         // Modify line width before extrusion
         #pragma tangram: width
