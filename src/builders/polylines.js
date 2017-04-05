@@ -157,7 +157,7 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
-    normNext = Vector.normalize(Vector.perp(coordCurr, coordNext))
+    normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
 
     // Skip tile boundary lines and append a new line if needed
     if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
@@ -607,14 +607,14 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 tangent = [normal[1], -normal[0]];
 
                 addVertex(coord, Vector.add(normal, tangent), normal, [1, v], context);
-                addVertex(coord, Vector.add(normal, tangent), normal, [0, v], context, true);
+                addVertex(coord, neg_normal, normal, [0, v], context, true);
                 // addVertex(coord, Vector.add(neg_normal, tangent), Vector.add(neg_normal, tangent), [0, v], context);
 
                 // Add length of square cap to texture coordinate
                 v += 0.5 * context.texcoord_width * context.v_scale;
 
                 addVertex(coord, normal, normal, [1, v], context);
-                addVertex(coord, normal, normal, [0, v], context, true);
+                addVertex(coord, neg_normal, normal, [0, v], context, true);
                 // addVertex(coord, neg_normal, neg_normal, [0, v], context);
             }
             // last vertex on the lineString
@@ -622,14 +622,14 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 tangent = [-normal[1], normal[0]];
 
                 addVertex(coord, normal, normal, [1, v], context);
-                addVertex(coord, normal, normal, [0, v], context, true);
+                addVertex(coord, neg_normal, normal, [0, v], context, true);
                 // addVertex(coord, neg_normal, neg_normal, [0, v], context);
 
                 // Add length of square cap to texture coordinate
                 v += 0.5 * context.texcoord_width * context.v_scale;
 
                 addVertex(coord, Vector.add(normal, tangent), normal, [1, v], context);
-                addVertex(coord, Vector.add(normal, tangent), normal, [0, v], context, true);
+                addVertex(coord, Vector.add(neg_normal, tangent), normal, [0, v], context, true);
                 // addVertex(coord, Vector.add(neg_normal, tangent), Vector.add(neg_normal, tangent), [0, v], context);
             }
 
@@ -654,7 +654,6 @@ function addCap (coord, v, normal, type, isBeginning, context) {
             else {
                 nA = neg_normal;
                 nB = normal;
-                // nB = Vector.rot(nA, -180 * Math.PI/180);
 
                 if (context.texcoord_index !== undefined){
                     uvA = [0, v];
