@@ -178,6 +178,7 @@ Object.assign(Lines, {
 
         style.cap = draw.cap;
         style.join = draw.join;
+        style.offset = draw.offset;
         style.miter_limit = draw.miter_limit;
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
@@ -274,9 +275,9 @@ Object.assign(Lines, {
         // a_normal.xy - normal vector
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
-        // a_normal.z - is_cap
+        // a_normal.z - isCap
         this.vertex_template[i++] = 0;
-        // a_normal.w - unused
+        // a_normal.w - offset_distance
         this.vertex_template[i++] = 0;
 
         // a_color.rgba
@@ -335,7 +336,8 @@ Object.assign(Lines, {
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
-                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 2
+                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 2,
+                offset: style.offset
             }
         );
     },

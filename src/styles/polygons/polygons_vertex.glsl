@@ -84,6 +84,9 @@ void main() {
         float dwdz = a_extrude.w;
         vec2 normal = a_normal.xy;
         float isCap = a_normal.z; // isCap: 0 or 1
+        float distance = a_normal.w; // offset distance
+        // distance = 200. * sin(u_time);
+
         // float isCap = 1.;
 
         // Adjust line width based on zoom level, to prevent proxied lines
@@ -98,7 +101,7 @@ void main() {
         width += sign(width) * dwdz * dz;
 
         // stand-in for variable offset value
-        float distance = 400. * sin(u_time * 1.);
+        // float distance = 500. * sin(u_time * 1.);
 
         width += distance * (1. - isCap); // lines only
 

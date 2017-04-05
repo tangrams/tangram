@@ -45,10 +45,12 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         normal_index,
         normal_normalize,
         join, cap,
-        miter_limit
+        miter_limit,
+        offset
     }) {
     var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
     var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter;
+    var offset = offset || 0.;
 
     // Configure miter limit
     if (join_type === JOIN_TYPE.miter) {
@@ -83,6 +85,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         texcoord_index,
         texcoord_width,
         texcoord_normalize,
+        offset,
         geom_count: 0
     };
 
@@ -108,7 +111,9 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
-    var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq} = context;
+    var coordCurr, coordNext, normPrev, normNext, isCap;
+    var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq, offset} = context;
+    var v = 0; // Texture v-coordinate
 
     // Loop backwards through line to a tile boundary if found
     // since you need to draw lines that are only partially inside the tile,
@@ -158,6 +163,10 @@ function buildPolyline(line, context, extra_lines){
     }
 
     normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
+    // set default isCap value to 0
+    normNext[2] = 1.;
+    // put line_offset into normal.w
+    normNext[3] = line_offset;
 
     // Skip tile boundary lines and append a new line if needed
     if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
@@ -184,6 +193,8 @@ function buildPolyline(line, context, extra_lines){
 
         // reset default isCap value to 0
         normNext[2] = 0.;
+        // put line_offset into normal.w
+        normNext[3] = line_offset;
 
         // Add first pair of points for the line strip
         addVertex(coordCurr, normNext, normNext, [1, v], context);
@@ -219,6 +230,10 @@ function buildPolyline(line, context, extra_lines){
 
         normPrev = normNext;
         normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
+        // reset default isCap value to 0
+        normNext[2] = 0.;
+        // put line_offset into normal.w
+        normNext[3] = line_offset;
 
         // Add join
         if (join_type === JOIN_TYPE.miter) {
@@ -234,6 +249,13 @@ function buildPolyline(line, context, extra_lines){
     // LAST POINT
     coordCurr = coordNext;
     normPrev = normNext;
+
+    // reset default isCap value to 0
+    normNext[2] = 0.;
+    // put line_offset into normal.w
+    normNext[3] = line_offset;
+
+
 
     if (closed_polygon) {
         // Close the polygon with a miter joint or butt cap if on a tile boundary
@@ -252,6 +274,7 @@ function buildPolyline(line, context, extra_lines){
             addCap(coordCurr, v, normPrev, cap_type, false, context);
         }
     }
+
 }
 
 function getTileBoundaryIndex(line){
@@ -355,11 +378,12 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
 function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context) {
     var miterVec = createMiterVec(normPrev, normNext);
     var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
-    var empty = [0, 0];
+    var normal = [0, 0, 0, normNext[3]]; // pass along the offset distance in normal.w
+    var normAvg = normPrev + normNext / 2.;
 
     if (isClockwise){
-        addVertex(coordCurr, miterVec, empty, [1, v], context);
-        addVertex(coordCurr, normPrev, empty, [0, v], context, true);
+        addVertex(coordCurr, miterVec, normal, [1, v], context);
+        addVertex(coordCurr, normPrev, normal, [0, v], context, true);
 
         if (!isBeginning) {
             indexPairs(1, context);
@@ -376,22 +400,26 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                // extrude normal
-                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
-                // line normal
+                // controls extrude distance of outer vertices
+                Vector.neg(normPrev),
+                // controls extrude distance of pivot vertex
+                miterVec,
+                // doesn't do anything
                 normPrev,
+                // line normal
+                normal,
                 // uv coordinates
                 [0, v], [1, v], [0, v],
                 false, context
             );
         }
 
-        addVertex(coordCurr, miterVec, empty, [1, v], context);
-        addVertex(coordCurr, normNext, empty, [0, v], context, true);
+        addVertex(coordCurr, miterVec, normal, [1, v], context);
+        addVertex(coordCurr, normNext, normal, [0, v], context, true);
     }
     else {
-        addVertex(coordCurr, normPrev, empty, [1, v], context);
-        addVertex(coordCurr, miterVec, empty, [0, v], context, true);
+        addVertex(coordCurr, normPrev, normal, [1, v], context);
+        addVertex(coordCurr, miterVec, normal, [0, v], context, true);
 
         if (!isBeginning) {
             indexPairs(1, context);
@@ -407,17 +435,21 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                // extrude normal
-                normPrev, Vector.neg(miterVec), normNext,
+                // controls extrude distance of outer vertices
+                [normPrev[0],normPrev[1]],
+                // controls extrude distance of pivot vertex
+                Vector.neg(miterVec),
+                // doesn't do anything
+                normNext,
                 // line normal
-                normPrev,
+                normal,
                 [1, v], [0, v], [1, v],
                 false, context
             );
         }
 
-        addVertex(coordCurr, normNext, empty, [1, v], context);
-        addVertex(coordCurr, miterVec, empty, [0, v], context, true);
+        addVertex(coordCurr, normNext, normal, [1, v], context);
+        addVertex(coordCurr, miterVec, normal, [0, v], context, true);
     }
 }
 
@@ -468,6 +500,7 @@ function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_co
         vertex_template[context.normal_index + 0] = normal[0] * context.normal_normalize;
         vertex_template[context.normal_index + 1] = normal[1] * context.normal_normalize;
         vertex_template[context.normal_index + 2] = normal[2]; // isCap - 1 or 0
+        vertex_template[context.normal_index + 3] = normal[3]; // offset value
     }
 }
 
@@ -477,10 +510,11 @@ function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_co
 //                                             \./
 //                                              C
 function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, context) {
+    // eA = extrusion vector of first outer vertex
+    // eC = extrusion vector of inner vertex
     // eA, eC, eB = extrusion vectors
     // normal = line normal for calculating offsets
-    // coord = center point p
-
+    // coord = center point p - vertex connecting two line segments
     var cross = eA[0] * eB[1] - eA[1] * eB[0];
     var dot = Vector.dot(eA, eB);
 

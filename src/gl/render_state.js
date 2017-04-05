@@ -21,7 +21,7 @@ export default class RenderStateManager {
         this.defaults = {};
 
         // Culling
-        this.defaults.culling = false;
+        this.defaults.culling = true;
         this.defaults.culling_face = gl.BACK;
 
         // Blending
