@@ -106,18 +106,8 @@ void main() {
         // Scale from style zoom units back to tile zoom
         width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
-        // offset caps in a direction perpendicular to the line normal
-        vec2 perp = normalize(normal * vec2(normal.y, -normal.x)) * -1.;
-
-        // get angle of perpendicular
-        // float angle = atan(perp[1], perp[0]);
-        // ...or maybe not
-        float angle = atan(normal[1], normal[0]);
-        // todo: figure out why this is working
-        // might be accidental
-
-        // vector = angle and distance
-        vec2 offset = vec2(cos(angle) * distance, sin(angle) * distance) * isCap; // caps only
+        // offset caps in a direction perpendicular to the line (aka the normal)
+        vec2 offset = normalize(normal) * distance * isCap; // caps only
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
@@ -127,7 +117,6 @@ void main() {
         #pragma tangram: width
 
         position.xy += extrude * width + offset;
-        // position.xy += extrude * width;
     #endif
 
     // World coordinates for 3d procedural textures
