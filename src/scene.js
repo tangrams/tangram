@@ -54,8 +54,17 @@ export default class Scene {
         this.building = null;                           // tracks current scene building state (tiles being built, etc.)
         this.dirty = true;                              // request a redraw
         this.animated = false;                          // request redraw every frame
-        this.preUpdate = options.preUpdate;             // optional pre-render loop hook
-        this.postUpdate = options.postUpdate;           // optional post-render loop hook
+
+        if (options.preUpdate){
+            // optional pre-render loop hook
+            this.subscribe({'preUpdate': options.preUpdate});
+        }
+
+        if (options.postUpdate){
+            // optional post-render loop hook
+            this.subscribe({'postUpdate': options.postUpdate});
+        }
+
         this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
         this.render_loop_active = false;
         this.render_loop_stop = false;
@@ -445,9 +454,7 @@ export default class Scene {
         );
 
         // Pre-render loop hook
-        if (typeof this.preUpdate === 'function') {
-            this.preUpdate(will_render);
-        }
+        this.trigger('preUpdate', will_render);
 
         // Bail if no need to render
         if (!will_render) {
@@ -462,9 +469,7 @@ export default class Scene {
         this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
         // Post-render loop hook
-        if (typeof this.postUpdate === 'function') {
-            this.postUpdate(will_render);
-        }
+        this.trigger('postUpdate', will_render);
 
         // Redraw every frame if animating
         if (this.animated === true || this.view.isAnimating()) {
