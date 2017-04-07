@@ -145,6 +145,9 @@
         var layers = scene.config.layers;
 
         for (var key in layers){
+            setOnChange(key);
+        }
+        function setOnChange(key) {
             var layer = layers[key];
             if (!layer) {
                 return;
@@ -156,6 +159,7 @@
                     layer.enabled = value;
                     scene.rebuild();
                 });
+
         }
     }
 
