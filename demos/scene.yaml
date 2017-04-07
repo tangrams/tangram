@@ -30,7 +30,7 @@ cameras:
 
 scene:
     background:
-        color: '#f0ebeb'
+        color: '#d1cdcd'
 
 fonts:
     Montserrat:
@@ -187,7 +187,6 @@ layers:
 
         fill:
             filter: { $geometry: polygon }
-            enabled: false
             draw:
                 polygons:
                     order: global.feature_order
