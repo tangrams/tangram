@@ -164,9 +164,7 @@ function buildPolyline(line, context, extra_lines){
 
     normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
     // set default isCap value to 0
-    normNext[2] = 1.;
-    // put line_offset into normal.w
-    normNext[3] = line_offset;
+    isCap = 1.;
 
     // Skip tile boundary lines and append a new line if needed
     if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
@@ -190,11 +188,6 @@ function buildPolyline(line, context, extra_lines){
                 v += 0.5 * v_scale * context.texcoord_width;
             }
         }
-
-        // reset default isCap value to 0
-        normNext[2] = 0.;
-        // put line_offset into normal.w
-        normNext[3] = line_offset;
 
         // Add first pair of points for the line strip
         addVertex(coordCurr, normNext, normNext, [1, v], context);
@@ -230,10 +223,6 @@ function buildPolyline(line, context, extra_lines){
 
         normPrev = normNext;
         normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
-        // reset default isCap value to 0
-        normNext[2] = 0.;
-        // put line_offset into normal.w
-        normNext[3] = line_offset;
 
         // Add join
         if (join_type === JOIN_TYPE.miter) {
@@ -249,13 +238,6 @@ function buildPolyline(line, context, extra_lines){
     // LAST POINT
     coordCurr = coordNext;
     normPrev = normNext;
-
-    // reset default isCap value to 0
-    normNext[2] = 0.;
-    // put line_offset into normal.w
-    normNext[3] = line_offset;
-
-
 
     if (closed_polygon) {
         // Close the polygon with a miter joint or butt cap if on a tile boundary
@@ -499,8 +481,8 @@ function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_co
     if (context.normal_index) {
         vertex_template[context.normal_index + 0] = normal[0] * context.normal_normalize;
         vertex_template[context.normal_index + 1] = normal[1] * context.normal_normalize;
-        vertex_template[context.normal_index + 2] = normal[2]; // isCap - 1 or 0
-        vertex_template[context.normal_index + 3] = normal[3]; // offset value
+        vertex_template[context.normal_index + 2] = context.cap_type; // isCap - 0 or !0
+        vertex_template[context.normal_index + 3] = context.offset; // offset value
     }
 }
 
@@ -627,8 +609,6 @@ function addBevel (coord, eA, eC, eB, uA, uC, uB, context) {
 //  Function to add the vertices needed for line caps,
 //  because to re-use the buffers they need to be at the end
 function addCap (coord, v, normal, type, isBeginning, context) {
-    // set isCap flag
-    normal[2] = 1;
     var neg_normal = Vector.neg(normal);
 
     switch (type){
