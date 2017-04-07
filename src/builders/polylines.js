@@ -46,11 +46,11 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         normal_normalize,
         join, cap,
         miter_limit,
-        line_offset
+        offset
     }) {
     var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
     var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter;
-    var line_offset = line_offset || 0.;
+    var offset = offset || 0.;
 
     // Configure miter limit
     if (join_type === JOIN_TYPE.miter) {
@@ -85,7 +85,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         texcoord_index,
         texcoord_width,
         texcoord_normalize,
-        line_offset,
+        offset,
         geom_count: 0
     };
 
@@ -111,8 +111,8 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
-    var coordCurr, coordNext, normPrev, normNext;
-    var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq, line_offset} = context;
+    var coordCurr, coordNext, normPrev, normNext, isCap;
+    var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq, offset} = context;
     var v = 0; // Texture v-coordinate
 
     // Loop backwards through line to a tile boundary if found

@@ -178,7 +178,7 @@ Object.assign(Lines, {
 
         style.cap = draw.cap;
         style.join = draw.join;
-        style.line_offset = draw.line_offset;
+        style.offset = draw.offset;
         style.miter_limit = draw.miter_limit;
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
@@ -337,7 +337,7 @@ Object.assign(Lines, {
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
                 tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 2,
-                line_offset: style.line_offset
+                offset: style.offset
             }
         );
     },
