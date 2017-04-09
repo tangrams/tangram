@@ -1,5 +1,6 @@
 /*jshint worker: true */
 import Geo from '../geo';
+import Vector from '../vector';
 import {MethodNotImplemented} from '../utils/errors';
 import Utils from '../utils/utils';
 import * as URLs from '../utils/urls';
@@ -109,6 +110,95 @@ export default class DataSource {
         }
     }
 
+    // Join contiguous lines in a multiline
+    // Reduces number of line segments and avoids processing redundant points
+    static mergeContiguousMultiLineString (coordinates) {
+        let count=0;
+        let dissolved = null;
+        let c = 0;
+        while (c < coordinates.length - 1) {
+            let d = c + 1;
+            let segment = coordinates[c];
+            let last = segment[segment.length-1];
+            let first = coordinates[d][0];
+
+            if (last[0] === first[0] && last[1] === first[1]) {
+                if (count === 0) {
+                    dissolved = [];
+                    if (c > 0) {
+                        Array.prototype.push.apply(dissolved, coordinates.slice(0, c));
+                    }
+                }
+
+                dissolved.push(segment);
+                let cur = dissolved[dissolved.length-1];
+                Array.prototype.push.apply(cur, coordinates[d].slice(1));
+
+                while (++d < coordinates.length) {
+                    last = cur[cur.length-1];
+                    first = coordinates[d][0];
+
+                    if (last[0] === first[0] && last[1] === first[1]) {
+                        Array.prototype.push.apply(cur, coordinates[d].slice(1));
+                        count++;
+                    }
+                    else {
+                        break;
+                    }
+                }
+                c = d;
+                count++;
+            }
+            else if (count > 0) {
+                dissolved.push(segment);
+                c++;
+            }
+            else {
+                c++;
+            }
+        }
+
+        return dissolved || coordinates;
+    }
+
+    // Removes points from a line that are colinear, within the provided angle tolerance
+    static mergeColinearLineString (coordinates, angle_tolerance) {
+        angle_tolerance = angle_tolerance || 0.995;
+        let dissolved = null;
+        let last_dir = null;
+        let start_index = 0;
+        let c = 0;
+        while (c < coordinates.length - 1) {
+            let next_dir = Vector.normalize(Vector.sub(coordinates[c+1], coordinates[c]));
+            let next_angle;
+            if (last_dir != null) {
+                next_angle = Vector.dot(last_dir, next_dir);
+            }
+
+            if (next_angle == null || next_angle < angle_tolerance) {
+                if (dissolved == null) {
+                    start_index = c;
+                }
+                else {
+                    dissolved.push(coordinates[c]);
+                }
+                last_dir = next_dir;
+            }
+            else if (dissolved == null) {
+                dissolved = [];
+                Array.prototype.push.apply(dissolved, coordinates.slice(0, start_index+1));
+            }
+
+            c++;
+        }
+
+        if (dissolved) {
+            dissolved.push(coordinates[coordinates.length-1]);
+        }
+
+        return dissolved || coordinates;
+    }
+
     load(dest) {
         dest.source_data = {};
         dest.source_data.layers = {};
@@ -120,7 +210,8 @@ export default class DataSource {
             for (let layer in dest.source_data.layers) {
                 let data = dest.source_data.layers[layer];
                 if (data && data.features) {
-                    data.features.forEach(feature => {
+                    for (let d=0; d < data.features.length; d++) {
+                        let feature = data.features[d];
                         Geo.transformGeometry(feature.geometry, coord => {
                             // Flip Y coords
                             coord[1] = -coord[1];
@@ -132,9 +223,17 @@ export default class DataSource {
                             }
                         });
 
+                        // MultLine-specific optimizations
+                        if (feature.geometry.type === 'MultiLineString') {
+                            feature.geometry.coordinates = DataSource.mergeContiguousMultiLineString(feature.geometry.coordinates);
+                            for (let i=0; i < feature.geometry.coordinates.length; i++) {
+                                feature.geometry.coordinates[i] = DataSource.mergeColinearLineString(feature.geometry.coordinates[i]);
+                            }
+                        }
+
                         // Use first encountered polygon winding order as default for data source
                         this.updateDefaultWinding(feature.geometry);
-                    });
+                    }
                 }
             }
 
