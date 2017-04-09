@@ -569,8 +569,70 @@ export default class Tile {
         return this;
     }
 
-    printDebug () {
-        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
+    printDebug (exclude = ['layers']) {
+        let copy = {};
+        for (let key in this.debug) {
+            if (exclude.indexOf(key) === -1) {
+                copy[key] = this.debug[key];
+            }
+        }
+
+        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
+    }
+
+    // Sum up layer feature/geometry stats from a set of tiles
+    static debugSumLayerStats (tiles) {
+        let list = {}, tree = {};
+
+        tiles.filter(tile => tile.debug.layers).forEach(tile => {
+            Object.keys(tile.debug.layers).forEach(layer => {
+                let counts = tile.debug.layers[layer];
+
+                list[layer] = list[layer] || { features: 0, geoms: 0, styles: {}, base: {} };
+                list[layer].features += counts[0]; // feature count
+                list[layer].geoms += counts[1];    // geometry count
+
+                // geometry count by style
+                for (let style in counts[2]) {
+                    list[layer].styles[style] = list[layer].styles[style] || 0;
+                    list[layer].styles[style] += counts[2][style];
+                }
+
+                // geometry count by base style
+                for (let style in counts[3]) {
+                    list[layer].base[style] = list[layer].base[style] || 0;
+                    list[layer].base[style] += counts[3][style];
+                }
+
+                let node = tree;
+                let levels = layer.split(':');
+                for (let i=0; i < levels.length; i++) {
+                    let level = levels[i];
+                    node[level] = node[level] || { features: 0, geoms: 0, styles: {}, base: {} };
+                    node[level].features += counts[0]; // feature count
+                    node[level].geoms += counts[1];    // geometry count
+
+                    // geometry count by style
+                    for (let style in counts[2]) {
+                        node[level].styles[style] = node[level].styles[style] || 0;
+                        node[level].styles[style] += counts[2][style];
+                    }
+
+                    // geometry count by base style
+                    for (let style in counts[3]) {
+                        node[level].base[style] = node[level].base[style] || 0;
+                        node[level].base[style] += counts[3][style];
+                    }
+
+                    if (i < levels.length - 1) {
+                        node[level].layers = node[level].layers || {};
+                    }
+                    node = node[level].layers;
+                }
+            });
+        });
+
+        return { list, tree };
     }
 
 }

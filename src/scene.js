@@ -1,5 +1,6 @@
 import log from './utils/log';
 import Utils from './utils/utils';
+import debugSettings from './utils/debug_settings';
 import * as URLs from './utils/urls';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
@@ -13,6 +14,7 @@ import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
 import View from './view';
 import Light from './light';
+import Tile from './tile';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
@@ -1064,7 +1066,7 @@ export default class Scene {
             config: config_serialized,
             generation: this.generation,
             introspection: this.introspection
-        });
+        }, debugSettings);
     }
 
     // Listen to related objects
@@ -1236,6 +1238,16 @@ export default class Scene {
                     sizes[base] += style_sizes[style];
                 }
                 return sizes;
+            },
+
+            layerStats () {
+                if (debugSettings.layer_stats) {
+                    return Tile.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
+                }
+                else {
+                    log('warn', `Enable the 'layer_stats' debug setting to collect layer stats`);
+                    return {};
+                }
             },
 
             renderableTilesCount () {
