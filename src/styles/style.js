@@ -12,6 +12,7 @@ import log from '../utils/log';
 import mergeObjects from '../utils/merge';
 import Thread from '../utils/thread';
 import WorkerBroker from '../utils/worker_broker';
+import debugSettings from '../utils/debug_settings';
 
 let fs = require('fs');
 const shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
@@ -171,23 +172,41 @@ export var Style = {
     },
 
     buildGeometry (geometry, style, vertex_data, context) {
+        let geom_count;
         if (geometry.type === 'Polygon') {
-            this.buildPolygons([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPolygons([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiPolygon') {
-            this.buildPolygons(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPolygons(geometry.coordinates, style, vertex_data, context);
         }
         else if (geometry.type === 'LineString') {
-            this.buildLines([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildLines([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiLineString') {
-            this.buildLines(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildLines(geometry.coordinates, style, vertex_data, context);
         }
         else if (geometry.type === 'Point') {
-            this.buildPoints([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPoints([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiPoint') {
-            this.buildPoints(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPoints(geometry.coordinates, style, vertex_data, context);
+        }
+
+        // Optionally collect per-layer stats
+        if (geom_count > 0 && debugSettings.layer_stats) {
+            let tile = context.tile;
+            let list = tile.debug.layers = tile.debug.layers || {};
+            context.layers.forEach(layer => {
+                list[layer] = list[layer] || [0, 0, {}, {}];
+                list[layer][0] ++;            // feature count
+                list[layer][1] += geom_count; // geometry count
+
+                list[layer][2][this.name] = list[layer][2][this.name] || 0;
+                list[layer][2][this.name] += geom_count; // geometry count by style
+
+                list[layer][3][this.baseStyle()] = list[layer][3][this.baseStyle()] || 0;
+                list[layer][3][this.baseStyle()] += geom_count; // geometry count by base style
+            });
         }
     },
 
@@ -290,9 +309,9 @@ export var Style = {
     },
 
     // Build functions are no-ops until overriden
-    buildPolygons () {},
-    buildLines () {},
-    buildPoints () {},
+    buildPolygons () { return 0; },
+    buildLines () { return 0; },
+    buildPoints () { return 0; },
 
 
     /*** GL state and rendering ***/

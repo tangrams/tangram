@@ -1,6 +1,7 @@
 /*jshint worker: true*/
 import Thread from './utils/thread';
 import Utils from './utils/utils';
+import {mergeDebugSettings} from './utils/debug_settings';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Tile from './tile';
@@ -38,8 +39,9 @@ Object.assign(self, {
     },
 
     // Starts a config refresh
-    updateConfig ({ config, generation, introspection }) {
+    updateConfig ({ config, generation, introspection }, debug) {
         config = JSON.parse(config);
+        mergeDebugSettings(debug);
 
         self.generation = generation;
         self.introspection = introspection;

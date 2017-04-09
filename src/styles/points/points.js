@@ -617,7 +617,7 @@ Object.assign(Points, {
     },
 
     buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
-        buildQuadsForPoints(
+        return buildQuadsForPoints(
             points,
             vertex_data,
             vertex_template,
@@ -654,10 +654,10 @@ Object.assign(Points, {
     build (style, vertex_data) {
         let label = style.label;
         if (label.type === 'curved') {
-            this.buildArticulatedLabel(label, style, vertex_data);
+            return this.buildArticulatedLabel(label, style, vertex_data);
         }
         else {
-            this.buildLabel(label, style, vertex_data);
+            return this.buildLabel(label, style, vertex_data);
         }
     },
 
@@ -677,7 +677,7 @@ Object.assign(Points, {
 
         let offset = label.offset;
 
-        this.buildQuad(
+        return this.buildQuad(
             [label.position],               // position
             size,                           // size in pixels
             angle,                          // angle in radians
@@ -695,6 +695,7 @@ Object.assign(Points, {
     buildArticulatedLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         let angle = label.angle;
+        let geom_count = 0;
 
         // pass for stroke
         for (let i = 0; i < label.num_segments; i++){
@@ -708,7 +709,7 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            this.buildQuad(
+            geom_count += this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
@@ -735,7 +736,7 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            this.buildQuad(
+            geom_count += this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
@@ -749,19 +750,21 @@ Object.assign(Points, {
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }
+
+        return geom_count;
     },
 
     // Override to pass-through to generic point builder
     buildLines (lines, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
 
     buildPoints (points, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
 
     buildPolygons (points, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
 
     makeMesh (vertex_data, vertex_elements, options = {}) {

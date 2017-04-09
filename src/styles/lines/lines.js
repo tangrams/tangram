@@ -307,7 +307,7 @@ Object.assign(Lines, {
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
         let vertex_template = this.makeVertexTemplate(style);
-        buildPolylines(
+        return buildPolylines(
             lines,
             style.width,
             vertex_data,
@@ -329,10 +329,12 @@ Object.assign(Lines, {
     },
 
     buildPolygons(polygons, style, vertex_data, context) {
-        // Render polygons as individual lines
-        for (let p=0; p < polygons.length; p++) {
-            this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
-        }
+         // Render polygons as individual lines
+        let geom_count = 0;
+         for (let p=0; p < polygons.length; p++) {
+            geom_count += this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
+         }
+        return geom_count;
     }
 
 });
