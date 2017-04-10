@@ -58,8 +58,6 @@ export default class CanvasText {
                     }
 
                     if (text_settings.can_articulate){
-                        let segments = splitLabelText(text);
-
                         let words = text.split(' ');
 
                         // RTL is true if every word is RTL
@@ -90,6 +88,8 @@ export default class CanvasText {
                         text_info.isRTL = rtl;
                         text_info.no_curving = bidi || shaped;
                         text_info.vertical_buffer = this.vertical_text_buffer;
+
+                        let segments = splitLabelText(text, rtl);
 
                         if (rtl) {
                             segments.reverse();
@@ -601,8 +601,13 @@ function isTextRTL(s){
     return rtlDirCheck.test(s);
 }
 
+let neutralDirCheck = new RegExp('[\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF]$');
+function isTextNeutral(s){
+    return neutralDirCheck.test(s);
+}
+
 // Splitting strategy for chopping a label into segments
-function splitLabelText(text){
+function splitLabelText(text, rtl){
     if (text.length < codon_length) {
         return [text];
     }
@@ -616,7 +621,23 @@ function splitLabelText(text){
             segments[segments.length - 1] += segment;
         }
         else {
-            segments.push(segment);
+            // if RTL, check to see if segment ends on a neutral character
+            // in which case we need to add the neutral segments separately (codon_length = 1) in reverse order
+            if (rtl){
+                let neutral_segment = [];
+                while (segment.length > 0 && isTextNeutral(segment[segment.length - 1])){
+                    neutral_segment.unshift(segment[segment.length - 1]);
+                    segment = segment.substring(0, segment.length - 1);
+                }
+                segments.push(segment);
+                if (neutral_segment.length > 0){
+                    segments = segments.concat(neutral_segment);
+                }
+            }
+            else {
+                segment = text.substring(0, codon_length);
+                segments.push(segment);
+            }
         }
 
         text = text.substring(codon_length);
