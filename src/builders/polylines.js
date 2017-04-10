@@ -163,8 +163,6 @@ function buildPolyline(line, context, extra_lines){
     }
 
     normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
-    // set default isCap value to 0
-    isCap = 1.;
 
     // Skip tile boundary lines and append a new line if needed
     if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
@@ -360,8 +358,9 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
 function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context) {
     var miterVec = createMiterVec(normPrev, normNext);
     var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
-    var normal = [0, 0, 0, normNext[3]]; // pass along the offset distance in normal.w
     var normAvg = normPrev + normNext / 2.;
+    // not a cap - set normal to [0, 0] so buildVertexTemplate knows offset isn't needed
+    var normal = [0, 0];
 
     if (isClockwise){
         addVertex(coordCurr, miterVec, normal, [1, v], context);
@@ -382,13 +381,13 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                // controls extrude distance of outer vertices
+                // extrusion vector of first vertex
                 Vector.neg(normPrev),
                 // controls extrude distance of pivot vertex
                 miterVec,
-                // doesn't do anything
-                normPrev,
-                // line normal
+                // extrusion vector of last vertex
+                Vector.neg(normNext),
+                // line normal (unused here)
                 normal,
                 // uv coordinates
                 [0, v], [1, v], [0, v],
@@ -417,14 +416,15 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                // controls extrude distance of outer vertices
-                [normPrev[0],normPrev[1]],
-                // controls extrude distance of pivot vertex
+                // extrusion vector of first vertex
+                normPrev,
+                // extrusion vector of pivot vertex
                 Vector.neg(miterVec),
-                // doesn't do anything
+                // extrusion vector of last vertex
                 normNext,
-                // line normal
+                // line normal (unused here)
                 normal,
+                // uv coordinates
                 [1, v], [0, v], [1, v],
                 false, context
             );
@@ -477,11 +477,12 @@ function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_co
         vertex_template[context.scaling_index + 1] = scale[1] * context.scaling_normalize;
         vertex_template[context.scaling_index + 2] = flip ? -context.half_width : context.half_width;
     }
-    // set Normal value (X, Y line normal direction + Z isCap toggle
+
+    // set Normal value (X, Y line normal direction, Z isCap toggle, W offset value)
     if (context.normal_index) {
         vertex_template[context.normal_index + 0] = normal[0] * context.normal_normalize;
         vertex_template[context.normal_index + 1] = normal[1] * context.normal_normalize;
-        vertex_template[context.normal_index + 2] = context.cap_type; // isCap - 0 or !0
+        vertex_template[context.normal_index + 2] = (normal[0] > 0. || normal[1] > 0.) ? 1. : 0.;
         vertex_template[context.normal_index + 3] = context.offset; // offset value
     }
 }
@@ -495,7 +496,7 @@ function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, context) {
     // eA = extrusion vector of first outer vertex
     // eC = extrusion vector of inner vertex
     // eA, eC, eB = extrusion vectors
-    // normal = line normal for calculating offsets
+    // normal = line normal for calculating cap offsets
     // coord = center point p - vertex connecting two line segments
     var cross = eA[0] * eB[1] - eA[1] * eB[0];
     var dot = Vector.dot(eA, eB);
@@ -515,7 +516,6 @@ function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, context) {
 
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
-
     if (angle < 0) { // cw
         addVertex(coord, eC, normal, uvC, context);
         addVertex(coord, Vector.neg(eA), normal, uvA, context, true);

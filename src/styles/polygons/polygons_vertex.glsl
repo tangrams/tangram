@@ -85,9 +85,6 @@ void main() {
         vec2 normal = a_normal.xy;
         float isCap = a_normal.z; // isCap: 0 or 1
         float distance = a_normal.w; // offset distance
-        // distance = 200. * sin(u_time);
-
-        // float isCap = 1.;
 
         // Adjust line width based on zoom level, to prevent proxied lines
         // from being either too small or too big.
@@ -101,9 +98,9 @@ void main() {
         width += sign(width) * dwdz * dz;
 
         // stand-in for variable offset value
-        // float distance = 500. * sin(u_time * 1.);
+        // distance = 1500. * sin(u_time * .5);
 
-        width += distance * (1. - isCap); // lines only
+        width += distance * (1. - isCap); // lines + joins only
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
