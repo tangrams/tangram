@@ -473,7 +473,7 @@ export var Style = {
             .filter(s => this.sources[s] instanceof RasterTileSource)
             .length;
 
-        this.defines.TANGRAM_NUM_RASTER_SOURCES = `int(${num_raster_sources})`;
+        this.defines.TANGRAM_NUM_RASTER_SOURCES = `${num_raster_sources}`; // force to string to avoid auto-float conversion
         if (num_raster_sources > 0) {
             // Use model position of tile's coordinate zoom for raster tile texture UVs
             this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
