@@ -46,6 +46,9 @@ Enjoy!
             // webGLContextOptions: { // explicitly add/override WebGL context options
             //     antialias: false
             // },
+            // debug: {
+            //     layer_stats: true // enable to collect detailed layer stats, access w/`scene.debug.layerStats()`
+            // },
             logLevel: 'debug',
             attribution: '<a href="https://mapzen.com/tangram" target="_blank">Tangram</a> | &copy; OSM contributors | <a href="https://mapzen.com/" target="_blank">Mapzen</a>'
         });
