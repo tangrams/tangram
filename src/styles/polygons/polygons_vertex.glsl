@@ -82,7 +82,7 @@ void main() {
         vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         float width = a_extrude.z;
         float dwdz = a_extrude.w;
-        vec2 normal = a_normal.xy;
+        vec2 normal = a_normal.xy / 256.; // values have an 8-bit fraction;
         float isCap = a_normal.z; // isCap: 0 or 1
         float distance = a_normal.w; // offset distance
 
@@ -107,7 +107,7 @@ void main() {
         width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
         // offset caps in a direction perpendicular to the line (aka the normal)
-        vec2 offset = normalize(normal) * distance * isCap; // caps only
+        vec2 offset = normal * distance * isCap; // caps only
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
