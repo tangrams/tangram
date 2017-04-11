@@ -2,6 +2,7 @@ import Thread from './utils/thread';
 import Scene from './scene';
 import Geo from './geo';
 import debounce from './utils/debounce';
+import {mergeDebugSettings} from './utils/debug_settings';
 
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
@@ -50,6 +51,7 @@ function extendLeaflet(options) {
                 options.showDebug = (!options.showDebug ? false : true);
 
                 L.setOptions(this, options);
+                this.updateTangramDebugSettings();
                 this.createScene();
                 this.hooks = {};
                 this._updating_tangram = false;
@@ -465,6 +467,10 @@ function extendLeaflet(options) {
 
                 map.on('layeradd layerremove overlayadd overlayremove', this._updateMapLayerCount);
                 this._updateMapLayerCount();
+            },
+
+            updateTangramDebugSettings () {
+                mergeDebugSettings(this.options.debug || {});
             }
 
         });
