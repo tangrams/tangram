@@ -72,7 +72,7 @@ Enjoy!
     });
 
     function injectAPIKey(config) {
-        if (config.global.sdk_mapzen_api_key) {
+        if (config.global && config.global.sdk_mapzen_api_key) {
             config.global.sdk_mapzen_api_key = 'mapzen-T3tPjn7';
         }
         else {
