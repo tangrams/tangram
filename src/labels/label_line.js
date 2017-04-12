@@ -222,11 +222,7 @@ class LabelLineStraight extends LabelLineBase {
 
         if (typeof layout.orientation === 'number'){
             this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
-        }
 
-        let offset = this.offset.slice();
-
-        if (typeof layout.orientation === 'number'){
             if (flipped){
                 this.offset[1] *= -1;
             }
@@ -285,12 +281,15 @@ class LabelLineStraight extends LabelLineBase {
                     if (Math.abs(this.angle - Math.PI/2) < VERTICAL_ANGLE_TOLERANCE) {
                         // flip angle and offset
                         this.angle = -Math.PI/2;
-                        offset[1] *= -1;
+
+                        if (typeof layout.orientation === 'number'){
+                            this.offset[1] *= -1;
+                        }
                     }
 
                     this.position = currMid;
 
-                    this.updateBBoxes(this.position, size, this.angle, angle_offset, offset);
+                    this.updateBBoxes(this.position, size, this.angle, this.angle, this.offset);
 
                     if (this.inTileBounds()) {
                         return true;
@@ -346,11 +345,7 @@ class LabelLineCurved extends LabelLineBase {
 
         if (typeof layout.orientation === 'number'){
             this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
-        }
 
-        let offset = this.offset.slice();
-
-        if (typeof layout.orientation === 'number'){
             if (flipped){
                 this.offset[1] *= -1;
             }
@@ -428,7 +423,7 @@ class LabelLineCurved extends LabelLineBase {
                             }
                         }
 
-                        let obb = LabelLineCurved.createOBB(position, width, height, offset, angle_offset, angle_curve, upp);
+                        let obb = LabelLineCurved.createOBB(position, width, height, this.offset, angle_offset, angle_curve, upp);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
