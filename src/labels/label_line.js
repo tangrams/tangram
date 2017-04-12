@@ -226,12 +226,14 @@ class LabelLineStraight extends LabelLineBase {
 
         let offset = this.offset.slice();
 
-        if (flipped){
-            this.offset[1] *= -1;
-        }
+        if (typeof layout.orientation === 'number'){
+            if (flipped){
+                this.offset[1] *= -1;
+            }
 
-        if (layout.orientation === -1){
-            this.offset[1] *= -1;
+            if (layout.orientation === -1){
+                this.offset[1] *= -1;
+            }
         }
 
         let line_lengths = getLineLengths(line);
@@ -269,12 +271,14 @@ class LabelLineStraight extends LabelLineBase {
                     this.angle = -next_angle;
                     let angle_offset = this.angle;
 
-                    if (flipped){
-                        angle_offset += Math.PI;
-                    }
+                    if (typeof layout.orientation === 'number'){
+                        if (flipped){
+                            angle_offset += Math.PI;
+                        }
 
-                    if (layout.orientation === -1){
-                        angle_offset += Math.PI;
+                        if (layout.orientation === -1){
+                            angle_offset += Math.PI;
+                        }
                     }
 
                     // all vertical labels point up (not down)
@@ -282,7 +286,6 @@ class LabelLineStraight extends LabelLineBase {
                         // flip angle and offset
                         this.angle = -Math.PI/2;
                         offset[1] *= -1;
-                        this.offset[1] *= -1;
                     }
 
                     this.position = currMid;
@@ -347,12 +350,14 @@ class LabelLineCurved extends LabelLineBase {
 
         let offset = this.offset.slice();
 
-        if (flipped){
-            this.offset[1] *= -1;
-        }
+        if (typeof layout.orientation === 'number'){
+            if (flipped){
+                this.offset[1] *= -1;
+            }
 
-        if (layout.orientation === -1){
-            this.offset[1] *= -1;
+            if (layout.orientation === -1){
+                this.offset[1] *= -1;
+            }
         }
 
         let line_lengths = getLineLengths(line);
@@ -413,12 +418,14 @@ class LabelLineCurved extends LabelLineBase {
                         let angle_curve = pre_angle + angles[i];
                         let angle_offset = this.angle;
 
-                        if (flipped){
-                            angle_offset += Math.PI;
-                        }
+                        if (typeof layout.orientation === 'number'){
+                            if (flipped){
+                                angle_offset += Math.PI;
+                            }
 
-                        if (layout.orientation === -1){
-                            angle_offset += Math.PI;
+                            if (layout.orientation === -1){
+                                angle_offset += Math.PI;
+                            }
                         }
 
                         let obb = LabelLineCurved.createOBB(position, width, height, offset, angle_offset, angle_curve, upp);
