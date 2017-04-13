@@ -47,6 +47,7 @@ void main (void) {
     vec4 color = v_color;
 
     #ifdef TANGRAM_MULTI_SAMPLER
+    bool is_label = false;
     if (v_sampler == 0.) { // sprite sampler
     #endif
         #ifdef TANGRAM_TEXTURE_POINT
@@ -67,6 +68,7 @@ void main (void) {
     #ifdef TANGRAM_MULTI_SAMPLER
     }
     else { // label sampler
+        is_label = true;
         color = texture2D(u_label_texture, v_texcoord);
         color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
     }
@@ -84,11 +86,17 @@ void main (void) {
         }
     #endif
 
-    #pragma tangram: color
+    #ifdef TANGRAM_MULTI_SAMPLER
+    // Don't apply shader blocks to text attached to point (N.B.: for compatibility with ES)
+    if (!is_label) {
+    #endif
+        #pragma tangram: color
+        #pragma tangram: filter
+    #ifdef TANGRAM_MULTI_SAMPLER
+    }
+    #endif
 
     color.a *= v_alpha_factor;
-
-    #pragma tangram: filter
 
     gl_FragColor = color;
 }
