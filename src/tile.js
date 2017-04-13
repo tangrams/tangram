@@ -2,6 +2,7 @@ import log from './utils/log';
 import Utils from './utils/utils';
 import mergeObjects from './utils/merge';
 import Geo from './geo';
+import {addLayerDebugEntry} from './styles/style';
 import {StyleParser} from './styles/style_parser';
 import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
@@ -191,6 +192,7 @@ export default class Tile {
 
         tile.debug.rendering = +new Date();
         tile.debug.feature_count = 0;
+        tile.debug.layers = null;
 
         Collision.startTile(tile.key);
 
@@ -585,51 +587,14 @@ export default class Tile {
         let list = {}, tree = {};
 
         tiles.filter(tile => tile.debug.layers).forEach(tile => {
-            Object.keys(tile.debug.layers).forEach(layer => {
-                let counts = tile.debug.layers[layer];
-
-                list[layer] = list[layer] || { features: 0, geoms: 0, styles: {}, base: {} };
-                list[layer].features += counts[0]; // feature count
-                list[layer].geoms += counts[1];    // geometry count
-
-                // geometry count by style
-                for (let style in counts[2]) {
-                    list[layer].styles[style] = list[layer].styles[style] || 0;
-                    list[layer].styles[style] += counts[2][style];
-                }
-
-                // geometry count by base style
-                for (let style in counts[3]) {
-                    list[layer].base[style] = list[layer].base[style] || 0;
-                    list[layer].base[style] += counts[3][style];
-                }
-
-                let node = tree;
-                let levels = layer.split(':');
-                for (let i=0; i < levels.length; i++) {
-                    let level = levels[i];
-                    node[level] = node[level] || { features: 0, geoms: 0, styles: {}, base: {} };
-                    node[level].features += counts[0]; // feature count
-                    node[level].geoms += counts[1];    // geometry count
-
-                    // geometry count by style
-                    for (let style in counts[2]) {
-                        node[level].styles[style] = node[level].styles[style] || 0;
-                        node[level].styles[style] += counts[2][style];
-                    }
-
-                    // geometry count by base style
-                    for (let style in counts[3]) {
-                        node[level].base[style] = node[level].base[style] || 0;
-                        node[level].base[style] += counts[3][style];
-                    }
-
-                    if (i < levels.length - 1) {
-                        node[level].layers = node[level].layers || {};
-                    }
-                    node = node[level].layers;
-                }
+            // layer list
+            Object.keys(tile.debug.layers.list).forEach(layer => {
+                let counts = tile.debug.layers.list[layer];
+                addLayerDebugEntry(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
             });
+
+            // layer tree
+            addDebugLayers(tile.debug.layers.tree, tree);
         });
 
         return { list, tree };
@@ -638,3 +603,15 @@ export default class Tile {
 }
 
 Tile.coord_children = {}; // only allocate children coordinates once per coordinate
+
+// build debug stats layer tree
+function addDebugLayers (node, tree) {
+    for (let layer in node) {
+        let counts = node[layer];
+        addLayerDebugEntry(tree, layer, counts.features, counts.geoms, counts.styles, counts.base);
+        if (counts.layers) {
+            tree[layer].layers = tree[layer].layers || {};
+            addDebugLayers(counts.layers, tree[layer].layers); // process child layers
+        }
+    }
+}
