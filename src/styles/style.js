@@ -195,17 +195,31 @@ export var Style = {
         // Optionally collect per-layer stats
         if (geom_count > 0 && debugSettings.layer_stats) {
             let tile = context.tile;
-            let list = tile.debug.layers = tile.debug.layers || {};
+            tile.debug.layers = tile.debug.layers || { list: {}, tree: {} };
+            let list = tile.debug.layers.list;
+            let tree = tile.debug.layers.tree;
+            let ftree = {}; // tree of layers for this feature
             context.layers.forEach(layer => {
-                list[layer] = list[layer] || [0, 0, {}, {}];
-                list[layer][0] ++;            // feature count
-                list[layer][1] += geom_count; // geometry count
+                addLayerDebugEntry(list, layer, 1, geom_count, {[this.name]: geom_count}, {[this.baseStyle()]: geom_count});
 
-                list[layer][2][this.name] = list[layer][2][this.name] || 0;
-                list[layer][2][this.name] += geom_count; // geometry count by style
+                let node = tree;
+                let fnode = ftree;
+                let levels = layer.split(':');
+                for (let i=0; i < levels.length; i++) {
+                    let level = levels[i];
+                    node[level] = node[level] || { features: 0, geoms: 0, styles: {}, base: {} };
 
-                list[layer][3][this.baseStyle()] = list[layer][3][this.baseStyle()] || 0;
-                list[layer][3][this.baseStyle()] += geom_count; // geometry count by base style
+                    if (fnode[level] == null) { // only count each layer level once per feature
+                        fnode[level] = {};
+                        addLayerDebugEntry(node, level, 1, geom_count, {[this.name]: geom_count}, {[this.baseStyle()]: geom_count});
+                    }
+
+                    if (i < levels.length - 1) {
+                        node[level].layers = node[level].layers || {};
+                    }
+                    node = node[level].layers;
+                    fnode = fnode[level];
+                }
             });
         }
     },
@@ -658,3 +672,22 @@ export var Style = {
     }
 
 };
+
+// add feature and geometry counts for a single layer
+export function addLayerDebugEntry (target, layer, faeture_count, geom_count, styles, bases) {
+    target[layer] = target[layer] || { features: 0, geoms: 0, styles: {}, base: {} };
+    target[layer].features += faeture_count;    // feature count
+    target[layer].geoms += geom_count;          // geometry count
+
+    // geometry count by style
+    for (let style in styles) {
+        target[layer].styles[style] = target[layer].styles[style] || 0;
+        target[layer].styles[style] += styles[style];
+    }
+
+    // geometry count by base style
+    for (let style in bases) {
+        target[layer].base[style] = target[layer].base[style] || 0;
+        target[layer].base[style] += bases[style];
+    }
+}
