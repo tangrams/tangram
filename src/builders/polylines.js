@@ -188,8 +188,8 @@ function buildPolyline(line, context, extra_lines){
         }
 
         // Add first pair of points for the line strip
-        addVertex(coordCurr, normNext, [0, 0], [1, v], context);
-        addVertex(coordCurr, normNext, [0, 0], [0, v], context, true);
+        addVertex(coordCurr, normNext, normNext, [1, v], context);
+        addVertex(coordCurr, normNext, normNext, [0, v], context, true);
     }
 
     // INTERMEDIARY POINTS
@@ -207,8 +207,9 @@ function buildPolyline(line, context, extra_lines){
 
         // Remove tile boundaries
         if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
-            addVertex(coordCurr, normNext, [0, 0], [1, v], context);
-            addVertex(coordCurr, normNext, [0, 0], [0, v], context, true);
+            var miterVec = createMiterVec(normPrev, normNext);
+            addVertex(coordCurr, normNext, normNext, [1, v], context);
+            addVertex(coordCurr, normNext, normNext, [0, v], context, true);
 
             indexPairs(1, context);
 
@@ -244,8 +245,8 @@ function buildPolyline(line, context, extra_lines){
     }
     else {
         // Finish the line strip
-        addVertex(coordCurr, normPrev, [0, 0], [1, v], context);
-        addVertex(coordCurr, normPrev, [0, 0], [0, v], context, true);
+        addVertex(coordCurr, normPrev, normNext, [1, v], context);
+        addVertex(coordCurr, normPrev, normNext, [0, v], context, true);
 
         indexPairs(1, context);
 
@@ -359,12 +360,12 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     var miterVec = createMiterVec(normPrev, normNext);
     var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
     var normAvg = normPrev + normNext / 2.;
-    // not a cap - set normal to [0, 0] so buildVertexTemplate knows offset isn't needed
-    var normal = [0, 0];
+
+    var normal = normNext;
 
     if (isClockwise){
-        addVertex(coordCurr, miterVec, normal, [1, v], context);
-        addVertex(coordCurr, normPrev, normal, [0, v], context, true);
+        addVertex(coordCurr, miterVec, miterVec, [1, v], context);
+        addVertex(coordCurr, normPrev, miterVec, [0, v], context, true);
 
         if (!isBeginning) {
             indexPairs(1, context);
@@ -388,19 +389,19 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
                 // extrusion vector of last vertex
                 Vector.neg(normNext),
                 // line normal (unused here)
-                normal,
+                miterVec,
                 // uv coordinates
                 [0, v], [1, v], [0, v],
                 false, context
             );
         }
 
-        addVertex(coordCurr, miterVec, normal, [1, v], context);
-        addVertex(coordCurr, normNext, normal, [0, v], context, true);
+        addVertex(coordCurr, miterVec, miterVec, [1, v], context);
+        addVertex(coordCurr, normNext, miterVec, [0, v], context, true);
     }
     else {
-        addVertex(coordCurr, normPrev, normal, [1, v], context);
-        addVertex(coordCurr, miterVec, normal, [0, v], context, true);
+        addVertex(coordCurr, normPrev, miterVec, [1, v], context);
+        addVertex(coordCurr, miterVec, miterVec, [0, v], context, true);
 
         if (!isBeginning) {
             indexPairs(1, context);
@@ -422,16 +423,16 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
                 Vector.neg(miterVec),
                 // extrusion vector of last vertex
                 normNext,
-                // line normal (unused here)
-                normal,
+                // line normal for offset
+                miterVec,
                 // uv coordinates
                 [1, v], [0, v], [1, v],
                 false, context
             );
         }
 
-        addVertex(coordCurr, normNext, normal, [1, v], context);
-        addVertex(coordCurr, miterVec, normal, [0, v], context, true);
+        addVertex(coordCurr, normNext, miterVec, [1, v], context);
+        addVertex(coordCurr, miterVec, miterVec, [0, v], context, true);
     }
 }
 
