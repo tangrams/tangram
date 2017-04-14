@@ -100,14 +100,15 @@ void main() {
         // stand-in for variable offset value
         // distance = 1500. * sin(u_time * .5);
 
-        width += distance * (1. - isCap); // lines + joins only
+        // width += distance * (1. - isCap); // lines + joins only
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
         width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
         // offset caps in a direction perpendicular to the line (aka the normal)
-        vec2 offset = normal * distance * isCap; // caps only
+        vec2 offset = normal * distance; // caps only
+        // vec2 offset = normal * distance * isCap; // caps only
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
