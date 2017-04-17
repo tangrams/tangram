@@ -98,7 +98,7 @@ void main() {
         width += sign(width) * dwdz * dz;
 
         // stand-in for variable offset value
-        distance = 1500. * sin(u_time);
+        // distance = 100. * sin(u_time);
 
         // width += distance * (1. - isCap); // lines + joins only
 
