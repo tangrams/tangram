@@ -187,16 +187,9 @@ function buildPolyline(line, context, extra_lines){
             }
         }
 
-        var miterVec = normNext;
-        // look ahead for join vectors
-        if (line.length > 2) {
-            var perpNext = Vector.normalize(Vector.perp(coordNext, line[2]));
-            miterVec = createMiterVec(normNext, perpNext);
-        }
-
         // Add first pair of points for the line strip
-        addVertex(coordCurr, normNext, miterVec, [1, v], context);
-        addVertex(coordCurr, normNext, miterVec, [0, v], context, true);
+        addVertex(coordCurr, normNext, normNext, [1, v], context);
+        addVertex(coordCurr, normNext, normNext, [0, v], context, true);
     }
 
     // INTERMEDIARY POINTS
