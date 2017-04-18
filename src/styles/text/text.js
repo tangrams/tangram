@@ -8,12 +8,16 @@ import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 
+let fs = require('fs');
+const shaderSrc_textFragment = fs.readFileSync(__dirname + '/text_fragment.glsl', 'utf8');
+
 export let TextStyle = Object.create(Points);
 
 Object.assign(TextStyle, {
     name: 'text',
     super: Points,
     built_in: true,
+    fragment_shader_src: shaderSrc_textFragment,
 
     init(options = {}) {
         let extra_attributes = [
@@ -26,16 +30,13 @@ Object.assign(TextStyle, {
 
         // Set texture/point config (override parent Point class)
         this.defines.TANGRAM_TEXTURE_POINT = true;  // standalone text is always sampled from a texture
-        this.defines.TANGRAM_SHADER_POINT = false;  // standalone text neevr draws a shader point
+        this.defines.TANGRAM_SHADER_POINT = false;  // standalone text never draws a shader point
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;
 
         // Disable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = false;
-
-        // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
-        this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
         // Fade out text when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;

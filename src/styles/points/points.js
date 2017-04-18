@@ -35,15 +35,13 @@ Object.assign(Points, TextLabels);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
+    vertex_shader_src: shaderSrc_pointsVertex,
+    fragment_shader_src: shaderSrc_pointsFragment,
     collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init(options = {}, extra_attributes = []) {
         Style.init.call(this, options);
-
-        // Base shaders
-        this.vertex_shader_src = shaderSrc_pointsVertex;
-        this.fragment_shader_src = shaderSrc_pointsFragment;
 
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },

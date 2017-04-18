@@ -23,31 +23,30 @@ attribute vec4 a_outline_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
 
-#define PI 3.14159265359
-
 #ifdef TANGRAM_CURVED_LABEL
     attribute vec4 a_offsets;
     attribute vec4 a_pre_angles;
     attribute vec4 a_angles;
 #endif
 
-#define TANGRAM_NORMAL vec3(0., 0., 1.)
-#define TANGRAM_PX_FADE_RANGE 2.
-
 varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 varying float v_alpha_factor;
-varying float v_aa_factor;
 
 #ifdef TANGRAM_SHADER_POINT
     varying float v_outline_edge;
     varying vec4 v_outline_color;
+    varying float v_aa_factor;
 #endif
 
 #ifdef TANGRAM_MULTI_SAMPLER
     varying float v_sampler;
 #endif
+
+#define PI 3.14159265359
+#define TANGRAM_NORMAL vec3(0., 0., 1.)
+#define TANGRAM_PX_FADE_RANGE 2.
 
 #pragma tangram: camera
 #pragma tangram: material
@@ -91,11 +90,11 @@ void main() {
     v_alpha_factor = 1.0;
     v_color = a_color;
     v_texcoord = a_texcoord;
-    v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;
 
     #ifdef TANGRAM_SHADER_POINT
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
+        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;
     #endif
 
     // Position
