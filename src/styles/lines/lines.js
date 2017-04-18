@@ -102,7 +102,6 @@ Object.assign(Lines, {
         // Specify a line texture (either directly, or rendered dash pattern from above)
         if (this.texture) {
             this.defines.TANGRAM_LINE_TEXTURE = true;
-            this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are transparent
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
             this.shaders.uniforms.u_texture_ratio = 1;

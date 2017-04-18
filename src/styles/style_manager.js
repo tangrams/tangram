@@ -61,6 +61,9 @@ export class StyleManager {
 
         // Increases precision for height values
         ShaderProgram.defines.TANGRAM_HEIGHT_SCALE = Geo.height_scale;
+
+        // Alpha discard threshold (substitute for alpha blending)
+        ShaderProgram.defines.TANGRAM_ALPHA_TEST = 0.5;
     }
 
     // Destroy all styles for a given GL context
