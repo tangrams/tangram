@@ -39,7 +39,7 @@ export default class DataSource {
         // overzoom will apply for zooms higher than this
         this.max_zoom = (config.max_zoom != null) ? config.max_zoom : Geo.default_source_max_zoom;
 
-        this.zoom_bias = config.zoom_bias || 0;
+        this.setTileSize(config.tile_size);
         this.max_coord_zoom = this.max_zoom + this.zoom_bias;
 
         // no tiles will be requested or displayed outside of these min/max values
@@ -140,6 +140,20 @@ export default class DataSource {
     // Sub-classes must implement
     _load(dest) {
         throw new MethodNotImplemented('_load');
+    }
+
+    // Set the internal tile size in pixels, e.g. '256px' (default), '512px', etc.
+    // Must be a power of 2, and greater than or equal to 256
+    setTileSize (tile_size) {
+        this.tile_size = tile_size || 256;
+        if (typeof this.tile_size !== 'number' || this.tile_size < 256 || !Utils.isPowerOf2(this.tile_size)) {
+            log({ level: 'warn', once: true },
+                `Data source '${this.name}': 'tile_size' parameter must be a number that is a power of 2 greater than or equal to 256, but was '${tile_size}'`);
+            this.tile_size = 256;
+        }
+
+        // # of zoom levels bigger than 256px tiles - 8 in place of log2(256)
+        this.zoom_bias = Math.log2(this.tile_size) - 8;
     }
 
     // Infer winding for data source from first ring of provided geometry
