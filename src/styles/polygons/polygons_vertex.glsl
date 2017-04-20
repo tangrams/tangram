@@ -102,8 +102,7 @@ void main() {
         width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
         // offset caps in a direction perpendicular to the line (aka the normal)
-        vec2 offset = normal * distance; // caps only
-        // vec2 offset = normal * distance * isCap; // caps only
+        vec2 offset = normal * distance;
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
