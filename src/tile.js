@@ -241,9 +241,6 @@ export default class Tile {
                     // Render draw groups
                     for (let group_name in draw_groups) {
                         let group = draw_groups[group_name];
-                        if (!group.visible) {
-                            continue;
-                        }
 
                         // Add to style
                         let style_name = group.style || group_name;
@@ -251,6 +248,11 @@ export default class Tile {
 
                         if (!style) {
                             log('warn', `Style '${style_name}' not found, skipping layer '${layer_name}':`, group, feature);
+                            continue;
+                        }
+
+                        group = style.preprocess(group);
+                        if (group == null || group.visible === false) {
                             continue;
                         }
 

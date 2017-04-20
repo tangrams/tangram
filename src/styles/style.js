@@ -228,11 +228,6 @@ export var Style = {
         try {
             var style = this.feature_style;
 
-            draw = this.preprocess(draw);
-            if (!draw) {
-                return;
-            }
-
             // Calculate order
             style.order = this.parseOrder(draw.order, context);
             if (style.order == null && this.blend !== 'overlay') {
