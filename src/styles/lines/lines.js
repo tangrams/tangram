@@ -178,7 +178,9 @@ Object.assign(Lines, {
 
         style.cap = draw.cap;
         style.join = draw.join;
-        style.offset = draw.offset;
+
+        style.offset = StyleParser.evalCachedDistanceProperty(draw.offset, context) * context.units_per_meter_overzoom;
+
         style.miter_limit = draw.miter_limit;
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
@@ -240,6 +242,7 @@ Object.assign(Lines, {
         draw.width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits);
         draw.next_width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits); // width will be computed for next zoom
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
+        draw.offset = StyleParser.createPropertyCache(draw.offset || 0, StyleParser.parseUnits);
 
         if (draw.outline) {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
