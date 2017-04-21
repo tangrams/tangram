@@ -23404,6 +23404,7 @@ function buildQuadsForPoints(points, vertex_data, vertex_template, _ref, _ref2) 
         texcoords = [[min_u, min_v], [max_u, min_v], [max_u, max_v], [min_u, max_v]];
     }
 
+    var geom_count = 0;
     var num_points = points.length;
     for (var p = 0; p < num_points; p++) {
         var point = points[p];
@@ -23462,7 +23463,10 @@ function buildQuadsForPoints(points, vertex_data, vertex_template, _ref, _ref2) 
         vertex_elements.push(element_offset + 0);
 
         element_offset += 4;
+        geom_count += 2;
     }
+
+    return geom_count;
 }
 
 },{"./common":196}],198:[function(_dereq_,module,exports){
@@ -23518,6 +23522,7 @@ function buildPolygons(polygons, vertex_data, vertex_template, _ref) {
             max_v = _ref3[3];
     }
 
+    var geom_count = 0;
     var num_polygons = polygons.length;
     for (var p = 0; p < num_polygons; p++) {
         var element_offset = vertex_data.vertex_count;
@@ -23562,7 +23567,9 @@ function buildPolygons(polygons, vertex_data, vertex_template, _ref) {
         for (var _i = 0; _i < indices.length; _i++) {
             vertex_elements.push(element_offset + indices[_i]);
         }
+        geom_count += indices.length / 3;
     }
+    return geom_count;
 }
 
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
@@ -23579,7 +23586,7 @@ function buildExtrudedPolygons(polygons, z, height, min_height, vertex_data, ver
     var min_z = z + (min_height || 0);
     var max_z = z + height;
     vertex_template[2] = max_z;
-    buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index: texcoord_index, texcoord_scale: texcoord_scale, texcoord_normalize: texcoord_normalize });
+    var geom_count = buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index: texcoord_index, texcoord_scale: texcoord_scale, texcoord_normalize: texcoord_normalize });
 
     var vertex_elements = vertex_data.vertex_elements;
     var element_offset = vertex_data.vertex_count;
@@ -23655,9 +23662,11 @@ function buildExtrudedPolygons(polygons, z, height, min_height, vertex_data, ver
                 vertex_elements.push(element_offset + 0);
 
                 element_offset += 4;
+                geom_count += 2;
             }
         }
     }
+    return geom_count;
 }
 
 // Triangulation using earcut
@@ -23762,7 +23771,8 @@ function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
         v_scale: v_scale,
         texcoord_index: texcoord_index,
         texcoord_width: texcoord_width,
-        texcoord_normalize: texcoord_normalize
+        texcoord_normalize: texcoord_normalize,
+        geom_count: 0
     };
 
     // Buffer for extra lines to process
@@ -23777,6 +23787,8 @@ function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
     for (var _index = 0; _index < extra_lines.length; _index++) {
         buildPolyline(extra_lines[_index], context, extra_lines);
     }
+
+    return context.geom_count;
 }
 
 function buildPolyline(line, context, extra_lines) {
@@ -24073,6 +24085,7 @@ function indexPairs(num_pairs, context) {
         vertex_elements.push(offset + 2 * i + 2);
         vertex_elements.push(offset + 2 * i + 3);
         vertex_elements.push(offset + 2 * i + 1);
+        context.geom_count += 2;
     }
 }
 
@@ -24845,17 +24858,29 @@ Geo.geometryType = function (type) {
     }
 };
 
+// Geometric / weighted centroid of polygon
+// Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
 Geo.centroid = function (polygon) {
+    var relative = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
+
     if (!polygon || polygon.length === 0) {
         return;
     }
 
-    // Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
     var x = 0,
         y = 0,
         area = 0;
     var ring = polygon[0]; // only use first ring for now
     var len = ring.length;
+
+    // optionally calculate relative to first coordinate to avoid precision issues w/small polygons
+    var origin = void 0;
+    if (relative) {
+        origin = ring[0];
+        ring = ring.map(function (v) {
+            return [v[0] - origin[0], v[1] - origin[1]];
+        });
+    }
 
     for (var i = 0, j = len - 1; i < len; j = i, i++) {
         var p0 = ring[i];
@@ -24867,7 +24892,12 @@ Geo.centroid = function (polygon) {
         area += f * 3;
     }
 
-    return [x / area, y / area];
+    var c = [x / area, y / area];
+    if (relative) {
+        c[0] += origin[0];
+        c[1] += origin[1];
+    }
+    return c;
 };
 
 Geo.multiCentroid = function (polygons) {
@@ -27842,6 +27872,7 @@ var CURVE_MIN_TOTAL_COST = 1.3; // curved line total curvature tolerance (sum)
 var CURVE_MIN_AVG_COST = 0.4; // curved line average curvature tolerance (mean)
 var CURVE_MAX_ANGLE = 1; // curved line singular curvature tolerance (value)
 var ORIENTED_LABEL_OFFSET_FACTOR = 1.2; // multiply offset by this amount to avoid linked label collision
+var VERTICAL_ANGLE_TOLERANCE = 0.01; // nearly vertical lines considered vertical within this angle tolerance
 
 var LabelLine = {
     // Given a label's bounding box size and size broken up into individual segments
@@ -28084,16 +28115,14 @@ var LabelLineStraight = function (_LabelLineBase) {
 
             if (typeof layout.orientation === 'number') {
                 this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
-            }
 
-            var offset = this.offset.slice();
+                if (flipped) {
+                    this.offset[1] *= -1;
+                }
 
-            if (flipped) {
-                this.offset[1] *= -1;
-            }
-
-            if (layout.orientation === -1) {
-                this.offset[1] *= -1;
+                if (layout.orientation === -1) {
+                    this.offset[1] *= -1;
+                }
             }
 
             var line_lengths = getLineLengths(line);
@@ -28131,17 +28160,29 @@ var LabelLineStraight = function (_LabelLineBase) {
                         this.angle = -next_angle;
                         var angle_offset = this.angle;
 
-                        if (flipped) {
-                            angle_offset += Math.PI;
+                        if (typeof layout.orientation === 'number') {
+                            if (flipped) {
+                                angle_offset += Math.PI;
+                            }
+
+                            if (layout.orientation === -1) {
+                                angle_offset += Math.PI;
+                            }
                         }
 
-                        if (layout.orientation === -1) {
-                            angle_offset += Math.PI;
+                        // all vertical labels point up (not down)
+                        if (Math.abs(this.angle - Math.PI / 2) < VERTICAL_ANGLE_TOLERANCE) {
+                            // flip angle and offset
+                            this.angle = -Math.PI / 2;
+
+                            if (typeof layout.orientation === 'number') {
+                                this.offset[1] *= -1;
+                            }
                         }
 
                         this.position = currMid;
 
-                        this.updateBBoxes(this.position, size, this.angle, angle_offset, offset);
+                        this.updateBBoxes(this.position, size, this.angle, this.angle, this.offset);
 
                         if (this.inTileBounds()) {
                             return true;
@@ -28217,16 +28258,14 @@ var LabelLineCurved = function (_LabelLineBase2) {
 
             if (typeof layout.orientation === 'number') {
                 this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
-            }
 
-            var offset = this.offset.slice();
+                if (flipped) {
+                    this.offset[1] *= -1;
+                }
 
-            if (flipped) {
-                this.offset[1] *= -1;
-            }
-
-            if (layout.orientation === -1) {
-                this.offset[1] *= -1;
+                if (layout.orientation === -1) {
+                    this.offset[1] *= -1;
+                }
             }
 
             var line_lengths = getLineLengths(line);
@@ -28309,15 +28348,17 @@ var LabelLineCurved = function (_LabelLineBase2) {
                             var angle_curve = pre_angle + angles[_i2];
                             var angle_offset = this.angle;
 
-                            if (flipped) {
-                                angle_offset += Math.PI;
+                            if (typeof layout.orientation === 'number') {
+                                if (flipped) {
+                                    angle_offset += Math.PI;
+                                }
+
+                                if (layout.orientation === -1) {
+                                    angle_offset += Math.PI;
+                                }
                             }
 
-                            if (layout.orientation === -1) {
-                                angle_offset += Math.PI;
-                            }
-
-                            var obb = LabelLineCurved.createOBB(position, width, height, offset, angle_offset, angle_curve, upp);
+                            var obb = LabelLineCurved.createOBB(position, width, height, this.offset, angle_offset, angle_curve, upp);
                             var aabb = obb.getExtent();
 
                             this.obbs.push(obb);
@@ -29310,6 +29351,8 @@ var _debounce = _dereq_('./utils/debounce');
 
 var _debounce2 = _interopRequireDefault(_debounce);
 
+var _debug_settings = _dereq_('./utils/debug_settings');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // Exports must appear outside a function, but will only be defined in main thread (below)
@@ -29359,6 +29402,7 @@ function extendLeaflet(options) {
                 options.showDebug = !options.showDebug ? false : true;
 
                 L.setOptions(this, options);
+                this.updateTangramDebugSettings();
                 this.createScene();
                 this.hooks = {};
                 this._updating_tangram = false;
@@ -29770,6 +29814,9 @@ function extendLeaflet(options) {
 
                 map.on('layeradd layerremove overlayadd overlayremove', this._updateMapLayerCount);
                 this._updateMapLayerCount();
+            },
+            updateTangramDebugSettings: function updateTangramDebugSettings() {
+                (0, _debug_settings.mergeDebugSettings)(this.options.debug || {});
             }
         });
 
@@ -29804,7 +29851,7 @@ function extendLeaflet(options) {
     }
 }
 
-},{"./geo":201,"./scene":226,"./utils/debounce":254,"./utils/thread":265}],223:[function(_dereq_,module,exports){
+},{"./geo":201,"./scene":226,"./utils/debounce":254,"./utils/debug_settings":255,"./utils/thread":265}],223:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30579,6 +30626,10 @@ var _utils = _dereq_('./utils/utils');
 
 var _utils2 = _interopRequireDefault(_utils);
 
+var _debug_settings = _dereq_('./utils/debug_settings');
+
+var _debug_settings2 = _interopRequireDefault(_debug_settings);
+
 var _urls = _dereq_('./utils/urls');
 
 var URLs = _interopRequireWildcard(_urls);
@@ -30624,6 +30675,10 @@ var _view2 = _interopRequireDefault(_view);
 var _light = _dereq_('./light');
 
 var _light2 = _interopRequireDefault(_light);
+
+var _tile = _dereq_('./tile');
+
+var _tile2 = _interopRequireDefault(_tile);
 
 var _tile_manager = _dereq_('./tile_manager');
 
@@ -30695,8 +30750,17 @@ var Scene = function () {
         this.building = null; // tracks current scene building state (tiles being built, etc.)
         this.dirty = true; // request a redraw
         this.animated = false; // request redraw every frame
-        this.preUpdate = options.preUpdate; // optional pre-render loop hook
-        this.postUpdate = options.postUpdate; // optional post-render loop hook
+
+        if (options.preUpdate) {
+            // optional pre-render loop hook
+            this.subscribe({ 'preUpdate': options.preUpdate });
+        }
+
+        if (options.postUpdate) {
+            // optional post-render loop hook
+            this.subscribe({ 'postUpdate': options.postUpdate });
+        }
+
         this.render_loop = !options.disableRenderLoop; // disable render loop - app will have to manually call Scene.render() per frame
         this.render_loop_active = false;
         this.render_loop_stop = false;
@@ -30750,6 +30814,7 @@ var Scene = function () {
 
             this.updating++;
             this.initialized = false;
+            this.initial_build_time = null;
 
             // Backwards compatibilty for passing `config_path` string as second argument
             // (since transitioned to using options argument to accept more parameters)
@@ -31139,9 +31204,7 @@ var Scene = function () {
             var will_render = !(main === false && selection === false || this.initialized === false || this.updating > 0 || this.ready() === false);
 
             // Pre-render loop hook
-            if (typeof this.preUpdate === 'function') {
-                this.preUpdate(will_render);
-            }
+            this.trigger('preUpdate', will_render);
 
             // Bail if no need to render
             if (!will_render) {
@@ -31156,9 +31219,7 @@ var Scene = function () {
             this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
             // Post-render loop hook
-            if (typeof this.postUpdate === 'function') {
-                this.postUpdate(will_render);
-            }
+            this.trigger('postUpdate', will_render);
 
             // Redraw every frame if animating
             if (this.animated === true || this.view.isAnimating()) {
@@ -31549,6 +31610,10 @@ var Scene = function () {
             if (this.building) {
                 (0, _log2.default)('info', 'Scene: build geometry finished');
                 if (this.building.resolve) {
+                    if (this.initial_build_time == null) {
+                        this.initial_build_time = +new Date() - this.start_time;
+                        (0, _log2.default)('debug', 'Scene: initial build time: ' + this.initial_build_time);
+                    }
                     this.building.resolve(true);
                 }
 
@@ -31868,7 +31933,7 @@ var Scene = function () {
                 config: config_serialized,
                 generation: this.generation,
                 introspection: this.introspection
-            });
+            }, _debug_settings2.default);
         }
 
         // Listen to related objects
@@ -32084,6 +32149,14 @@ var Scene = function () {
                     }
                     return sizes;
                 },
+                layerStats: function layerStats() {
+                    if (_debug_settings2.default.layer_stats) {
+                        return _tile2.default.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
+                    } else {
+                        (0, _log2.default)('warn', 'Enable the \'layer_stats\' debug setting to collect layer stats');
+                        return {};
+                    }
+                },
                 renderableTilesCount: function renderableTilesCount() {
                     return scene.tile_manager.getRenderableTiles().length;
                 }
@@ -32107,7 +32180,7 @@ exports.default = Scene;
 Scene.id = 0; // unique id for a scene instance
 Scene.generation = 0; // id that is incremented each time a scene config is re-parsed
 
-},{"./gl/context":203,"./gl/render_state":206,"./gl/shader_program":207,"./gl/texture":208,"./gl/vao":209,"./light":223,"./scene_loader":228,"./selection":230,"./sources/data_source":231,"./styles/style":243,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./styles/text/font_manager":247,"./tile_manager":252,"./utils/log":259,"./utils/media_capture":260,"./utils/subscribe":264,"./utils/urls":266,"./utils/utils":267,"./utils/worker_broker":269,"./view":271}],227:[function(_dereq_,module,exports){
+},{"./gl/context":203,"./gl/render_state":206,"./gl/shader_program":207,"./gl/texture":208,"./gl/vao":209,"./light":223,"./scene_loader":228,"./selection":230,"./sources/data_source":231,"./styles/style":243,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./styles/text/font_manager":247,"./tile":251,"./tile_manager":252,"./utils/debug_settings":255,"./utils/log":259,"./utils/media_capture":260,"./utils/subscribe":264,"./utils/urls":266,"./utils/utils":267,"./utils/worker_broker":269,"./view":271}],227:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -32886,6 +32959,8 @@ var _utils = _dereq_('./utils/utils');
 
 var _utils2 = _interopRequireDefault(_utils);
 
+var _debug_settings = _dereq_('./utils/debug_settings');
+
 var _log = _dereq_('./utils/log');
 
 var _log2 = _interopRequireDefault(_log);
@@ -32935,8 +33010,6 @@ if (_thread2.default.is_worker) {
         styles: {},
         layers: {},
         tiles: {},
-        objects: {},
-        config: {}, // raw config (e.g. functions, etc. not expanded)
 
         // Initialize worker
         init: function init(scene_id, worker_id, num_workers, log_level, device_pixel_ratio) {
@@ -32952,12 +33025,13 @@ if (_thread2.default.is_worker) {
 
 
         // Starts a config refresh
-        updateConfig: function updateConfig(_ref) {
+        updateConfig: function updateConfig(_ref, debug) {
             var config = _ref.config,
                 generation = _ref.generation,
                 introspection = _ref.introspection;
 
             config = JSON.parse(config);
+            (0, _debug_settings.mergeDebugSettings)(debug);
 
             self.generation = generation;
             self.introspection = introspection;
@@ -33202,7 +33276,7 @@ if (_thread2.default.is_worker) {
     _worker_broker2.default.addTarget('self', self);
 }
 
-},{"./gl/texture":208,"./selection":230,"./sources/data_source":231,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/log":259,"./utils/thread":265,"./utils/utils":267,"./utils/worker_broker":269}],230:[function(_dereq_,module,exports){
+},{"./gl/texture":208,"./selection":230,"./sources/data_source":231,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":265,"./utils/utils":267,"./utils/worker_broker":269}],230:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35708,7 +35782,6 @@ Object.assign(Lines, {
         // Specify a line texture (either directly, or rendered dash pattern from above)
         if (this.texture) {
             this.defines.TANGRAM_LINE_TEXTURE = true;
-            this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are transparent
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
             this.shaders.uniforms.u_texture_ratio = 1;
@@ -35909,7 +35982,7 @@ Object.assign(Lines, {
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
         var vertex_template = this.makeVertexTemplate(style);
-        (0, _polylines.buildPolylines)(lines, style.width, vertex_data, vertex_template, {
+        return (0, _polylines.buildPolylines)(lines, style.width, vertex_data, vertex_template, {
             cap: style.cap,
             join: style.join,
             miter_limit: style.miter_limit,
@@ -35925,9 +35998,11 @@ Object.assign(Lines, {
     },
     buildPolygons: function buildPolygons(polygons, style, vertex_data, context) {
         // Render polygons as individual lines
+        var geom_count = 0;
         for (var p = 0; p < polygons.length; p++) {
-            this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
+            geom_count += this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
         }
+        return geom_count;
     }
 });
 
@@ -35997,8 +36072,8 @@ var _debug_settings2 = _interopRequireDefault(_debug_settings);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 
-var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute float a_outline_edge;\nattribute vec4 a_outline_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\n#define PI 3.14159265359\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n#define TANGRAM_PX_FADE_RANGE 2.\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\nvarying float v_aa_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n#endif\n\n#ifdef TANGRAM_MULTI_SAMPLER\n    varying float v_sampler;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n// Assumes stops are [0, 0.33, 0.66, 0.99];\nfloat mix4linear(float a, float b, float c, float d, float x) {\n    return mix(mix(a, b, 3. * x),\n               mix(b,\n                   mix(c, d, 3. * (max(x, .66) - .66)),\n                   3. * (clamp(x, .33, .66) - .33)),\n               step(0.33, x)\n            );\n}\n\n// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)\nbool isShaderPoint() {\n    #ifdef TANGRAM_SHADER_POINT\n        #ifdef TANGRAM_MULTI_SAMPLER\n            if (v_sampler == 0.) { // sprite sampler\n                return true;\n            }\n        #else\n            return true;\n        #endif\n    #endif\n    return false;\n}\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord;\n    v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;\n\n    #ifdef TANGRAM_SHADER_POINT\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    #ifdef TANGRAM_MULTI_SAMPLER\n        v_sampler = a_shape.w; // texture sampler\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
-var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\n\n#ifdef TANGRAM_MULTI_SAMPLER\nuniform sampler2D u_label_texture;\nvarying float v_sampler;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\nvarying float v_aa_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n// Alpha discard threshold (substitute for alpha blending)\n#ifndef TANGRAM_ALPHA_TEST\n#define TANGRAM_ALPHA_TEST 0.5\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_MULTI_SAMPLER\n    if (v_sampler == 0.) { // sprite sampler\n    #endif\n        #ifdef TANGRAM_TEXTURE_POINT\n            // Draw sprite\n            color *= texture2D(u_texture, v_texcoord);\n        #else\n            // Draw a point\n            vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge\n            float point_dist = length(uv);\n            color = mix(\n                color,\n                v_outline_color,\n                (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)\n            );\n            color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));\n\n        #endif\n    #ifdef TANGRAM_MULTI_SAMPLER\n    }\n    else { // label sampler\n        color = texture2D(u_label_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    }\n    #endif\n\n    // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha\n    #ifdef TANGRAM_UNMULTIPLY_ALPHA\n        color.rgb /= max(color.a, 0.001);\n    #endif\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    #pragma tangram: color\n\n    color.a *= v_alpha_factor;\n\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
+var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute float a_outline_edge;\nattribute vec4 a_outline_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_factor;\n#endif\n\n#ifdef TANGRAM_MULTI_SAMPLER\n    varying float v_sampler;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n#define TANGRAM_PX_FADE_RANGE 2.\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n// Assumes stops are [0, 0.33, 0.66, 0.99];\nfloat mix4linear(float a, float b, float c, float d, float x) {\n    return mix(mix(a, b, 3. * x),\n               mix(b,\n                   mix(c, d, 3. * (max(x, .66) - .66)),\n                   3. * (clamp(x, .33, .66) - .33)),\n               step(0.33, x)\n            );\n}\n\n// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)\nbool isShaderPoint() {\n    #ifdef TANGRAM_SHADER_POINT\n        #ifdef TANGRAM_MULTI_SAMPLER\n            if (v_sampler == 0.) { // sprite sampler\n                return true;\n            }\n        #else\n            return true;\n        #endif\n    #endif\n    return false;\n}\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord;\n\n    #ifdef TANGRAM_SHADER_POINT\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    #ifdef TANGRAM_MULTI_SAMPLER\n        v_sampler = a_shape.w; // texture sampler\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\n\nuniform sampler2D u_label_texture;\nvarying float v_sampler;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_factor;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    if (v_sampler == 0.) { // sprite sampler\n        #ifdef TANGRAM_TEXTURE_POINT\n            // Draw sprite\n            color *= texture2D(u_texture, v_texcoord);\n        #else\n            // Draw a point\n            vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge\n            float point_dist = length(uv);\n            color = mix(\n                color,\n                v_outline_color,\n                (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)\n            );\n            color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));\n        #endif\n\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n    else { // label sampler\n        color = texture2D(u_label_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var PLACEMENT = _label_point2.default.PLACEMENT;
 
@@ -36015,6 +36090,8 @@ Object.assign(Points, _text_labels.TextLabels);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
+    vertex_shader_src: shaderSrc_pointsVertex,
+    fragment_shader_src: shaderSrc_pointsFragment,
     collision: true, // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
@@ -36023,10 +36100,6 @@ Object.assign(Points, {
         var extra_attributes = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
 
         _style.Style.init.call(this, options);
-
-        // Base shaders
-        this.vertex_shader_src = shaderSrc_pointsVertex;
-        this.fragment_shader_src = shaderSrc_pointsFragment;
 
         var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_shape', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true }, { name: 'a_offset', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
 
@@ -36589,7 +36662,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
     buildQuad: function buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
-        (0, _points.buildQuadsForPoints)(points, vertex_data, vertex_template, {
+        return (0, _points.buildQuadsForPoints)(points, vertex_data, vertex_template, {
             texcoord_index: this.vertex_layout.index.a_texcoord,
             position_index: this.vertex_layout.index.a_position,
             shape_index: this.vertex_layout.index.a_shape,
@@ -36621,9 +36694,9 @@ Object.assign(Points, {
     build: function build(style, vertex_data) {
         var label = style.label;
         if (label.type === 'curved') {
-            this.buildArticulatedLabel(label, style, vertex_data);
+            return this.buildArticulatedLabel(label, style, vertex_data);
         } else {
-            this.buildLabel(label, style, vertex_data);
+            return this.buildLabel(label, style, vertex_data);
         }
     },
     buildLabel: function buildLabel(label, style, vertex_data) {
@@ -36642,7 +36715,7 @@ Object.assign(Points, {
 
         var offset = label.offset;
 
-        this.buildQuad([label.position], // position
+        return this.buildQuad([label.position], // position
         size, // size in pixels
         angle, // angle in radians
         null, // placeholder for multiple angles
@@ -36658,6 +36731,7 @@ Object.assign(Points, {
     buildArticulatedLabel: function buildArticulatedLabel(label, style, vertex_data) {
         var vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle;
+        var geom_count = 0;
 
         // pass for stroke
         for (var i = 0; i < label.num_segments; i++) {
@@ -36671,7 +36745,7 @@ Object.assign(Points, {
             var offsets = label.offsets[i];
             var pre_angles = label.pre_angles[i];
 
-            this.buildQuad([position], // position
+            geom_count += this.buildQuad([position], // position
             size, // size in pixels
             angle, // angle in degrees
             angles, // angles per segment
@@ -36697,7 +36771,7 @@ Object.assign(Points, {
             var _offsets = label.offsets[_i5];
             var _pre_angles = label.pre_angles[_i5];
 
-            this.buildQuad([_position], // position
+            geom_count += this.buildQuad([_position], // position
             _size, // size in pixels
             angle, // angle in degrees
             _angles, // angles per segment
@@ -36710,18 +36784,20 @@ Object.assign(Points, {
             vertex_data, vertex_template // VBO and data for current vertex
             );
         }
+
+        return geom_count;
     },
 
 
     // Override to pass-through to generic point builder
     buildLines: function buildLines(lines, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
     buildPoints: function buildPoints(points, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
     buildPolygons: function buildPolygons(points, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
     makeMesh: function makeMesh(vertex_data, vertex_elements) {
         var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
@@ -36738,7 +36814,7 @@ Object.assign(Points, {
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.shaderSrc_polygonsFragment = exports.shaderSrc_polygonsVertex = exports.Polygons = undefined;
+exports.Polygons = exports.shaderSrc_polygonsFragment = exports.shaderSrc_polygonsVertex = undefined;
 
 var _style = _dereq_('../style');
 
@@ -36763,16 +36839,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 // Polygon rendering style
 
  // web workers don't have access to GL context, so import all GL constants
-
-var shaderSrc_polygonsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    // xy: extrusion direction in xy plane\n    // z:  half-width of line (amount to extrude)\n    // w:  scaling factor for interpolating width between zooms\n    attribute vec4 a_extrude;\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#ifdef TANGRAM_TEXTURE_COORDS\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= TANGRAM_V_SCALE_ADJUST;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction\n        float width = a_extrude.z;\n        float dwdz = a_extrude.w;\n\n        // Adjust line width based on zoom level, to prevent proxied lines from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from prematurely shrinking), then interpolate\n        // and clamp to 4 (keeps lines from becoming too small when far away).\n        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));\n\n        // Interpolate between zoom levels\n        width += dwdz * dz;\n\n        // Scale pixel dimensions to be consistent in screen space\n        // Scale from style zoom units back to tile zoom\n        width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));\n\n        // Modify line width before extrusion\n        #pragma tangram: width\n\n        position.xy += extrude * width;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n\n    gl_Position = position;\n}\n";
-var shaderSrc_polygonsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#define TANGRAM_NORMAL v_normal\n\n#ifdef TANGRAM_TEXTURE_COORDS\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        color *= sampleRaster(0); // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_LINE_TEXTURE\n        vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n        vec4 _line_color = texture2D(u_texture, _line_st);\n\n        if (_line_color.a < TANGRAM_ALPHA_TEST) {\n            #ifdef TANGRAM_LINE_BACKGROUND_COLOR\n                color.rgb = TANGRAM_LINE_BACKGROUND_COLOR;\n            #elif !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n                discard; // use discard when alpha blending is unavailable\n            #else\n                color.a = 0.; // use alpha channel when blending is available\n            #endif\n        }\n        else {\n            color *= _line_color;\n        }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
+var shaderSrc_polygonsVertex = exports.shaderSrc_polygonsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    // xy: extrusion direction in xy plane\n    // z:  half-width of line (amount to extrude)\n    // w:  scaling factor for interpolating width between zooms\n    attribute vec4 a_extrude;\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#ifdef TANGRAM_TEXTURE_COORDS\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= TANGRAM_V_SCALE_ADJUST;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction\n        float width = a_extrude.z;\n        float dwdz = a_extrude.w;\n\n        // Adjust line width based on zoom level, to prevent proxied lines from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from prematurely shrinking), then interpolate\n        // and clamp to 4 (keeps lines from becoming too small when far away).\n        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));\n\n        // Interpolate between zoom levels\n        width += dwdz * dz;\n\n        // Scale pixel dimensions to be consistent in screen space\n        // Scale from style zoom units back to tile zoom\n        width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));\n\n        // Modify line width before extrusion\n        #pragma tangram: width\n\n        position.xy += extrude * width;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n\n    gl_Position = position;\n}\n";
+var shaderSrc_polygonsFragment = exports.shaderSrc_polygonsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#define TANGRAM_NORMAL v_normal\n\n#ifdef TANGRAM_TEXTURE_COORDS\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        color *= sampleRaster(0); // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_LINE_TEXTURE\n        vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n        vec4 _line_color = texture2D(u_texture, _line_st);\n\n        if (_line_color.a < TANGRAM_ALPHA_TEST) {\n            #ifdef TANGRAM_LINE_BACKGROUND_COLOR\n                color.rgb = TANGRAM_LINE_BACKGROUND_COLOR;\n            #elif !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n                discard; // use discard when alpha blending is unavailable\n            #else\n                color.a = 0.; // use alpha channel when blending is available\n            #endif\n        }\n        else {\n            color *= _line_color;\n        }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
 
 var Polygons = exports.Polygons = Object.create(_style.Style);
-
-// export shaders for use in lines.js
-exports.shaderSrc_polygonsVertex = shaderSrc_polygonsVertex;
-exports.shaderSrc_polygonsFragment = shaderSrc_polygonsFragment;
-
 
 Object.assign(Polygons, {
     name: 'polygons',
@@ -36903,12 +36973,12 @@ Object.assign(Polygons, {
 
         // Extruded polygons (e.g. 3D buildings)
         if (style.extrude && style.height) {
-            (0, _polygons.buildExtrudedPolygons)(polygons, style.z, style.height, style.min_height, vertex_data, vertex_template, this.vertex_layout.index.a_normal, 127, // scale normals to signed bytes
+            return (0, _polygons.buildExtrudedPolygons)(polygons, style.z, style.height, style.min_height, vertex_data, vertex_template, this.vertex_layout.index.a_normal, 127, // scale normals to signed bytes
             options);
         }
         // Regular polygons
         else {
-                (0, _polygons.buildPolygons)(polygons, vertex_data, vertex_template, options);
+                return (0, _polygons.buildPolygons)(polygons, vertex_data, vertex_template, options);
             }
     }
 });
@@ -36957,7 +37027,9 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.Style = undefined;
 
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }(); // Rendering styles
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.addLayerDebugEntry = addLayerDebugEntry;
 
 var _style_parser = _dereq_('./style_parser');
 
@@ -37003,7 +37075,13 @@ var _worker_broker = _dereq_('../utils/worker_broker');
 
 var _worker_broker2 = _interopRequireDefault(_worker_broker);
 
+var _debug_settings = _dereq_('../utils/debug_settings');
+
+var _debug_settings2 = _interopRequireDefault(_debug_settings);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; } // Rendering styles
 
 
 var shaderSrc_selectionFragment = "// Fragment shader for feature selection passes\n// Renders in silhouette according to selection (picking) color, or black if none defined\n\n#ifdef TANGRAM_FEATURE_SELECTION\n    varying vec4 v_selection_color;\n#endif\n\nvoid main (void) {\n    #ifdef TANGRAM_FEATURE_SELECTION\n        gl_FragColor = v_selection_color;\n    #else\n        gl_FragColor = vec4(0., 0., 0., 1.);\n    #endif\n}\n";
@@ -37171,28 +37249,58 @@ var Style = exports.Style = {
         this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context);
     },
     buildGeometry: function buildGeometry(geometry, style, vertex_data, context) {
+        var _this = this;
+
+        var geom_count = void 0;
         if (geometry.type === 'Polygon') {
-            this.buildPolygons([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPolygons([geometry.coordinates], style, vertex_data, context);
         } else if (geometry.type === 'MultiPolygon') {
-            this.buildPolygons(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPolygons(geometry.coordinates, style, vertex_data, context);
         } else if (geometry.type === 'LineString') {
-            this.buildLines([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildLines([geometry.coordinates], style, vertex_data, context);
         } else if (geometry.type === 'MultiLineString') {
-            this.buildLines(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildLines(geometry.coordinates, style, vertex_data, context);
         } else if (geometry.type === 'Point') {
-            this.buildPoints([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPoints([geometry.coordinates], style, vertex_data, context);
         } else if (geometry.type === 'MultiPoint') {
-            this.buildPoints(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPoints(geometry.coordinates, style, vertex_data, context);
+        }
+
+        // Optionally collect per-layer stats
+        if (geom_count > 0 && _debug_settings2.default.layer_stats) {
+            var tile = context.tile;
+            tile.debug.layers = tile.debug.layers || { list: {}, tree: {} };
+            var list = tile.debug.layers.list;
+            var tree = tile.debug.layers.tree;
+            var ftree = {}; // tree of layers for this feature
+            context.layers.forEach(function (layer) {
+                addLayerDebugEntry(list, layer, 1, geom_count, _defineProperty({}, _this.name, geom_count), _defineProperty({}, _this.baseStyle(), geom_count));
+
+                var node = tree;
+                var fnode = ftree;
+                var levels = layer.split(':');
+                for (var i = 0; i < levels.length; i++) {
+                    var level = levels[i];
+                    node[level] = node[level] || { features: 0, geoms: 0, styles: {}, base: {} };
+
+                    if (fnode[level] == null) {
+                        // only count each layer level once per feature
+                        fnode[level] = {};
+                        addLayerDebugEntry(node, level, 1, geom_count, _defineProperty({}, _this.name, geom_count), _defineProperty({}, _this.baseStyle(), geom_count));
+                    }
+
+                    if (i < levels.length - 1) {
+                        node[level].layers = node[level].layers || {};
+                    }
+                    node = node[level].layers;
+                    fnode = fnode[level];
+                }
+            });
         }
     },
     parseFeature: function parseFeature(feature, draw, context) {
         try {
             var style = this.feature_style;
-
-            draw = this.preprocess(draw);
-            if (!draw) {
-                return;
-            }
 
             // Calculate order
             style.order = this.parseOrder(draw.order, context);
@@ -37226,7 +37334,7 @@ var Style = exports.Style = {
 
             return style;
         } catch (error) {
-            (0, _log2.default)('error', 'Style.parseFeature: style parsing error', feature, style, error);
+            (0, _log2.default)('error', 'Style.parseFeature: style parsing error', feature, style, error.stack);
         }
     },
     _parseFeature: function _parseFeature(feature, draw, context) {
@@ -37284,9 +37392,15 @@ var Style = exports.Style = {
 
 
     // Build functions are no-ops until overriden
-    buildPolygons: function buildPolygons() {},
-    buildLines: function buildLines() {},
-    buildPoints: function buildPoints() {},
+    buildPolygons: function buildPolygons() {
+        return 0;
+    },
+    buildLines: function buildLines() {
+        return 0;
+    },
+    buildPoints: function buildPoints() {
+        return 0;
+    },
 
 
     /*** GL state and rendering ***/
@@ -37443,7 +37557,7 @@ var Style = exports.Style = {
 
     // Setup raster access in shaders
     setupRasters: function setupRasters() {
-        var _this = this;
+        var _this2 = this;
 
         if (!this.hasRasters()) {
             return;
@@ -37465,10 +37579,10 @@ var Style = exports.Style = {
         // the maximum number of possible sources. At render time, only the necessary number of rasters
         // are bound (the remaining slots aren't intended to be accessed).
         var num_raster_sources = Object.keys(this.sources).filter(function (s) {
-            return _this.sources[s] instanceof _raster.RasterTileSource;
+            return _this2.sources[s] instanceof _raster.RasterTileSource;
         }).length;
 
-        this.defines.TANGRAM_NUM_RASTER_SOURCES = 'int(' + num_raster_sources + ')';
+        this.defines.TANGRAM_NUM_RASTER_SOURCES = '' + num_raster_sources; // force to string to avoid auto-float conversion
         if (num_raster_sources > 0) {
             // Use model position of tile's coordinate zoom for raster tile texture UVs
             this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
@@ -37481,7 +37595,7 @@ var Style = exports.Style = {
 
     // Load raster tile textures and set uniforms
     buildRasterTextures: function buildRasterTextures(tile, tile_data) {
-        var _this2 = this;
+        var _this3 = this;
 
         if (!this.hasRasters()) {
             return Promise.resolve(tile_data);
@@ -37492,7 +37606,7 @@ var Style = exports.Style = {
 
         // TODO: data source could retrieve raster texture URLs
         tile.rasters.map(function (r) {
-            return _this2.sources[r];
+            return _this3.sources[r];
         }).filter(function (x) {
             return x;
         }).forEach(function (source, i) {
@@ -37645,7 +37759,26 @@ var Style = exports.Style = {
     }
 };
 
-},{"../gl/shader_program":207,"../gl/texture":208,"../gl/vbo_mesh":210,"../light":223,"../material":224,"../selection":230,"../sources/raster":234,"../utils/log":259,"../utils/merge":261,"../utils/thread":265,"../utils/worker_broker":269,"./style_parser":245}],244:[function(_dereq_,module,exports){
+// add feature and geometry counts for a single layer
+function addLayerDebugEntry(target, layer, faeture_count, geom_count, styles, bases) {
+    target[layer] = target[layer] || { features: 0, geoms: 0, styles: {}, base: {} };
+    target[layer].features += faeture_count; // feature count
+    target[layer].geoms += geom_count; // geometry count
+
+    // geometry count by style
+    for (var style in styles) {
+        target[layer].styles[style] = target[layer].styles[style] || 0;
+        target[layer].styles[style] += styles[style];
+    }
+
+    // geometry count by base style
+    for (var _style in bases) {
+        target[layer].base[_style] = target[layer].base[_style] || 0;
+        target[layer].base[_style] += bases[_style];
+    }
+}
+
+},{"../gl/shader_program":207,"../gl/texture":208,"../gl/vbo_mesh":210,"../light":223,"../material":224,"../selection":230,"../sources/raster":234,"../utils/debug_settings":255,"../utils/log":259,"../utils/merge":261,"../utils/thread":265,"../utils/worker_broker":269,"./style_parser":245}],244:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37743,6 +37876,9 @@ var StyleManager = exports.StyleManager = function () {
 
             // Increases precision for height values
             _shader_program2.default.defines.TANGRAM_HEIGHT_SCALE = _geo2.default.height_scale;
+
+            // Alpha discard threshold (substitute for alpha blending)
+            _shader_program2.default.defines.TANGRAM_ALPHA_TEST = 0.5;
         }
 
         // Destroy all styles for a given GL context
@@ -38682,8 +38818,6 @@ var CanvasText = function () {
                         }
 
                         if (text_settings.can_articulate) {
-                            var segments = splitLabelText(text);
-
                             var words = text.split(' ');
 
                             // RTL is true if every word is RTL
@@ -38713,6 +38847,8 @@ var CanvasText = function () {
                             text_info.isRTL = rtl;
                             text_info.no_curving = bidi || shaped;
                             text_info.vertical_buffer = _this.vertical_text_buffer;
+
+                            var segments = splitLabelText(text, rtl);
 
                             if (rtl) {
                                 segments.reverse();
@@ -39247,13 +39383,18 @@ function isTextShaped(s) {
 
 // Right-to-left / bi-directional text handling
 // Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-var rtlDirCheck = new RegExp('^[\0-@[-`{-\xBF\xD7\xF7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]+$');
+var rtlDirCheck = new RegExp('^[\0-/:-@[-`{-\xBF\xD7\xF7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]+$');
 function isTextRTL(s) {
     return rtlDirCheck.test(s);
 }
 
+var neutralDirCheck = new RegExp('[\0-/:-@[-`{-\xBF\xD7\xF7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF]$');
+function isTextNeutral(s) {
+    return neutralDirCheck.test(s);
+}
+
 // Splitting strategy for chopping a label into segments
-function splitLabelText(text) {
+function splitLabelText(text, rtl) {
     if (text.length < codon_length) {
         return [text];
     }
@@ -39266,7 +39407,22 @@ function splitLabelText(text) {
         if (segment.length <= Math.floor(0.5 * codon_length)) {
             segments[segments.length - 1] += segment;
         } else {
-            segments.push(segment);
+            // if RTL, check to see if segment ends on a neutral character
+            // in which case we need to add the neutral segments separately (codon_length = 1) in reverse order
+            if (rtl) {
+                var neutral_segment = [];
+                while (segment.length > 0 && isTextNeutral(segment[segment.length - 1])) {
+                    neutral_segment.unshift(segment[segment.length - 1]);
+                    segment = segment.substring(0, segment.length - 1);
+                }
+                segments.push(segment);
+                if (neutral_segment.length > 0) {
+                    segments = segments.concat(neutral_segment);
+                }
+            } else {
+                segment = text.substring(0, codon_length);
+                segments.push(segment);
+            }
         }
 
         text = text.substring(codon_length);
@@ -39670,12 +39826,17 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 // web workers don't have access to GL context, so import all GL constants
 
-var TextStyle = exports.TextStyle = Object.create(_points.Points); // Text rendering style
+ // Text rendering style
+
+var shaderSrc_textFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    color *= texture2D(u_texture, v_texcoord);\n    color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n\n    #pragma tangram: color\n    #pragma tangram: filter\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+
+var TextStyle = exports.TextStyle = Object.create(_points.Points);
 
 Object.assign(TextStyle, {
     name: 'text',
     super: _points.Points,
     built_in: true,
+    fragment_shader_src: shaderSrc_textFragment,
 
     init: function init() {
         var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -39686,16 +39847,13 @@ Object.assign(TextStyle, {
 
         // Set texture/point config (override parent Point class)
         this.defines.TANGRAM_TEXTURE_POINT = true; // standalone text is always sampled from a texture
-        this.defines.TANGRAM_SHADER_POINT = false; // standalone text neevr draws a shader point
+        this.defines.TANGRAM_SHADER_POINT = false; // standalone text never draws a shader point
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;
 
         // Disable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = false;
-
-        // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
-        this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
         // Fade out text when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
@@ -40478,6 +40636,8 @@ var _geo = _dereq_('./geo');
 
 var _geo2 = _interopRequireDefault(_geo);
 
+var _style = _dereq_('./styles/style');
+
 var _style_parser = _dereq_('./styles/style_parser');
 
 var _collision = _dereq_('./labels/collision');
@@ -40709,6 +40869,7 @@ var Tile = function () {
                 for (var _m in this.meshes) {
                     if (this.new_mesh_styles.indexOf(_m) === -1) {
                         this.meshes[_m].destroy();
+                        delete this.meshes[_m];
                     }
                 }
                 this.new_mesh_styles = [];
@@ -40731,22 +40892,10 @@ var Tile = function () {
         */
 
     }, {
-        key: 'update',
+        key: 'setProxyFor',
 
-
-        // Update relative to view
-        value: function update() {
-            var coords = this.coords;
-            if (coords.z !== this.view.center.tile.z) {
-                coords = Tile.coordinateAtZoom(coords, this.view.center.tile.z);
-            }
-            this.center_dist = Math.abs(this.view.center.tile.x - coords.x) + Math.abs(this.view.center.tile.y - coords.y);
-        }
 
         // Set as a proxy tile for another tile
-
-    }, {
-        key: 'setProxyFor',
         value: function setProxyFor(tile) {
             if (tile) {
                 this.visible = true;
@@ -40754,7 +40903,6 @@ var Tile = function () {
                 this.proxy_for.push(tile);
                 this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
                 tile.proxied_as = tile.style_zoom > this.style_zoom ? 'child' : 'parent';
-                this.update();
             } else {
                 this.proxy_for = null;
                 this.proxy_depth = 0;
@@ -40816,8 +40964,20 @@ var Tile = function () {
     }, {
         key: 'printDebug',
         value: function printDebug() {
-            (0, _log2.default)('debug', 'Tile: debug for ' + this.key + ': [  ' + JSON.stringify(this.debug) + ' ]');
+            var exclude = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : ['layers'];
+
+            var copy = {};
+            for (var key in this.debug) {
+                if (exclude.indexOf(key) === -1) {
+                    copy[key] = this.debug[key];
+                }
+            }
+
+            (0, _log2.default)('debug', 'Tile: debug for ' + this.key + ': [  ' + JSON.stringify(copy) + ' ]');
         }
+
+        // Sum up layer feature/geometry stats from a set of tiles
+
     }], [{
         key: 'create',
         value: function create(spec) {
@@ -40902,18 +41062,6 @@ var Tile = function () {
             }
             return false;
         }
-
-        // Sort a set of tile instances (which already have a distance from center tile computed)
-
-    }, {
-        key: 'sort',
-        value: function sort(tiles) {
-            return tiles.sort(function (a, b) {
-                var ad = a.center_dist;
-                var bd = b.center_dist;
-                return bd > ad ? -1 : bd === ad ? 0 : 1;
-            });
-        }
     }, {
         key: 'cancel',
         value: function cancel(tile) {
@@ -40942,6 +41090,7 @@ var Tile = function () {
 
             tile.debug.rendering = +new Date();
             tile.debug.feature_count = 0;
+            tile.debug.layers = null;
 
             _collision2.default.startTile(tile.key);
 
@@ -40990,9 +41139,6 @@ var Tile = function () {
                         // Render draw groups
                         for (var group_name in draw_groups) {
                             var group = draw_groups[group_name];
-                            if (!group.visible) {
-                                continue;
-                            }
 
                             // Add to style
                             var style_name = group.style || group_name;
@@ -41000,6 +41146,11 @@ var Tile = function () {
 
                             if (!style) {
                                 (0, _log2.default)('warn', 'Style \'' + style_name + '\' not found, skipping layer \'' + layer_name + '\':', group, feature);
+                                continue;
+                            }
+
+                            group = style.preprocess(group);
+                            if (group == null || group.visible === false) {
                                 continue;
                             }
 
@@ -41190,6 +41341,27 @@ var Tile = function () {
 
             return tile_subset;
         }
+    }, {
+        key: 'debugSumLayerStats',
+        value: function debugSumLayerStats(tiles) {
+            var list = {},
+                tree = {};
+
+            tiles.filter(function (tile) {
+                return tile.debug.layers;
+            }).forEach(function (tile) {
+                // layer list
+                Object.keys(tile.debug.layers.list).forEach(function (layer) {
+                    var counts = tile.debug.layers.list[layer];
+                    (0, _style.addLayerDebugEntry)(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
+                });
+
+                // layer tree
+                addDebugLayers(tile.debug.layers.tree, tree);
+            });
+
+            return { list: list, tree: tree };
+        }
     }]);
 
     return Tile;
@@ -41200,7 +41372,19 @@ exports.default = Tile;
 
 Tile.coord_children = {}; // only allocate children coordinates once per coordinate
 
-},{"./geo":201,"./gl/texture":208,"./labels/collision":214,"./styles/style_parser":245,"./utils/gl-matrix":257,"./utils/log":259,"./utils/merge":261,"./utils/utils":267,"./utils/worker_broker":269}],252:[function(_dereq_,module,exports){
+// build debug stats layer tree
+function addDebugLayers(node, tree) {
+    for (var layer in node) {
+        var counts = node[layer];
+        (0, _style.addLayerDebugEntry)(tree, layer, counts.features, counts.geoms, counts.styles, counts.base);
+        if (counts.layers) {
+            tree[layer].layers = tree[layer].layers || {};
+            addDebugLayers(counts.layers, tree[layer].layers); // process child layers
+        }
+    }
+}
+
+},{"./geo":201,"./gl/texture":208,"./labels/collision":214,"./styles/style":243,"./styles/style_parser":245,"./utils/gl-matrix":257,"./utils/log":259,"./utils/merge":261,"./utils/utils":267,"./utils/worker_broker":269}],252:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41216,6 +41400,10 @@ var _tile2 = _interopRequireDefault(_tile);
 var _tile_pyramid = _dereq_('./tile_pyramid');
 
 var _tile_pyramid2 = _interopRequireDefault(_tile_pyramid);
+
+var _geo = _dereq_('./geo');
+
+var _geo2 = _interopRequireDefault(_geo);
 
 var _log = _dereq_('./utils/log');
 
@@ -41352,7 +41540,6 @@ var TileManager = function () {
 
             this.forEachTile(function (tile) {
                 _this.updateVisibility(tile);
-                tile.update();
             });
 
             this.loadQueuedCoordinates();
@@ -41495,8 +41682,23 @@ var TileManager = function () {
 
             // Sort queued tiles from center tile
             this.queued_coords.sort(function (a, b) {
-                var ad = Math.abs(_this4.view.center.tile.x - a.x) + Math.abs(_this4.view.center.tile.y - a.y);
-                var bd = Math.abs(_this4.view.center.tile.x - b.x) + Math.abs(_this4.view.center.tile.y - b.y);
+                var center = _this4.view.center.meters;
+                var half_span = _geo2.default.metersPerTile(a.z) / 2;
+
+                var ac = _geo2.default.metersForTile(a);
+                ac.x += half_span;
+                ac.y -= half_span;
+
+                var bc = _geo2.default.metersForTile(b);
+                bc.x += half_span;
+                bc.y -= half_span;
+
+                var ad = Math.abs(center.x - ac.x) + Math.abs(center.y - ac.y);
+                var bd = Math.abs(center.x - bc.x) + Math.abs(center.y - bc.y);
+
+                a.center_dist = ad;
+                b.center_dist = bd;
+
                 return bd > ad ? -1 : bd === ad ? 0 : 1;
             });
             this.queued_coords.forEach(function (coords) {
@@ -41525,6 +41727,7 @@ var TileManager = function () {
 
                 var key = _tile2.default.key(coords, source, this.view.tile_zoom);
                 if (key && !this.hasTile(key)) {
+                    (0, _log2.default)('trace', 'load tile ' + key + ', distance from view center: ' + coords.center_dist);
                     var tile = _tile2.default.create({
                         source: source,
                         coords: coords,
@@ -41539,24 +41742,13 @@ var TileManager = function () {
             }
         }
 
-        // Sort and build a list of tiles
+        // Start tile build process
 
-    }, {
-        key: 'buildTiles',
-        value: function buildTiles(tiles) {
-            var _this5 = this;
-
-            _tile2.default.sort(tiles).forEach(function (tile) {
-                return _this5.buildTile(tile);
-            });
-            this.checkBuildQueue();
-        }
     }, {
         key: 'buildTile',
         value: function buildTile(tile, options) {
             this.tileBuildStart(tile.key);
             this.updateVisibility(tile);
-            tile.update();
             tile.build(this.scene.generation, options);
         }
 
@@ -41682,7 +41874,7 @@ var TileManager = function () {
 
 exports.default = TileManager;
 
-},{"./tile":251,"./tile_pyramid":253,"./utils/log":259,"./utils/worker_broker":269}],253:[function(_dereq_,module,exports){
+},{"./geo":201,"./tile":251,"./tile_pyramid":253,"./utils/log":259,"./utils/worker_broker":269}],253:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41902,16 +42094,28 @@ function debounce(func, wait) {
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.default = {
+exports.mergeDebugSettings = mergeDebugSettings;
+var debugSettings = void 0;
+
+exports.default = debugSettings = {
     // draws a blue rectangle border around the collision box of a label
     draw_label_collision_boxes: false,
+
     // draws a green rectangle border within the texture box of a label
     draw_label_texture_boxes: false,
+
     // suppreses fade-in of labels
     suppress_label_fade_in: false,
+
     // suppress animaton of label snap to pixel grid
-    suppress_label_snap_animation: false
+    suppress_label_snap_animation: false,
+
+    // collect feature/geometry stats on styling layers
+    layer_stats: false
 };
+function mergeDebugSettings(settings) {
+    Object.assign(debugSettings, settings);
+}
 
 },{}],256:[function(_dereq_,module,exports){
 'use strict';
@@ -43161,7 +43365,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.1\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"8.2.1\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.2\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"8.2.1\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
