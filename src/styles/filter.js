@@ -72,10 +72,15 @@ function rangeMatch(key, values, options) {
 
 function parseFilter(filter, options) {
     var filterAST = [];
+    var ftype = (typeof filter);
 
     // Function filter
-    if (typeof filter === 'function') {
+    if (ftype === 'function') {
         return [wrap(filter.toString() + '(context)')];
+    }
+    // Boolean filter object
+    else if (ftype === 'boolean') {
+        return [filter];
     }
     // Array filter, implicit 'any'
     else if (Array.isArray(filter)) {

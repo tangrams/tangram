@@ -132,9 +132,9 @@ class Layer {
         this.filter = Utils.stringsToFunctions(this.filter, StyleParser.wrapFunction);
 
         let type = typeof this.filter;
-        if (this.filter != null && type !== 'object' && type !== 'function') {
+        if (this.filter != null && type !== 'object' && type !== 'function' && type !== 'boolean') {
             // Invalid filter
-            let msg = `Filter for layer ${this.full_name} is invalid, filter value must be an object or function, `;
+            let msg = `Filter for layer ${this.full_name} is invalid, filter value must be an object, function, or boolean, `;
             msg += `but was set to \`filter: ${this.filter}\` instead`;
             log('warn', msg); // TODO: fire external event that clients to subscribe to
             return;
