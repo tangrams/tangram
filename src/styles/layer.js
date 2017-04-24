@@ -201,6 +201,10 @@ class Layer {
                 }
 
                 if (key[0] === '$') {
+                    if (key.indexOf('.') > -1) {
+                        return; // skip nested properties like `global.a.b`
+                    }
+
                     // Context property
                     this.context_prop_matches = this.context_prop_matches || [];
                     this.context_prop_matches.push([key.substring(1), array ? val : [val]]);

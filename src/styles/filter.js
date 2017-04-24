@@ -10,7 +10,7 @@ function maybeQuote(value) {
 
 function lookUp(key) {
     if (key[0] === '$') {
-        return 'context[\'' + key.substring(1) + '\']';
+        return 'context[' + key.slice(1).split('.').map(k => '\''+k+'\'').join('][') + ']';
     }
     return 'context.feature.properties[\'' + key + '\']';
 }
