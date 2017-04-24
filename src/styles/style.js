@@ -349,7 +349,12 @@ export var Style = {
 
         if (!program.compiled) {
             log('debug', `Compiling style '${this.name}', program key '${key}'`);
-            program.compile();
+            try {
+                program.compile();
+            }
+            catch(e) {
+                log('error', `Style: error compiling program for style '${this.name}' (program key '${key}')`, this, e.stack);
+            }
         }
         return program;
     },
