@@ -36,6 +36,7 @@ export default class View {
 
         this.buffer = 0;
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
+        this.wrap = (options.wrapView === false) ? false : true;
         this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.preserve_tiles_within_zoom = 1;
 
@@ -112,7 +113,7 @@ export default class View {
         if (typeof lng === 'number' && typeof lat === 'number') {
             if (!this.center || lng !== this.center.lng || lat !== this.center.lat) {
                 changed = true;
-                this.center = { lng: Geo.wrapLng(lng), lat };
+                this.center = { lng, lat };
             }
         }
 
@@ -239,9 +240,19 @@ export default class View {
         let sw = Geo.tileForMeters([this.bounds.sw.x, this.bounds.sw.y], z);
         let ne = Geo.tileForMeters([this.bounds.ne.x, this.bounds.ne.y], z);
 
+        let range = [
+            sw.x - this.buffer, ne.x + this.buffer, // x
+            ne.y - this.buffer, sw.y + this.buffer  // y
+        ];
+
+        if (this.wrap === false) { // prevent tiles from wrapping across antimeridian
+            let tmax = (1 << z) - 1; // max xy tile number for this zoom
+            range = range.map(v => Math.min(Math.max(0, v), tmax));
+        }
+
         let coords = [];
-        for (let x = sw.x - this.buffer; x <= ne.x + this.buffer; x++) {
-            for (let y = ne.y - this.buffer; y <= sw.y + this.buffer; y++) {
+        for (let x = range[0]; x <= range[1]; x++) {
+            for (let y = range[2]; y <= range[3]; y++) {
                 coords.push(Tile.coord({ x, y, z }));
             }
         }

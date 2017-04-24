@@ -41,7 +41,7 @@ describe('Scene', function () {
             it('correctly sets the value of the data source', () => {
                 let source = subject.sources['osm'];
                 assert.propertyVal(source, 'max_zoom', 18);
-                assert.propertyVal(source, 'url', 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.json');
+                assert.propertyVal(source, 'url', 'https://tile.mapzen.com/mapzen/vector/v1/all/{z}/{x}/{y}.json?api_key=mapzen-T3tPjn7&');
             });
 
             it('sets the initialized property', () => {

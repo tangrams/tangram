@@ -78,7 +78,8 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         v_scale,
         texcoord_index,
         texcoord_width,
-        texcoord_normalize
+        texcoord_normalize,
+        geom_count: 0
     };
 
     // Buffer for extra lines to process
@@ -93,6 +94,8 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
     for (let index = 0; index < extra_lines.length; index++) {
         buildPolyline(extra_lines[index], context, extra_lines);
     }
+
+    return context.geom_count;
 }
 
 function buildPolyline(line, context, extra_lines){
@@ -326,7 +329,7 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
 
     //  Miter limit: if miter join is too sharp, convert to bevel instead
     if (Vector.lengthSq(miterVec) > miter_len_sq) {
-        addJoin(JOIN_TYPE.miter, v, coordCurr, normPrev, normNext, isBeginning, context);
+        addJoin(JOIN_TYPE.bevel, v, coordCurr, normPrev, normNext, isBeginning, context);
     }
     else {
         addVertex(coordCurr, miterVec, [1, v], context);
@@ -409,6 +412,7 @@ function indexPairs(num_pairs, context){
         vertex_elements.push(offset + 2 * i + 2);
         vertex_elements.push(offset + 2 * i + 3);
         vertex_elements.push(offset + 2 * i + 1);
+        context.geom_count += 2;
     }
 }
 

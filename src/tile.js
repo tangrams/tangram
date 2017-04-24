@@ -2,6 +2,7 @@ import log from './utils/log';
 import Utils from './utils/utils';
 import mergeObjects from './utils/merge';
 import Geo from './geo';
+import {addLayerDebugEntry} from './styles/style';
 import {StyleParser} from './styles/style_parser';
 import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
@@ -116,15 +117,6 @@ export default class Tile {
         return false;
     }
 
-    // Sort a set of tile instances (which already have a distance from center tile computed)
-    static sort(tiles) {
-        return tiles.sort((a, b) => {
-            let ad = a.center_dist;
-            let bd = b.center_dist;
-            return (bd > ad ? -1 : (bd === ad ? 0 : 1));
-        });
-    }
-
     // Free resources owned by tile
     freeResources () {
         for (let m in this.meshes) {
@@ -201,6 +193,7 @@ export default class Tile {
 
         tile.debug.rendering = +new Date();
         tile.debug.feature_count = 0;
+        tile.debug.layers = null;
 
         Collision.startTile(tile.key);
 
@@ -249,9 +242,6 @@ export default class Tile {
                     // Render draw groups
                     for (let group_name in draw_groups) {
                         let group = draw_groups[group_name];
-                        if (!group.visible) {
-                            continue;
-                        }
 
                         // Add to style
                         let style_name = group.style || group_name;
@@ -259,6 +249,11 @@ export default class Tile {
 
                         if (!style) {
                             log('warn', `Style '${style_name}' not found, skipping layer '${layer_name}':`, group, feature);
+                            continue;
+                        }
+
+                        group = style.preprocess(group);
+                        if (group == null || group.visible === false) {
                             continue;
                         }
 
@@ -465,6 +460,7 @@ export default class Tile {
             for (let m in this.meshes) {
                 if (this.new_mesh_styles.indexOf(m) === -1) {
                     this.meshes[m].destroy();
+                    delete this.meshes[m];
                 }
             }
             this.new_mesh_styles = [];
@@ -501,15 +497,6 @@ export default class Tile {
         }
     }
 
-    // Update relative to view
-    update () {
-        let coords = this.coords;
-        if (coords.z !== this.view.center.tile.z) {
-            coords = Tile.coordinateAtZoom(coords, this.view.center.tile.z);
-        }
-        this.center_dist = Math.abs(this.view.center.tile.x - coords.x) + Math.abs(this.view.center.tile.y - coords.y);
-    }
-
     // Set as a proxy tile for another tile
     setProxyFor (tile) {
         if (tile) {
@@ -518,7 +505,6 @@ export default class Tile {
             this.proxy_for.push(tile);
             this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
             tile.proxied_as = (tile.style_zoom > this.style_zoom ? 'child' : 'parent');
-            this.update();
         }
         else {
             this.proxy_for = null;
@@ -588,10 +574,47 @@ export default class Tile {
         return this;
     }
 
-    printDebug () {
-        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
+    printDebug (exclude = ['layers']) {
+        let copy = {};
+        for (let key in this.debug) {
+            if (exclude.indexOf(key) === -1) {
+                copy[key] = this.debug[key];
+            }
+        }
+
+        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
+    }
+
+    // Sum up layer feature/geometry stats from a set of tiles
+    static debugSumLayerStats (tiles) {
+        let list = {}, tree = {};
+
+        tiles.filter(tile => tile.debug.layers).forEach(tile => {
+            // layer list
+            Object.keys(tile.debug.layers.list).forEach(layer => {
+                let counts = tile.debug.layers.list[layer];
+                addLayerDebugEntry(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
+            });
+
+            // layer tree
+            addDebugLayers(tile.debug.layers.tree, tree);
+        });
+
+        return { list, tree };
     }
 
 }
 
 Tile.coord_children = {}; // only allocate children coordinates once per coordinate
+
+// build debug stats layer tree
+function addDebugLayers (node, tree) {
+    for (let layer in node) {
+        let counts = node[layer];
+        addLayerDebugEntry(tree, layer, counts.features, counts.geoms, counts.styles, counts.base);
+        if (counts.layers) {
+            tree[layer].layers = tree[layer].layers || {};
+            addDebugLayers(counts.layers, tree[layer].layers); // process child layers
+        }
+    }
+}

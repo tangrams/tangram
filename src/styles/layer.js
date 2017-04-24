@@ -4,9 +4,13 @@ import log from '../utils/log';
 import mergeObjects from '../utils/merge';
 import {buildFilter} from './filter';
 
-export const whiteList = ['filter', 'draw', 'visible', 'data'];
+// N.B.: 'visible' is legacy compatibility for 'enabled'
+export const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
 
-export const layer_cache = {};
+let layer_cache = {};
+export function layerCache () {
+    return layer_cache;
+}
 
 function cacheKey (layers) {
     if (layers.length > 1) {
@@ -24,10 +28,6 @@ function cacheKey (layers) {
 export function mergeTrees(matchingTrees, group) {
     let draws, treeDepth = 0;
 
-    let draw = {
-        visible: true // visible by default
-    };
-
     // Find deepest tree
     for (let t=0; t < matchingTrees.length; t++) {
         if (matchingTrees[t].length > treeDepth) {
@@ -39,6 +39,11 @@ export function mergeTrees(matchingTrees, group) {
     if (treeDepth === 0) {
         return null;
     }
+
+    // Merged draw group object
+    let draw = {
+        visible: true, // visible by default
+    };
 
     // Iterate trees in parallel
     for (let x=0; x < treeDepth; x++) {
@@ -72,7 +77,7 @@ const blacklist = ['any', 'all', 'not', 'none'];
 
 class Layer {
 
-    constructor({ layer, name, parent, draw, visible, filter }) {
+    constructor({ layer, name, parent, draw, visible, enabled, filter, styles }) {
         this.id = Layer.id++;
         this.config_data = layer.data;
         this.parent = parent;
@@ -80,13 +85,22 @@ class Layer {
         this.full_name = this.parent ? (this.parent.full_name + ':' + this.name) : this.name;
         this.draw = draw;
         this.filter = filter;
+        this.styles = styles;
         this.is_built = false;
-        this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
+
+        enabled = (enabled === undefined) ? visible : enabled; // `visible` property is backwards compatible for `enabled`
+        if (this.parent && this.parent.visible === false) {
+            this.enabled = false; // all descendants of disabled layer are also disabled
+        }
+        else {
+            this.enabled = (enabled !== false); // layer is enabled unless explicitly set to disabled
+        }
 
         // Denormalize layer name to draw groups
         if (this.draw) {
             for (let group in this.draw) {
-                if (this.draw[group] == null || typeof this.draw[group] !== 'object') {
+                this.draw[group] = (this.draw[group] == null) ? {} : this.draw[group];
+                if (typeof this.draw[group] !== 'object') {
                     // Invalid draw group
                     let msg = `Draw group '${group}' for layer ${this.full_name} is invalid, must be an object, `;
                     msg += `but was set to \`${group}: ${this.draw[group]}\` instead`;
@@ -227,6 +241,10 @@ class Layer {
     }
 
     doesMatch (context) {
+        if (!this.enabled) {
+            return false;
+        }
+
         if (!this.is_built) {
             this.build();
         }
@@ -242,9 +260,10 @@ class Layer {
         }
 
         // any remaining filter (more complex matches or dynamic function)
+        let match;
         if (this.filter instanceof Function){
             try {
-                return this.filter(context);
+                match = this.filter(context);
             }
             catch (error) {
                 // Filter function error
@@ -254,8 +273,18 @@ class Layer {
             }
         }
         else {
-            return this.filter == null;
+            match = this.filter == null;
         }
+
+        if (match) {
+            if (this.children_to_parse) {
+                parseLayerChildren(this, this.children_to_parse, this.styles);
+                delete this.children_to_parse;
+            }
+
+            return true;
+        }
+        return false;
     }
 
 }
@@ -297,12 +326,12 @@ export class LayerTree extends Layer {
                 let draw_keys = {};
 
                 for (let r=0; r < draw_groups.length; r++) {
-                    let layer = draw_groups[r];
-                    if (!layer) {
+                    let stack = draw_groups[r];
+                    if (!stack) {
                         continue;
                     }
-                    for (let g=0; g < layer.length; g++) {
-                        let group = layer[g];
+                    for (let g=0; g < stack.length; g++) {
+                        let group = stack[g];
                         for (let key in group) {
                             draw_keys[key] = true;
                         }
@@ -321,6 +350,7 @@ export class LayerTree extends Layer {
                     else {
                         layer_cache[cache_key][draw_key].key = cache_key + '/' + draw_key;
                         layer_cache[cache_key][draw_key].layers = layers.map(x => x && x.full_name);
+                        layer_cache[cache_key][draw_key].group = draw_key;
                     }
                 }
 
@@ -345,8 +375,8 @@ const FilterOptions = {
     }
 };
 
-function isWhiteListed(key) {
-    return whiteList.indexOf(key) > -1;
+function isReserved(key) {
+    return reserved.indexOf(key) > -1;
 }
 
 function isEmpty(obj) {
@@ -354,16 +384,16 @@ function isEmpty(obj) {
 }
 
 export function groupProps(obj) {
-    let whiteListed = {}, nonWhiteListed = {};
+    let reserved = {}, children = {};
 
     for (let key in obj) {
-        if (isWhiteListed(key)) {
-            whiteListed[key] = obj[key];
+        if (isReserved(key)) {
+            reserved[key] = obj[key];
         } else {
-            nonWhiteListed[key] = obj[key];
+            children[key] = obj[key];
         }
     }
-    return [whiteListed, nonWhiteListed];
+    return [reserved, children];
 }
 
 export function calculateDraw(layer) {
@@ -379,11 +409,13 @@ export function calculateDraw(layer) {
     return draw;
 }
 
-export function parseLayerTree(name, layer, parent, styles) {
+export function parseLayerNode(name, layer, parent, styles) {
 
-    let properties = { name, layer, parent };
-    let [whiteListed, nonWhiteListed] = groupProps(layer);
-    let empty = isEmpty(nonWhiteListed);
+    layer = (layer == null) ? {} : layer;
+
+    let properties = { name, layer, parent, styles };
+    let [reserved, children] = groupProps(layer);
+    let empty = isEmpty(children);
     let Create;
 
     if (empty && parent != null) {
@@ -392,47 +424,51 @@ export function parseLayerTree(name, layer, parent, styles) {
         Create = LayerTree;
     }
 
-    let r = new Create(Object.assign(properties, whiteListed));
+    let r = new Create(Object.assign(properties, reserved));
 
-    if (parent) {
-        parent.addLayer(r);
-    }
-
-    if (!empty) {
-        for (let key in nonWhiteListed) {
-            let property = nonWhiteListed[key];
-            if (typeof property === 'object' && !Array.isArray(property)) {
-                parseLayerTree(key, property, r, styles);
-            } else {
-                // Invalid layer
-                let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(property)}'`;
-                msg += `, under parent layer '${r.full_name}'.`;
-
-                // If the parent is a style name, this may be an incorrectly nested layer
-                if (styles[r.name]) {
-                    msg += ` The parent name '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
-                    if (parent) {
-                        msg += ` under '${parent.name}'`;
-                    }
-                    msg += ` instead?`;
-                }
-                log('warn', msg); // TODO: fire external event that clients to subscribe to
-            }
+    // only process child layers if this layer is enabled
+    if (r.enabled) {
+        if (parent) {
+            parent.addLayer(r);
         }
-
+        r.children_to_parse = empty ? null : children;
     }
 
     return r;
 }
 
+function parseLayerChildren (parent, children, styles) {
+    for (let key in children) {
+        let child = children[key];
+        if (typeof child === 'object' && !Array.isArray(child)) {
+            parseLayerNode(key, child, parent, styles);
+        } else {
+            // Invalid layer
+            let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(child)}'`;
+            msg += `, under parent layer '${parent.full_name}'.`;
+
+            // If the parent is a style name, this may be an incorrectly nested layer
+            if (styles[parent.name]) {
+                msg += ` The parent name '${parent.name}' is also the name of a style, did you mean to create a 'draw' group`;
+                if (parent.parent) {
+                    msg += ` under '${parent.parent.name}'`;
+                }
+                msg += ` instead?`;
+            }
+            log('warn', msg); // TODO: fire external event that clients to subscribe to
+        }
+    }
+}
+
 
 export function parseLayers (layers, styles) {
+    layer_cache = {}; // clear layer cache
     let layer_trees = {};
 
     for (let key in layers) {
         let layer = layers[key];
         if (layer) {
-            layer_trees[key] = parseLayerTree(key, layer, null, styles);
+            layer_trees[key] = parseLayerNode(key, layer, null, styles);
         }
     }
 

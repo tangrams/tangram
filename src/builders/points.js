@@ -34,6 +34,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
         ];
     }
 
+    var geom_count = 0;
     let num_points = points.length;
     for (let p=0; p < num_points; p++) {
         let point = points[p];
@@ -92,5 +93,8 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
         vertex_elements.push(element_offset + 0);
 
         element_offset += 4;
+        geom_count += 2;
     }
+
+    return geom_count;
 }

@@ -3,6 +3,7 @@ import Geo from '../geo';
 import {MethodNotImplemented} from '../utils/errors';
 import Utils from '../utils/utils';
 import * as URLs from '../utils/urls';
+import log from '../utils/log';
 
 export default class DataSource {
 
@@ -193,11 +194,19 @@ export class NetworkSource extends DataSource {
 
     constructor (source, sources) {
         super(source, sources);
-        this.url = URLs.addParamsToURL(source.url, source.url_params);
         this.response_type = ""; // use to set explicit XHR type
 
-        if (this.url == null) {
-            throw Error('Network data source must provide a `url` property');
+        // Add extra URL params, and warn on duplicates
+        let [url, dupes] = URLs.addParamsToURL(source.url, source.url_params);
+        this.url = url;
+        dupes.forEach(([param, value]) => {
+            log({ level: 'warn', once: true },
+                `Data source '${this.name}': parameter '${param}' already present in URL '${source.url}', ` +
+                `skipping value '${param}=${value}' specified in 'url_params'`);
+        });
+
+        if (typeof this.url !== 'string') {
+            throw Error('Network data source must provide a string `url` property');
         }
     }
 
@@ -263,11 +272,18 @@ export class NetworkTileSource extends NetworkSource {
         this.builds_geometry_tiles = false;
 
         this.tms = (source.tms === true); // optionally flip tile coords for TMS
-        this.url_hosts = null;
-        var host_match = this.url.match(/{s:\[([^}+]+)\]}/);
-        if (host_match != null && host_match.length > 1) {
-            this.url_hosts = host_match[1].split(',');
-            this.next_host = 0;
+
+        // optional list of subdomains to round-robin through
+        if (this.url.search('{s}') > -1) {
+            if (Array.isArray(source.url_subdomains) && source.url_subdomains.length > 0) {
+                this.url_subdomains = source.url_subdomains;
+                this.next_url_subdomain = 0;
+            }
+            else {
+                log({ level: 'warn', once: true },
+                    `Data source '${this.name}': source URL includes '\{s\}' subdomain marker ('${this.url}'), but no subdomains ` +
+                    `were specified in 'url_subdomains' parameter`);
+            }
         }
     }
 
@@ -329,9 +345,9 @@ export class NetworkTileSource extends NetworkSource {
 
         let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
 
-        if (this.url_hosts != null) {
-            url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
-            this.next_host = (this.next_host + 1) % this.url_hosts.length;
+        if (this.url_subdomains != null) {
+            url = url.replace('{s}', this.url_subdomains[this.next_url_subdomain]);
+            this.next_url_subdomain = (this.next_url_subdomain + 1) % this.url_subdomains.length;
         }
         return url;
     }

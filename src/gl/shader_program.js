@@ -288,24 +288,24 @@ export default class ShaderProgram {
 
         // Check for missing uniform definitions
         for (var name in uniforms) {
-            inject = null;
+            let vs_defined = GLSL.isUniformDefined(name, vs); // check vertex shader
+            let fs_defined = GLSL.isUniformDefined(name, fs); // check fragment shader
 
-            // Check vertex shader
-            if (!GLSL.isUniformDefined(name, vs)) {
+            if (!vs_defined || !fs_defined) {
+                inject = GLSL.defineUniform(name, uniforms[name]);
                 if (!inject) {
-                    inject = GLSL.defineUniform(name, uniforms[name]);
+                    continue;
                 }
-                log('trace', `Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
-                vs_injections.push(inject);
 
-            }
-            // Check fragment shader
-            if (!GLSL.isUniformDefined(name, fs)) {
-                if (!inject) {
-                    inject = GLSL.defineUniform(name, uniforms[name]);
+                if (!vs_defined) {
+                    log('trace', `Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
+                    vs_injections.push(inject);
                 }
-                log('trace', `Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
-                fs_injections.push(inject);
+
+                if (!fs_defined) {
+                    log('trace', `Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
+                    fs_injections.push(inject);
+                }
             }
         }
 

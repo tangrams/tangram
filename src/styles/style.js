@@ -9,8 +9,10 @@ import Material from '../material';
 import Light from '../light';
 import {RasterTileSource} from '../sources/raster';
 import log from '../utils/log';
+import mergeObjects from '../utils/merge';
 import Thread from '../utils/thread';
 import WorkerBroker from '../utils/worker_broker';
+import debugSettings from '../utils/debug_settings';
 
 let fs = require('fs');
 const shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
@@ -172,23 +174,55 @@ export var Style = {
     },
 
     buildGeometry (geometry, style, vertex_data, context) {
+        let geom_count;
         if (geometry.type === 'Polygon') {
-            this.buildPolygons([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPolygons([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiPolygon') {
-            this.buildPolygons(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPolygons(geometry.coordinates, style, vertex_data, context);
         }
         else if (geometry.type === 'LineString') {
-            this.buildLines([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildLines([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiLineString') {
-            this.buildLines(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildLines(geometry.coordinates, style, vertex_data, context);
         }
         else if (geometry.type === 'Point') {
-            this.buildPoints([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPoints([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiPoint') {
-            this.buildPoints(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPoints(geometry.coordinates, style, vertex_data, context);
+        }
+
+        // Optionally collect per-layer stats
+        if (geom_count > 0 && debugSettings.layer_stats) {
+            let tile = context.tile;
+            tile.debug.layers = tile.debug.layers || { list: {}, tree: {} };
+            let list = tile.debug.layers.list;
+            let tree = tile.debug.layers.tree;
+            let ftree = {}; // tree of layers for this feature
+            context.layers.forEach(layer => {
+                addLayerDebugEntry(list, layer, 1, geom_count, {[this.name]: geom_count}, {[this.baseStyle()]: geom_count});
+
+                let node = tree;
+                let fnode = ftree;
+                let levels = layer.split(':');
+                for (let i=0; i < levels.length; i++) {
+                    let level = levels[i];
+                    node[level] = node[level] || { features: 0, geoms: 0, styles: {}, base: {} };
+
+                    if (fnode[level] == null) { // only count each layer level once per feature
+                        fnode[level] = {};
+                        addLayerDebugEntry(node, level, 1, geom_count, {[this.name]: geom_count}, {[this.baseStyle()]: geom_count});
+                    }
+
+                    if (i < levels.length - 1) {
+                        node[level].layers = node[level].layers || {};
+                    }
+                    node = node[level].layers;
+                    fnode = fnode[level];
+                }
+            });
         }
     },
 
@@ -196,13 +230,18 @@ export var Style = {
         try {
             var style = this.feature_style;
 
-            draw = this.preprocess(draw);
-            if (!draw) {
+            // Calculate order
+            style.order = this.parseOrder(draw.order, context);
+            if (style.order == null && this.blend !== 'overlay') {
+                let msg = `Layer '${draw.layers.join(', ')}', draw group '${draw.group}': `;
+                msg += `'order' parameter is required unless blend mode is 'overlay'`;
+                if (draw.order != null) {
+                    msg += `; 'order' was set to a dynamic value (e.g. string tied to feature property, `;
+                    msg += `or JS function), but evaluated to null for one or more features`;
+                }
+                log({ level: 'warn', once: true }, msg);
                 return;
             }
-
-            // Calculate order if it was not cached
-            style.order = this.parseOrder(draw.order, context);
 
             // Subclass implementation
             style = this._parseFeature(feature, draw, context);
@@ -254,6 +293,11 @@ export var Style = {
     preprocess (draw) {
         // Preprocess first time
         if (!draw.preprocessed) {
+            // Apply draw defaults
+            if (this.draw) {
+                mergeObjects(draw, this.draw);
+            }
+
             if (this.introspection || draw.interactive) {
                 draw.selection_prop = draw.selection_prop || default_selection_prop;
                 draw.selection_group = draw.selection_group || 'default';
@@ -302,9 +346,9 @@ export var Style = {
     },
 
     // Build functions are no-ops until overriden
-    buildPolygons () {},
-    buildLines () {},
-    buildPoints () {},
+    buildPolygons () { return 0; },
+    buildLines () { return 0; },
+    buildPoints () { return 0; },
 
 
     /*** GL state and rendering ***/
@@ -357,10 +401,17 @@ export var Style = {
             selection_defines.TANGRAM_FEATURE_SELECTION_PASS = true;
         }
 
-        // Get any custom code blocks, uniform dependencies, etc.
+        // Shader blocks
         var blocks = (this.shaders && this.shaders.blocks);
         var block_scopes = (this.shaders && this.shaders.block_scopes);
+
+        // Uniforms
         var uniforms = Object.assign({}, this.shaders && this.shaders.uniforms);
+        for (let u in uniforms) { // validate uniforms
+            if (uniforms[u] == null) {
+                log({ level: 'warn', once: true }, `Style '${this.name}' has invalid uniform '${u}': uniform values must be non-null`);
+            }
+        }
 
         // Accept a single extension, or an array of extensions
         var extensions = (this.shaders && this.shaders.extensions);
@@ -480,7 +531,7 @@ export var Style = {
             .filter(s => this.sources[s] instanceof RasterTileSource)
             .length;
 
-        this.defines.TANGRAM_NUM_RASTER_SOURCES = `int(${num_raster_sources})`;
+        this.defines.TANGRAM_NUM_RASTER_SOURCES = `${num_raster_sources}`; // force to string to avoid auto-float conversion
         if (num_raster_sources > 0) {
             // Use model position of tile's coordinate zoom for raster tile texture UVs
             this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
@@ -646,3 +697,22 @@ export var Style = {
     }
 
 };
+
+// add feature and geometry counts for a single layer
+export function addLayerDebugEntry (target, layer, faeture_count, geom_count, styles, bases) {
+    target[layer] = target[layer] || { features: 0, geoms: 0, styles: {}, base: {} };
+    target[layer].features += faeture_count;    // feature count
+    target[layer].geoms += geom_count;          // geometry count
+
+    // geometry count by style
+    for (let style in styles) {
+        target[layer].styles[style] = target[layer].styles[style] || 0;
+        target[layer].styles[style] += styles[style];
+    }
+
+    // geometry count by base style
+    for (let style in bases) {
+        target[layer].base[style] = target[layer].base[style] || 0;
+        target[layer].base[style] += bases[style];
+    }
+}

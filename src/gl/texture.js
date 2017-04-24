@@ -17,8 +17,6 @@ export default class Texture {
 
         this.name = name;
         this.retain_count = 0;
-        this.source = null;
-        this.source_type = null;
         this.config_type = null;
         this.loading = null;    // a Promise object to track the loading state of this texture
         this.loaded = false;    // successfully loaded as expected
@@ -41,7 +39,7 @@ export default class Texture {
 
         // Cache texture instance and definition
         Texture.textures[this.name] = this;
-        Texture.texture_configs[this.name] = Object.assign({ name }, options);
+        Texture.texture_configs[this.name] = JSON.stringify(Object.assign({ name }, options));
 
         this.load(options);
         log('trace', `creating Texture ${this.name}`);
@@ -62,6 +60,7 @@ export default class Texture {
         delete this.data;
         this.data = null;
         delete Texture.textures[this.name];
+        delete Texture.texture_configs[this.name];
         this.valid = false;
         log('trace', `destroying Texture ${this.name}`);
     }
@@ -128,8 +127,6 @@ export default class Texture {
         }
 
         this.url = url; // save URL reference (will be overwritten when element is loaded below)
-        this.source = this.url;
-        this.source_type = 'url';
 
         this.loading = new Promise((resolve, reject) => {
             let image = new Image();
@@ -139,8 +136,8 @@ export default class Texture {
                 }
                 catch (e) {
                     this.loaded = false;
-                    log('warn', `Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
-                    Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
+                    log('warn', `Texture '${this.name}': failed to load url: '${this.url}'`, e, options);
+                    Texture.trigger('warning', { message: `Failed to load texture from ${this.url}`, error: e, texture: options });
                 }
 
                 this.loaded = true;
@@ -149,18 +146,18 @@ export default class Texture {
             image.onerror = e => {
                 // Warn and resolve on error
                 this.loaded = false;
-                log('warn', `Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
-                Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
+                log('warn', `Texture '${this.name}': failed to load url: '${this.url}'`, e, options);
+                Texture.trigger('warning', { message: `Failed to load texture from ${this.url}`, error: e, texture: options });
                 resolve(this);
             };
 
             // Safari has a bug loading data-URL images with CORS enabled, so it must be disabled in that case
             // https://bugs.webkit.org/show_bug.cgi?id=123978
-            if (!(Utils.isSafari() && this.source.slice(0, 5) === 'data:')) {
+            if (!(Utils.isSafari() && this.url.slice(0, 5) === 'data:')) {
                 image.crossOrigin = 'anonymous';
             }
 
-            image.src = this.source;
+            image.src = this.url;
         });
         return this.loading;
     }
@@ -170,15 +167,12 @@ export default class Texture {
         this.width = width;
         this.height = height;
 
-        this.source = data;
-        this.source_type = 'data';
-
         // Convert regular array to typed array
-        if (Array.isArray(this.source)) {
-            this.source = new Uint8Array(this.source);
+        if (Array.isArray(data)) {
+            data = new Uint8Array(data);
         }
 
-        this.update(options);
+        this.update(data, options);
         this.setFiltering(options);
 
         this.loaded = true;
@@ -198,10 +192,7 @@ export default class Texture {
         if (element instanceof HTMLCanvasElement ||
             element instanceof HTMLImageElement ||
             element instanceof HTMLVideoElement) {
-            this.source = element;
-            this.source_type = 'element';
-
-            this.update(options);
+            this.update(element, options);
             this.setFiltering(options);
         }
         else {
@@ -218,7 +209,7 @@ export default class Texture {
     }
 
     // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
-    update(options = {}) {
+    update(source, options = {}) {
         if (!this.valid) {
             return;
         }
@@ -228,16 +219,16 @@ export default class Texture {
         this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
         // Image or Canvas element
-        if (this.source instanceof HTMLCanvasElement || this.source instanceof HTMLVideoElement ||
-            (this.source instanceof HTMLImageElement && this.source.complete)) {
+        if (source instanceof HTMLCanvasElement || source instanceof HTMLVideoElement ||
+            (source instanceof HTMLImageElement && source.complete)) {
 
-            this.width = this.source.width;
-            this.height = this.source.height;
-            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.source);
+            this.width = source.width;
+            this.height = source.height;
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
         }
         // Raw image buffer
-        else if (this.source_type === 'data') {
-            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.source);
+        else {
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
         }
 
         Texture.trigger('update', this);
@@ -409,8 +400,7 @@ Texture.changed = function (name, config) {
         }
 
         // compare definitions
-        if (JSON.stringify(Texture.texture_configs[name]) ===
-            JSON.stringify(Object.assign({ name }, config))) {
+        if (Texture.texture_configs[name] === JSON.stringify(Object.assign({ name }, config))) {
             return false;
         }
     }

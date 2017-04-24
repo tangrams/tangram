@@ -4,7 +4,7 @@ Tangram: WebGL Maps for Vector Data
 [![Circle CI](https://circleci.com/gh/tangrams/tangram.png?style=badge&circle-token=2529a88125530794f64ffa1783625b5357456f71)](https://circleci.com/gh/tangrams/tangram)
 
 <a href="http://tangrams.github.io/tangram" target="_blank">
-![tangram-header](https://cloud.githubusercontent.com/assets/459970/7569087/8cd14df6-f7d4-11e4-8360-db31790d2bbf.png)
+<img alt="tangram-header" src="https://cloud.githubusercontent.com/assets/459970/7569087/8cd14df6-f7d4-11e4-8360-db31790d2bbf.png">
 </a>
 
 Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser with WebGL. It is tuned for OpenStreetMap but supports any source of GeoJSON/TopoJSON or binary vector data, including tilesets and single files.
@@ -55,7 +55,7 @@ Instead of loading traditional bitmap tiles, Tangram draws its own tiles from sc
 
 Mapzen provides a free [vector tile service](https://mapzen.com/documentation/vector-tiles/) based on open data from [OpenStreetMap](https://openstreetmap.org/), [Natural Earth](http://www.naturalearthdata.com/), [Who's On First](https://whosonfirst.mapzen.com/) and other projects,  with worldwide coverage updated continuously -- [sign up for an API key here](https://mapzen.com/developers).
 
-Tangram currently supports [GeoJSON](http://geojson.org/) & [TopoJSON](https://github.com/mbostock/topojson)-based tiles, as well as Mapbox's [binary format](https://github.com/mapbox/vector-tile-spec), all of which are available from the [Mapzen vector tile service](http://mapzen.com/vector/). (Here's an [example GeoJSON tile](http://vector.mapzen.com/osm/all/14/4826/6161.json).)
+Tangram currently supports [GeoJSON](http://geojson.org/) & [TopoJSON](https://github.com/mbostock/topojson)-based tiles, as well as Mapbox's [binary format](https://github.com/mapbox/vector-tile-spec), all of which are available from the [Mapzen vector tile service](http://mapzen.com/vector/). (Here's an [example GeoJSON tile](http://tile.mapzen.com/mapzen/vector/v1/all/14/4826/6161.json).)
 
 ## Styling
 

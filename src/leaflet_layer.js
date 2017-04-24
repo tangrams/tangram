@@ -2,6 +2,7 @@ import Thread from './utils/thread';
 import Scene from './scene';
 import Geo from './geo';
 import debounce from './utils/debounce';
+import {mergeDebugSettings} from './utils/debug_settings';
 
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
@@ -50,6 +51,7 @@ function extendLeaflet(options) {
                 options.showDebug = (!options.showDebug ? false : true);
 
                 L.setOptions(this, options);
+                this.updateTangramDebugSettings();
                 this.createScene();
                 this.hooks = {};
                 this._updating_tangram = false;
@@ -64,13 +66,12 @@ function extendLeaflet(options) {
                         preUpdate: this.options.preUpdate,
                         postUpdate: this.options.postUpdate,
                         continuousZoom: (LeafletLayer.leafletVersion === '1.x'),
+                        wrapView: (this.options.noWrap === true ? false : true),
                         highDensityDisplay: this.options.highDensityDisplay,
                         logLevel: this.options.logLevel,
                         introspection: this.options.introspection,
-                        // advanced option, app will have to manually called scene.update() per frame
-                        disableRenderLoop: this.options.disableRenderLoop,
-                        // advanced option, will require library to be served as same host as page
-                        allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
+                        webGLContextOptions: this.options.webGLContextOptions, // override/supplement WebGL context options
+                        disableRenderLoop: this.options.disableRenderLoop // app must call scene.update() per frame
                     });
             },
 
@@ -97,7 +98,7 @@ function extendLeaflet(options) {
 
                     this.scene.view.setPanning(true);
                     var view = map.getCenter();
-                    view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_view_max_zoom);
+                    view.zoom = Math.max(Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_view_max_zoom), map.getMinZoom());
 
                     this.scene.view.setView(view);
                     if (this._mapLayerCount > 1) {
@@ -259,6 +260,9 @@ function extendLeaflet(options) {
                         if ((zoom + delta) >= this._map.getMaxZoom()) {
                             delta = this._map.getMaxZoom() - zoom; // don't go past max zoom
                         }
+                        else if ((zoom + delta) <= this._map.getMinZoom()) {
+                            delta = this._map.getMinZoom() - zoom; // don't go past min zoom
+                        }
 
                         if (!delta) { return; }
 
@@ -349,7 +353,7 @@ function extendLeaflet(options) {
 
             updateView () {
                 var view = this._map.getCenter();
-                view.zoom = Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.default_view_max_zoom);
+                view.zoom = Math.max(Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.default_view_max_zoom), this._map.getMinZoom());
                 this.scene.view.setView(view);
             },
 
@@ -466,6 +470,10 @@ function extendLeaflet(options) {
 
                 map.on('layeradd layerremove overlayadd overlayremove', this._updateMapLayerCount);
                 this._updateMapLayerCount();
+            },
+
+            updateTangramDebugSettings () {
+                mergeDebugSettings(this.options.debug || {});
             }
 
         });

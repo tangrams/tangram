@@ -8,12 +8,16 @@ import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 
+let fs = require('fs');
+const shaderSrc_textFragment = fs.readFileSync(__dirname + '/text_fragment.glsl', 'utf8');
+
 export let TextStyle = Object.create(Points);
 
 Object.assign(TextStyle, {
     name: 'text',
     super: Points,
     built_in: true,
+    fragment_shader_src: shaderSrc_textFragment,
 
     init(options = {}) {
         let extra_attributes = [
@@ -24,18 +28,15 @@ Object.assign(TextStyle, {
 
         this.super.init.call(this, options, extra_attributes);
 
-        // Point style (parent class) requires texturing to be turned on
-        // (labels are always drawn with textures)
-        this.defines.TANGRAM_POINT_TEXTURE = true;
+        // Set texture/point config (override parent Point class)
+        this.defines.TANGRAM_TEXTURE_POINT = true;  // standalone text is always sampled from a texture
+        this.defines.TANGRAM_SHADER_POINT = false;  // standalone text never draws a shader point
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;
 
         // Disable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = false;
-
-        // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
-        this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
         // Fade out text when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
@@ -92,15 +93,22 @@ Object.assign(TextStyle, {
             return;
         }
 
-        q.feature = feature;
-        q.context = context;
-        q.layout.vertex = false; // vertex placement option not applicable to standalone labels
-
-        // Queue the feature for processing
-        if (!this.tile_data[tile.key]) {
-            this.startData(tile);
+        // text can be an array if a `left` or `right` orientation key is defined for the text source
+        // in which case, push both text sources to the queue
+        if (q instanceof Array){
+            q.forEach(q => {
+                q.feature = feature;
+                q.context = context;
+                q.layout.vertex = false; // vertex placement option not applicable to standalone labels
+                this.queueFeature(q, tile); // queue the feature for later processing
+            });
         }
-        this.queues[tile.key].push(q);
+        else {
+            q.feature = feature;
+            q.context = context;
+            q.layout.vertex = false; // vertex placement option not applicable to standalone labels
+            this.queueFeature(q, tile); // queue the feature for later processing
+        }
 
         // Register with collision manager
         Collision.addStyle(this.name, tile.key);
@@ -183,6 +191,9 @@ Object.assign(TextStyle, {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
             let feature_labels;
+
+            fq.layout.vertical_buffer = text_info.vertical_buffer;
+
             if (text_info.text_settings.can_articulate){
                 var sizes = text_info.size.map(function(size){ return size.collision_size; });
                 fq.layout.no_curving = text_info.no_curving;

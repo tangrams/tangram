@@ -31,6 +31,7 @@ export const TextLabels = {
     parseTextFeature (feature, draw, context, tile) {
         // Compute label text
         let text = this.parseTextSource(feature, draw, context);
+
         if (text == null || text === '') {
             return; // no text for this feature
         }
@@ -38,24 +39,56 @@ export const TextLabels = {
         // Compute text style and layout settings for this feature label
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
-        let layout = this.computeTextLayout({}, feature, draw, context, tile, text, text_settings);
 
         // first label in tile, or with this style?
         this.texts[tile.key] = this.texts[tile.key] || {};
         let sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
 
-        // unique text strings, grouped by text drawing style
-        if (!sizes[text]) {
-            // first label with this text/style/tile combination, make a new label entry
-            sizes[text] = {
-                text_settings,
-                ref: 0 // # of times this text/style combo appears in tile
+        if (text instanceof Object){
+            let results = [];
+
+            // add both left/right text elements to repeat group to improve repeat culling
+            // avoids one component of a boundary label (e.g. Colorado) being culled too aggressively when it also
+            // appears in nearby boundary labels (e.g. Colorado/Utah & Colorado/New Mexico repeat as separate groups)
+            let repeat_group_prefix = text.left + '-' + text.right; // NB: should be all text keys, not just left/right
+
+            for (let key in text){
+                let current_text = text[key];
+                if (!current_text) {
+                    continue;
+                }
+
+                let layout = this.computeTextLayout({}, feature, draw, context, tile, current_text, text_settings, repeat_group_prefix, key);
+                if (!sizes[current_text]) {
+                    // first label with this text/style/tile combination, make a new label entry
+                    sizes[current_text] = {
+                        text_settings,
+                        ref: 0 // # of times this text/style combo appears in tile
+                    };
+                }
+
+                results.push({
+                    draw, text : current_text, text_settings_key, layout
+                });
+            }
+
+            return results;
+        }
+        else {
+            // unique text strings, grouped by text drawing style
+            let layout = this.computeTextLayout({}, feature, draw, context, tile, text, text_settings);
+            if (!sizes[text]) {
+                // first label with this text/style/tile combination, make a new label entry
+                sizes[text] = {
+                    text_settings,
+                    ref: 0 // # of times this text/style combo appears in tile
+                };
+            }
+
+            return {
+                draw, text, text_settings_key, layout
             };
         }
-
-        return {
-            draw, text, text_settings_key, layout
-        };
     },
 
     // Compute the label text, default is value of feature.properties.name
@@ -68,6 +101,23 @@ export const TextLabels = {
         let text;
         let source = draw.text_source || 'name';
 
+        if (source != null && typeof source === 'object') {
+            // left/right boundary labels
+            text = {};
+            for (let key in source) {
+                text[key] = this.parseTextSourceValue(source[key], feature, context);
+            }
+        }
+        else {
+            // single label
+            text = this.parseTextSourceValue(source, feature, context);
+        }
+
+        return text;
+    },
+
+    parseTextSourceValue (source, feature, context) {
+        let text;
         if (Array.isArray(source)) {
             for (let s=0; s < source.length; s++) {
                 if (typeof source[s] === 'string') {
@@ -77,15 +127,17 @@ export const TextLabels = {
                 }
 
                 if (text) {
-                    break; // stop if we found a text property
+                    return text; // stop if we found a text property
                 }
             }
         }
         else if (typeof source === 'string') {
             text = feature.properties[source];
-        } else if (typeof source === 'function') {
+        }
+        else if (source instanceof Function) {
             text = source(context);
         }
+
         return text;
     },
 
@@ -198,7 +250,6 @@ export const TextLabels = {
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts (tile_key, texts) {
         let canvas = new CanvasText();
-        canvas.clearTexcoordCache(tile_key);
 
         let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size, tile_key);
         log('trace', `text summary for tile ${tile_key}: fits in ${texture_size[0]}x${texture_size[1]}px`);
@@ -212,7 +263,8 @@ export const TextLabels = {
         else {
             log('error', [
                 `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
-                `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join(''));
+                `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join('')
+            );
         }
 
         // create a texture
@@ -258,7 +310,7 @@ export const TextLabels = {
     },
 
     // Additional text-specific layout settings
-    computeTextLayout (target, feature, draw, context, tile, text, text_settings) {
+    computeTextLayout (target, feature, draw, context, tile, text, text_settings, repeat_group_prefix, orientation) {
         let layout = target || {};
 
         // common settings w/points
@@ -272,6 +324,9 @@ export const TextLabels = {
 
         // repeat rules include the text
         if (layout.repeat_distance) {
+            if (repeat_group_prefix) {
+                layout.repeat_group += '/' + repeat_group_prefix;
+            }
             layout.repeat_group += '/' + text;
         }
 
@@ -282,6 +337,14 @@ export const TextLabels = {
 
         // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
         layout.italic = (text_settings.style !== 'normal');
+
+        // used to determine orientation of text if the text_source has a `left` or `right` key
+        if (orientation === 'right') {
+            layout.orientation = 1;
+        }
+        else if (orientation === 'left'){
+            layout.orientation = -1;
+        }
 
         return layout;
     }

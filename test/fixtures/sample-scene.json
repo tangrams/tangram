@@ -3,7 +3,10 @@
         "osm": {
             "max_zoom": 20,
             "type": "GeoJSON",
-            "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
+            "url": "http://tile.mapzen.com/mapzen/vector/v1/all/{z}/{x}/{y}.json",
+            "url_params": {
+                "api_key": "mapzen-T3tPjn7"
+            }
         }
     },
 

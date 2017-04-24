@@ -5,8 +5,7 @@
 
 # build & test artifacts
 node_modules
-dist/tangram.test.js
-dist/tangram.test-worker.js
+dist/tangram.debug.temp.js.map
 
 # a make target for npm install
 .npm

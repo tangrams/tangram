@@ -162,6 +162,9 @@ GLSL.defineVariable = function (name, value) {
     else if (typeof value === 'string') {
         type = 'sampler2D';
     }
+    else {
+        return; // no valid type found
+    }
 
     // Construct variable definition
     var variable = '';
@@ -178,7 +181,11 @@ GLSL.defineVariable = function (name, value) {
     Generate a GLSL uniform definition from a JS object
 */
 GLSL.defineUniform = function (name, value) {
-    return 'uniform ' + GLSL.defineVariable(name, value);
+    var def = GLSL.defineVariable(name, value);
+    if (!def) {
+        return;
+    }
+    return 'uniform ' + def;
 };
 
 /**

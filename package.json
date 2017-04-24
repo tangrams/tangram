@@ -1,6 +1,6 @@
 {
   "name": "tangram",
-  "version": "0.11.8",
+  "version": "0.12.2",
   "description": "WebGL Maps for Vector Tiles",
   "repository": {
     "type": "git",
@@ -16,22 +16,24 @@
     "WebGL",
     "OpenStreetMap"
   ],
+  "config": {
+    "output": "",
+    "output_map": ""
+  },
   "scripts": {
     "start": "npm run watch",
-    "test": "npm run lint && npm run build-test && npm run test-local",
-    "test-ci": "npm run lint && npm run build-test && npm run test-remote",
+    "test": "npm run lint && npm run build-bundle && npm run test-local",
+    "test-ci": "npm run lint && npm run build-bundle && npm run test-remote",
     "test-remote": "./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
     "test-local": "./node_modules/karma/bin/karma start --browsers Chrome --single-run",
     "karma-start": "./node_modules/karma/bin/karma start --browsers Chrome --no-watch",
     "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome",
     "lint": "$(npm bin)/jshint src/ && jshint test/",
-    "build": "npm run build-bundle -- -o dist/tangram.debug.js && npm run build-minify",
-    "build-test": "npm run build-bundle -- -o dist/tangram.test.js",
-    "build-debug": "npm run build-bundle -- -o dist/tangram.debug.js",
-    "build-bundle": "$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p browserify-derequire --debug",
+    "build": "npm run build-bundle && npm run build-minify",
+    "build-bundle": "$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js",
     "build-minify": "$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size",
     "build-size": "gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'",
-    "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram"
+    "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]"
   },
   "author": {
     "name": "Mapzen",
@@ -82,21 +84,23 @@
     "babel-preset-es2015": "6.16.0",
     "browserify": "13.0.1",
     "browserify-derequire": "0.9.4",
-    "budo": "8.2.1",
+    "budo": "10.0.3",
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
     "core-js": "2.4.1",
     "glob": "4.0.6",
     "jshint": "jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad",
-    "karma": "0.12.23",
+    "karma": "1.5.0",
     "karma-browserify": "5.1.0",
-    "karma-chrome-launcher": "0.1.4",
+    "karma-chrome-launcher": "2.0.0",
     "karma-mocha": "0.1.9",
     "karma-mocha-reporter": "1.0.0",
-    "karma-sauce-launcher": "tangrams/karma-sauce-launcher#firefox-profiles",
+    "karma-sauce-launcher": "tangrams/karma-sauce-launcher#firefox-profiles2",
     "karma-sinon": "1.0.4",
+    "mapstraction": "1.0.1",
     "mocha": "1.21.4",
     "sinon": "1.10.3",
+    "through2": "2.0.3",
     "uglify-js": "2.4.14",
     "yargs": "1.3.2"
   }

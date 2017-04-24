@@ -1,3 +1,4 @@
+import log from '../../utils/log';
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
 import FontManager from './font_manager';
@@ -41,7 +42,7 @@ export default class CanvasText {
         let dpr;
         return FontManager.loadFonts().then(() => {
             for (let style in texts) {
-                CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                CanvasText.initTextCache(style);
 
                 let text_infos = texts[style];
                 let first = true;
@@ -57,13 +58,38 @@ export default class CanvasText {
                     }
 
                     if (text_settings.can_articulate){
-                        let segments = splitLabelText(text);
+                        let words = text.split(' ');
 
-                        let rtl = isTextRTL(text);
+                        // RTL is true if every word is RTL
+                        // BIDI is true if there is RTL and LTR
+                        let hasRTL = false;
+                        let hasLTR = false;
+                        let bidi = false;
+                        for (var i = 0; i < words.length; i++){
+                            if (isTextRTL(words[i])) {
+                                if (hasLTR){
+                                    bidi = true;
+                                    break;
+                                }
+                                hasRTL = true;
+                            }
+                            else {
+                                if (hasRTL){
+                                    bidi = true;
+                                    break;
+                                }
+                                hasLTR = true;
+                            }
+                        }
+
+                        let rtl = (hasRTL && !hasLTR) && !bidi;
                         let shaped = isTextShaped(text);
 
                         text_info.isRTL = rtl;
-                        text_info.no_curving = shaped;
+                        text_info.no_curving = bidi || shaped;
+                        text_info.vertical_buffer = this.vertical_text_buffer;
+
+                        let segments = splitLabelText(text, rtl);
 
                         if (rtl) {
                             segments.reverse();
@@ -72,39 +98,19 @@ export default class CanvasText {
                         text_info.segments = segments;
                         text_info.size = [];
 
-                        for (let i = 0; i < segments.length; i++){
-                            let segment = segments[i];
-                            if (!CanvasText.text_cache[style][segment]) {
-                                CanvasText.text_cache[style][segment] = this.textSize(segment, text_settings);
-                                CanvasText.cache_stats.misses++;
+                        if (!text_info.no_curving) {
+                            for (let i = 0; i < segments.length; i++){
+                                text_info.size.push(this.textSize(style, segments[i], text_settings).size);
                             }
-                            else {
-                                CanvasText.cache_stats.hits++;
-                            }
-                            text_info.size.push(CanvasText.text_cache[style][segment].size);
                         }
 
                         // add full text as well
-                        if (!CanvasText.text_cache[style][text]) {
-                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
-                            CanvasText.cache_stats.misses++;
-                        }
-                        else {
-                            CanvasText.cache_stats.hits++;
-                        }
-                        text_info.total_size = CanvasText.text_cache[style][text].size;
+                        text_info.total_size = this.textSize(style, text, text_settings).size;
                     }
                     else {
-                        if (!CanvasText.text_cache[style][text]) {
-                            CanvasText.text_cache[style][text] = this.textSize(text, text_settings);
-                            CanvasText.cache_stats.misses++;
-                        }
-                        else {
-                            CanvasText.cache_stats.hits++;
-                        }
                         // Only send text sizes back to worker (keep computed text line info
                         // on main thread, for future rendering)
-                        text_info.size = CanvasText.text_cache[style][text].size;
+                        text_info.size = this.textSize(style, text, text_settings).size;
                     }
                 }
             }
@@ -115,7 +121,16 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
+    textSize (style, text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
+        // Check cache first
+        if (CanvasText.text_cache[style][text]) {
+            CanvasText.cache_stats.hits++;
+            return CanvasText.text_cache[style][text];
+        }
+        CanvasText.cache_stats.misses++;
+        CanvasText.text_cache_count++;
+
+        // Calc and store in cache
         let dpr = Utils.device_pixel_ratio * supersample;
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
@@ -148,10 +163,11 @@ export default class CanvasText {
         ];
 
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
-        return {
+        CanvasText.text_cache[style][text] = {
             lines,
             size: { collision_size, texture_size, logical_size, line_height }
         };
+        return CanvasText.text_cache[style][text];
     }
 
     // Draw multiple lines of text
@@ -356,13 +372,13 @@ export default class CanvasText {
                 }
             }
         }
+        CanvasText.clearTexcoordCache(tile_key);
     }
 
     // Place text labels within an atlas of the given max size
     setTextureTextPositions (texts, max_texture_size, tile_key) {
-        if (!CanvasText.texcoord_cache[tile_key]) {
-            CanvasText.texcoord_cache[tile_key] = {};
-        }
+        CanvasText.clearTexcoordCache(tile_key);
+        CanvasText.texcoord_cache[tile_key] = {};
 
         // Keep track of column width
         let column_width = 0;
@@ -517,8 +533,20 @@ export default class CanvasText {
         return px_size;
     }
 
-    clearTexcoordCache (tile_key) {
-        CanvasText.texcoord_cache[tile_key] = {};
+    static clearTexcoordCache (tile_key) {
+        delete CanvasText.texcoord_cache[tile_key];
+    }
+
+    static initTextCache (style) {
+        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+    }
+
+    static pruneTextCache () {
+        if (CanvasText.text_cache_count > CanvasText.text_cache_count_max) {
+            CanvasText.text_cache = {};
+            CanvasText.text_cache_count = 0;
+            log('debug', 'CanvasText: pruning text cache');
+        }
     }
 
 }
@@ -528,6 +556,8 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
+CanvasText.text_cache_count = 0;     // current size of cache (measured as # of entries)
+CanvasText.text_cache_count_max = 5000; // prune cache when it exceeds this size
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
 
@@ -566,13 +596,18 @@ function isTextShaped(s){
 
 // Right-to-left / bi-directional text handling
 // Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-let rtlDirCheck = new RegExp('^[\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]+$');
+let rtlDirCheck = new RegExp('^[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]+$');
 function isTextRTL(s){
     return rtlDirCheck.test(s);
 }
 
+let neutralDirCheck = new RegExp('[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF]$');
+function isTextNeutral(s){
+    return neutralDirCheck.test(s);
+}
+
 // Splitting strategy for chopping a label into segments
-function splitLabelText(text){
+function splitLabelText(text, rtl){
     if (text.length < codon_length) {
         return [text];
     }
@@ -586,7 +621,23 @@ function splitLabelText(text){
             segments[segments.length - 1] += segment;
         }
         else {
-            segments.push(segment);
+            // if RTL, check to see if segment ends on a neutral character
+            // in which case we need to add the neutral segments separately (codon_length = 1) in reverse order
+            if (rtl){
+                let neutral_segment = [];
+                while (segment.length > 0 && isTextNeutral(segment[segment.length - 1])){
+                    neutral_segment.unshift(segment[segment.length - 1]);
+                    segment = segment.substring(0, segment.length - 1);
+                }
+                segments.push(segment);
+                if (neutral_segment.length > 0){
+                    segments = segments.concat(neutral_segment);
+                }
+            }
+            else {
+                segment = text.substring(0, codon_length);
+                segments.push(segment);
+            }
         }
 
         text = text.substring(codon_length);
@@ -602,9 +653,6 @@ class MultiLine {
         this.width = 0;
         this.height = 0;
         this.lines = [];
-
-        this.ellipsis = '...';
-        this.ellipsis_width = Math.ceil(context.measureText(this.ellipsis).width);
 
         this.max_lines = max_lines;
         this.text_wrap = text_wrap;
@@ -654,9 +702,10 @@ class MultiLine {
 
     addEllipsis (){
         let last_line = this.lines[this.lines.length - 1];
+        let ellipsis_width = Math.ceil(this.context.measureText(MultiLine.ellipsis).width);
 
-        last_line.append(this.ellipsis);
-        last_line.width += this.ellipsis_width;
+        last_line.append(MultiLine.ellipsis);
+        last_line.width += ellipsis_width;
 
         if (last_line.width > this.width) {
             this.width = last_line.width;
@@ -735,6 +784,8 @@ class MultiLine {
         return multiline;
     }
 }
+
+MultiLine.ellipsis = '...';
 
 // A Private class used by MultiLine to contain the logic for a single line
 // including character count, width, height and text

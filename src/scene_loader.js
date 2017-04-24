@@ -204,29 +204,50 @@ export default SceneLoader = {
             }
         });
 
+        // Recursively look-up a global property name. Allows globals to refer to other globals, e.g.:
+        // global:
+        //    color: global.secret_color
+        //    secret_color: red
+        function lookupGlobalName (key, props, stack = []) {
+            if (stack.indexOf(key) > -1) {
+                log({ level: 'warn', once: true }, `Global properties: cyclical reference detected`, stack);
+                return;
+            }
+            stack.push(key);
+
+            const prop = (key.slice(0, 7) === 'global.') && (key.slice(7).replace(/\./g, separator));
+            if (prop && props[prop] !== undefined) {
+                if (typeof props[prop] === 'string' && props[prop].slice(0, 7) === 'global.') {
+                    return lookupGlobalName(props[prop], props, stack);
+                }
+                return prop;
+            }
+        }
+
         // Find and apply new properties
-        function applyProps (obj, target, key) {
+        function applyGlobals (obj, target, key) {
             // Convert string
             if (typeof obj === 'string') {
-                const prop = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
-                if (prop && props[prop] !== undefined) {
+                const prop = lookupGlobalName(obj, props);
+                const val = props[prop];
+                if (val !== undefined) {
                     // Save record of where property is applied
                     applied.push({ prop, target, key });
 
                     // Apply property
-                    obj = props[prop];
+                    obj = val;
                 }
             }
             // Loop through object properties
             else if (typeof obj === 'object') {
                 for (let p in obj) {
-                    obj[p] = applyProps(obj[p], obj, p);
+                    obj[p] = applyGlobals(obj[p], obj, p);
                 }
             }
             return obj;
         }
 
-        return applyProps(config);
+        return applyGlobals(config);
     },
 
     // Move inline (URL string) textures to the scene's top-level set of textures (config.textures).

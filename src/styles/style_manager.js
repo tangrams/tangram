@@ -61,6 +61,9 @@ export class StyleManager {
 
         // Increases precision for height values
         ShaderProgram.defines.TANGRAM_HEIGHT_SCALE = Geo.height_scale;
+
+        // Alpha discard threshold (substitute for alpha blending)
+        ShaderProgram.defines.TANGRAM_ALPHA_TEST = 0.5;
     }
 
     // Destroy all styles for a given GL context
@@ -133,6 +136,11 @@ export class StyleManager {
         // Merges - property-specific rules for merging values
         style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x)); // internal defines (not user-defined)
         style.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
+
+        let draws = sources.map(x => x.draw).filter(x => x); // draw defaults
+        if (draws.length > 0) {
+            style.draw = mergeObjects({}, ...draws);
+        }
 
         // Mix shader properties
         this.mixShaders(style, styles, sources);

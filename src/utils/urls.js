@@ -56,6 +56,13 @@ export function extensionForURL (url) {
     }
 }
 
+export function isLocalURL (url) {
+    if (typeof url !== 'string') {
+        return;
+    }
+    return (url.search(/^(data|blob):/) > -1);
+}
+
 export function isRelativeURL (url) {
     if (typeof url !== 'string') {
         return;
@@ -82,9 +89,10 @@ export function flattenRelativeURL (url) {
 
 // Add a set of query string params to a URL
 // params: hash of key/value pairs of query string parameters
+// returns array of: [modified URL, array of duplicate param name and values]
 export function addParamsToURL (url, params) {
     if (!params || Object.keys(params).length === 0) {
-        return url;
+        return [url, []];
     }
 
     var qs_index = url.indexOf('?');
@@ -106,15 +114,19 @@ export function addParamsToURL (url, params) {
 
     // Build query string params
     var url_params = '';
+    var dupes = [];
     for (var p in params) {
+        if (getURLParameter(p, url) !== '') {
+            dupes.push([p, params[p]]);
+            continue;
+        }
         url_params += `${p}=${params[p]}&`;
     }
 
     // Insert new query string params and restore hash
-    // NOTE: doesn't replace any values already present on query string, just inserts dupe values
     url = url.slice(0, qs_index) + url_params + url.slice(qs_index) + hash;
 
-    return url;
+    return [url, dupes];
 }
 
 // Polyfill (for Safari compatibility)
@@ -176,4 +188,12 @@ export function findCurrentURL (...paths) {
             }
         }
     }
+}
+
+// Via https://davidwalsh.name/query-string-javascript
+function getURLParameter (name, url) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(url);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }

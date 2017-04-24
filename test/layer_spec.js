@@ -128,20 +128,9 @@ describe('.parseLayer(layers)', () => {
         });
 
         it('returns the correct number of children layers', () => {
-            let tree = parseLayers(LayerTree).root;
-            let children = 0;
-
-            function walkDown (layer) {
-                if (layer.layers) {
-                    layer.layers.forEach((r) => {
-                        walkDown(r);
-                    });
-                }
-                children++;
-            }
-            walkDown(tree);
-
-            assert.equal(children, 4);
+            let tree = parseLayers(LayerTree);
+            let numChildren = Object.keys(tree.root.children_to_parse).length;
+            assert.equal(numChildren, 2);
         });
     });
 });

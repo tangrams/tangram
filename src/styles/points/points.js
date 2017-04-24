@@ -35,16 +35,14 @@ Object.assign(Points, TextLabels);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
+    vertex_shader_src: shaderSrc_pointsVertex,
+    fragment_shader_src: shaderSrc_pointsFragment,
     collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
     selection: true, // turn feature selection on
 
     init(options = {}, extra_attributes = []) {
         Style.init.call(this, options);
-
-        // Base shaders
-        this.vertex_shader_src = shaderSrc_pointsVertex;
-        this.fragment_shader_src = shaderSrc_pointsFragment;
 
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
@@ -66,7 +64,6 @@ Object.assign(Points, {
             attribs.push({ name: 'a_selection_click_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
         }
 
-        this.vertex_layout = new VertexLayout(attribs);
 
         // If we're not rendering as overlay, we need a layer attribute
         if (this.blend !== 'overlay') {
@@ -78,9 +75,16 @@ Object.assign(Points, {
         this.shaders.uniforms.u_label_texture = Texture.default;
 
         if (this.texture) {
-            this.defines.TANGRAM_POINT_TEXTURE = true;
+            this.defines.TANGRAM_TEXTURE_POINT = true;
             this.shaders.uniforms.u_texture = this.texture;
         }
+        else {
+            this.defines.TANGRAM_SHADER_POINT = true;
+            attribs.push({ name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+            attribs.push({ name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false });
+        }
+
+        this.vertex_layout = new VertexLayout(attribs);
 
         // Enable dual point/text mode
         this.defines.TANGRAM_MULTI_SAMPLER = true;
@@ -130,10 +134,9 @@ Object.assign(Points, {
             return;
         }
 
+        // Point styling
         let style = {};
         style.color = this.parseColor(draw.color, context);
-
-        // Point styling
 
         // require color or texture
         if (!style.color && !this.texture) {
@@ -164,12 +167,29 @@ Object.assign(Points, {
         }
         else {
             style.size = StyleParser.evalCachedProperty(style.size, context);
+            if (typeof style.size === 'number') {
+                style.size = [style.size, style.size]; // convert 1d size to 2d
+            }
+        }
+
+        // incorporate outline into size
+        if (draw.outline) {
+            style.outline_width = StyleParser.evalCachedProperty(draw.outline.width, context) || StyleParser.defaults.outline.width;
+            style.outline_color = this.parseColor(draw.outline.color, context);
+        }
+
+        style.outline_edge_pct = 0;
+        if (style.outline_width && style.outline_color) {
+            let outline_width = style.outline_width + 1;
+            style.size[0] += outline_width; // bump outline by 1px to balance out antialiasing
+            style.size[1] += outline_width;
+            style.outline_edge_pct = outline_width / Math.min(style.size[0], style.size[1]) * 2; // UV distance at which outline starts
         }
 
         // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
         style.size = [
-            Math.min(style.size[0] != null ? style.size[0] : style.size, 256),
-            Math.min(style.size[1] != null ? style.size[1] : style.size, 256)
+            Math.min(style.size[0], 256),
+            Math.min(style.size[1], 256)
         ];
 
         // Placement strategy
@@ -199,6 +219,13 @@ Object.assign(Points, {
             draw.text.visible !== false && // explicitly handle `visible` property for nested text
             this.parseTextFeature(feature, draw.text, context, tile);
 
+        if (Array.isArray(tf)) {
+            tf = null; // NB: boundary labels not supported for point label attachments, should log warning
+            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+                `cannot use boundary labels (e.g. 'text_source: { left: ..., right: ... }') for 'text' labels attached to 'points'; ` +
+                `provided 'text_source' value was '${JSON.stringify(draw.text.text_source)}'`);
+        }
+
         if (tf) {
             tf.layout.parent = style; // parent point will apply additional anchor/offset to text
 
@@ -213,15 +240,7 @@ Object.assign(Points, {
             Collision.addStyle(this.collision_group_text, tile.key);
         }
 
-        // Queue the feature for processing
-        if (!this.tile_data[tile.key]) {
-            this.startData(tile);
-        }
-
-        this.queues[tile.key].push({
-            feature, draw, context, style,
-            text_feature: tf
-        });
+        this.queueFeature({ feature, draw, context, style, text_feature: tf }, tile); // queue the feature for later processing
 
         // Register with collision manager
         Collision.addStyle(this.collision_group_points, tile.key);
@@ -248,6 +267,14 @@ Object.assign(Points, {
         return sprite_info;
     },
 
+    // Queue features for deferred processing (collect all features first so we can do collision on the whole group)
+    queueFeature (q, tile) {
+        if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
+            this.startData(tile);
+        }
+        this.queues[tile.key].push(q);
+    },
+
     // Override
     startData (tile) {
         this.queues[tile.key] = [];
@@ -258,7 +285,7 @@ Object.assign(Points, {
     endData (tile) {
         if (tile.canceled) {
             log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}`);
-            return;
+            return Promise.resolve();
         }
 
         let queue = this.queues[tile.key];
@@ -359,6 +386,12 @@ Object.assign(Points, {
 
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
+
+        if (draw.outline) {
+            draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
+            draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+        }
+
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
 
         // Size (1d value or 2d array)
@@ -571,6 +604,13 @@ Object.assign(Points, {
         // color
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
 
+        // outline
+        if (this.defines.TANGRAM_SHADER_POINT) {
+            let outline_color = style.outline_color || StyleParser.defaults.outline.color;
+            this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
+            this.fillVertexTemplate('a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, { size: 1 });
+        }
+
         // selection color
         if (this.selection) {
             this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
@@ -583,7 +623,7 @@ Object.assign(Points, {
     },
 
     buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
-        buildQuadsForPoints(
+        return buildQuadsForPoints(
             points,
             vertex_data,
             vertex_template,
@@ -594,7 +634,8 @@ Object.assign(Points, {
                 offset_index: this.vertex_layout.index.a_offset,
                 offsets_index: this.vertex_layout.index.a_offsets,
                 pre_angles_index: this.vertex_layout.index.a_pre_angles,
-                angles_index: this.vertex_layout.index.a_angles
+                angles_index: this.vertex_layout.index.a_angles,
+                outline_edge_index: sampler ? null : this.vertex_layout.index.a_outline_edge
             },
             {
                 quad: size,
@@ -619,10 +660,10 @@ Object.assign(Points, {
     build (style, vertex_data) {
         let label = style.label;
         if (label.type === 'curved') {
-            this.buildArticulatedLabel(label, style, vertex_data);
+            return this.buildArticulatedLabel(label, style, vertex_data);
         }
         else {
-            this.buildLabel(label, style, vertex_data);
+            return this.buildLabel(label, style, vertex_data);
         }
     },
 
@@ -642,7 +683,7 @@ Object.assign(Points, {
 
         let offset = label.offset;
 
-        this.buildQuad(
+        return this.buildQuad(
             [label.position],               // position
             size,                           // size in pixels
             angle,                          // angle in radians
@@ -660,6 +701,7 @@ Object.assign(Points, {
     buildArticulatedLabel (label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         let angle = label.angle;
+        let geom_count = 0;
 
         // pass for stroke
         for (let i = 0; i < label.num_segments; i++){
@@ -673,7 +715,7 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            this.buildQuad(
+            geom_count += this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
@@ -700,7 +742,7 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            this.buildQuad(
+            geom_count += this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
@@ -714,19 +756,21 @@ Object.assign(Points, {
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }
+
+        return geom_count;
     },
 
     // Override to pass-through to generic point builder
     buildLines (lines, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
 
     buildPoints (points, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
 
     buildPolygons (points, style, vertex_data, context) {
-        this.build(style, vertex_data);
+        return this.build(style, vertex_data);
     },
 
     makeMesh (vertex_data, vertex_elements, options = {}) {

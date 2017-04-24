@@ -1,5 +1,6 @@
 import log from './utils/log';
 import Utils from './utils/utils';
+import debugSettings from './utils/debug_settings';
 import * as URLs from './utils/urls';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
@@ -13,10 +14,12 @@ import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
 import View from './view';
 import Light from './light';
+import Tile from './tile';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
+import CanvasText from './styles/text/canvas_text';
 import FontManager from './styles/text/font_manager';
 import MediaCapture from './utils/media_capture';
 
@@ -35,7 +38,6 @@ export default class Scene {
         this.view = new View(this, options);
         this.tile_manager = new TileManager({ scene: this, view: this.view });
         this.num_workers = options.numWorkers || 2;
-        this.worker_url = options.workerUrl;
         if (options.disableVertexArrayObjects === true) {
             VertexArrayObject.disabled = true;
         }
@@ -54,8 +56,17 @@ export default class Scene {
         this.building = null;                           // tracks current scene building state (tiles being built, etc.)
         this.dirty = true;                              // request a redraw
         this.animated = false;                          // request redraw every frame
-        this.preUpdate = options.preUpdate;             // optional pre-render loop hook
-        this.postUpdate = options.postUpdate;           // optional post-render loop hook
+
+        if (options.preUpdate){
+            // optional pre-render loop hook
+            this.subscribe({'preUpdate': options.preUpdate});
+        }
+
+        if (options.postUpdate){
+            // optional post-render loop hook
+            this.subscribe({'postUpdate': options.postUpdate});
+        }
+
         this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
         this.render_loop_active = false;
         this.render_loop_stop = false;
@@ -71,6 +82,8 @@ export default class Scene {
         this.resetTime();
 
         this.container = options.container;
+        this.canvas = null;
+        this.contextOptions = options.webGLContextOptions;
 
         this.lights = null;
         this.background = null;
@@ -83,6 +96,7 @@ export default class Scene {
 
         this.log_level = options.logLevel || 'warn';
         log.setLevel(this.log_level);
+        log.reset();
     }
 
     static create (config, options = {}) {
@@ -97,9 +111,11 @@ export default class Scene {
         if (this.initializing) {
             return this.initializing;
         }
+        log.reset();
 
         this.updating++;
         this.initialized = false;
+        this.initial_build_time = null;
 
         // Backwards compatibilty for passing `config_path` string as second argument
         // (since transitioned to using options argument to accept more parameters)
@@ -164,11 +180,6 @@ export default class Scene {
         return this.initializing;
     }
 
-    // For API compatibility
-    reload(config_source = null, config_path = null) {
-        return this.load(config_source, config_path);
-    }
-
     destroy() {
         this.initialized = false;
         this.render_loop_stop = true; // schedule render loop to stop
@@ -206,6 +217,7 @@ export default class Scene {
         this.destroyWorkers();
         this.tile_manager.destroy();
         this.tile_manager = null;
+        log.reset();
     }
 
     createCanvas() {
@@ -224,10 +236,10 @@ export default class Scene {
         this.container.appendChild(this.canvas);
 
         try {
-            this.gl = Context.getContext(this.canvas, {
-                alpha: true, premultipliedAlpha: true, // TODO: vary w/scene alpha
+            this.gl = Context.getContext(this.canvas, Object.assign({
+                alpha: true, premultipliedAlpha: true,
                 device_pixel_ratio: Utils.device_pixel_ratio
-            });
+            }, this.contextOptions));
         }
         catch(e) {
             throw new Error(
@@ -245,10 +257,21 @@ export default class Scene {
 
     // Get the URL to load the web worker from
     getWorkerUrl() {
-        let worker_url = this.worker_url || URLs.findCurrentURL('tangram.debug.js', 'tangram.min.js');
+        let worker_url;
+        /* jshint -W117 */
+        // ignore uninitialized worker src variable (defined in parent scope)
+        if (typeof __worker_src__ !== "undefined"){
+            let source = '(' + __worker_src__ + ')()';
+            if (__worker_src_origin__) {
+                let origin = __worker_src_origin__.slice(0, __worker_src_origin__.lastIndexOf('/')+1);
+                source += '\n//#' + ' sourceMappingURL=' + origin + __worker_src_map__;
+            }
+            worker_url = URLs.createObjectURL(new Blob([source], { type: 'application/javascript' }));
+        }
+        /* jshint +W117 */
 
         if (!worker_url) {
-            throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
+            throw new Error("Couldn't find internal Tangram source variable (may indicate the library did not build correctly)");
         }
 
         // Import custom data source scripts alongside core library
@@ -434,9 +457,7 @@ export default class Scene {
         );
 
         // Pre-render loop hook
-        if (typeof this.preUpdate === 'function') {
-            this.preUpdate(will_render);
-        }
+        this.trigger('preUpdate', will_render);
 
         // Bail if no need to render
         if (!will_render) {
@@ -451,9 +472,7 @@ export default class Scene {
         this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
         // Post-render loop hook
-        if (typeof this.postUpdate === 'function') {
-            this.postUpdate(will_render);
-        }
+        this.trigger('postUpdate', will_render);
 
         // Redraw every frame if animating
         if (this.animated === true || this.view.isAnimating()) {
@@ -777,16 +796,10 @@ export default class Scene {
         ]);
     }
 
-    // Rebuild geometry, without re-parsing the config or re-compiling styles
-    // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
-    rebuild(options) {
-        return this.rebuildGeometry(options);
-    }
-
-    // Rebuild all tiles
+    // Rebuild all tiles, without re-parsing the config or re-compiling styles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuildGeometry({ sync = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
+    rebuild({ sync = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -842,6 +855,10 @@ export default class Scene {
         if (this.building) {
             log('info', `Scene: build geometry finished`);
             if (this.building.resolve) {
+                if (this.initial_build_time == null) {
+                    this.initial_build_time = (+new Date()) - this.start_time;
+                    log('debug', `Scene: initial build time: ${this.initial_build_time}`);
+                }
                 this.building.resolve(true);
             }
 
@@ -879,10 +896,10 @@ export default class Scene {
 
     // Add source to a scene, arguments `name` and `config` need to be provided:
     //  - If the name doesn't match a sources it will create it
-    //  - the `config` obj follow the YAML scene spec, ex: ```{type: 'TopoJSON', url: "//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson"]}```
+    //  - the `config` obj follow the YAML scene spec, ex: ```{type: 'TopoJSON', url: "//tile.mapzen.com/mapzen/vector/v1/all/{z}/{x}/{y}.topojson"]}```
     //    that looks like:
     //
-    //      scene.setDataSource("osm", {type: 'TopoJSON', url: "//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson" });
+    //      scene.setDataSource("osm", {type: 'TopoJSON', url: "//tile.mapzen.com/mapzen/vector/v1/all/{z}/{x}/{y}.topojson" });
     //
     //  - also can be pass a ```data``` obj: ```{type: 'GeoJSON', data: JSObj ]}```
     //
@@ -1102,7 +1119,7 @@ export default class Scene {
             config: config_serialized,
             generation: this.generation,
             introspection: this.introspection
-        });
+        }, debugSettings);
     }
 
     // Listen to related objects
@@ -1167,6 +1184,7 @@ export default class Scene {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
             !this.tile_manager.isLoadingVisibleTiles()) {
             this.last_complete_generation = this.generation;
+            CanvasText.pruneTextCache();
             this.trigger('view_complete');
         }
     }
@@ -1258,7 +1276,7 @@ export default class Scene {
                 scene.tile_manager.getRenderableTiles().forEach(tile => {
                     for (let style in tile.meshes) {
                         sizes[style] = sizes[style] || 0;
-                        sizes[style] += tile.meshes[style].byte_size;
+                        sizes[style] += tile.meshes[style].buffer_size;
                     }
                 });
                 return sizes;
@@ -1273,6 +1291,16 @@ export default class Scene {
                     sizes[base] += style_sizes[style];
                 }
                 return sizes;
+            },
+
+            layerStats () {
+                if (debugSettings.layer_stats) {
+                    return Tile.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
+                }
+                else {
+                    log('warn', `Enable the 'layer_stats' debug setting to collect layer stats`);
+                    return {};
+                }
             },
 
             renderableTilesCount () {

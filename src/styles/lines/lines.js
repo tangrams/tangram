@@ -105,7 +105,6 @@ Object.assign(Lines, {
         // Specify a line texture (either directly, or rendered dash pattern from above)
         if (this.texture) {
             this.defines.TANGRAM_LINE_TEXTURE = true;
-            this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are transparent
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
             this.shaders.uniforms.u_texture_ratio = 1;
@@ -340,7 +339,7 @@ Object.assign(Lines, {
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
         let vertex_template = this.makeVertexTemplate(style);
-        buildPolylines(
+        return buildPolylines(
             lines,
             style.width,
             vertex_data,
@@ -356,16 +355,18 @@ Object.assign(Lines, {
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
-                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
+                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 2
             }
         );
     },
 
     buildPolygons(polygons, style, vertex_data, context) {
-        // Render polygons as individual lines
-        for (let p=0; p < polygons.length; p++) {
-            this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
-        }
+         // Render polygons as individual lines
+        let geom_count = 0;
+         for (let p=0; p < polygons.length; p++) {
+            geom_count += this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
+         }
+        return geom_count;
     }
 
 });
