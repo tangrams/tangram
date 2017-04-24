@@ -33,6 +33,20 @@ varying float v_alpha_factor;
 #pragma tangram: raster
 #pragma tangram: global
 
+#ifdef TANGRAM_SHADER_POINT
+    // Draw an SDF-style point
+    void drawPoint (inout vec4 color) {
+        vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge
+        float point_dist = length(uv);
+        color = mix(
+            color,
+            v_outline_color,
+            (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)
+        );
+        color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));
+    }
+#endif
+
 void main (void) {
     // Initialize globals
     #pragma tangram: setup
@@ -41,18 +55,9 @@ void main (void) {
 
     if (v_sampler == 0.) { // sprite sampler
         #ifdef TANGRAM_TEXTURE_POINT
-            // Draw sprite
-            color *= texture2D(u_texture, v_texcoord);
+            color *= texture2D(u_texture, v_texcoord); // draw sprite
         #else
-            // Draw a point
-            vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge
-            float point_dist = length(uv);
-            color = mix(
-                color,
-                v_outline_color,
-                (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)
-            );
-            color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));
+            drawPoint(color); // draw a point
         #endif
 
         // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)
