@@ -35,10 +35,10 @@ export default class VertexLayout {
             }
 
             // Force 4-byte alignment on attributes
-            this.stride += attrib.byte_size;
-            if (this.stride & 3) { // pad to multiple of 4 bytes
-                this.stride += 4 - (this.stride & 3);
+            if (attrib.byte_size & 3) { // pad to multiple of 4 bytes
+                attrib.byte_size += 4 - (attrib.byte_size & 3);
             }
+            this.stride += attrib.byte_size;
 
             // Add info to list of attribute components
             // Used to build the vertex data, provides pointers and offsets into each typed array view
