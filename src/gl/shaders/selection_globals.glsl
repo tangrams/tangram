@@ -7,6 +7,9 @@
 #endif
 
 #if defined(TANGRAM_FEATURE_SELECTABLE)
+    #define TANGRAM_SELECTION_STATE_HOVER 1.
+    #define TANGRAM_SELECTION_STATE_CLICK 2.
+
     varying vec4 v_selection_color;
     varying float v_selection_state;
 
@@ -19,11 +22,11 @@
     // uniform bool u_selection_has_hover_color;
     // uniform bool u_selection_has_click_color;
 
-    bool isFeatureHover (void) {
-        return abs(1. - v_selection_state) <= TANGRAM_EPSILON;
+    float isFeatureHover (void) {
+        return 1. - step(TANGRAM_EPSILON, abs(TANGRAM_SELECTION_STATE_HOVER - v_selection_state));
     }
 
-    bool isFeatureClick (void) {
-        return abs(2. - v_selection_state) <= TANGRAM_EPSILON;
+    float isFeatureClick (void) {
+        return 1. - step(TANGRAM_EPSILON, abs(TANGRAM_SELECTION_STATE_CLICK - v_selection_state));
     }
 #endif

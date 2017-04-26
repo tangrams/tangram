@@ -86,12 +86,10 @@ styles:
         shaders:
             blocks:
                 color: |
-                    if (isFeatureHover() && isScreendoor()) {
+                    if (isFeatureHover() > 0. && isScreendoor()) {
                         discard;
                     }
-                    else if (isFeatureClick()) {
-                        color.rgb *= 1. - (abs(sin(u_time * 1.)) * .6);
-                    }
+                    color.rgb *= mix(1., 1. - (abs(sin(u_time * 1.)) * .6), isFeatureClick());
 
     icons:
         base: points
