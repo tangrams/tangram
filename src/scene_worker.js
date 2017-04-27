@@ -233,8 +233,8 @@ Object.assign(self, {
     },
 
     // Resets the feature selection state
-    resetFeatureSelection () {
-        FeatureSelection.reset();
+    resetFeatureSelection (sources = null) {
+        FeatureSelection.reset(sources);
     },
 
     // Selection map size for this worker

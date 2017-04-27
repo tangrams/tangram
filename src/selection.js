@@ -249,11 +249,26 @@ export default class FeatureSelection {
         return selector.color;
     }
 
-    static reset() {
-        this.tiles = {};
-        this.map = {};
-        this.map_size = 0;
-        this.map_entry = 0;
+    static reset(sources) {
+        // Clear specific sources
+        if (Array.isArray(sources)) {
+            sources.forEach(source => this.clearSource(source));
+        }
+        // Clear all sources
+        else {
+            this.tiles = {};
+            this.map = {};
+            this.map_size = 0;
+            this.map_entry = 0;
+        }
+    }
+
+    static clearSource(source) {
+        for (let key in this.tiles) {
+            if (this.tiles[key].tile.source === source) {
+                this.clearTile(key);
+            }
+        }
     }
 
     static clearTile(key) {

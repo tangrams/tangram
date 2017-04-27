@@ -779,7 +779,7 @@ export default class Scene {
             if (sync) {
                 this.syncConfigToWorker({ serialize_funcs });
             }
-            this.resetFeatureSelection();
+            this.resetFeatureSelection(sources);
             this.resetTime();
 
             // Rebuild visible tiles
@@ -1098,12 +1098,12 @@ export default class Scene {
         this.listeners = null;
     }
 
-    resetFeatureSelection() {
+    resetFeatureSelection(sources = null) {
         if (!this.selection) {
             this.selection = new FeatureSelection(this.gl, this.workers, () => this.building);
         }
         else if (this.workers) {
-            WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection');
+            WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection', sources);
         }
     }
 
