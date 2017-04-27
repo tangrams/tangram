@@ -81,7 +81,7 @@ Enjoy!
         else {
             for (var name in config.sources) {
                 var source = config.sources[name];
-                if (source.url.search('mapzen.com')) {
+                if (source.url.search('mapzen.com') > -1) {
                     source.url_params = source.url_params || {};
                     source.url_params.api_key = 'mapzen-T3tPjn7';
                 }
