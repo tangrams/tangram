@@ -25688,8 +25688,7 @@ var ShaderProgram = function () {
                         e.block = _this.block(error.type, e.line);
                     });
                 }
-
-                throw new Error('ShaderProgram.compile(): program ' + this.id + ' (' + this.name + ') error:', error);
+                throw error;
             }
 
             // Discard shader sources after successful compilation
@@ -26238,13 +26237,8 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
         return ShaderProgram.programs_by_source[key];
     }
 
-    try {
-        var vertex_shader = ShaderProgram.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
-        var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
-    } catch (err) {
-        (0, _log2.default)('error', err.message);
-        throw err;
-    }
+    var vertex_shader = ShaderProgram.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
+    var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
 
     gl.useProgram(null);
     if (program != null) {
@@ -26270,9 +26264,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         var message = new Error('WebGL program error:\n            VALIDATE_STATUS: ' + gl.getProgramParameter(program, gl.VALIDATE_STATUS) + '\n            ERROR: ' + gl.getError() + '\n            --- Vertex Shader ---\n            ' + vertex_shader_source + '\n            --- Fragment Shader ---\n            ' + fragment_shader_source);
 
-        var error = { type: 'program', message: message };
-        (0, _log2.default)('error', error.message);
-        throw error;
+        throw Object.assign(new Error(message), { type: 'program' });
     }
 
     ShaderProgram.programs_by_source[key] = program; // cache by exact source
@@ -26297,7 +26289,7 @@ ShaderProgram.createShader = function (gl, source, stype) {
         var type = stype === gl.VERTEX_SHADER ? 'vertex' : 'fragment';
         var message = gl.getShaderInfoLog(shader);
         var errors = (0, _glShaderErrors2.default)(message);
-        throw { type: type, message: message, errors: errors };
+        throw Object.assign(new Error(message), { type: type, errors: errors });
     }
 
     ShaderProgram.shaders_by_source[key] = shader; // cache by exact source
@@ -27127,8 +27119,6 @@ var _vertex_elements2 = _interopRequireDefault(_vertex_elements);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; } // web workers don't have access to GL context, so import all GL constants
@@ -27150,26 +27140,24 @@ var VertexData = function () {
 
         this.vertex_layout = vertex_layout;
         this.vertex_elements = new _vertex_elements2.default();
+        this.stride = this.vertex_layout.stride;
 
         if (VertexData.array_pool.length > 0) {
             this.vertex_buffer = VertexData.array_pool.pop();
             this.byte_length = this.vertex_buffer.byteLength;
-            this.size = Math.floor(this.byte_length / this.vertex_layout.stride);
+            this.size = Math.floor(this.byte_length / this.stride);
             (0, _log2.default)('trace', 'VertexData: reused buffer of bytes ' + this.byte_length + ', ' + this.size + ' vertices');
         } else {
             this.size = prealloc; // # of vertices to allocate
-            this.byte_length = this.vertex_layout.stride * this.size;
+            this.byte_length = this.stride * this.size;
             this.vertex_buffer = new Uint8Array(this.byte_length);
         }
         this.offset = 0; // byte offset into currently allocated buffer
 
-        this.components = [];
-        for (var c = 0; c < this.vertex_layout.components.length; c++) {
-            this.components.push([].concat(_toConsumableArray(this.vertex_layout.components[c])));
-        }
         this.vertex_count = 0;
         this.realloc_count = 0;
         this.setBufferViews();
+        this.setAddVertexFunction();
     }
 
     // (Re-)allocate typed views into the main buffer - only create the types we need for this layout
@@ -27189,12 +27177,6 @@ var VertexData = function () {
                     this.views[attrib.type] = new array_type(this.vertex_buffer.buffer);
                 }
             }
-
-            // Update component buffer pointers
-            for (var c = 0; c < this.components.length; c++) {
-                var component = this.components[c];
-                component[1] = this.views[component[0]];
-            }
         }
 
         // Check allocated buffer size, expand/realloc buffer if needed
@@ -27202,10 +27184,10 @@ var VertexData = function () {
     }, {
         key: 'checkBufferSize',
         value: function checkBufferSize() {
-            if (this.offset + this.vertex_layout.stride > this.byte_length) {
+            if (this.offset + this.stride > this.byte_length) {
                 this.size = Math.floor(this.size * 1.5);
                 this.size -= this.size % 4;
-                this.byte_length = this.vertex_layout.stride * this.size;
+                this.byte_length = this.stride * this.size;
                 var new_view = new Uint8Array(this.byte_length);
                 new_view.set(this.vertex_buffer); // copy existing data to new buffer
                 VertexData.array_pool.push(this.vertex_buffer); // save previous buffer for use by next tile
@@ -27216,24 +27198,22 @@ var VertexData = function () {
             }
         }
 
-        // Add a vertex, copied from a plain JS array of elements matching the order of the vertex layout.
-        // Note: uses pre-calculated info about each attribute, including pointer to appropriate typed array
-        // view and offset into it. This was the fastest method profiled so far for filling a mixed-type
-        // vertex layout (though still slower than the previous method that only supported Float32Array attributes).
+        // Initialize the add vertex function (lazily compiled by vertex layout)
+
+    }, {
+        key: 'setAddVertexFunction',
+        value: function setAddVertexFunction() {
+            this.vertexLayoutAddVertex = this.vertex_layout.getAddVertexFunction();
+        }
+
+        // Add a vertex, copied from a plain JS array of elements matching the order of the vertex layout
 
     }, {
         key: 'addVertex',
         value: function addVertex(vertex) {
             this.checkBufferSize();
-            var i = 0;
-
-            var clen = this.components.length;
-            for (var c = 0; c < clen; c++) {
-                var component = this.components[c];
-                component[1][(this.offset >> component[2]) + component[3]] = vertex[i++];
-            }
-
-            this.offset += this.vertex_layout.stride;
+            this.vertexLayoutAddVertex(vertex, this.views, this.offset);
+            this.offset += this.stride;
             this.vertex_count++;
         }
 
@@ -27355,7 +27335,13 @@ var _vertex_data = _dereq_('./vertex_data');
 
 var _vertex_data2 = _interopRequireDefault(_vertex_data);
 
+var _hash = _dereq_('../utils/hash');
+
+var _hash2 = _interopRequireDefault(_hash);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -27373,7 +27359,8 @@ var VertexLayout = function () {
         // Calc vertex stride
         this.stride = 0;
 
-        var count = 0;
+        var index = 0,
+            count = 0;
         for (var a = 0; a < this.attribs.length; a++) {
             var attrib = this.attribs[a];
             attrib.offset = this.stride;
@@ -27395,28 +27382,27 @@ var VertexLayout = function () {
             }
 
             // Force 4-byte alignment on attributes
-            this.stride += attrib.byte_size;
-            if (this.stride & 3) {
+            if (attrib.byte_size & 3) {
                 // pad to multiple of 4 bytes
-                this.stride += 4 - (this.stride & 3);
+                attrib.byte_size += 4 - (attrib.byte_size & 3);
             }
+            this.stride += attrib.byte_size;
 
-            // Add info to list of attribute components
-            // Used to build the vertex data, provides pointers and offsets into each typed array view
-            // Each component is an array of:
-            // [GL attrib type, pointer to typed array view, bits to shift right to determine buffer offset, additional buffer offset for the component]
+            // Add info to list of attribute components (e.g. float is 1 component, vec3 is 3 separate components)
+            // Used to map plain JS array to typed arrays
             var offset_typed = attrib.offset >> shift;
-            if (attrib.size > 1) {
-                for (var s = 0; s < attrib.size; s++) {
-                    this.components.push([attrib.type, null, shift, offset_typed++]);
-                }
-            } else {
-                this.components.push([attrib.type, null, shift, offset_typed]);
+            for (var s = 0; s < attrib.size; s++) {
+                this.components.push({
+                    type: attrib.type,
+                    shift: shift,
+                    offset: offset_typed++,
+                    index: count++
+                });
             }
 
             // Provide an index into the vertex data buffer for each attribute component
-            this.index[attrib.name] = count;
-            count += attrib.size;
+            this.index[attrib.name] = index;
+            index += attrib.size;
         }
     }
 
@@ -27467,6 +27453,58 @@ var VertexLayout = function () {
         value: function createVertexData() {
             return new _vertex_data2.default(this);
         }
+
+        // Lazily create the add vertex function
+
+    }, {
+        key: 'getAddVertexFunction',
+        value: function getAddVertexFunction() {
+            if (this.addVertex == null) {
+                this.createAddVertexFunction();
+            }
+            return this.addVertex;
+        }
+
+        // Dynamically compile a function to add a plain JS vertex array to this layout's typed VBO arrays
+
+    }, {
+        key: 'createAddVertexFunction',
+        value: function createAddVertexFunction() {
+            var key = (0, _hash2.default)(JSON.stringify(this.attribs));
+            if (VertexLayout.add_vertex_funcs[key] == null) {
+                // `t` = current typed array to write to
+                // `o` = current offset into VBO, in current type size (e.g. divide 2 for shorts, divide by 4 for floats, etc.)
+                // `v` = plain JS array containing vertex data
+                // `vs` = typed arrays (one per GL type needed for this vertex layout)
+                // `off` = current offset into VBO, in bytes
+                var src = ['var t, o;'];
+
+                // Sort by array type to reduce redundant array look-up and offset calculation
+                var last_type = void 0;
+                var components = [].concat(_toConsumableArray(this.components));
+                components.sort(function (a, b) {
+                    return a[0] !== b[0] ? a[0] - b[0] : a[4] - b[4];
+                });
+
+                for (var c = 0; c < components.length; c++) {
+                    var component = components[c];
+
+                    if (last_type !== component.type) {
+                        src.push('t = vs[' + component.type + '];');
+                        src.push('o = off' + (component.shift ? ' >> ' + component.shift : '') + ';');
+                        last_type = component.type;
+                    }
+
+                    src.push('t[o + ' + component.offset + '] = v[' + component.index + '];');
+                }
+
+                src = src.join('\n');
+                var func = new Function('v', 'vs', 'off', src); // jshint ignore:line
+                VertexLayout.add_vertex_funcs[key] = func;
+            }
+
+            this.addVertex = VertexLayout.add_vertex_funcs[key];
+        }
     }]);
 
     return VertexLayout;
@@ -27479,7 +27517,10 @@ var VertexLayout = function () {
 exports.default = VertexLayout;
 VertexLayout.enabled_attribs = {};
 
-},{"./constants":202,"./vertex_data":211}],214:[function(_dereq_,module,exports){
+// Functions to add plain JS vertex array to typed VBO arrays
+VertexLayout.add_vertex_funcs = {}; // keyed by unique set of attributes
+
+},{"../utils/hash":258,"./constants":202,"./vertex_data":211}],214:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -31581,7 +31622,7 @@ var Scene = function () {
                 if (sync) {
                     _this8.syncConfigToWorker({ serialize_funcs: serialize_funcs });
                 }
-                _this8.resetFeatureSelection();
+                _this8.resetFeatureSelection(sources);
                 _this8.resetTime();
 
                 // Rebuild visible tiles
@@ -31983,12 +32024,14 @@ var Scene = function () {
         value: function resetFeatureSelection() {
             var _this15 = this;
 
+            var sources = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+
             if (!this.selection) {
                 this.selection = new _selection2.default(this.gl, this.workers, function () {
                     return _this15.building;
                 });
             } else if (this.workers) {
-                _worker_broker2.default.postMessage(this.workers, 'self.resetFeatureSelection');
+                _worker_broker2.default.postMessage(this.workers, 'self.resetFeatureSelection', sources);
             }
         }
 
@@ -33233,7 +33276,9 @@ if (_thread2.default.is_worker) {
 
         // Resets the feature selection state
         resetFeatureSelection: function resetFeatureSelection() {
-            _selection2.default.reset();
+            var sources = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+
+            _selection2.default.reset(sources);
         },
 
 
@@ -33568,20 +33613,40 @@ var FeatureSelection = function () {
         }
     }, {
         key: 'reset',
-        value: function reset() {
-            this.tiles = {};
-            this.map = {};
-            this.map_size = 0;
-            this.map_entry = 0;
+        value: function reset(sources) {
+            var _this3 = this;
+
+            // Clear specific sources
+            if (Array.isArray(sources)) {
+                sources.forEach(function (source) {
+                    return _this3.clearSource(source);
+                });
+            }
+            // Clear all sources
+            else {
+                    this.tiles = {};
+                    this.map = {};
+                    this.map_size = 0;
+                    this.map_entry = 0;
+                }
+        }
+    }, {
+        key: 'clearSource',
+        value: function clearSource(source) {
+            for (var key in this.tiles) {
+                if (this.tiles[key].tile.source === source) {
+                    this.clearTile(key);
+                }
+            }
         }
     }, {
         key: 'clearTile',
         value: function clearTile(key) {
-            var _this3 = this;
+            var _this4 = this;
 
             if (this.tiles[key]) {
                 this.tiles[key].entries.forEach(function (k) {
-                    return delete _this3.map[k];
+                    return delete _this4.map[k];
                 });
                 this.map_size -= this.tiles[key].entries.length;
                 delete this.tiles[key];
@@ -36073,7 +36138,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 
 var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute float a_outline_edge;\nattribute vec4 a_outline_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_factor;\n#endif\n\n#ifdef TANGRAM_MULTI_SAMPLER\n    varying float v_sampler;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n#define TANGRAM_PX_FADE_RANGE 2.\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n// Assumes stops are [0, 0.33, 0.66, 0.99];\nfloat mix4linear(float a, float b, float c, float d, float x) {\n    return mix(mix(a, b, 3. * x),\n               mix(b,\n                   mix(c, d, 3. * (max(x, .66) - .66)),\n                   3. * (clamp(x, .33, .66) - .33)),\n               step(0.33, x)\n            );\n}\n\n// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)\nbool isShaderPoint() {\n    #ifdef TANGRAM_SHADER_POINT\n        #ifdef TANGRAM_MULTI_SAMPLER\n            if (v_sampler == 0.) { // sprite sampler\n                return true;\n            }\n        #else\n            return true;\n        #endif\n    #endif\n    return false;\n}\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord;\n\n    #ifdef TANGRAM_SHADER_POINT\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    #ifdef TANGRAM_MULTI_SAMPLER\n        v_sampler = a_shape.w; // texture sampler\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
-var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\n\nuniform sampler2D u_label_texture;\nvarying float v_sampler;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_factor;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    if (v_sampler == 0.) { // sprite sampler\n        #ifdef TANGRAM_TEXTURE_POINT\n            // Draw sprite\n            color *= texture2D(u_texture, v_texcoord);\n        #else\n            // Draw a point\n            vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge\n            float point_dist = length(uv);\n            color = mix(\n                color,\n                v_outline_color,\n                (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)\n            );\n            color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));\n        #endif\n\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n    else { // label sampler\n        color = texture2D(u_label_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\n\nuniform sampler2D u_label_texture;\nvarying float v_sampler;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_factor;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_SHADER_POINT\n    // Draw an SDF-style point\n    void drawPoint (inout vec4 color) {\n        vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge\n        float point_dist = length(uv);\n        color = mix(\n            color,\n            v_outline_color,\n            (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)\n        );\n        color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    if (v_sampler == 0.) { // sprite sampler\n        #ifdef TANGRAM_TEXTURE_POINT\n            color *= texture2D(u_texture, v_texcoord); // draw sprite\n        #else\n            drawPoint(color); // draw a point\n        #endif\n\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n    else { // label sampler\n        color = texture2D(u_label_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var PLACEMENT = _label_point2.default.PLACEMENT;
 
@@ -37432,7 +37497,11 @@ var Style = exports.Style = {
 
         if (!program.compiled) {
             (0, _log2.default)('debug', 'Compiling style \'' + this.name + '\', program key \'' + key + '\'');
-            program.compile();
+            try {
+                program.compile();
+            } catch (e) {
+                (0, _log2.default)('error', 'Style: error compiling program for style \'' + this.name + '\' (program key \'' + key + '\')', this, e.stack);
+            }
         }
         return program;
     },
@@ -43072,8 +43141,6 @@ var _geo2 = _interopRequireDefault(_geo);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
 var Utils;
 exports.default = Utils = {};
 
@@ -43230,9 +43297,9 @@ Utils.stringToFunction = function (val, wrap) {
             args = args.length > 0 ? args : ['context']; // default to single 'context' argument
 
             if (typeof wrap === 'function') {
-                return new (Function.prototype.bind.apply(Function, [null].concat(_toConsumableArray(args), [wrap(src)])))(); // jshint ignore:line
+                return new Function(args.toString(), wrap(src)); // jshint ignore:line
             } else {
-                return new (Function.prototype.bind.apply(Function, [null].concat(_toConsumableArray(args), [src])))(); // jshint ignore:line
+                return new Function(args.toString(), src); // jshint ignore:line
             }
         } catch (e) {
             // fall-back to original value if parsing failed
@@ -43365,7 +43432,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.2\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"8.2.1\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.3\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
