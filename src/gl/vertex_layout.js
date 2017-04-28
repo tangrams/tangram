@@ -121,7 +121,7 @@ export default class VertexLayout {
             // Sort by array type to reduce redundant array look-up and offset calculation
             let last_type;
             let components = [...this.components];
-            components.sort((a, b) => (a[0] !== b[0]) ? (a[0] - b[0]) : (a[4] - b[4]));
+            components.sort((a, b) => (a.type !== b.type) ? (a.type - b.type) : (a.index - b.index));
 
             for (let c=0; c < components.length; c++) {
                 let component = components[c];
