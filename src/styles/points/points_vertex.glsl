@@ -108,6 +108,7 @@ void main() {
     float theta = a_shape.z / 4096.;
 
     #ifdef TANGRAM_CURVED_LABEL
+        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
         if (a_offsets[0] != 0.){
             #ifdef TANGRAM_FADE_ON_ZOOM_IN
                 v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);

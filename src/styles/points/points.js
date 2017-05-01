@@ -675,6 +675,8 @@ Object.assign(Points, {
 
         let offset = label.offset;
 
+        // TODO: instead of passing null, pass arrays with fingerprintable values
+        // This value is checked in the shader to determine whether to apply curving logic
         return this.buildQuad(
             [label.position],               // position
             size,                           // size in pixels
@@ -685,7 +687,7 @@ Object.assign(Points, {
             offset,                         // offset from center in pixels
             null,                           // placeholder for multiple offsets
             texcoords,                      // texture UVs
-            false,                          // if curved
+            false,                          // if curved boolean
             vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
@@ -694,6 +696,9 @@ Object.assign(Points, {
         let vertex_template = this.makeVertexTemplate(style);
         let angle = label.angle;
         let geom_count = 0;
+
+        // two passes for stroke and fill, where stroke needs to be drawn first (painter's algorithm)
+        // this ensures strokes don't overlap on other fills
 
         // pass for stroke
         for (let i = 0; i < label.num_segments; i++){

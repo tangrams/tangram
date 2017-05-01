@@ -86,7 +86,7 @@ export default class CanvasText {
                         let shaped = isTextShaped(text);
 
                         text_info.isRTL = rtl;
-                        text_info.no_curving = bidi || shaped;
+                        text_info.no_curving = bidi || shaped; // used in LabelLine to prevent curved labels
                         text_info.vertical_buffer = this.vertical_text_buffer;
 
                         let segments = splitLabelText(text, rtl);
@@ -247,6 +247,7 @@ export default class CanvasText {
         // 0.75 buffer produces a better approximate vertical centering of text
         let ty = y + vertical_buffer * 0.75 + line_height;
 
+        // Draw stroke and fill separately for curved text. Offset stroke in texture atlas by shift.
         if (stroke && stroke_width > 0) {
             let shift = (type === 'curved') ? texture_size[0] : 0;
             this.context.strokeText(str, tx + shift, ty);

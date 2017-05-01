@@ -112,6 +112,8 @@ function norm(p, q){
     return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
 }
 
+// TODO: can be optimized.
+// you don't have to start from the first index every time for placement
 function interpolateLine(line, distance, min_length, options){
     let sum = 0;
     let position, angle;
