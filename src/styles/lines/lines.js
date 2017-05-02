@@ -26,7 +26,7 @@ Object.assign(Lines, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_normal', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -275,12 +275,8 @@ Object.assign(Lines, {
         // a_extrude.w - scaling to previous and next zoom
         this.vertex_template[i++] = style.next_width;
 
-        // a_normal.xy - normal vector
+        // a_offset.xy - normal vector
         this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
-        // a_normal.z - isCap
-        this.vertex_template[i++] = 0;
-        // a_normal.w - offset_distance
         this.vertex_template[i++] = 0;
 
         // a_color.rgba
@@ -332,8 +328,8 @@ Object.assign(Lines, {
                 miter_limit: style.miter_limit,
                 scaling_index: this.vertex_layout.index.a_extrude,
                 scaling_normalize: 256, // values have an 8-bit fraction
-                normal_index: this.vertex_layout.index.a_normal,
-                normal_normalize: 256, // values have an 8-bit fraction
+                offset_index: this.vertex_layout.index.a_offset,
+                offset_normalize: 256, // values have an 8-bit fraction
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 texcoord_width: (style.width || style.next_width) / context.tile.overzoom2, // UVs can't calc for zero-width, use next zoom width in that case
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
