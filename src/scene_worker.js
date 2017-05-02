@@ -11,6 +11,7 @@ import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
 import {parseLayers} from './styles/layer';
 import Texture from './gl/texture';
+import VertexElements from './gl/vertex_elements';
 
 export var SceneWorker = self;
 
@@ -27,12 +28,13 @@ Object.assign(self, {
     tiles: {},
 
     // Initialize worker
-    init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio) {
+    init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio, has_element_index_unit) {
         self.scene_id = scene_id;
         self._worker_id = worker_id;
         self.num_workers = num_workers;
         log.setLevel(log_level);
         Utils.device_pixel_ratio = device_pixel_ratio;
+        VertexElements.setElementIndexUint(has_element_index_unit);
         FeatureSelection.setPrefix(self._worker_id);
         self.style_manager = new StyleManager();
         return worker_id;

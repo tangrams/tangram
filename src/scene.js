@@ -313,8 +313,11 @@ export default class Scene {
 
     // Instantiate workers from URL, init event handlers
     makeWorkers(url) {
-        var queue = [];
 
+        // Let VertexElements know if 32 bit indices for element arrays are available
+        let has_element_index_uint = this.gl.getExtension("OES_element_index_uint") ? true : false;
+
+        let queue = [];
         this.workers = [];
         for (var id=0; id < this.num_workers; id++) {
             var worker = new Worker(url);
@@ -324,7 +327,7 @@ export default class Scene {
 
             log('debug', `Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio, has_element_index_uint).then(
                 (id) => {
                     log('debug', `Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -339,10 +342,6 @@ export default class Scene {
         this.next_worker = 0;
         return Promise.all(queue).then(() => {
             log.setWorkers(this.workers);
-
-            // Let VertexElements know if 32 bit indices for element arrays are available
-            let Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
-            WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', Uint32_flag);
 
             // Free memory after worker initialization
             URLs.revokeObjectURL(url);
