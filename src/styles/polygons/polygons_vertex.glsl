@@ -29,7 +29,7 @@ attribute vec4 a_color;
     // w:  scaling factor for interpolating width between zooms
     attribute vec4 a_extrude;
     // xy: direction of line, for getting perpendicular offset
-    attribute vec4 a_normal;
+    attribute vec4 a_offset;
 #endif
 
 varying vec4 v_position;
@@ -79,12 +79,12 @@ void main() {
     vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
 
     #ifdef TANGRAM_EXTRUDE_LINES
+        // vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         float width = a_extrude.z;
         float dwdz = a_extrude.w;
-        vec2 normal = a_normal.xy / 256.; // values have an 8-bit fraction;
-        float isCap = a_normal.z; // isCap: 0 or 1
-        float distance = a_normal.w; // offset distance
+        vec2 offset = a_offset.xy; // values have an 8-bit fraction;
+        // float distance = a_offset.w; // offset distance
 
         // Adjust line width based on zoom level, to prevent proxied lines
         // from being either too small or too big.
@@ -100,9 +100,6 @@ void main() {
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
         width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
-
-        // offset caps in a direction perpendicular to the line (aka the normal)
-        vec2 offset = normal * distance;
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom

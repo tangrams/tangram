@@ -29,7 +29,7 @@ const DEFAULT = {
 // Scaling factor to add precision to line texture V coordinate packed as normalized short
 const v_scale_adjust = Geo.tile_scale;
 
-// todo: normal_normalize might always be same as scaling_normalize
+// todo: offset_normalize might always be same as scaling_normalize
 export function buildPolylines (lines, width, vertex_data, vertex_template,
     {
         closed_polygon,
@@ -42,8 +42,8 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         texcoord_normalize,
         scaling_index,
         scaling_normalize,
-        normal_index,
-        normal_normalize,
+        offset_index,
+        offset_normalize,
         join, cap,
         miter_limit,
         offset
@@ -79,8 +79,8 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         half_width: width / 2,
         scaling_index,
         scaling_normalize,
-        normal_index,
-        normal_normalize,
+        offset_index,
+        offset_normalize,
         v_scale,
         texcoord_index,
         texcoord_width,
@@ -480,11 +480,9 @@ function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_co
     }
 
     // set Normal value (X, Y line normal direction, Z isCap toggle, W offset value)
-    if (context.normal_index) {
-        vertex_template[context.normal_index + 0] = normal[0] * context.normal_normalize;
-        vertex_template[context.normal_index + 1] = normal[1] * context.normal_normalize;
-        vertex_template[context.normal_index + 2] = (normal[0] > 0. || normal[1] > 0.) ? 1. : 0.;
-        vertex_template[context.normal_index + 3] = context.offset; // offset value
+    if (context.offset_index) {
+        vertex_template[context.offset_index + 0] = normal[0] * context.offset;
+        vertex_template[context.offset_index + 1] = normal[1] * context.offset;
     }
 }
 
