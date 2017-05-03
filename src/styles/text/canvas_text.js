@@ -752,10 +752,6 @@ class MultiLine {
 
                 let word = breaks[n];
 
-                if (!word) {
-                    continue;
-                }
-
                 // force punctuation (neutral chars) at the end of a RTL line, so they stay attached to original word
                 if (isTextRTL(word) && isTextNeutral(word[word.length - 1])) {
                     word += markRTL;
