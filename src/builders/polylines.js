@@ -29,7 +29,6 @@ const DEFAULT = {
 // Scaling factor to add precision to line texture V coordinate packed as normalized short
 const v_scale_adjust = Geo.tile_scale;
 
-// todo: offset_normalize might always be same as scaling_normalize
 export function buildPolylines (lines, width, vertex_data, vertex_template,
     {
         closed_polygon,
