@@ -23783,7 +23783,7 @@ function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
         buildPolyline(lines[index], context, extra_lines);
     }
 
-    // Process extra lines
+    // Process extra lines (which are created above if lines need to be mutated for easier processing)
     for (var _index = 0; _index < extra_lines.length; _index++) {
         buildPolyline(extra_lines[_index], context, extra_lines);
     }
@@ -23806,6 +23806,8 @@ function buildPolyline(line, context, extra_lines) {
         miter_len_sq = context.miter_len_sq;
 
     // Loop backwards through line to a tile boundary if found
+    // since you need to draw lines that are only partially inside the tile,
+    // so we start at the first index where it is safe to loop through to the last index within the tile
 
     if (closed_polygon && join_type === JOIN_TYPE.miter) {
         var boundaryIndex = getTileBoundaryIndex(line);
@@ -27241,7 +27243,7 @@ exports.default = VertexData;
 VertexData.array_pool = []; // pool of currently available (previously used) buffers (uint8)
 
 },{"../utils/log":259,"./constants":202,"./vertex_elements":212}],212:[function(_dereq_,module,exports){
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -27249,16 +27251,10 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _worker_broker = _dereq_('../utils/worker_broker');
-
-var _worker_broker2 = _interopRequireDefault(_worker_broker);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var MAX_VALUE = Math.pow(2, 16) - 1;
-var Uint32_flag = false;
+var has_element_index_uint = false;
 
 var VertexElements = function () {
     function VertexElements() {
@@ -27269,17 +27265,17 @@ var VertexElements = function () {
     }
 
     _createClass(VertexElements, [{
-        key: 'push',
+        key: "push",
         value: function push(value) {
             // If values have overflown and no Uint32 option is available, do not push values
-            if (this.has_overflown && !Uint32_flag) {
+            if (this.has_overflown && !has_element_index_uint) {
                 return;
             }
 
             // Trigger overflow if value is greater than Uint16 max
             if (value > MAX_VALUE) {
                 this.has_overflown = true;
-                if (!Uint32_flag) {
+                if (!has_element_index_uint) {
                     return;
                 }
             }
@@ -27287,7 +27283,7 @@ var VertexElements = function () {
             this.array.push(value);
         }
     }, {
-        key: 'end',
+        key: "end",
         value: function end() {
             if (this.array.length) {
                 var buffer = createBuffer(this.array, this.has_overflown);
@@ -27306,18 +27302,16 @@ var VertexElements = function () {
 exports.default = VertexElements;
 
 
-VertexElements.setUint32Flag = function (flag) {
-    Uint32_flag = flag;
+VertexElements.setElementIndexUint = function (flag) {
+    has_element_index_uint = flag;
 };
 
 function createBuffer(array, overflown) {
-    var typedArray = overflown && Uint32_flag ? Uint32Array : Uint16Array;
+    var typedArray = overflown && has_element_index_uint ? Uint32Array : Uint16Array;
     return new typedArray(array);
 }
 
-_worker_broker2.default.addTarget('VertexElements', VertexElements);
-
-},{"../utils/worker_broker":269}],213:[function(_dereq_,module,exports){
+},{}],213:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27483,7 +27477,7 @@ var VertexLayout = function () {
                 var last_type = void 0;
                 var components = [].concat(_toConsumableArray(this.components));
                 components.sort(function (a, b) {
-                    return a[0] !== b[0] ? a[0] - b[0] : a[4] - b[4];
+                    return a.type !== b.type ? a.type - b.type : a.index - b.index;
                 });
 
                 for (var c = 0; c < components.length; c++) {
@@ -27906,20 +27900,21 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var STOPS = [0, 0.33, 0.66, 0.99]; // zoom levels for curved label snapshot data (offsets and angles)
 var LINE_EXCEED_STRAIGHT = 1.5; // minimal ratio for straight labels (label length) / (line length)
-var LINE_EXCEED_STRAIGHT_NO_CURVE = 1.8; // minimal ratio for straight labels that have no curved option
+var LINE_EXCEED_STRAIGHT_NO_CURVE = 1.8; // minimal ratio for straight labels that have no curved option (like Arabic)
 var LINE_EXCEED_STAIGHT_LOOSE = 2.3; // 2nd pass minimal ratio for straight labels
-var STRAIGHT_ANGLE_TOLERANCE = 0.1; // multiple "almost straight" segments within this angle tolerance can be considered one straight segment
-var CURVE_MIN_TOTAL_COST = 1.3; // curved line total curvature tolerance (sum)
+var STRAIGHT_ANGLE_TOLERANCE = 0.1; // multiple "almost straight" segments within this angle tolerance can be considered one straight segment (in radians)
+var CURVE_MIN_TOTAL_COST = 1.3; // curved line total curvature tolerance (sum in radians)
 var CURVE_MIN_AVG_COST = 0.4; // curved line average curvature tolerance (mean)
-var CURVE_MAX_ANGLE = 1; // curved line singular curvature tolerance (value)
+var CURVE_MAX_ANGLE = 1; // curved line singular curvature tolerance (value in radians)
 var ORIENTED_LABEL_OFFSET_FACTOR = 1.2; // multiply offset by this amount to avoid linked label collision
 var VERTICAL_ANGLE_TOLERANCE = 0.01; // nearly vertical lines considered vertical within this angle tolerance
 
 var LabelLine = {
-    // Given a label's bounding box size and size broken up into individual segments
-    // return a label that fits along a line geometry
+    // Given a label's bounding box size and size of broken up individual segments
+    // return a label that fits along the line geometry that is either straight (preferred) or curved (if straight tolerances aren't met)
     create: function create(segment_size, total_size, line, layout) {
         // The passes done for fitting a label, and provided tolerances for each pass
+        // First straight is chosen with a low tolerance. Then curved. Then straight with a higher tolerance.
         var passes = [{ type: 'straight', tolerance: layout.no_curving ? LINE_EXCEED_STRAIGHT_NO_CURVE : LINE_EXCEED_STRAIGHT }, { type: 'curved' }, { type: 'straight', tolerance: LINE_EXCEED_STAIGHT_LOOSE }];
 
         // loop through passes. first label found wins.
@@ -27943,7 +27938,7 @@ var LabelLine = {
 
 exports.default = LabelLine;
 
-// Base class for a LabelLine
+// Base class for a labels.
 
 var LabelLineBase = function () {
     function LabelLineBase(layout) {
@@ -27956,18 +27951,19 @@ var LabelLineBase = function () {
         this.obbs = [];
         this.aabbs = [];
         this.type = ''; // "curved" or "straight" to be set by parent class
+        this.throw_away = false; // boolean that determines if label should be discarded
     }
 
     // Given a line, find the longest series of segments that maintains a constant orientation in the x-direction.
     // This assures us that the line has no orientation flip, so text would not appear upside-down.
+    // If the line's orientation is reversed, the flip return value will be true, otherwise false
 
 
     _createClass(LabelLineBase, [{
         key: 'add',
 
 
-        // Adds each segment to the collision pass as its own bounding box
-        // TODO: label group
+        // Add each bounding box to the collision pass
         value: function add(bboxes) {
             this.placed = true;
             for (var i = 0; i < this.aabbs.length; i++) {
@@ -27979,7 +27975,6 @@ var LabelLineBase = function () {
         }
 
         // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
-        // TODO: label group
 
     }, {
         key: 'discard',
@@ -28004,7 +27999,6 @@ var LabelLineBase = function () {
         }
 
         // Checks each segment to see if it is within the tile. If any segment fails this test, they all fail.
-        // TODO: label group
 
     }, {
         key: 'inTileBounds',
@@ -28021,6 +28015,8 @@ var LabelLineBase = function () {
         }
 
         // Method to calculate oriented bounding box
+        // "angle" is the angle of the text, "angle_offset" is the angle applied to the offset.
+        // This distinction is necessary for labels with "left" (inner) or "right" (outer) offsets
 
     }], [{
         key: 'splitLineByOrientation',
@@ -28068,7 +28064,7 @@ var LabelLineBase = function () {
                             flip = true;
                         }
                     } else {
-                        // add lines is reverse order
+                        // prepend points (reverse order)
                         current_line = [pt, prev_pt];
                         current_length = length;
                         if (current_length > max_length) {
@@ -28120,7 +28116,8 @@ var LabelLineBase = function () {
     return LabelLineBase;
 }();
 
-// Class for straight labels
+// Class for straight labels.
+// Extends base LabelLine class.
 
 
 var LabelLineStraight = function (_LabelLineBase) {
@@ -28136,27 +28133,30 @@ var LabelLineStraight = function (_LabelLineBase) {
         return _this;
     }
 
-    // Determine if the label can fit the geometry within provided tolerances
-    // A straight label will "look ahead" to future segments if they are within an angle bound given by STRAIGHT_ANGLE_TOLERANCE
+    // Determine if the label can fit the geometry within provided tolerance
+    // A straight label is generally placed at segment midpoints, but can "look ahead" to further segments
+    // if they are within an angle bound given by STRAIGHT_ANGLE_TOLERANCE and place at the midpoint between non-consecutive segments
 
 
     _createClass(LabelLineStraight, [{
         key: 'fit',
         value: function fit(size, line, layout, tolerance) {
             var upp = layout.units_per_pixel;
-            var flipped = void 0;
+            var flipped = void 0; // boolean indicating if orientation of line is changed
 
+            // Make new copy of line, with consistent orientation
+
+            // matches for "left" or "right" labels where the offset angle is dependent on the geometry
             var _LabelLineBase$splitL = LabelLineBase.splitLineByOrientation(line);
 
             var _LabelLineBase$splitL2 = _slicedToArray(_LabelLineBase$splitL, 2);
 
             line = _LabelLineBase$splitL2[0];
             flipped = _LabelLineBase$splitL2[1];
-
-
             if (typeof layout.orientation === 'number') {
                 this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
 
+                // if line is flipped, or the orientation is "left" (-1), flip the offset's y-axis
                 if (flipped) {
                     this.offset[1] *= -1;
                 }
@@ -28169,6 +28169,7 @@ var LabelLineStraight = function (_LabelLineBase) {
             var line_lengths = getLineLengths(line);
             var label_length = size[0] * upp;
 
+            // loop through line looking for a placement for the label
             for (var i = 0; i < line.length - 1; i++) {
                 var curr = line[i];
 
@@ -28177,7 +28178,7 @@ var LabelLineStraight = function (_LabelLineBase) {
                 var ahead_index = i + 1;
                 var prev_angle = void 0;
 
-                // Look ahead to further line segments within an angle tolerance
+                // look ahead to further line segments within an angle tolerance
                 while (ahead_index < line.length) {
                     var ahead_curr = line[ahead_index - 1];
                     var ahead_next = line[ahead_index];
@@ -28188,19 +28189,23 @@ var LabelLineStraight = function (_LabelLineBase) {
                         curve_tolerance += getAbsAngleDiff(next_angle, prev_angle);
                     }
 
+                    // if curve tolerance is exceeded, break out of loop
                     if (Math.abs(curve_tolerance) > STRAIGHT_ANGLE_TOLERANCE) {
                         break;
                     }
 
                     length += line_lengths[ahead_index - 1];
 
+                    // check if label fits geometry
                     if (calcFitness(length, label_length) < tolerance) {
-                        var currMid = _vector2.default.mult(_vector2.default.add(curr, ahead_next), 0.5);
+                        var curr_midpt = _vector2.default.mult(_vector2.default.add(curr, ahead_next), 0.5);
 
                         // TODO: modify angle if line chosen within curve_angle_tolerance
+                        // Currently line angle is the same as the starting angle, perhaps it should average across segments?
                         this.angle = -next_angle;
                         var angle_offset = this.angle;
 
+                        // if line is flipped, or the orientation is "left" (-1), rotate the angle of the offset 180 deg
                         if (typeof layout.orientation === 'number') {
                             if (flipped) {
                                 angle_offset += Math.PI;
@@ -28211,7 +28216,7 @@ var LabelLineStraight = function (_LabelLineBase) {
                             }
                         }
 
-                        // all vertical labels point up (not down)
+                        // ensure that all vertical labels point up (not down) by snapping angles close to pi/2 to -pi/2
                         if (Math.abs(this.angle - Math.PI / 2) < VERTICAL_ANGLE_TOLERANCE) {
                             // flip angle and offset
                             this.angle = -Math.PI / 2;
@@ -28221,7 +28226,7 @@ var LabelLineStraight = function (_LabelLineBase) {
                             }
                         }
 
-                        this.position = currMid;
+                        this.position = curr_midpt;
 
                         this.updateBBoxes(this.position, size, this.angle, this.angle, this.offset);
 
@@ -28263,6 +28268,10 @@ var LabelLineStraight = function (_LabelLineBase) {
     return LabelLineStraight;
 }(LabelLineBase);
 
+// Class for curved labels
+// Extends base LabelLine class to support angles, pre_angles, offsets as arrays for each segment
+
+
 var LabelLineCurved = function (_LabelLineBase2) {
     _inherits(LabelLineCurved, _LabelLineBase2);
 
@@ -28283,23 +28292,29 @@ var LabelLineCurved = function (_LabelLineBase2) {
         return _this2;
     }
 
+    // Determine if the curved label can fit the geometry.
+    // No tolerance is provided because the label must fit entirely within the line geometry.
+
+
     _createClass(LabelLineCurved, [{
         key: 'fit',
         value: function fit(size, line, layout) {
             var upp = layout.units_per_pixel;
-            var flipped = void 0;
+            var flipped = void 0; // boolean determining if the line orientation is reversed
 
+            // Make new copy of line, with consistent orientation
+
+            // matches for "left" or "right" labels where the offset angle is dependent on the geometry
             var _LabelLineBase$splitL3 = LabelLineBase.splitLineByOrientation(line);
 
             var _LabelLineBase$splitL4 = _slicedToArray(_LabelLineBase$splitL3, 2);
 
             line = _LabelLineBase$splitL4[0];
             flipped = _LabelLineBase$splitL4[1];
-
-
             if (typeof layout.orientation === 'number') {
                 this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
 
+                // if line is flipped, or the orientation is "left" (-1), flip the offset's y-axis
                 if (flipped) {
                     this.offset[1] *= -1;
                 }
@@ -28321,12 +28336,16 @@ var LabelLineCurved = function (_LabelLineBase2) {
                 return prev + next;
             }, 0);
 
+            // if label displacement is longer than the line, no fit can be possible
             if (total_label_length > total_line_length) {
                 return false;
             }
 
-            // starting position
             var height = size[0][1] * upp;
+
+            // find start and end indices that the label can fit on without overlapping tile boundaries
+            // TODO: there is a small probability of a tile boundary crossing on an internal line segment
+            // another option is to create a buffer around the line and check if it overlaps a tile boundary
 
             var _LabelLineCurved$chec = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp),
                 _LabelLineCurved$chec2 = _slicedToArray(_LabelLineCurved$chec, 2),
@@ -28340,24 +28359,31 @@ var LabelLineCurved = function (_LabelLineBase2) {
                 return false;
             }
 
+            // all positional offsets of the label are relative to the anchor
             var anchor_index = LabelLineCurved.curvaturePlacement(line, total_line_length, line_lengths, total_label_length, start_index, end_index);
+            var anchor = line[anchor_index];
 
+            // if anchor not found, or greater than the end_index, no fit possible
             if (anchor_index === -1 || end_index - anchor_index < 2) {
                 return false;
             }
 
-            var anchor = line[anchor_index];
+            // set start position at anchor position
             this.position = anchor;
 
-            // Can be made faster since we are computing every segment for every zoom stop
+            // Loop through labels at each zoom level stop
+            // TODO: Can be made faster since we are computing every segment for every zoom stop
             // We can skip a segment's calculation once a segment's angle equals its fully zoomed angle
             for (var i = 0; i < label_lengths.length; i++) {
                 this.offsets[i] = [];
                 this.angles[i] = [];
                 this.pre_angles[i] = [];
 
+                // loop through stops (z = [0, .33, .66, .99] + base zoom)
                 for (var j = 0; j < STOPS.length; j++) {
                     var stop = STOPS[j];
+
+                    // scale the line geometry by the zoom magnification
 
                     var _LabelLineCurved$scal = LabelLineCurved.scaleLine(stop, line),
                         _LabelLineCurved$scal2 = _slicedToArray(_LabelLineCurved$scal, 2),
@@ -28366,22 +28392,29 @@ var LabelLineCurved = function (_LabelLineBase2) {
 
                     anchor = new_line[anchor_index];
 
+                    // calculate label data relative to anchor position
+
                     var _LabelLineCurved$plac = LabelLineCurved.placeAtIndex(anchor_index, new_line, _line_lengths, label_lengths),
                         positions = _LabelLineCurved$plac.positions,
                         offsets = _LabelLineCurved$plac.offsets,
                         angles = _LabelLineCurved$plac.angles,
                         pre_angles = _LabelLineCurved$plac.pre_angles;
 
+                    // translate 2D offsets into "polar coordinates"" (1D distances with angles)
+
+
                     var offsets1d = offsets.map(function (offset) {
                         return Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp;
                     });
 
-                    // use average angle for offsets (if offset is used)
-                    this.angle = 1 / angles.length * angles.reduce(function (prev, next) {
-                        return prev + next;
-                    });
-
+                    // Calculate everything that is independent of zoom level (angle for offset, bounding boxes, etc)
                     if (stop === 0) {
+                        // use average angle for a global label offset (if offset is specified)
+                        this.angle = 1 / angles.length * angles.reduce(function (prev, next) {
+                            return prev + next;
+                        });
+
+                        // calculate bounding boxes for zollision at zoom level 0
                         for (var _i2 = 0; _i2 < positions.length; _i2++) {
                             var position = positions[_i2];
                             var pre_angle = pre_angles[_i2];
@@ -28407,6 +28440,7 @@ var LabelLineCurved = function (_LabelLineBase2) {
                         }
                     }
 
+                    // push offsets/angles/pre_angles for each zoom and for each label segment
                     this.offsets[i].push(offsets1d[i]);
                     this.angles[i].push(angles[i]);
                     this.pre_angles[i].push(pre_angles[i]);
@@ -28488,6 +28522,7 @@ var LabelLineCurved = function (_LabelLineBase2) {
                 var curvature = _vector2.default.angleBetween(norm_1, norm_2);
 
                 // If curvature at a vertex is greater than the tolerance, remove it from consideration
+                // by giving it an infinite penalty
                 if (curvature > CURVE_MAX_ANGLE) {
                     curvature = Infinity;
                 }
@@ -28546,6 +28581,7 @@ var LabelLineCurved = function (_LabelLineBase2) {
                 return -1;
             }
 
+            // calculate min cost and avg cost to determine if label can fit within curvatures tolerances
             var min_total_cost = Math.min.apply(null, total_costs);
             var min_index = total_costs.indexOf(min_total_cost);
             var min_avg_cost = avg_costs[min_index];
@@ -28560,6 +28596,7 @@ var LabelLineCurved = function (_LabelLineBase2) {
         }
 
         // Scale the line by a scale factor (used for computing the angles and offsets are fractional zoom levels)
+        // Return the new line positions and their lengths
 
     }, {
         key: 'scaleLine',
@@ -28581,7 +28618,7 @@ var LabelLineCurved = function (_LabelLineBase2) {
             return [new_line, line_lengths];
         }
 
-        // Place a label at a given index
+        // Place a label at a given line index
 
     }, {
         key: 'placeAtIndex',
@@ -29212,6 +29249,8 @@ function norm(p, q) {
     return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
 }
 
+// TODO: can be optimized.
+// you don't have to start from the first index every time for placement
 function interpolateLine(line, distance, min_length, options) {
     var sum = 0;
     var position = void 0,
@@ -30876,7 +30915,7 @@ var Scene = function () {
                 // which need to be serialized, while one loaded only from a URL does not.
                 var serialize_funcs = _typeof(_this.config_source) === 'object' || _this.hasSubscribersFor('load');
 
-                var updating = _this.updateConfig({ serialize_funcs: serialize_funcs, load_event: true, fade_in: true });
+                var updating = _this.updateConfig({ serialize_funcs: serialize_funcs, normalize: false, load_event: true, fade_in: true });
                 if (options.blocking === true) {
                     return updating;
                 }
@@ -31074,8 +31113,10 @@ var Scene = function () {
         value: function makeWorkers(url) {
             var _this3 = this;
 
-            var queue = [];
+            // Let VertexElements know if 32 bit indices for element arrays are available
+            var has_element_index_uint = this.gl.getExtension("OES_element_index_uint") ? true : false;
 
+            var queue = [];
             this.workers = [];
 
             var _loop = function _loop() {
@@ -31087,7 +31128,7 @@ var Scene = function () {
 
                 (0, _log2.default)('debug', 'Scene.makeWorkers: initializing worker ' + id);
                 var _id = id;
-                queue.push(_worker_broker2.default.postMessage(worker, 'self.init', _this3.id, id, _this3.num_workers, _this3.log_level, _utils2.default.device_pixel_ratio).then(function (id) {
+                queue.push(_worker_broker2.default.postMessage(worker, 'self.init', _this3.id, id, _this3.num_workers, _this3.log_level, _utils2.default.device_pixel_ratio, has_element_index_uint).then(function (id) {
                     (0, _log2.default)('debug', 'Scene.makeWorkers: initialized worker ' + id);
                     return id;
                 }, function (error) {
@@ -31105,10 +31146,6 @@ var Scene = function () {
             this.next_worker = 0;
             return Promise.all(queue).then(function () {
                 _log2.default.setWorkers(_this3.workers);
-
-                // Let VertexElements know if 32 bit indices for element arrays are available
-                var Uint32_flag = _this3.gl.getExtension("OES_element_index_uint") ? true : false;
-                _worker_broker2.default.postMessage(_this3.workers, 'VertexElements.setUint32Flag', Uint32_flag);
 
                 // Free memory after worker initialization
                 URLs.revokeObjectURL(url);
@@ -31731,9 +31768,6 @@ var Scene = function () {
                 delete source.data;
             }
 
-            // Resolve paths relative to root scene bundle
-            _scene_loader2.default.normalizeDataSource(source, this.config_bundle);
-
             if (load) {
                 return this.updateConfig({ rebuild: { sources: [name] } });
             } else {
@@ -31910,7 +31944,7 @@ var Scene = function () {
 
             this.introspection = val || false;
             this.updating++;
-            return this.updateConfig().then(function () {
+            return this.updateConfig({ normalize: false }).then(function () {
                 return _this13.updating--;
             });
         }
@@ -31927,6 +31961,8 @@ var Scene = function () {
                 _ref8$rebuild = _ref8.rebuild,
                 rebuild = _ref8$rebuild === undefined ? true : _ref8$rebuild,
                 serialize_funcs = _ref8.serialize_funcs,
+                _ref8$normalize = _ref8.normalize,
+                normalize = _ref8$normalize === undefined ? true : _ref8$normalize,
                 _ref8$fade_in = _ref8.fade_in,
                 fade_in = _ref8$fade_in === undefined ? false : _ref8$fade_in;
 
@@ -31934,6 +31970,9 @@ var Scene = function () {
             this.updating++;
 
             this.config = _scene_loader2.default.applyGlobalProperties(this.config, this.config_globals_applied);
+            if (normalize) {
+                _scene_loader2.default.normalize(this.config, this.config_bundle);
+            }
             this.trigger(load_event ? 'load' : 'update', { config: this.config });
 
             _scene_loader2.default.hoistTextures(this.config); // move inline textures into global texture set
@@ -33034,6 +33073,10 @@ var _texture = _dereq_('./gl/texture');
 
 var _texture2 = _interopRequireDefault(_texture);
 
+var _vertex_elements = _dereq_('./gl/vertex_elements');
+
+var _vertex_elements2 = _interopRequireDefault(_vertex_elements);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } /*jshint worker: true*/
@@ -33055,12 +33098,13 @@ if (_thread2.default.is_worker) {
         tiles: {},
 
         // Initialize worker
-        init: function init(scene_id, worker_id, num_workers, log_level, device_pixel_ratio) {
+        init: function init(scene_id, worker_id, num_workers, log_level, device_pixel_ratio, has_element_index_unit) {
             self.scene_id = scene_id;
             self._worker_id = worker_id;
             self.num_workers = num_workers;
             _log2.default.setLevel(log_level);
             _utils2.default.device_pixel_ratio = device_pixel_ratio;
+            _vertex_elements2.default.setElementIndexUint(has_element_index_unit);
             _selection2.default.setPrefix(self._worker_id);
             self.style_manager = new _style_manager.StyleManager();
             return worker_id;
@@ -33321,7 +33365,7 @@ if (_thread2.default.is_worker) {
     _worker_broker2.default.addTarget('self', self);
 }
 
-},{"./gl/texture":208,"./selection":230,"./sources/data_source":231,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":265,"./utils/utils":267,"./utils/worker_broker":269}],230:[function(_dereq_,module,exports){
+},{"./gl/texture":208,"./gl/vertex_elements":212,"./selection":230,"./sources/data_source":231,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":265,"./utils/utils":267,"./utils/worker_broker":269}],230:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -36137,7 +36181,7 @@ var _debug_settings2 = _interopRequireDefault(_debug_settings);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 
-var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute float a_outline_edge;\nattribute vec4 a_outline_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_factor;\n#endif\n\n#ifdef TANGRAM_MULTI_SAMPLER\n    varying float v_sampler;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n#define TANGRAM_PX_FADE_RANGE 2.\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n// Assumes stops are [0, 0.33, 0.66, 0.99];\nfloat mix4linear(float a, float b, float c, float d, float x) {\n    return mix(mix(a, b, 3. * x),\n               mix(b,\n                   mix(c, d, 3. * (max(x, .66) - .66)),\n                   3. * (clamp(x, .33, .66) - .33)),\n               step(0.33, x)\n            );\n}\n\n// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)\nbool isShaderPoint() {\n    #ifdef TANGRAM_SHADER_POINT\n        #ifdef TANGRAM_MULTI_SAMPLER\n            if (v_sampler == 0.) { // sprite sampler\n                return true;\n            }\n        #else\n            return true;\n        #endif\n    #endif\n    return false;\n}\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord;\n\n    #ifdef TANGRAM_SHADER_POINT\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    #ifdef TANGRAM_MULTI_SAMPLER\n        v_sampler = a_shape.w; // texture sampler\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute float a_outline_edge;\nattribute vec4 a_outline_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_factor;\n#endif\n\n#ifdef TANGRAM_MULTI_SAMPLER\n    varying float v_sampler;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n#define TANGRAM_PX_FADE_RANGE 2.\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n// Assumes stops are [0, 0.33, 0.66, 0.99];\nfloat mix4linear(float a, float b, float c, float d, float x) {\n    return mix(mix(a, b, 3. * x),\n               mix(b,\n                   mix(c, d, 3. * (max(x, .66) - .66)),\n                   3. * (clamp(x, .33, .66) - .33)),\n               step(0.33, x)\n            );\n}\n\n// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)\nbool isShaderPoint() {\n    #ifdef TANGRAM_SHADER_POINT\n        #ifdef TANGRAM_MULTI_SAMPLER\n            if (v_sampler == 0.) { // sprite sampler\n                return true;\n            }\n        #else\n            return true;\n        #endif\n    #endif\n    return false;\n}\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord;\n\n    #ifdef TANGRAM_SHADER_POINT\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    #ifdef TANGRAM_MULTI_SAMPLER\n        v_sampler = a_shape.w; // texture sampler\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
 var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\n\nuniform sampler2D u_label_texture;\nvarying float v_sampler;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_factor;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_SHADER_POINT\n    // Draw an SDF-style point\n    void drawPoint (inout vec4 color) {\n        vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge\n        float point_dist = length(uv);\n        color = mix(\n            color,\n            v_outline_color,\n            (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)\n        );\n        color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    if (v_sampler == 0.) { // sprite sampler\n        #ifdef TANGRAM_TEXTURE_POINT\n            color *= texture2D(u_texture, v_texcoord); // draw sprite\n        #else\n            drawPoint(color); // draw a point\n        #endif\n\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n    else { // label sampler\n        color = texture2D(u_label_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var PLACEMENT = _label_point2.default.PLACEMENT;
@@ -36780,6 +36824,8 @@ Object.assign(Points, {
 
         var offset = label.offset;
 
+        // TODO: instead of passing null, pass arrays with fingerprintable values
+        // This value is checked in the shader to determine whether to apply curving logic
         return this.buildQuad([label.position], // position
         size, // size in pixels
         angle, // angle in radians
@@ -36789,7 +36835,7 @@ Object.assign(Points, {
         offset, // offset from center in pixels
         null, // placeholder for multiple offsets
         texcoords, // texture UVs
-        false, // if curved
+        false, // if curved boolean
         vertex_data, vertex_template // VBO and data for current vertex
         );
     },
@@ -36797,6 +36843,9 @@ Object.assign(Points, {
         var vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle;
         var geom_count = 0;
+
+        // two passes for stroke and fill, where stroke needs to be drawn first (painter's algorithm)
+        // this ensures strokes don't overlap on other fills
 
         // pass for stroke
         for (var i = 0; i < label.num_segments; i++) {
@@ -38914,7 +38963,7 @@ var CanvasText = function () {
                             var shaped = isTextShaped(text);
 
                             text_info.isRTL = rtl;
-                            text_info.no_curving = bidi || shaped;
+                            text_info.no_curving = bidi || shaped; // used in LabelLine to prevent curved labels
                             text_info.vertical_buffer = _this.vertical_text_buffer;
 
                             var segments = splitLabelText(text, rtl);
@@ -39101,6 +39150,7 @@ var CanvasText = function () {
             // 0.75 buffer produces a better approximate vertical centering of text
             var ty = y + vertical_buffer * 0.75 + line_height;
 
+            // Draw stroke and fill separately for curved text. Offset stroke in texture atlas by shift.
             if (stroke && stroke_width > 0) {
                 var shift = type === 'curved' ? texture_size[0] : 0;
                 this.context.strokeText(str, tx + shift, ty);
@@ -39462,6 +39512,8 @@ function isTextNeutral(s) {
     return neutralDirCheck.test(s);
 }
 
+var markRTL = '\u200F'; // explicit right-to-left marker
+
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text, rtl) {
     if (text.length < codon_length) {
@@ -39476,11 +39528,11 @@ function splitLabelText(text, rtl) {
         if (segment.length <= Math.floor(0.5 * codon_length)) {
             segments[segments.length - 1] += segment;
         } else {
-            // if RTL, check to see if segment ends on a neutral character
+            // if RTL, check to see if segment starts or ends on a neutral character
             // in which case we need to add the neutral segments separately (codon_length = 1) in reverse order
             if (rtl) {
                 var neutral_segment = [];
-                while (segment.length > 0 && isTextNeutral(segment[segment.length - 1])) {
+                while (segment.length > 0 && isTextNeutral(segment[0] || isTextNeutral(segment[segment.length - 1]))) {
                     neutral_segment.unshift(segment[segment.length - 1]);
                     segment = segment.substring(0, segment.length - 1);
                 }
@@ -39611,11 +39663,11 @@ var MultiLine = function () {
                         break;
                     }
 
-                    // let word = breaks[n].trim();
                     var word = breaks[n];
 
-                    if (!word) {
-                        continue;
+                    // force punctuation (neutral chars) at the end of a RTL line, so they stay attached to original word
+                    if (isTextRTL(word) && isTextNeutral(word[word.length - 1])) {
+                        word += markRTL;
                     }
 
                     var spaced_word = new_line ? word : ' ' + word;
@@ -40455,8 +40507,7 @@ var TextLabels = exports.TextLabels = {
 
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts: function rasterizeTexts(tile_key, texts) {
-        var canvas = new _canvas_text2.default();
-
+        var canvas = this.canvas;
         var texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size, tile_key);
         (0, _log2.default)('trace', 'text summary for tile ' + tile_key + ': fits in ' + texture_size[0] + 'x' + texture_size[1] + 'px');
 
@@ -43432,7 +43483,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.3\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.4\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
@@ -44338,7 +44389,7 @@ var View = function () {
                 }
             }
 
-            this.scene.updateConfig({ rebuild: false });
+            this.scene.updateConfig({ rebuild: false, normalize: false });
             return this.getActiveCamera();
         }
 
