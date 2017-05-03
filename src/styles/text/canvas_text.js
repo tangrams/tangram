@@ -597,15 +597,17 @@ function isTextShaped(s){
 
 // Right-to-left / bi-directional text handling
 // Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-let rtlDirCheck = new RegExp('^[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]+$');
+const rtlDirCheck = new RegExp('^[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]+$');
 function isTextRTL(s){
     return rtlDirCheck.test(s);
 }
 
-let neutralDirCheck = new RegExp('[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF]$');
+const neutralDirCheck = new RegExp('[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF]$');
 function isTextNeutral(s){
     return neutralDirCheck.test(s);
 }
+
+const markRTL = '\u200F'; // explicit right-to-left marker
 
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text, rtl){
@@ -748,11 +750,15 @@ class MultiLine {
                     break;
                 }
 
-                // let word = breaks[n].trim();
                 let word = breaks[n];
 
                 if (!word) {
                     continue;
+                }
+
+                // force punctuation (neutral chars) at the end of a RTL line, so they stay attached to original word
+                if (isTextRTL(word) && isTextNeutral(word[word.length - 1])) {
+                    word += markRTL;
                 }
 
                 let spaced_word = (new_line) ? word : ' ' + word;
