@@ -38,8 +38,8 @@ Object.assign(Polygons, {
         if (this.selection) {
             attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
             attribs.push({ name: 'a_selection_group', size: 4, type: gl.UNSIGNED_BYTE, normalized: false });
-            attribs.push({ name: 'a_selection_hover_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-            attribs.push({ name: 'a_selection_click_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+            // attribs.push({ name: 'a_selection_hover_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+            // attribs.push({ name: 'a_selection_click_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
         }
 
         // Optional texture UVs
@@ -136,15 +136,15 @@ Object.assign(Polygons, {
             this.vertex_template[i++] = style.selection_group_index[2];
             this.vertex_template[i++] = style.selection_group_index[3];
 
-            this.vertex_template[i++] = style.hover_color[0] * 255; // TODO: scale to 255 when created?
-            this.vertex_template[i++] = style.hover_color[1] * 255;
-            this.vertex_template[i++] = style.hover_color[2] * 255;
-            this.vertex_template[i++] = style.hover_color[3] * 255;
+            // this.vertex_template[i++] = style.hover_color[0] * 255; // TODO: scale to 255 when created?
+            // this.vertex_template[i++] = style.hover_color[1] * 255;
+            // this.vertex_template[i++] = style.hover_color[2] * 255;
+            // this.vertex_template[i++] = style.hover_color[3] * 255;
 
-            this.vertex_template[i++] = style.click_color[0] * 255; // TODO: scale to 255 when created?
-            this.vertex_template[i++] = style.click_color[1] * 255;
-            this.vertex_template[i++] = style.click_color[2] * 255;
-            this.vertex_template[i++] = style.click_color[3] * 255;
+            // this.vertex_template[i++] = style.click_color[0] * 255; // TODO: scale to 255 when created?
+            // this.vertex_template[i++] = style.click_color[1] * 255;
+            // this.vertex_template[i++] = style.click_color[2] * 255;
+            // this.vertex_template[i++] = style.click_color[3] * 255;
         }
 
         // Add texture UVs to template only if needed

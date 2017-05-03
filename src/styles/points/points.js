@@ -60,8 +60,8 @@ Object.assign(Points, {
         if (this.selection) {
             attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
             attribs.push({ name: 'a_selection_group', size: 4, type: gl.UNSIGNED_BYTE, normalized: false });
-            attribs.push({ name: 'a_selection_hover_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-            attribs.push({ name: 'a_selection_click_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+            // attribs.push({ name: 'a_selection_hover_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+            // attribs.push({ name: 'a_selection_click_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
         }
 
 
@@ -615,8 +615,8 @@ Object.assign(Points, {
         if (this.selection) {
             this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
             this.fillVertexTemplate('a_selection_group', style.selection_group_index, { size: 4 });
-            this.fillVertexTemplate('a_selection_hover_color', Vector.mult(style.hover_color, 255), { size: 4 });
-            this.fillVertexTemplate('a_selection_click_color', Vector.mult(style.click_color, 255), { size: 4 });
+            // this.fillVertexTemplate('a_selection_hover_color', Vector.mult(style.hover_color, 255), { size: 4 });
+            // this.fillVertexTemplate('a_selection_click_color', Vector.mult(style.click_color, 255), { size: 4 });
         }
 
         return this.vertex_template;

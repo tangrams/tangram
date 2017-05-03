@@ -22,6 +22,9 @@
     // uniform bool u_selection_has_hover_color;
     // uniform bool u_selection_has_click_color;
 
+    uniform bool u_selection_has_group;
+    uniform bool u_selection_has_instances;
+
     float isFeatureHover (void) {
         return 1. - step(TANGRAM_EPSILON, abs(TANGRAM_SELECTION_STATE_HOVER - v_selection_state));
     }

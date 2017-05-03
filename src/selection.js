@@ -289,7 +289,7 @@ export default class FeatureSelection {
             group_value = selection_prop(context);
         }
         else {
-            group_value = feature.properties[selection_prop];
+            group_value = feature.properties[selection_prop];// || JSON.stringify(feature.properties);
         }
         group_key = draw.selection_group + ':' + group_value;
 
@@ -312,12 +312,12 @@ export default class FeatureSelection {
                 let r = this.group_index & 255;
                 let g = (this.group_index >> 8) & 255;
                 let b = (this.group_index >> 16) & 255;
-                group = this.groups[group_key] = [r, g, b, 255];
+                group = this.groups[group_key] = [r, g, b, 0];
             }
         }
 
         selector.group = {
-            index: group || [255, 255, 255, 255],
+            index: group, // || [255, 255, 255, 255],
             key: group_key,
             value: group_value//,
             // hover_color: draw.hover_color,
@@ -363,3 +363,4 @@ FeatureSelection.map_size = 0;
 FeatureSelection.map_index = 0;
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];
+FeatureSelection.defaultGroup = [255, 255, 255, 255];

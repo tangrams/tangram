@@ -20,7 +20,7 @@ const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.gl
 
 // Base class
 
-const default_selection_prop = 'id'; // use id as default feature property for grouping selection
+// const default_selection_prop = 'id'; // use id as default feature property for grouping selection
 
 export var Style = {
     init ({ generation, styles, sources = {}, introspection } = {}) {
@@ -117,7 +117,10 @@ export var Style = {
     startData (tile) {
         this.tile_data[tile.key] = {
             vertex_data: null,
-            uniforms: {},
+            uniforms: {
+                u_selection_has_group: false,
+                u_selection_has_instances: false
+            },
             textures: []
         };
         return this.tile_data[tile.key];
@@ -136,7 +139,7 @@ export var Style = {
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
-            return this.buildRasterTextures(tile, tile_data).then(() => tile_data);
+            return this.buildRasterTextures(tile, tile_data);
         }
         else {
             return Promise.resolve(null); // don't send tile data back if doesn't have geometry
@@ -157,6 +160,51 @@ export var Style = {
         if (!this.tile_data[tile.key]) {
             this.startData(tile);
         }
+        let tile_data = this.tile_data[tile.key];
+
+        // Selection-specific feature instances
+        let has_hover = (draw.hover != null) ? 1 : 0;
+        let has_click = (draw.click != null) ? 1 : 0;
+
+        if (has_hover) {
+            draw.hover.selection_state = 1 * 4 + has_hover + (has_click * 2);
+        }
+
+        if (has_click) {
+            draw.click.selection_state = 2 * 4 + has_hover + (has_click * 2);
+        }
+
+        // TODO: also check if feature is interactive/selectable before building
+        if (has_hover && draw.selection_prop) { // draw.selection_group_index
+            if (this.addFeature(feature, draw.hover, context)) {
+                tile_data.uniforms.u_selection_has_instances = true;
+            }
+            else {
+                has_hover = 0;
+                // TODO may cause probelms to disable these if either hover or click builds,
+                // but other doesn't and is expecting it to be present when hiding/showing in shader
+            }
+        }
+
+        if (has_click && draw.selection_prop) {
+            if (this.addFeature(feature, draw.click, context)) {
+                tile_data.uniforms.u_selection_has_instances = true;
+            }
+            else {
+                has_click = 0;
+            }
+        }
+
+        // Primary feature instance
+        if (draw.selection_state == null) {
+            // draw.selection_state = (has_hover || has_click) ? 0 : 255;
+            if (has_hover || has_click) {
+                draw.selection_state = has_hover + (has_click * 2);
+            }
+            else {
+                draw.selection_state = 255;
+            }
+        }
 
         let style = this.parseFeature(feature, draw, context);
 
@@ -166,11 +214,11 @@ export var Style = {
         }
 
         // First feature in this render style?
-        if (!this.tile_data[tile.key].vertex_data) {
-            this.tile_data[tile.key].vertex_data = this.vertex_layout.createVertexData();
+        if (!tile_data.vertex_data) {
+            tile_data.vertex_data = this.vertex_layout.createVertexData();
         }
 
-        this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context);
+        return this.buildGeometry(feature.geometry, style, tile_data.vertex_data, context);
     },
 
     buildGeometry (geometry, style, vertex_data, context) {
@@ -224,6 +272,8 @@ export var Style = {
                 }
             });
         }
+
+        return geom_count;
     },
 
     parseFeature (feature, draw, context) {
@@ -259,24 +309,33 @@ export var Style = {
                 style.selection_color = null;
                 style.selection_group = null;
                 style.selection_group_index = null;
-                style.hover_color = null;
-                style.click_color = null;
+                // style.hover_color = null;
+                // style.click_color = null;
                 if (selectable) {
                     style.selection_prop = draw.selection_prop;
                     style.selection_group = draw.selection_group;
-                    style.hover_color = StyleParser.evalCachedColorProperty(draw.hover_color, context);
-                    style.click_color = StyleParser.evalCachedColorProperty(draw.click_color, context);
+                    // style.hover_color = StyleParser.evalCachedColorProperty(draw.hover_color, context);
+                    // style.click_color = StyleParser.evalCachedColorProperty(draw.click_color, context);
 
                     let selector = FeatureSelection.getSelector(feature, style, context.tile, context);
-                    if (selector) {
+                    // if (selector) {
                         style.selection_color = selector.color;
                         style.selection_group_index = selector.group.index;
-                    }
+                    // }
                 }
                 style.selection_color = style.selection_color || FeatureSelection.defaultColor;
-                style.selection_group_index = style.selection_group_index || FeatureSelection.defaultColor;
-                style.hover_color = style.hover_color || [0, 0, 0, 0];
-                style.click_color = style.click_color || [0, 0, 0, 0];
+
+                // style.selection_group_index = style.selection_group_index || FeatureSelection.defaultGroup;
+                if (style.selection_group_index) {
+                    this.tile_data[context.tile.key].uniforms.u_selection_has_group = true;
+                }
+                else {
+                    style.selection_group_index = FeatureSelection.defaultGroup;
+                }
+                style.selection_group_index[3] = draw.selection_state; //(draw.selection_state != null) ? draw.selection_state : 255;
+
+                // style.hover_color = style.hover_color || [0, 0, 0, 0];
+                // style.click_color = style.click_color || [0, 0, 0, 0];
             }
 
             return style;
@@ -299,15 +358,30 @@ export var Style = {
             }
 
             if (this.introspection || draw.interactive) {
-                draw.selection_prop = draw.selection_prop || default_selection_prop;
+                // draw.selection_prop = draw.selection_prop || default_selection_prop;
                 draw.selection_group = draw.selection_group || 'default';
-                draw.hover_color = draw.hover_color && StyleParser.createColorPropertyCache(draw.hover_color);
-                draw.click_color = draw.click_color && StyleParser.createColorPropertyCache(draw.click_color);
+                // draw.hover_color = draw.hover_color && StyleParser.createColorPropertyCache(draw.hover_color);
+                // draw.click_color = draw.click_color && StyleParser.createColorPropertyCache(draw.click_color);
             }
 
             draw = this._preprocess(draw); // optional subclass implementation
             if (!draw) {
                 return;
+            }
+
+            // selection instances
+            if (draw.hover != null && typeof draw.hover === 'object') {
+                draw.hover = mergeObjects({}, draw, draw.hover); // inherit styling from parent
+                delete draw.hover.hover; // remove nested property
+                delete draw.hover.click; // remove nested property
+                draw.hover = this.preprocess(draw.hover);
+            }
+
+            if (draw.click != null && typeof draw.click === 'object') {
+                draw.click = mergeObjects({}, draw, draw.click); // inherit styling from parent
+                delete draw.click.hover; // remove nested property
+                delete draw.click.click; // remove nested property
+                draw.click = this.preprocess(draw.click);
             }
 
             draw.preprocessed = true;

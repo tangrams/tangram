@@ -234,10 +234,15 @@ layers:
             draw:
                 polygons:
                     order: global.feature_order
-                    interactive: true
                     color: honeydew
+                    interactive: true
+                    selection_prop: id
                     # hover_color: yellow
                     # click_color: red
+                    hover:
+                        color: lightgreen
+                    click:
+                        color: green
 
 
             # parks:
@@ -272,7 +277,9 @@ layers:
         data: { source: mapzen }
         draw:
             polygons:
+                style: buildings
                 interactive: true
+                selection_prop: id
                 order: global.feature_order
                 color: '#9dc3de'
 
@@ -304,9 +311,9 @@ layers:
                 width: 12
                 order: global.feature_order
                 interactive: true
-                selection_prop: function(){ return feature.kind + ':' + feature.kind_detail; }
-                hover_color: yellow
-                click_color: red
+                # selection_prop: function(){ return feature.kind + ':' + feature.kind_detail; }
+                # hover_color: yellow
+                # click_color: red
                 # selection_group: same
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
@@ -316,6 +323,10 @@ layers:
                     # hover_color: purple
                     # click_color: orange
                     # selection_group: same
+                # hover:
+                #     color: yellow
+                # click:
+                #     color: red
 
         rounded:
             filter: { $zoom: { min: 18 } }
@@ -507,10 +518,12 @@ layers:
             filter: { $geometry: polygon }
             draw:
                 polygons:
-                    # style: buildings
+                    style: buildings
                     # selection_prop: function() { return feature.name && feature.name[0]; }
                     # selection_prop: function() { return feature.height && feature.height > 25; }
-                    selection_prop: function() { return Math.ceil((feature.height > 50 && feature.height)/50); }
+                    # selection_prop: function() { return Math.ceil((feature.height > 50 && feature.height)/50); }
+                    selection_prop: function() { return feature.height > 50 && (feature.root_id || feature.id); }
+                    # selection_prop: function() { return feature.id; }
                     # selection_prop: function() { return Math.ceil(Math.random()*10); }
                     selection_group: buildings
                     # hover_color: yellow
@@ -520,6 +533,19 @@ layers:
                     order: global.feature_order
                     # color: [.7, .7, .7]
                     color: function() { return (feature.height > 50 && [.9, .7, .9]) || [.7, .7, .7]; }
+                    extrude: true
+                    # extrude: function() { return feature.height + 20; }
+                    hover:
+                        color: red
+                        # color: function() { return (feature.height > 50 && 'red') || [.7, .7, .7]; }
+                        # color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
+                        # extrude: function() { return feature.height + 10; }
+                    click:
+                        # color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
+                        color: yellow
+                        # color: function() { return (feature.height > 50 && 'yellow') || [.7, .7, .7]; }
+                        # extrude: function() { return feature.height + 20; }
+                        # extrude: true
 
             # tall:
             #     filter: { height: { min: 100 } }
@@ -538,20 +564,22 @@ layers:
                         # color: grey
 
             # extrude 3d buildings
-            extruded:
-                filter: { $zoom: { min: 15 } }
-                draw:
-                    polygons:
-                        style: buildings
-                        extrude: function () { return feature.height > 20 || $zoom >= 16; }
+            # extruded:
+            #     filter: { $zoom: { min: 15 } }
+            #     draw:
+            #         polygons:
+            #             # style: buildings
+            #             extrude: function () { return feature.height > 20 || $zoom >= 16; }
+            #             # hover:
+            #             #     extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
             # grass rooftops, e.g. NYC Highline
-            grass:
-                filter: { roof_material: grass }
-                draw:
-                    polygons:
-                        style: polygons # disable building height shader
-                        color: '#bddec5'
+            # grass:
+            #     filter: { roof_material: grass }
+            #     draw:
+            #         polygons:
+            #             style: polygons # disable building height shader
+            #             color: '#bddec5'
 
         # point labels for buildings
         labels:
@@ -577,7 +605,10 @@ layers:
         draw:
             icons:
                 interactive: true
-                hover_color: yellow
+                # hover_color: yellow
+                # hover:
+                #     sprite: sunburst
+                #     collide: false
 
         parks:
             filter:
@@ -645,7 +676,9 @@ layers:
             # add generic icon at high zoom
             generic:
                 filter: { $zoom: { min: 18 } }
-                draw: { icons: { sprite: info } }
+                draw:
+                    icons:
+                        sprite: info
 
             # examples of different icons mapped to feature properties
             icons:
