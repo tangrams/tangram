@@ -624,11 +624,11 @@ function splitLabelText(text, rtl){
             segments[segments.length - 1] += segment;
         }
         else {
-            // if RTL, check to see if segment ends on a neutral character
+            // if RTL, check to see if segment starts or ends on a neutral character
             // in which case we need to add the neutral segments separately (codon_length = 1) in reverse order
             if (rtl){
                 let neutral_segment = [];
-                while (segment.length > 0 && isTextNeutral(segment[segment.length - 1])){
+                while (segment.length > 0 && (isTextNeutral(segment[0] || isTextNeutral(segment[segment.length - 1])))) {
                     neutral_segment.unshift(segment[segment.length - 1]);
                     segment = segment.substring(0, segment.length - 1);
                 }
