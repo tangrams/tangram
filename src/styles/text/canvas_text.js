@@ -569,7 +569,6 @@ CanvasText.texcoord_cache = {};
 const context_langs = {
     Arabic: "\u0600-\u06FF",
     Bengali: "\u0980-\u09FF",
-    Burmese: "\u1000-\u109F",
     Devanagari: "\u0900-\u097F",
     Khmer: "\u1780-\u17FF",
     Gujarati: "\u0A80-\u0AFF",
@@ -582,6 +581,9 @@ const context_langs = {
     Telugu: "\u0C00-\u0C7F",
     Tibetan: "\u0F00-\u0FFF"
 };
+
+const accents_and_vowels = "[:\u0300-\u036F\u0902\u093E-\u0944\u0947\u0948\u094B\u094C\u0962\u0963\u0981\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB\u09CC\u09D7\u09E2\u09E3\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u102B-\u1032\u1036-\u1038\u103A-\u103E\u1056-\u1059\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]";
+const combo_characters = "[\u094D\u09CD\u1039]";
 
 let reg_ex_shaping = '[';
 for (let key in context_langs){
@@ -628,7 +630,20 @@ function splitLabelText(text, rtl){
 
     let segments = [];
     while (text.length){
-        let segment = text.substring(0, codon_length);
+        let segment = '';
+        let testText = text;
+        let graphemeCount = 0;
+
+        for (graphemeCount; graphemeCount < codon_length; graphemeCount++) {
+            let graphemeRegex = new RegExp(testText[0] + "(?:" + accents_and_vowels + "+)?" + "(" + combo_characters + "\\w(" + accents_and_vowels + ")?)?");
+            let graphemeCluster = testText.match(graphemeRegex);
+            if (graphemeCluster) {
+                segment += graphemeCluster[0];
+            } else {
+                break;
+            }
+            testText = testText.substring(graphemeCluster[0].length);
+        }
 
         // if RTL, check to see if segment starts or ends on a neutral character
         // in which case we need to add the neutral segments separately
