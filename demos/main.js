@@ -131,7 +131,7 @@ Enjoy!
         clearTimeout(update_url_timeout);
         update_url_timeout = setTimeout(function() {
             var center = map.getCenter();
-            var url_options = [map.getZoom(), center.lat, center.lng];
+            var url_options = [map.getZoom(), center.lat, center.lng].map(function(v) { return v.toFixed(5); });
 
             if (rS) {
                 url_options.push('rstats');
