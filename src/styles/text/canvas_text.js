@@ -546,6 +546,11 @@ export default class CanvasText {
             CanvasText.text_cache_count = 0;
             log('debug', 'CanvasText: pruning text cache');
         }
+
+        if (Object.keys(CanvasText.segment_cache).length > CanvasText.segment_cache_count_max) {
+            CanvasText.segment_cache = {};
+            log('debug', 'CanvasText: pruning segment cache');
+        }
     }
 
 }
@@ -556,7 +561,7 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.text_cache_count = 0;     // current size of cache (measured as # of entries)
-CanvasText.text_cache_count_max = 5000; // prune cache when it exceeds this size
+CanvasText.text_cache_count_max = 4000; // prune cache when it exceeds this size
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
 
@@ -604,14 +609,24 @@ function isTextNeutral(s){
 
 const markRTL = '\u200F'; // explicit right-to-left marker
 
+CanvasText.segment_cache = {};
+CanvasText.segment_cache_count_max = 1000;
+CanvasText.cache_stats.segment_hits = 0;
+CanvasText.cache_stats.segment_misses = 0;
+
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text, rtl){
     if (text.length < codon_length) {
         return [text];
     }
 
-    let segments = [];
+    let key = text;
+    if (CanvasText.segment_cache[key]) {
+        CanvasText.cache_stats.segment_hits++;
+        return CanvasText.segment_cache[key].map(v => v); // copy to avoid modification
+    }
 
+    let segments = [];
     while (text.length){
         let segment = text.substring(0, codon_length);
 
@@ -641,7 +656,9 @@ function splitLabelText(text, rtl){
         text = text.substring(codon_length);
     }
 
-    return segments;
+    CanvasText.cache_stats.segment_misses++;
+    CanvasText.segment_cache[key] = segments;
+    return segments.map(v => v); // copy to avoid modification
 }
 
 // Private class to arrange text labels into multiple lines based on
