@@ -277,7 +277,7 @@ export default class CanvasText {
                         let type = text_info.type[i];
                         switch (type){
                             case 'straight':
-                                let word = words.reduce((text_info.isRTL) ? reduceLeft : reduceRight);
+                                let word = (text_info.isRTL) ? text.split().reverse().join() : text;
                                 let texcoord;
 
                                 if (CanvasText.texcoord_cache[tile_key][style][word].texcoord){
@@ -403,7 +403,7 @@ export default class CanvasText {
                         switch (type){
                             case 'straight':
                                 let size = text_info.total_size.texture_size;
-                                let word = text_info.segments.reduce((text_info.isRTL) ? reduceLeft : reduceRight);
+                                let word = (text_info.isRTL) ? text.split().reverse().join() : text;
 
                                 if (size[0] > column_width) {
                                     column_width = size[0];
@@ -559,9 +559,6 @@ CanvasText.text_cache_count = 0;     // current size of cache (measured as # of 
 CanvasText.text_cache_count_max = 5000; // prune cache when it exceeds this size
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
-
-function reduceLeft (prev, next){ return next + prev; }
-function reduceRight (prev, next){ return prev + next; }
 
 // Contextual Shaping Languages - Unicode ranges
 const context_langs = {
