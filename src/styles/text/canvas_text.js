@@ -88,17 +88,15 @@ export default class CanvasText {
                         text_info.isRTL = rtl;
                         text_info.no_curving = bidi || shaped; // used in LabelLine to prevent curved labels
                         text_info.vertical_buffer = this.vertical_text_buffer;
-
-                        let segments = splitLabelText(text, rtl);
-
-                        if (rtl) {
-                            segments.reverse();
-                        }
-
-                        text_info.segments = segments;
                         text_info.size = [];
 
                         if (!text_info.no_curving) {
+                            let segments = splitLabelText(text, rtl);
+                            if (rtl) {
+                                segments.reverse();
+                            }
+
+                            text_info.segments = segments;
                             for (let i = 0; i < segments.length; i++){
                                 text_info.size.push(this.textSize(style, segments[i], text_settings).size);
                             }
