@@ -381,8 +381,8 @@ Enjoy!
             'Spanish': 'es'
         };
         gui.language = 'en';
-        gui.add(gui, 'language', langs).onChange(function(value) {
-            scene.config.global.language = value;
+        gui.add(gui, 'language', langs).onChange(function(value, key) {
+            scene.config.global.language = (value == 'null') ? null  : value; // dat.gui coerces null to string 'null'
             scene.updateConfig();
         });
 
