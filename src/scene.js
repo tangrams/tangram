@@ -78,7 +78,7 @@ export default class Scene {
         this.last_selection_render = -1;    // frame counter for last selection render pass
         this.media_capture = new MediaCapture();
         this.selection = null;
-        this.introspection = false;
+        this.introspection = (options.introspection === true) ? true : false;
         this.resetTime();
 
         this.container = options.container;
