@@ -590,8 +590,7 @@ const accents_and_vowels = "[:\u0300-\u036F" + // Combining Diacritical Marks
 "\u0EB1\u0EB4-\u0EBC\u0EC8-\u0ECD" + // Lao
 "]";
 const combo_characters = "[\u094D\u09CD\u1039\u17D2\u0A4D\u0ACD\u0C4D\u0CCD\u0B4D\u1A60\u1A7F\u0DCA]";
-const graphemeRegex = new RegExp(".(?:" + accents_and_vowels + "+)?" + "(" + combo_characters + "\\w(" + accents_and_vowels + ")?)?");
-
+const graphemeRegex = new RegExp("^.(?:" + accents_and_vowels + "+)?" + "(" + combo_characters + "\\W(?:" + accents_and_vowels + "+)?)?");
 
 let reg_ex_shaping = '[';
 for (let key in context_langs){
@@ -642,12 +641,10 @@ function splitLabelText(text, rtl){
         let testText = text;
         let graphemeCount = 0;
 
-        for (graphemeCount; graphemeCount < codon_length; graphemeCount++) {
-            let graphemeCluster = graphemeRegex.exec(testText);
-            if (graphemeCluster) {
-                segment += graphemeCluster[0];
-                testText = testText.substring(graphemeCluster[0].length);
-            }
+        for (graphemeCount; graphemeCount < codon_length && testText.length > 0; graphemeCount++) {
+            let graphemeCluster = (graphemeRegex.exec(testText) || testText)[0];
+            segment += graphemeCluster;
+            testText = testText.substring(graphemeCluster.length);
         }
 
         // if RTL, check to see if segment starts or ends on a neutral character
