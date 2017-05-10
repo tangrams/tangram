@@ -580,7 +580,7 @@ const accents_and_vowels = "[:\u0300-\u036F" + // Combining Diacritical Marks
 "\u0B01-\u0B03\u0B3C\u0B3E-\u0B4C\u0B56\u0B57\u0B62\u0B63" + // Oriya
 "\u0B82\u0BBE-\u0BCD\u0BD7" + // Tamil
 "\u0C00-\u0C03\u0C3E-\u0C4C\u0C55\u0C56\u0C62\u0C63" + // Telugu
-"\u0D82-\u0D83\u0DCF-\u0DDF\u0DF2\u0DF3" + // Sinhala
+"\u0D82\u0D83\u0DCA-\u0DDF\u0DF2\u0DF3" + // Sinhala
 "\u102B-\u1038\u103A-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D" + // Burmese
 "\u1A55-\u1A5E\u1A61-\u1A7C" + // Tai Tham
 "\u1DC0-\u1DFF" + // Combining Diacritical Marks Supplement
