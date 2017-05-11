@@ -243,9 +243,7 @@ layers:
                 filter: { kind: urban_area }
                 draw:
                     polygons:
-                        # color: [0.902, 0.835, 0.753, 1.00]
                         color: [[7, lightgrey], [9, [.88, .88, .88]]]
-                        # color: lightgrey
 
     water:
         data: { source: mapzen }
@@ -255,10 +253,22 @@ layers:
                 order: global.feature_order
                 color: '#9dc3de'
 
+        # rivers, canals, etc.
+        lines:
+            filter: { $geometry: line }
+            draw:
+                text:
+                    text_source: global.language_text_source
+                    font:
+                        fill: '#8db3ce'
+                        stroke: { color: white, width: 4px }
+                        size: 14px
+
         oceans:
             filter: { kind: ocean }
             draw:
                 text:
+                    text_source: global.language_text_source
                     font:
                         family: Baskerville
                         size: 14pt
@@ -268,6 +278,7 @@ layers:
             filter: { kind: sea, $zoom: { min: 7 } }
             draw:
                 text:
+                    text_source: global.language_text_source
                     font:
                         family: Baskerville
                         size: 12pt
@@ -420,6 +431,7 @@ layers:
                 filter: { kind: ferry }
                 draw:
                     text:
+                        text_source: global.language_text_source
                         text_wrap: 20
                         font:
                             fill: '#8db3ce'
@@ -511,6 +523,7 @@ layers:
             draw:
                 text:
                     priority: 7
+                    text_source: global.language_text_source
                     font:
                         family: Helvetica
                         size: 8pt
