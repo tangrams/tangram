@@ -179,7 +179,7 @@ Object.assign(Lines, {
         style.cap = draw.cap;
         style.join = draw.join;
 
-        style.offset = StyleParser.evalCachedDistanceProperty(draw.offset, context) * context.units_per_meter_overzoom;
+        style.offset = draw.offset && (StyleParser.evalCachedDistanceProperty(draw.offset, context) * context.units_per_meter_overzoom);
 
         style.miter_limit = draw.miter_limit;
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
@@ -209,6 +209,7 @@ Object.assign(Lines, {
                 style.outline.cap = draw.outline.cap || draw.cap;
                 style.outline.join = draw.outline.join || draw.join;
                 style.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
+                style.outline.offset = draw.offset;
                 style.outline.style = draw.outline.style || this.name;
 
                 // Explicitly defined outline order, or inherited from inner line
