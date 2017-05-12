@@ -93,7 +93,7 @@ void main() {
         dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
 
         // Interpolate between zoom levels
-        width += sign(width) * dwdz * dz;
+        width += dwdz * dz;
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
