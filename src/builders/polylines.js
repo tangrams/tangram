@@ -48,7 +48,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
     }) {
     var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
     var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter;
-    var offset = offset || 0.;
+    offset = offset || 0.0;
 
     // Configure miter limit
     if (join_type === JOIN_TYPE.miter) {
@@ -108,7 +108,7 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
-    var coordCurr, coordNext, normPrev, normNext, isCap;
+    var coordCurr, coordNext, normPrev, normNext;
     var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq, offset} = context;
     var v = 0; // Texture v-coordinate
 
@@ -124,9 +124,6 @@ function buildPolyline(line, context, extra_lines){
             return;
         }
     }
-
-    var coordCurr, coordNext, normPrev, normNext;
-    var v = 0; // Texture v-coordinate
 
     var index_start = 0;
     var index_end = line.length - 1;
@@ -356,9 +353,6 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
 function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context) {
     var miterVec = createMiterVec(normPrev, normNext);
     var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
-    var normAvg = normPrev + normNext / 2.;
-
-    var normal = normNext;
 
     if (isClockwise){
         addVertex(coordCurr, miterVec, miterVec, [1, v], context);
@@ -537,7 +531,7 @@ function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, context) {
     var angle_step = angle / numTriangles;
 
     for (var i = 0; i < numTriangles; i++) {
-        if (i == 0 && angle < 0) {
+        if (i === 0 && angle < 0) {
             // if ccw, flip the extrusion vector so offsets work properly
             blade = Vector.neg(blade);
         }
