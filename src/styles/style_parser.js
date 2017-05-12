@@ -368,7 +368,7 @@ StyleParser.parseColor = function(val, context = {}) {
     }
 
     // Defaults
-    if (val) {
+    if (Array.isArray(val)) {
         // alpha
         if (val[3] == null) {
             val[3] = 1;
