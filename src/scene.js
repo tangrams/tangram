@@ -252,7 +252,7 @@ export default class Scene {
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
         this.render_states = new RenderStateManager(this.gl);
-        this.media_capture.setCanvas(this.canvas);
+        this.media_capture.setCanvas(this.canvas, this.gl);
     }
 
     // Get the URL to load the web worker from
