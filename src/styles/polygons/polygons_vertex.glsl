@@ -79,12 +79,10 @@ void main() {
     vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
 
     #ifdef TANGRAM_EXTRUDE_LINES
-        // vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         float width = a_extrude.z;
         float dwdz = a_extrude.w;
-        vec2 offset = a_offset.xy; // values have an 8-bit fraction;
-        // float distance = a_offset.w; // offset distance
+        vec2 offset = a_offset.xy;
 
         // Adjust line width based on zoom level, to prevent proxied lines
         // from being either too small or too big.
