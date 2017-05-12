@@ -29,7 +29,7 @@ attribute vec4 a_color;
     // w:  scaling factor for interpolating width between zooms
     attribute vec4 a_extrude;
     // xy: direction of line, for getting perpendicular offset
-    attribute vec4 a_offset;
+    attribute vec2 a_offset;
 #endif
 
 varying vec4 v_position;
