@@ -609,26 +609,26 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 tangent = [normal[1], -normal[0]];
 
                 addVertex(coord, Vector.add(normal, tangent), normal, [1, v], context, 1);
-                addVertex(coord, neg_normal, normal, [0, v], context, -1);
+                addVertex(coord, Vector.add(neg_normal, tangent), normal, [0, v], context, 1);
 
                 // Add length of square cap to texture coordinate
                 v += 0.5 * context.texcoord_width * context.v_scale;
 
                 addVertex(coord, normal, normal, [1, v], context, 1);
-                addVertex(coord, neg_normal, normal, [0, v], context, -1);
+                addVertex(coord, neg_normal, normal, [0, v], context, 1);
             }
             // last vertex on the lineString
             else {
                 tangent = [-normal[1], normal[0]];
 
                 addVertex(coord, normal, normal, [1, v], context, 1);
-                addVertex(coord, neg_normal, normal, [0, v], context, -1);
+                addVertex(coord, neg_normal, normal, [0, v], context, 1);
 
                 // Add length of square cap to texture coordinate
                 v += 0.5 * context.texcoord_width * context.v_scale;
 
                 addVertex(coord, Vector.add(normal, tangent), normal, [1, v], context, 1);
-                addVertex(coord, Vector.add(neg_normal, tangent), normal, [0, v], context, -1);
+                addVertex(coord, Vector.add(neg_normal, tangent), normal, [0, v], context, 1);
             }
 
             indexPairs(1, context);
