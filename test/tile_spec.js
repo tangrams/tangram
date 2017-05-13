@@ -4,7 +4,7 @@ import Tile from '../src/tile';
 
 let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 
-describe('Tile', function() {
+describe.skip('Tile', function() {
 
     let subject,
         scene,
