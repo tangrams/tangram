@@ -533,19 +533,19 @@ layers:
                     order: global.feature_order
                     # color: [.7, .7, .7]
                     color: function() { return (feature.height > 50 && [.9, .7, .9]) || [.7, .7, .7]; }
-                    extrude: true
-                    # extrude: function() { return feature.height + 20; }
+                    # extrude: true
+                    extrude: function() { return feature.height + 20; }
                     hover:
                         color: red
                         # color: function() { return (feature.height > 50 && 'red') || [.7, .7, .7]; }
                         # color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
-                        # extrude: function() { return feature.height + 10; }
+                        extrude: function() { return feature.height + 10; }
                     click:
                         # color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
                         color: yellow
                         # color: function() { return (feature.height > 50 && 'yellow') || [.7, .7, .7]; }
                         # extrude: function() { return feature.height + 20; }
-                        # extrude: true
+                        extrude: true
 
             # tall:
             #     filter: { height: { min: 100 } }

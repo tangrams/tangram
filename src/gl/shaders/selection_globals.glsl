@@ -7,8 +7,9 @@
 #endif
 
 #if defined(TANGRAM_FEATURE_SELECTABLE)
-    #define TANGRAM_SELECTION_STATE_HOVER 1.
-    #define TANGRAM_SELECTION_STATE_CLICK 2.
+    #define TANGRAM_SELECTION_STATE_NONE 1.
+    #define TANGRAM_SELECTION_STATE_HOVER 2.
+    #define TANGRAM_SELECTION_STATE_CLICK 4.
 
     varying vec4 v_selection_color;
     varying float v_selection_state;

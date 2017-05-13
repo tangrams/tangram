@@ -166,27 +166,18 @@ export var Style = {
         let has_hover = (draw.hover != null) ? 1 : 0;
         let has_click = (draw.click != null) ? 1 : 0;
 
-        if (has_hover) {
-            draw.hover.selection_state = 1 * 4 + has_hover + (has_click * 2);
-        }
-
-        if (has_click) {
-            draw.click.selection_state = 2 * 4 + has_hover + (has_click * 2);
-        }
+        // Bitfields
+        // 0 (1):  no selection instance
+        // 1 (2):  hover instance
+        // 2 (4):  click instance
+        // 3 (8):  has hover instance
+        // 4 (16): has click instance
 
         // TODO: also check if feature is interactive/selectable before building
-        if (has_hover && draw.selection_prop) { // draw.selection_group_index
-            if (this.addFeature(feature, draw.hover, context)) {
-                tile_data.uniforms.u_selection_has_instances = true;
-            }
-            else {
-                has_hover = 0;
-                // TODO may cause probelms to disable these if either hover or click builds,
-                // but other doesn't and is expecting it to be present when hiding/showing in shader
-            }
-        }
-
         if (has_click && draw.selection_prop) {
+            // draw.click.selection_state = 2 * 4 + has_hover + (has_click * 2);
+            draw.click.selection_state = (1 << 2) + (has_hover << 3) + (has_click << 4);
+
             if (this.addFeature(feature, draw.click, context)) {
                 tile_data.uniforms.u_selection_has_instances = true;
             }
@@ -195,11 +186,26 @@ export var Style = {
             }
         }
 
+        if (has_hover && draw.selection_prop) { // draw.selection_group_index
+            // draw.hover.selection_state = 1 * 4 + has_hover + (has_click * 2);
+            draw.hover.selection_state = (1 << 1) + (has_hover << 3) + (has_click << 4);
+
+            if (this.addFeature(feature, draw.hover, context)) {
+                tile_data.uniforms.u_selection_has_instances = true;
+            }
+            else {
+                has_hover = 0;
+                // NB: click instance has already been built at this time, but it does not
+                // depend on has_hover flag for hide/show logic
+            }
+        }
+
         // Primary feature instance
         if (draw.selection_state == null) {
             // draw.selection_state = (has_hover || has_click) ? 0 : 255;
             if (has_hover || has_click) {
-                draw.selection_state = has_hover + (has_click * 2);
+                // draw.selection_state = has_hover + (has_click * 2);
+                draw.selection_state = 1 + (has_hover << 3) + (has_click << 4); // (1 << 0) -> 1
             }
             else {
                 draw.selection_state = 255;
