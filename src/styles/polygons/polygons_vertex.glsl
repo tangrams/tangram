@@ -79,9 +79,8 @@ void main() {
     vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
 
     #ifdef TANGRAM_EXTRUDE_LINES
-        vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
-        float width = a_extrude.z;
-        float dwdz = a_extrude.w;
+        vec2 extrude = a_extrude.xy;
+        float dwdz = a_extrude.w / 1024.;
         vec2 offset = a_offset.xy;
 
         // Adjust line width based on zoom level, to prevent proxied lines
@@ -92,12 +91,12 @@ void main() {
         float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);
         dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
 
-        // Interpolate between zoom levels
-        width += dwdz * dz;
+        // Interpolate line width between zoom levels
+        extrude += extrude * dwdz * dz;
 
-        // Scale pixel dimensions to be consistent in screen space
+        // Scale line width to be consistent in screen space
         // Scale from style zoom units back to tile zoom
-        width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
+        extrude *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom
@@ -106,7 +105,7 @@ void main() {
         // Modify line width before extrusion
         #pragma tangram: width
 
-        position.xy += extrude * width + offset;
+        position.xy += extrude + offset;
     #endif
 
     // World coordinates for 3d procedural textures

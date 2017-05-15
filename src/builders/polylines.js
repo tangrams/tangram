@@ -40,7 +40,6 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         texcoord_ratio,
         texcoord_normalize,
         scaling_index,
-        scaling_normalize,
         offset_index,
         join, cap,
         miter_limit,
@@ -76,7 +75,6 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         vertex_template,
         half_width: width / 2,
         scaling_index,
-        scaling_normalize,
         offset_index,
         v_scale,
         texcoord_index,
@@ -443,9 +441,8 @@ function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_co
 
     // set Scaling vertex (X, Y extrusion direction + Z half_width as attribute)
     if (context.scaling_index) {
-        vertex_template[context.scaling_index + 0] = scale[0] * context.scaling_normalize * flip;
-        vertex_template[context.scaling_index + 1] = scale[1] * context.scaling_normalize * flip;
-        vertex_template[context.scaling_index + 2] = context.half_width;
+        vertex_template[context.scaling_index + 0] = scale[0] * context.half_width * flip;
+        vertex_template[context.scaling_index + 1] = scale[1] * context.half_width * flip;
     }
 
     // set Normal value (X, Y line normal direction, Z isCap toggle, W offset value)

@@ -143,12 +143,12 @@ Object.assign(Lines, {
             return; // skip lines that don't interpolate to a positive value at next zoom
         }
 
-        // convert to units and relative change from previous zoom
-        // NB: multiply by 2 because a given width is twice as big in screen space at the next zoom
+        // convert line width to tile units
         style.width = width * context.units_per_meter_overzoom;
-        style.next_width = (next_width * 2) - width;
-        style.next_width *= context.units_per_meter_overzoom;
-        style.next_width /= 2; // NB: divide by 2 because extrusion width is halved in builder - remove?
+
+        // calculate relative change in line width to next zoom
+        // NB: multiply by 2 because a given width is twice as big in screen space at the next zoom
+        style.next_width = (next_width * 2 / width) - 1;
 
         style.color = this.parseColor(draw.color, context);
         if (!style.color) {
@@ -274,7 +274,7 @@ Object.assign(Lines, {
         this.vertex_template[i++] = 0;
 
         // a_extrude.w - scaling to previous and next zoom
-        this.vertex_template[i++] = style.next_width;
+        this.vertex_template[i++] = style.next_width * 1024;
 
         // a_offset.xy - normal vector
         this.vertex_template[i++] = 0;
@@ -328,7 +328,6 @@ Object.assign(Lines, {
                 join: style.join,
                 miter_limit: style.miter_limit,
                 scaling_index: this.vertex_layout.index.a_extrude,
-                scaling_normalize: 256, // values have an 8-bit fraction
                 offset_index: this.vertex_layout.index.a_offset,
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 texcoord_width: (style.width || style.next_width) / context.tile.overzoom2, // UVs can't calc for zero-width, use next zoom width in that case
