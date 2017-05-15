@@ -262,7 +262,7 @@ export default class Scene {
         // ignore uninitialized worker src variable (defined in parent scope)
         if (typeof __worker_src__ !== "undefined"){
             let source = '(' + __worker_src__ + ')()';
-            if (__worker_src_origin__) {
+            if (__worker_src_origin__ && __worker_src_map__ !== '') {
                 let origin = __worker_src_origin__.slice(0, __worker_src_origin__.lastIndexOf('/')+1);
                 source += '\n//#' + ' sourceMappingURL=' + origin + __worker_src_map__;
             }
