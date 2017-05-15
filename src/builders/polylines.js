@@ -362,35 +362,23 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
             indexPairs(1, context);
         }
 
-        if (join_type === JOIN_TYPE.bevel) {
-            addBevel(coordCurr,
-                // extrude normal
-                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
-                // uv coordinates
-                [0, v], [1, v], [0, v],
-                context
-            );
-        }
-        else if (join_type === JOIN_TYPE.round) {
-            addFan(coordCurr,
-                // extrusion vector of first vertex
-                Vector.neg(normPrev),
-                // controls extrude distance of pivot vertex
-                miterVec,
-                // extrusion vector of last vertex
-                Vector.neg(normNext),
-                // line normal (unused here)
-                miterVec,
-                // uv coordinates
-                [0, v], [1, v], [0, v],
-                false, context
-            );
-        }
+        addFan(coordCurr,
+            // extrusion vector of first vertex
+            Vector.neg(normPrev),
+            // controls extrude distance of pivot vertex
+            miterVec,
+            // extrusion vector of last vertex
+            Vector.neg(normNext),
+            // line normal (unused here)
+            miterVec,
+            // uv coordinates
+            [0, v], [1, v], [0, v],
+            false, (join_type === JOIN_TYPE.bevel), context
+        );
 
         addVertex(coordCurr, miterVec, miterVec, [1, v], context, 1);
         addVertex(coordCurr, normNext, miterVec, [0, v], context, -1);
-    }
-    else {
+    } else {
         addVertex(coordCurr, normPrev, miterVec, [1, v], context, 1);
         addVertex(coordCurr, miterVec, miterVec, [0, v], context, -1);
 
@@ -398,29 +386,19 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
             indexPairs(1, context);
         }
 
-        if (join_type === JOIN_TYPE.bevel) {
-            addBevel(coordCurr,
-                // exrude normal
-                normPrev, Vector.neg(miterVec), normNext,
-                [1, v], [0, v], [1, v],
-                context
-            );
-        }
-        else if (join_type === JOIN_TYPE.round) {
-            addFan(coordCurr,
-                // extrusion vector of first vertex
-                normPrev,
-                // extrusion vector of pivot vertex
-                Vector.neg(miterVec),
-                // extrusion vector of last vertex
-                normNext,
-                // line normal for offset
-                miterVec,
-                // uv coordinates
-                [1, v], [0, v], [1, v],
-                false, context
-            );
-        }
+        addFan(coordCurr,
+            // extrusion vector of first vertex
+            normPrev,
+            // extrusion vector of pivot vertex
+            Vector.neg(miterVec),
+            // extrusion vector of last vertex
+            normNext,
+            // line normal for offset
+            miterVec,
+            // uv coordinates
+            [1, v], [0, v], [1, v],
+            false, (join_type === JOIN_TYPE.bevel), context
+        );
 
         addVertex(coordCurr, normNext, miterVec, [1, v], context, 1);
         addVertex(coordCurr, miterVec, miterVec, [0, v], context, -1);
@@ -482,12 +460,13 @@ function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_co
 //  and interpolating their UVs               \ p /
 //                                             \./
 //                                              C
-function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, context) {
+function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, isBevel, context) {
     // eA = extrusion vector of first outer vertex
     // eC = extrusion vector of inner vertex
     // eA, eC, eB = extrusion vectors
     // normal = line normal for calculating cap offsets
     // coord = center point p - vertex connecting two line segments
+
     var cross = eA[0] * eB[1] - eA[1] * eB[0];
     var dot = Vector.dot(eA, eB);
 
@@ -497,12 +476,15 @@ function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, context) {
         angle -= 2*Math.PI;
     }
 
-    // vary number of triangles in fan with angle (based on MIN_FAN_WIDTH)
-    var numTriangles = trianglesPerArc(angle, context.half_width);
-    if (numTriangles < 1) {
-        return;
+    if (isBevel) {
+        numTriangles = 1;
+    } else {
+        // vary number of triangles in fan with angle (based on MIN_FAN_WIDTH)
+        var numTriangles = trianglesPerArc(angle, context.half_width);
+        if (numTriangles < 1) {
+            return;
+        }
     }
-    // numTriangles = 1; // testing
 
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
@@ -559,41 +541,6 @@ function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, context) {
         vertex_elements.push(pivotIndex);
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 1 : 2));
     }
-}
-
-//  addBevel    A ----- B
-//             / \     / \
-//            /  /\   /\  \
-//           /  /  \ /  \  \
-//                / C \
-function addBevel (coord, eA, eC, eB, uA, uC, uB, context) {
-    var pivotIndex = context.vertex_data.vertex_count;
-
-    // ccw or cw bend?
-    var cross = eA[0] * eB[1] - eA[1] * eB[0] > 0;
-
-    if (cross) { // ccw bend
-        // pivot
-        addVertex(coord, Vector.neg(eC), false, uC, context, -1);
-        // first outside corner
-        addVertex(coord, eA, false, uA, context, 1);
-        // second outside corner
-        addVertex(coord, eB, false, uB, context, 1);
-    } else { // cw bend
-        // pivot point
-        addVertex(coord, eC, false, uC, context, 1);
-        // first outside corner
-        addVertex(coord, Vector.neg(eA), false, uA, context, -1);
-        // second outside corner
-        addVertex(coord, Vector.neg(eB), false, uB, context, -1);
-    }
-
-    var vertex_elements = context.vertex_data.vertex_elements;
-
-    // add outside vertices in reverse order depending on sign
-    vertex_elements.push(pivotIndex + (cross ? 2 : 1));
-    vertex_elements.push(pivotIndex);
-    vertex_elements.push(pivotIndex + (cross ? 1 : 2));
 }
 
 //  Function to add the vertices needed for line caps,
@@ -665,7 +612,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 // line normal, for offsets
                 normal,
                 uvA, uvC, uvB,
-                true, context
+                true, false, context
             );
 
             break;
