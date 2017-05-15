@@ -34,9 +34,6 @@ describe('TileManager', function () {
             });
         });
 
-        it('calls queueCoordinate with the queued tile', () => {
-            sinon.assert.calledWith(tile_manager.queueCoordinate, coords);
-        });
     });
 
     describe('.loadCoordinate(coords)', () => {
