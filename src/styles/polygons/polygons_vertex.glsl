@@ -29,7 +29,7 @@ attribute vec4 a_color;
     // w:  scaling factor for interpolating width between zooms
     attribute vec4 a_extrude;
     // xy: direction of line, for getting perpendicular offset
-    attribute vec2 a_offset;
+    attribute vec3 a_offset;
 #endif
 
 varying vec4 v_position;
@@ -82,6 +82,7 @@ void main() {
         vec2 extrude = a_extrude.xy;
         float dwdz = a_extrude.w / 1024.;
         vec2 offset = a_offset.xy;
+        float offset_dwdz = a_offset.z / 1024.;
 
         // Adjust line width based on zoom level, to prevent proxied lines
         // from being either too small or too big.
@@ -99,6 +100,11 @@ void main() {
         // Scale line width to be consistent in screen space
         // Scale from style zoom units back to tile zoom
         extrude *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
+
+        // Interpolate line width between zoom levels
+        // offset += offset * offset_dwdz * dz;
+        float osdwdz = sign(offset_dwdz);
+        offset += offset * offset_dwdz * ((1.-step(0., osdwdz)) - (dz * -osdwdz));
 
         // Scale pixel dimensions to be consistent in screen space
         // Scale from style zoom units back to tile zoom

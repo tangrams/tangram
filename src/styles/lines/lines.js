@@ -26,7 +26,7 @@ Object.assign(Lines, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+            { name: 'a_offset', size: 3, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -116,15 +116,15 @@ Object.assign(Lines, {
         }
     },
 
-    // Calculate width at zoom given in `context`
-    calcWidth (width, context) {
-        return (width && StyleParser.evalCachedDistanceProperty(width, context)) || 0;
+    // Calculate width or offset at zoom given in `context`
+    calcDistance (prop, context) {
+        return (prop && StyleParser.evalCachedDistanceProperty(prop, context)) || 0;
     },
 
-    // Calculate width at next zoom (used for line width interpolation)
-    calcWidthNextZoom (width, context) {
+    // Calculate width or offset at next zoom (used for zoom-based interpolation in shader)
+    calcDistanceNextZoom (prop, context) {
         context.zoom++;
-        let val = this.calcWidth(width, context);
+        let val = this.calcDistance(prop, context);
         context.zoom--;
         return val;
     },
@@ -133,11 +133,11 @@ Object.assign(Lines, {
         var style = this.feature_style;
 
         // line width in meters
-        let width = this.calcWidth(draw.width, context);
+        let width = this.calcDistance(draw.width, context);
         if (width < 0) {
             return; // skip lines with negative width
         }
-        let next_width = this.calcWidthNextZoom(draw.next_width, context);
+        let next_width = this.calcDistanceNextZoom(draw.next_width, context);
 
         if ((width === 0 && next_width === 0) || next_width < 0) {
             return; // skip lines that don't interpolate to a positive value at next zoom
@@ -157,6 +157,19 @@ Object.assign(Lines, {
             // can't multiply zero width (if width is zero, the extrusion vector collapses to [0, 0])
             style.width = next_width * context.units_per_meter_overzoom * 2;
             style.next_width = -1;
+        }
+
+        // calc offset at current and next zoom
+        let offset = this.calcDistance(draw.offset, context);
+        let next_offset = this.calcDistanceNextZoom(draw.next_offset, context);
+
+        style.offset = offset * context.units_per_meter_overzoom;
+        if (Math.abs(offset) > 0) {
+            style.next_offset = (next_offset * 2 / offset) - 1;
+        }
+        else {
+            style.offset = next_offset * context.units_per_meter_overzoom * 2;
+            style.next_offset = -1;
         }
 
         style.color = this.parseColor(draw.color, context);
@@ -188,20 +201,21 @@ Object.assign(Lines, {
         style.cap = draw.cap;
         style.join = draw.join;
 
-        style.offset = draw.offset && (StyleParser.evalCachedDistanceProperty(draw.offset, context) * context.units_per_meter_overzoom);
-
         style.miter_limit = draw.miter_limit;
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // Construct an outline style
         // Reusable outline style object, marked as already wrapped in cache objects (preprocessed = true)
-        style.outline = style.outline || { width: {}, next_width: {}, preprocessed: true };
+        style.outline = style.outline || {
+            width: {}, next_width: {},
+            // offset: {}, next_offset: {},
+            preprocessed: true };
 
         if (draw.outline && draw.outline.visible !== false && draw.outline.color && draw.outline.width) {
             // outline width in meters
             // NB: multiply by 2 because outline is applied on both sides of line
-            let outline_width = this.calcWidth(draw.outline.width, context) * 2;
-            let outline_next_width = this.calcWidthNextZoom(draw.outline.next_width, context) * 2;
+            let outline_width = this.calcDistance(draw.outline.width, context) * 2;
+            let outline_next_width = this.calcDistanceNextZoom(draw.outline.next_width, context) * 2;
 
             if ((outline_width === 0 && outline_next_width === 0) || outline_width < 0 || outline_next_width < 0) {
                 // skip lines that don't interpolate between zero or greater width
@@ -214,11 +228,16 @@ Object.assign(Lines, {
                 style.outline.width.value = outline_width + width;
                 style.outline.next_width.value = outline_next_width + next_width;
 
+                // style.outline.offset.value = style.offset;
+                // style.outline.next_offset.value = style.next_offset;
+
+                style.outline.offset = draw.offset;
+                style.outline.next_offset = draw.next_offset;
+
                 style.outline.color = draw.outline.color;
                 style.outline.cap = draw.outline.cap || draw.cap;
                 style.outline.join = draw.outline.join || draw.join;
                 style.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
-                style.outline.offset = draw.offset;
                 style.outline.style = draw.outline.style || this.name;
 
                 // Explicitly defined outline order, or inherited from inner line
@@ -253,6 +272,7 @@ Object.assign(Lines, {
         draw.next_width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits); // width will be computed for next zoom
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
         draw.offset = StyleParser.createPropertyCache(draw.offset || 0, StyleParser.parseUnits);
+        draw.next_offset = StyleParser.createPropertyCache(draw.offset || 0, StyleParser.parseUnits);
 
         if (draw.outline) {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
@@ -288,6 +308,7 @@ Object.assign(Lines, {
         // a_offset.xy - normal vector
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = style.next_offset * 1024;
 
         // a_color.rgba
         this.vertex_template[i++] = style.color[0] * 255;

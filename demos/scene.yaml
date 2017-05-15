@@ -91,12 +91,22 @@ styles:
                     color.rgb *= 1.25; // pump up the colors
                     color.a = 0.5;     // translucent
         draw: # default draw parameters
-            color: function() { return feature.colour || 'gray'; }
+            # color: function() { return feature.colour || 'gray'; }
+            color: function() { return feature.colour_name; }
             width: 6px
             outline:
                 color: [.8, .8, .8]
                 width: 1px
             interactive: true
+            # offset: |
+            #     function() {
+            #         if (feature.ref === 'F') {
+            #             return 5;
+            #         }
+            #         else if (feature.ref === 'G') {
+            #             return -5;
+            #         }
+            #     }
 
     rainbow:
         base: polygons
@@ -293,12 +303,17 @@ layers:
             lines:
                 color: white
                 # color: function() { return [Math.random(), Math.random(), Math.random()] }
+                # width: 20px
+                # width: [[14, 20], [16, 5], [17, 1], [20, 5]]
+                # width: [[16, 0px], [19, 10px]]
                 width: 12
                 order: global.feature_order
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
                     width: [[15, 0], [16, 2]]
+                    # width: 3px
                     order: 352 # put all outlines below all roads
+                # offset: 5px
 
         rounded:
             filter: { $zoom: { min: 18 } }
@@ -782,11 +797,25 @@ layers:
 
     transit:
         data: { source: mapzen }
-        filter: { $zoom: { min: 16 } }
+        filter: { $zoom: { min: 15 } }
         draw:
             lines:
                 style: transit-lines
                 order: 400
+
+        F:
+            filter: { ref: F }
+            draw:
+                lines:
+                    width: [[15, 0px], [16, 6px], [18, 16px]]
+                    offset: [[15, 0px], [16, 3.5px], [18, 8.5px]]
+
+        G:
+            filter: { ref: G }
+            draw:
+                lines:
+                    width: [[15, 0px], [16, 6px], [18, 16px]]
+                    offset: [[15, 0px], [16, -3.5px], [18, -8.5px]]
 
     # schools:
     #     data: { source: schools }
