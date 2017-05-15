@@ -148,7 +148,16 @@ Object.assign(Lines, {
 
         // calculate relative change in line width to next zoom
         // NB: multiply by 2 because a given width is twice as big in screen space at the next zoom
-        style.next_width = (next_width * 2 / width) - 1;
+        if (width > 0) {
+            style.next_width = (next_width * 2 / width) - 1;
+        }
+        else {
+            // If scaling up from zero width, scale "backwards", e.g. from next_width * 0 to next_width * 1
+            // This is necessary because the next_width shader attribute is a multiplier, and we
+            // can't multiply zero width (if width is zero, the extrusion vector collapses to [0, 0])
+            style.width = next_width * context.units_per_meter_overzoom * 2;
+            style.next_width = -1;
+        }
 
         style.color = this.parseColor(draw.color, context);
         if (!style.color) {

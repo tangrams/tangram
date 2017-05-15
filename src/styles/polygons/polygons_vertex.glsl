@@ -92,7 +92,9 @@ void main() {
         dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
 
         // Interpolate line width between zoom levels
-        extrude += extrude * dwdz * dz;
+        // extrude *= dwdz * dz;
+        float sdwdz = sign(dwdz);
+        extrude += extrude * dwdz * ((1.-step(0., sdwdz)) - (dz * -sdwdz));
 
         // Scale line width to be consistent in screen space
         // Scale from style zoom units back to tile zoom
