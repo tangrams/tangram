@@ -2,160 +2,39 @@ import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
 
-let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
-
 describe('Tile', function() {
 
-    let subject,
-        scene,
-        view,
-        tile_manager,
-        coords = { x: 38603, y: 49255, z: 17 };
+    let coords = { x: 38603, y: 49255, z: 17 };
 
-    beforeEach(() => {
-        scene = makeScene({});
-        view = scene.view;
-        tile_manager = scene.tile_manager;
-        // sinon.stub(view, 'findVisibleTileCoordinates').returns([]);
-        view.setView(nycLatLng);
+    describe('overzooming', () => {
 
-        return scene.load().then(() => {
-            subject = Tile.create({
-                coords,
-                style_zoom: coords.z,
-                source: scene.sources.osm,
-                worker: scene.getWorkerForDataSource(scene.sources.osm),
-                view: scene.view
-            });
-        });
-    });
+        it('does NOT overzoom a coordinate at the max zoom', () => {
+            let coords2 = Tile.coordinateWithMaxZoom(coords, coords.z);
 
-    afterEach(() => {
-        // if (typeof view.findVisibleTileCoordinates.restore === 'function') {
-        //     view.findVisibleTileCoordinates.restore();
-        // }
-        scene.destroy();
-        tile_manager.destroy();
-        scene   = null;
-        view    = null;
-        subject = null;
-    });
-
-    describe('.constructor(spec)', () => {
-
-        it('returns a new instance', () => {
-            assert.instanceOf(subject, Tile);
+            assert.deepEqual(coords2.x, coords.x);
+            assert.deepEqual(coords2.y, coords.y);
+            assert.deepEqual(coords2.z, coords.z);
         });
 
-        it('overzooms a coordinate above the tile source max zoom', () => {
-            let unzoomed_coords = { x: Math.floor(coords.x*2), y: Math.floor(coords.y*2), z: 18 };
-            let overzoomed_coords = { x: Math.floor(coords.x/4), y: Math.floor(coords.y/4), z: 15 };
+        it('does NOT overzoom a coordinate below the max zoom', () => {
+            let coords2 = Tile.coordinateWithMaxZoom(coords, coords.z + 1);
 
-            let overzoomed = Tile.coordinateWithMaxZoom(unzoomed_coords, 15);
+            assert.deepEqual(coords2.x, coords.x);
+            assert.deepEqual(coords2.y, coords.y);
+            assert.deepEqual(coords2.z, coords.z);
+        });
 
-            assert.deepEqual(overzoomed.x, overzoomed_coords.x);
-            assert.deepEqual(overzoomed.y, overzoomed_coords.y);
-            assert.deepEqual(overzoomed.z, overzoomed_coords.z);
+        it('does overzoom a coordinate above the max zoom', () => {
+            let unzoomed = { x: Math.floor(coords.x*2), y: Math.floor(coords.y*2), z: coords.z + 1 };
+            let overzoomed = { x: Math.floor(coords.x/4), y: Math.floor(coords.y/4), z: coords.z - 2 };
+
+            let coords2 = Tile.coordinateWithMaxZoom(unzoomed, coords.z - 2);
+
+            assert.deepEqual(coords2.x, overzoomed.x);
+            assert.deepEqual(coords2.y, overzoomed.y);
+            assert.deepEqual(coords2.z, overzoomed.z);
         });
 
     });
 
-    describe('.create(spec)', () => {
-        it('returns a new instance', () => {
-            assert.instanceOf(Tile.create({source: scene.sources.osm, coords: { x: 10, y: 10, z: 10 }, style_zoom: 10 }), Tile);
-        });
-    });
-
-    describe('.build(generation)', () => {
-        beforeEach(() => {
-            sinon.spy(subject, 'workerMessage');
-        });
-
-        afterEach(() => {
-            subject.workerMessage.restore();
-        });
-
-        it('calls .workerMessage()', () => {
-            subject.build();
-            sinon.assert.called(subject.workerMessage);
-        });
-    });
-
-    describe('sets visibility', () => {
-
-        describe('without a source max_zoom', () => {
-
-            it('is visible when scene is at same zoom as tile zoom', () => {
-                // view.findVisibleTileCoordinates.restore();
-                // sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, view.zoom)]);
-                view.updateBounds();
-                tile_manager.updateVisibility(subject);
-                // view.findVisibleTileCoordinates.restore();
-
-                assert.isTrue(subject.visible);
-            });
-
-            it('is NOT visible when scene is lower than tile zoom', () => {
-                let z = 16;
-                // view.findVisibleTileCoordinates.restore();
-                // sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
-                view.setZoom(z);
-                tile_manager.updateVisibility(subject);
-                // view.findVisibleTileCoordinates.restore();
-
-                assert.isFalse(subject.visible);
-            });
-
-            it('is NOT visible when scene is higher than tile zoom', () => {
-                let z = 18;
-                // view.findVisibleTileCoordinates.restore();
-                // sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
-                view.setZoom(z);
-                tile_manager.updateVisibility(subject);
-                // view.findVisibleTileCoordinates.restore();
-
-                assert.isFalse(subject.visible);
-            });
-
-        });
-
-        describe('with a source max_zoom', () => {
-
-            let old_max_zoom;
-
-            beforeEach(() => {
-                old_max_zoom = scene.sources.osm.max_zoom;
-                scene.sources.osm.max_zoom = 17;
-            });
-
-            afterEach(() => {
-                scene.sources.osm.max_zoom = old_max_zoom;
-            });
-
-            it('is visible when scene is higher than tile zoom and tile is at its max zoom', () => {
-                let z = 18;
-                // view.findVisibleTileCoordinates.restore();
-                // sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
-                view.setZoom(z);
-                subject = Tile.create({coords: subject.coords, view: view, style_zoom: view.zoom, source: scene.sources.osm});
-                tile_manager.updateVisibility(subject);
-                // view.findVisibleTileCoordinates.restore();
-
-                assert.isTrue(subject.visible);
-            });
-
-            it('is NOT visible when scene is higher than tile zoom and tile is NOT at its max zoom', () => {
-                let z = 14;
-                // view.findVisibleTileCoordinates.restore();
-                // sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
-                view.setZoom(z);
-                subject = Tile.create({coords: subject.coords, view: view, style_zoom: view.zoom, source: scene.sources.osm});
-                tile_manager.updateVisibility(subject);
-
-                assert.isFalse(subject.visible);
-            });
-
-        });
-
-    });
 });
