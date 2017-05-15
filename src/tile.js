@@ -58,10 +58,6 @@ export default class Tile {
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
     }
 
-    static create(spec) {
-        return new Tile(spec);
-    }
-
     static coord(c) {
         return {x: c.x, y: c.y, z: c.z, key: Tile.coordKey(c)};
     }

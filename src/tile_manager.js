@@ -258,7 +258,7 @@ export default class TileManager {
             let key = Tile.key(coords, source, this.view.tile_zoom);
             if (key && !this.hasTile(key)) {
                 log('trace', `load tile ${key}, distance from view center: ${coords.center_dist}`);
-                let tile = Tile.create({
+                let tile = new Tile({
                     source,
                     coords,
                     worker: this.scene.getWorkerForDataSource(source),
