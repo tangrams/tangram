@@ -275,7 +275,16 @@ export var Style = {
         if (!draw.preprocessed) {
             // Apply draw defaults
             if (this.draw) {
-                mergeObjects(draw, this.draw);
+                // Merge each property separately to avoid modifying `draw` instance identity
+                for (let param in this.draw) {
+                    let val = this.draw[param];
+                    if (typeof val === 'object') {  // nested param (e.g. `outline`)
+                        draw[param] = mergeObjects({}, val, draw[param]);
+                    }
+                    else if (draw[param] == null) { // simple param (single scalar value or array)
+                        draw[param] = val;
+                    }
+                }
             }
 
             draw = this._preprocess(draw); // optional subclass implementation
