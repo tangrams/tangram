@@ -305,15 +305,17 @@ layers:
                 # color: function() { return [Math.random(), Math.random(), Math.random()] }
                 # width: 20px
                 # width: [[14, 20], [16, 5], [17, 1], [20, 5]]
-                # width: [[16, 0px], [19, 10px]]
-                width: 12
+                # width: [[16, 0px], [18, 10px], [20, 0px]]
+                width: [[16, 0px], [17, 10px], [18, 15px], [19, 15px], [20, 0px]]
+                # width: 10px
                 order: global.feature_order
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
-                    width: [[15, 0], [16, 2]]
+                    # width: [[15, 0], [16, 2]]
+                    width: [[17, 0], [18, 2px], [19, 3px]]
                     # width: 3px
                     order: 352 # put all outlines below all roads
-                # offset: 5px
+                # offset: [[18, 0], [19, -30px], [20, 30px]]
 
         rounded:
             filter: { $zoom: { min: 18 } }
@@ -807,15 +809,25 @@ layers:
             filter: { ref: F }
             draw:
                 lines:
-                    width: [[15, 0px], [16, 6px], [18, 16px]]
-                    offset: [[15, 0px], [16, 3.5px], [18, 8.5px]]
+                    # width: [[15, 0px], [16, 6px], [18, 16px]]
+                    # offset: [[15, 0px], [16, 3.5px], [18, 8.5px], [19, 8.5px], [20, 0px]]
+                    width: [[15, 0px], [16, 12px], [17, 16px], [18, 16px]]
+                    # offset: [[15, 0px], [16, 6.5px], [17, 8.5px], [18, 8.5px], [19, 8.5px], [20, -8.5px]]
+                    # offset: [[15, 0px], [16, 6.5px], [17, 8.5px], [18, -8.5px], [19, -8.5px], [20, 0]]
+                    offset: [[15, 0px], [16, 6.5px], [17, 8.5px], [19, -8.5px]]
 
         G:
             filter: { ref: G }
             draw:
                 lines:
-                    width: [[15, 0px], [16, 6px], [18, 16px]]
-                    offset: [[15, 0px], [16, -3.5px], [18, -8.5px]]
+                    # width: [[15, 0px], [16, 6px], [18, 16px]]
+                    # offset: [[15, 0px], [16, -3.5px], [18, -8.5px], [19, -8.5px], [20, 0px]]
+                    width: [[15, 0px], [16, 12px], [17, 16px], [18, 16px]]
+                    # offset: [[15, 0px], [16, -6.5px], [17, -8.5px], [18, -8.5px], [19, -8.5px], [20, 8.5px]]
+                    # offset: [[15, 0px], [16, -6.5px], [17, -8.5px], [18, 8.5px], [19, 8.5px], [20, 0]]
+                    offset: [[15, 0px], [16, -6.5px], [17, -8.5px], [19, 8.5px]]
+
+                    # order: function () { return feature.sort_rank + 1; }
 
     # schools:
     #     data: { source: schools }
