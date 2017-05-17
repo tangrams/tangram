@@ -137,7 +137,14 @@ Object.assign(Lines, {
         if (width < 0) {
             return; // skip lines with negative width
         }
-        let next_width = this.calcDistanceNextZoom(draw.next_width, context);
+
+        let next_width;
+        if (draw.next_width) {
+            next_width = this.calcDistanceNextZoom(draw.next_width, context);
+        }
+        else {
+            next_width = width;
+        }
 
         if ((width === 0 && next_width === 0) || next_width < 0) {
             return false; // skip lines that don't interpolate to a positive value at next zoom
@@ -149,14 +156,20 @@ Object.assign(Lines, {
 
         // calculate relative change in line width to next zoom
         // NB: multiply by 2 because a given width is twice as big in screen space at the next zoom
-        next_width *= 2;
-        if (width >= next_width) {
-            style.width = width * context.units_per_meter_overzoom;
-            style.width_scale = 1 - (next_width / width);
+        if (draw.next_width) {
+            next_width *= 2;
+            if (width >= next_width) {
+                style.width = width * context.units_per_meter_overzoom;
+                style.width_scale = 1 - (next_width / width);
+            }
+            else {
+                style.width = next_width * context.units_per_meter_overzoom;
+                style.width_scale = (1 - (width / next_width)) * -1;
+            }
         }
         else {
-            style.width = next_width * context.units_per_meter_overzoom;
-            style.width_scale = (1 - (width / next_width)) * -1;
+            style.width = width * context.units_per_meter_overzoom;
+            style.width_scale = 0;
         }
 
         // optional adjustment to texcoord width based on scale
@@ -170,9 +183,6 @@ Object.assign(Lines, {
 
     // Calculate offset at current and next zoom, and scaling factor between
     calcOffset (draw, style, context) {
-            style.offset = 0;
-            style.offset_scale = 0;
-
         // Pre-calculated offset passed
         // This happens when a line passes pre-computed offset values to its outline
         if (draw.offset_precalc) {
@@ -182,30 +192,37 @@ Object.assign(Lines, {
         // Offset to calculate
         else if (draw.offset) {
             let offset = this.calcDistance(draw.offset, context);
-            let next_offset = this.calcDistanceNextZoom(draw.next_offset, context) * 2;
 
-            if (Math.abs(offset) >= Math.abs(next_offset)) {
-                style.offset = offset * context.units_per_meter_overzoom;
-                if (offset !== 0) {
-                    style.offset_scale = 1 - (next_offset / offset);
+            if (draw.next_offset) {
+                let next_offset = this.calcDistanceNextZoom(draw.next_offset, context) * 2;
+
+                if (Math.abs(offset) >= Math.abs(next_offset)) {
+                    style.offset = offset * context.units_per_meter_overzoom;
+                    if (offset !== 0) {
+                        style.offset_scale = 1 - (next_offset / offset);
+                    }
+                    else {
+                        style.offset_scale = 0;
+                    }
                 }
                 else {
-                    style.offset_scale = 0;
+                    style.offset = next_offset * context.units_per_meter_overzoom;
+                    if (next_offset !== 0) {
+                        style.offset_scale = (1 - (offset / next_offset)) * -1;
+                    }
+                    else {
+                        style.offset_scale = 0;
+                    }
                 }
             }
             else {
-                style.offset = next_offset * context.units_per_meter_overzoom;
-                if (next_offset !== 0) {
-                    style.offset_scale = (1 - (offset / next_offset)) * -1;
-                }
-                else {
-                    style.offset_scale = 0;
-                }
+                style.offset = offset * context.units_per_meter_overzoom;
+                style.offset_scale = 0;
             }
         }
         // No offset
         else {
-            style.offset = 0;
+            style.offset = null
             style.offset_scale = 0;
         }
     },
@@ -317,10 +334,14 @@ Object.assign(Lines, {
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
         draw.width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits);
-        draw.next_width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits); // width will be computed for next zoom
+        if (draw.width && draw.width.type !== StyleParser.CACHE_TYPE.STATIC) {
+            draw.next_width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits);
+        }
+        draw.offset = draw.offset && StyleParser.createPropertyCache(draw.offset, StyleParser.parseUnits);
+        if (draw.offset && draw.offset.type !== StyleParser.CACHE_TYPE.STATIC) {
+            draw.next_offset = StyleParser.createPropertyCache(draw.offset, StyleParser.parseUnits);
+        }
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
-        draw.offset = StyleParser.createPropertyCache(draw.offset || 0, StyleParser.parseUnits);
-        draw.next_offset = StyleParser.createPropertyCache(draw.offset || 0, StyleParser.parseUnits);
 
         if (draw.outline) {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
