@@ -27,9 +27,12 @@ attribute vec4 a_color;
     // xy: extrusion direction in xy plane
     // z:  half-width of line (amount to extrude)
     // w:  scaling factor for interpolating width between zooms
-    attribute vec4 a_extrude;
+    attribute vec2 a_extrude;
     // xy: direction of line, for getting perpendicular offset
-    attribute vec3 a_offset;
+    attribute vec2 a_offset;
+    // x: zoom scaling factor for line width
+    // y: zoom scaling factor for line offset
+    attribute vec2 a_scaling;
 #endif
 
 varying vec4 v_position;
@@ -80,9 +83,7 @@ void main() {
 
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = a_extrude.xy;
-        float dwdz = a_extrude.w / 1024.;
         vec2 offset = a_offset.xy;
-        float offset_dwdz = a_offset.z / 1024.;
 
         // Adjust line width based on zoom level, to prevent proxied lines
         // from being either too small or too big.
@@ -92,26 +93,29 @@ void main() {
         float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);
         dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
 
-        // Interpolate line width between zoom levels
-        // extrude *= dwdz * dz;
-        float sdwdz = sign(dwdz);
-        extrude += extrude * dwdz * ((1.-step(0., sdwdz)) - (dz * -sdwdz));
+        // Interpolate line width to next zoom
+        float dwdz = a_scaling.x / 1024.;
+        float sdwdz = sign(step(0., dwdz) - 0.5);
+        dwdz = abs(dwdz);
+        extrude -= extrude * dwdz * ((1.-step(0., sdwdz)) - (dz * -sdwdz));
 
-        // Scale line width to be consistent in screen space
-        // Scale from style zoom units back to tile zoom
-        extrude *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
+        // Interpolate line offset to next zoom
+        dwdz = a_scaling.y / 1024.;
+        sdwdz = sign(step(0., dwdz) - 0.5);
+        dwdz = abs(dwdz);
+        offset -= offset * dwdz * ((1.-step(0., sdwdz)) - (dz * -sdwdz));
 
-        // Interpolate line width between zoom levels
-        // offset += offset * offset_dwdz * dz;
-        float osdwdz = sign(offset_dwdz);
-        offset += offset * offset_dwdz * ((1.-step(0., osdwdz)) - (dz * -osdwdz));
-
-        // Scale pixel dimensions to be consistent in screen space
-        // Scale from style zoom units back to tile zoom
-        offset *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
+        // Scale line width and offset to be consistent in screen space
+        float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
+        extrude *= ssz;
+        offset *= ssz;
 
         // Modify line width before extrusion
-        #pragma tangram: width
+        #ifdef TANGRAM_BLOCK_WIDTH
+            float width = 1.;
+            #pragma tangram: width
+            extrude *= width;
+        #endif
 
         position.xy += extrude + offset;
     #endif

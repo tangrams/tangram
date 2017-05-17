@@ -25,8 +25,9 @@ Object.assign(Lines, {
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_offset', size: 3, type: gl.SHORT, normalized: false },
+            { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
+            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+            { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -129,9 +130,8 @@ Object.assign(Lines, {
         return val;
     },
 
-    _parseFeature (feature, draw, context) {
-        var style = this.feature_style;
-
+    // Calculate width at current and next zoom, and scaling factor between
+    calcWidth (draw, style, context) {
         // line width in meters
         let width = this.calcDistance(draw.width, context);
         if (width < 0) {
@@ -140,37 +140,86 @@ Object.assign(Lines, {
         let next_width = this.calcDistanceNextZoom(draw.next_width, context);
 
         if ((width === 0 && next_width === 0) || next_width < 0) {
-            return; // skip lines that don't interpolate to a positive value at next zoom
+            return false; // skip lines that don't interpolate to a positive value at next zoom
         }
 
-        // convert line width to tile units
-        style.width = width * context.units_per_meter_overzoom;
+        // these values are saved for later calculating the outline width, which needs to add the base line's width
+        style.width_unscaled = width;
+        style.next_width_unscaled = next_width;
 
         // calculate relative change in line width to next zoom
         // NB: multiply by 2 because a given width is twice as big in screen space at the next zoom
-        if (width > 0) {
-            style.next_width = (next_width * 2 / width) - 1;
+        next_width *= 2;
+        if (width >= next_width) {
+            style.width = width * context.units_per_meter_overzoom;
+            style.width_scale = 1 - (next_width / width);
         }
         else {
-            // If scaling up from zero width, scale "backwards", e.g. from next_width * 0 to next_width * 1
-            // This is necessary because the next_width shader attribute is a multiplier, and we
-            // can't multiply zero width (if width is zero, the extrusion vector collapses to [0, 0])
-            style.width = next_width * context.units_per_meter_overzoom * 2;
-            style.next_width = -1;
+            style.width = next_width * context.units_per_meter_overzoom;
+            style.width_scale = (1 - (width / next_width)) * -1;
         }
 
-        // calc offset at current and next zoom
-        let offset = this.calcDistance(draw.offset, context);
-        let next_offset = this.calcDistanceNextZoom(draw.next_offset, context);
-
-        style.offset = offset * context.units_per_meter_overzoom;
-        if (Math.abs(offset) > 0) {
-            style.next_offset = (next_offset * 2 / offset) - 1;
+        // optional adjustment to texcoord width based on scale
+        if (this.texcoords) {
+            // UVs can't calc for zero-width, use next zoom width in that case
+            style.texcoord_width = (width || next_width) * context.units_per_meter_overzoom / context.tile.overzoom2; // shorten calcs
         }
+
+        return true;
+    },
+
+    // Calculate offset at current and next zoom, and scaling factor between
+    calcOffset (draw, style, context) {
+            style.offset = 0;
+            style.offset_scale = 0;
+
+        // Pre-calculated offset passed
+        // This happens when a line passes pre-computed offset values to its outline
+        if (draw.offset_precalc) {
+            style.offset = draw.offset_precalc;
+            style.offset_scale = draw.offset_scale_precalc;
+        }
+        // Offset to calculate
+        else if (draw.offset) {
+            let offset = this.calcDistance(draw.offset, context);
+            let next_offset = this.calcDistanceNextZoom(draw.next_offset, context) * 2;
+
+            if (Math.abs(offset) >= Math.abs(next_offset)) {
+                style.offset = offset * context.units_per_meter_overzoom;
+                if (offset !== 0) {
+                    style.offset_scale = 1 - (next_offset / offset);
+                }
+                else {
+                    style.offset_scale = 0;
+                }
+            }
+            else {
+                style.offset = next_offset * context.units_per_meter_overzoom;
+                if (next_offset !== 0) {
+                    style.offset_scale = (1 - (offset / next_offset)) * -1;
+                }
+                else {
+                    style.offset_scale = 0;
+                }
+            }
+        }
+        // No offset
         else {
-            style.offset = next_offset * context.units_per_meter_overzoom * 2;
-            style.next_offset = -1;
+            style.offset = 0;
+            style.offset_scale = 0;
         }
+    },
+
+    _parseFeature (feature, draw, context) {
+        var style = this.feature_style;
+
+        // calculate line width at current and next zoom
+        if (this.calcWidth(draw, style, context) === false) {
+            return; // missing or zero width
+        }
+
+        // calculate line offset at current and next zoom
+        this.calcOffset(draw, style, context);
 
         style.color = this.parseColor(draw.color, context);
         if (!style.color) {
@@ -208,8 +257,8 @@ Object.assign(Lines, {
         // Reusable outline style object, marked as already wrapped in cache objects (preprocessed = true)
         style.outline = style.outline || {
             width: {}, next_width: {},
-            // offset: {}, next_offset: {},
-            preprocessed: true };
+            preprocessed: true
+        };
 
         if (draw.outline && draw.outline.visible !== false && draw.outline.color && draw.outline.width) {
             // outline width in meters
@@ -225,15 +274,14 @@ Object.assign(Lines, {
             }
             else {
                 // Maintain consistent outline width around the line fill
-                style.outline.width.value = outline_width + width;
-                style.outline.next_width.value = outline_next_width + next_width;
+                style.outline.width.value = outline_width + style.width_unscaled;
+                style.outline.next_width.value = outline_next_width + style.next_width_unscaled;
 
-                // style.outline.offset.value = style.offset;
-                // style.outline.next_offset.value = style.next_offset;
+                // Offset is directly copied from fill to outline, no need to re-calculate it
+                style.outline.offset_precalc = style.offset;
+                style.outline.offset_scale_precalc = style.offset_scale;
 
-                style.outline.offset = draw.offset;
-                style.outline.next_offset = draw.next_offset;
-
+                // Inherited properties
                 style.outline.color = draw.outline.color;
                 style.outline.cap = draw.outline.cap || draw.cap;
                 style.outline.join = draw.outline.join || draw.join;
@@ -297,18 +345,17 @@ Object.assign(Lines, {
         // a_position.w - layer order
         this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // a_extrude.xyz - extrusion vector
+        // a_extrude.xy - extrusion vector
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
-
-        // a_extrude.w - scaling to previous and next zoom
-        this.vertex_template[i++] = style.next_width * 1024;
 
         // a_offset.xy - normal vector
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = style.next_offset * 1024;
+
+        // a_scaling.xy - scaling to previous and next zoom
+        this.vertex_template[i++] = style.width_scale * 1024;    // line width
+        this.vertex_template[i++] = style.offset_scale * 1024;   // line offset
 
         // a_color.rgba
         this.vertex_template[i++] = style.color[0] * 255;
@@ -360,7 +407,7 @@ Object.assign(Lines, {
                 scaling_index: this.vertex_layout.index.a_extrude,
                 offset_index: this.vertex_layout.index.a_offset,
                 texcoord_index: this.vertex_layout.index.a_texcoord,
-                texcoord_width: (style.width || style.next_width) / context.tile.overzoom2, // UVs can't calc for zero-width, use next zoom width in that case
+                texcoord_width: style.texcoord_width,
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
