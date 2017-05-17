@@ -404,7 +404,7 @@ Object.assign(Lines, {
                 cap: style.cap,
                 join: style.join,
                 miter_limit: style.miter_limit,
-                scaling_index: this.vertex_layout.index.a_extrude,
+                extrude_index: this.vertex_layout.index.a_extrude,
                 offset_index: this.vertex_layout.index.a_offset,
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 texcoord_width: style.texcoord_width,

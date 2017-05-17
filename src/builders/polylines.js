@@ -39,7 +39,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         texcoord_width,
         texcoord_ratio,
         texcoord_normalize,
-        scaling_index,
+        extrude_index,
         offset_index,
         join, cap,
         miter_limit,
@@ -47,7 +47,6 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
     }) {
     var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
     var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter;
-    offset = offset || 0.0;
 
     // Configure miter limit
     if (join_type === JOIN_TYPE.miter) {
@@ -74,7 +73,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         vertex_data,
         vertex_template,
         half_width: width / 2,
-        scaling_index,
+        extrude_index,
         offset_index,
         v_scale,
         texcoord_index,
@@ -428,27 +427,26 @@ function addVertex(coordinate, extrude, normal, uv, context, flip) {
     vertex_data.addVertex(vertex_template);
 }
 
-function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_coord, context, flip) {
+function buildVertexTemplate (vertex_template, vertex, scale, normal, uv, context, flip) {
     // set vertex position
     vertex_template[0] = vertex[0];
     vertex_template[1] = vertex[1];
 
-    // set UVs
-    if (context.texcoord_index && texture_coord) {
-        vertex_template[context.texcoord_index + 0] = texture_coord[0] * context.texcoord_normalize;
-        vertex_template[context.texcoord_index + 1] = texture_coord[1] * context.texcoord_normalize;
-    }
+    // set line extrusion vector
+    let extrude = context.half_width * flip;
+    vertex_template[context.extrude_index + 0] = scale[0] * extrude;
+    vertex_template[context.extrude_index + 1] = scale[1] * extrude;
 
-    // set Scaling vertex (X, Y extrusion direction + Z half_width as attribute)
-    if (context.scaling_index) {
-        vertex_template[context.scaling_index + 0] = scale[0] * context.half_width * flip;
-        vertex_template[context.scaling_index + 1] = scale[1] * context.half_width * flip;
-    }
-
-    // set Normal value (X, Y line normal direction, Z isCap toggle, W offset value)
-    if (context.offset_index && context.offset) {
+    // set line offset vector
+    if (context.offset) {
         vertex_template[context.offset_index + 0] = normal[0] * context.offset;
         vertex_template[context.offset_index + 1] = normal[1] * context.offset;
+    }
+
+    // set UVs
+    if (context.texcoord_index) {
+        vertex_template[context.texcoord_index + 0] = uv[0] * context.texcoord_normalize;
+        vertex_template[context.texcoord_index + 1] = uv[1] * context.texcoord_normalize;
     }
 }
 
