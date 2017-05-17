@@ -184,14 +184,12 @@ StyleParser.convertUnits = function(val, context) {
     }
     // un-parsed unit string
     else if (typeof val === 'string') {
-        var units = val.match(/([0-9.-]+)([a-z]+)/);
-        if (units && units.length === 3) {
-            val = parseFloat(units[1]);
-            units = units[2];
+        if (val.trim().slice(-2) === 'px') {
+            val = parseFloat(val);
+            val *= Geo.metersPerPixel(context.zoom); // convert from pixels
         }
-
-        if (units === 'px') { // convert from pixels
-            val *= Geo.metersPerPixel(context.zoom);
+        else {
+            val = parseFloat(val);
         }
     }
     // multiple values or stops
