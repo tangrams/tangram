@@ -358,12 +358,11 @@ Object.assign(Lines, {
     makeVertexTemplate(style) {
         let i = 0;
 
-        // a_position.xyz - x & y coords will be filled in per-vertex below
+        // a_position.xyz - vertex position
+        // a_position.w - layer order
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = style.z || 0;
-
-        // a_position.w - layer order
         this.vertex_template[i++] = this.scaleOrder(style.order);
 
         // a_extrude.xy - extrusion vector
