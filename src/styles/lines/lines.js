@@ -222,7 +222,7 @@ Object.assign(Lines, {
         }
         // No offset
         else {
-            style.offset = null
+            style.offset = 0;
             style.offset_scale = 0;
         }
     },

@@ -5,7 +5,6 @@ import Geo from '../geo';
 import {outsideTile, isCoordOutsideTile} from './common';
 
 const zero_vec2 = [0, 0];
-const one_zero_vec2 = [1, 0];
 
 // Build tessellated triangles for a polyline
 const CAP_TYPE = {
@@ -603,11 +602,10 @@ function addCap (coord, v, normal, type, isBeginning, context) {
             indexPairs(1, context);
             break;
         case CAP_TYPE.round:
-            var nA, nB, uvA, uvB, uvC;
-
             // default for end cap, beginning cap will overwrite below (this way we're always passing a non-null value,
-             // even if texture coords are disabled)
+            // even if texture coords are disabled)
             var uvA = zero_v, uvB = one_v, uvC = mid_v;
+            var nA, nB;
 
             // first vertex on the lineString
             if (isBeginning) {
