@@ -500,7 +500,7 @@ function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, isBevel, conte
             var affine_uvCurr = Vector.sub(uvA, uvC);
         }
         else {
-            uvCurr = Vector.set(uvA);
+            uvCurr = Vector.copy(uvA);
             var uv_delta = Vector.div(Vector.sub(uvB, uvA), numTriangles);
         }
     }
