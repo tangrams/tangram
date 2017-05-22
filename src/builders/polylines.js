@@ -87,20 +87,20 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
 
     // Process lines
     for (let index = 0; index < lines.length; index++) {
-        buildPolyline(lines[index], context, true);
+        buildPolyline(lines[index], context);
     }
 
     // Process extra lines (which are created above if lines need to be mutated for easier processing)
     if (context.extra_lines) {
         for (let index = 0; index < context.extra_lines.length; index++) {
-            buildPolyline(context.extra_lines[index], context, false);
+            buildPolyline(context.extra_lines[index], context);
         }
     }
 
     return context.geom_count;
 }
 
-function buildPolyline(line, context, check_boundaries){
+function buildPolyline(line, context){
     // Skip if line is not valid
     if (line.length < 2) {
         return;
@@ -114,7 +114,7 @@ function buildPolyline(line, context, check_boundaries){
     // Loop backwards through line to a tile boundary if found
     // since you need to draw lines that are only partially inside the tile,
     // so we start at the first index where it is safe to loop through to the last index within the tile
-    if (check_boundaries && closed_polygon && join_type === JOIN_TYPE.miter) {
+    if (closed_polygon && join_type === JOIN_TYPE.miter) {
         var boundaryIndex = getTileBoundaryIndex(line);
         if (boundaryIndex !== 0) {
             // create new line that is a cyclic permutation of the original
@@ -159,7 +159,7 @@ function buildPolyline(line, context, check_boundaries){
     normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
 
     // Skip tile boundary lines and append a new line if needed
-    if (check_boundaries && remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
+    if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
         var nonBoundarySegment = getNextNonBoundarySegment(line, index_start, tile_edge_tolerance);
         if (nonBoundarySegment) {
             context.extra_lines = context.extra_lines || [];
@@ -204,7 +204,7 @@ function buildPolyline(line, context, check_boundaries){
         }
 
         // Remove tile boundaries
-        if (check_boundaries && remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
+        if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
             addVertex(coordCurr, normNext, normNext, 1, v, context, 1);
             addVertex(coordCurr, normNext, normNext, 0, v, context, -1);
 
