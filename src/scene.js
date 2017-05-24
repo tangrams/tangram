@@ -926,7 +926,7 @@ export default class Scene {
         // (all except those that are only raster sources attached to other sources)
         for (let ln in this.config.layers) {
             let layer = this.config.layers[ln];
-            if (layer.data && this.sources[layer.data.source]) {
+            if (layer.enabled !== false && layer.data && this.sources[layer.data.source]) {
                 this.sources[layer.data.source].builds_geometry_tiles = true;
             }
         }
