@@ -1,4 +1,4 @@
-(function(){var target = (typeof module !== "undefined" && module.exports) || (typeof window !== "undefined");if (target) {var __worker_src__ = arguments.callee.toString();var __worker_src_origin__ = document.currentScript !== undefined ? document.currentScript.src : '';var __worker_src_map__ = 'tangram.debug.js.map';};(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Tangram = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+(function(){var target = (typeof self === "undefined" || !(typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope)) && ((typeof module !== "undefined" && module.exports) || (typeof window !== "undefined"));if (target) {var __worker_src__ = arguments.callee.toString();var __worker_src_origin__ = typeof document !== "undefined" && document.currentScript !== undefined ? document.currentScript.src : '';var __worker_src_map__ = 'tangram.debug.js.map';};(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Tangram = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -30852,7 +30852,7 @@ var Scene = function () {
         this.last_selection_render = -1; // frame counter for last selection render pass
         this.media_capture = new _media_capture2.default();
         this.selection = null;
-        this.introspection = false;
+        this.introspection = options.introspection === true ? true : false;
         this.resetTime();
 
         this.container = options.container;
@@ -31028,7 +31028,7 @@ var Scene = function () {
             this.resizeMap(this.container.clientWidth, this.container.clientHeight);
             _vao2.default.init(this.gl);
             this.render_states = new _render_state2.default(this.gl);
-            this.media_capture.setCanvas(this.canvas);
+            this.media_capture.setCanvas(this.canvas, this.gl);
         }
 
         // Get the URL to load the web worker from
@@ -31041,7 +31041,7 @@ var Scene = function () {
             // ignore uninitialized worker src variable (defined in parent scope)
             if (typeof __worker_src__ !== "undefined") {
                 var source = '(' + __worker_src__ + ')()';
-                if (__worker_src_origin__) {
+                if (__worker_src_origin__ && __worker_src_map__ !== '') {
                     var origin = __worker_src_origin__.slice(0, __worker_src_origin__.lastIndexOf('/') + 1);
                     source += '\n//#' + ' sourceMappingURL=' + origin + __worker_src_map__;
                 }
@@ -31825,7 +31825,7 @@ var Scene = function () {
             // (all except those that are only raster sources attached to other sources)
             for (var ln in this.config.layers) {
                 var layer = this.config.layers[ln];
-                if (layer.data && this.sources[layer.data.source]) {
+                if (layer.enabled !== false && layer.data && this.sources[layer.data.source]) {
                     this.sources[layer.data.source].builds_geometry_tiles = true;
                 }
             }
@@ -37143,6 +37143,8 @@ exports.Style = undefined;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 exports.addLayerDebugEntry = addLayerDebugEntry;
 
 var _style_parser = _dereq_('./style_parser');
@@ -37459,7 +37461,17 @@ var Style = exports.Style = {
         if (!draw.preprocessed) {
             // Apply draw defaults
             if (this.draw) {
-                (0, _merge2.default)(draw, this.draw);
+                // Merge each property separately to avoid modifying `draw` instance identity
+                for (var param in this.draw) {
+                    var val = this.draw[param];
+                    if ((typeof val === 'undefined' ? 'undefined' : _typeof(val)) === 'object') {
+                        // nested param (e.g. `outline`)
+                        draw[param] = (0, _merge2.default)({}, val, draw[param]);
+                    } else if (draw[param] == null) {
+                        // simple param (single scalar value or array)
+                        draw[param] = val;
+                    }
+                }
             }
 
             draw = this._preprocess(draw); // optional subclass implementation
@@ -38607,15 +38619,11 @@ StyleParser.convertUnits = function (val, context) {
     }
     // un-parsed unit string
     else if (typeof val === 'string') {
-            var units = val.match(/([0-9.-]+)([a-z]+)/);
-            if (units && units.length === 3) {
-                val = parseFloat(units[1]);
-                units = units[2];
-            }
-
-            if (units === 'px') {
-                // convert from pixels
-                val *= _geo2.default.metersPerPixel(context.zoom);
+            if (val.trim().slice(-2) === 'px') {
+                val = parseFloat(val);
+                val *= _geo2.default.metersPerPixel(context.zoom); // convert from pixels
+            } else {
+                val = parseFloat(val);
             }
         }
         // multiple values or stops
@@ -38793,7 +38801,7 @@ StyleParser.parseColor = function (val) {
     }
 
     // Defaults
-    if (val) {
+    if (Array.isArray(val)) {
         // alpha
         if (val[3] == null) {
             val[3] = 1;
@@ -38965,17 +38973,15 @@ var CanvasText = function () {
                             text_info.isRTL = rtl;
                             text_info.no_curving = bidi || shaped; // used in LabelLine to prevent curved labels
                             text_info.vertical_buffer = _this.vertical_text_buffer;
-
-                            var segments = splitLabelText(text, rtl);
-
-                            if (rtl) {
-                                segments.reverse();
-                            }
-
-                            text_info.segments = segments;
                             text_info.size = [];
 
                             if (!text_info.no_curving) {
+                                var segments = splitLabelText(text, rtl);
+                                if (rtl) {
+                                    segments.reverse();
+                                }
+
+                                text_info.segments = segments;
                                 for (var _i = 0; _i < segments.length; _i++) {
                                     text_info.size.push(_this.textSize(style, segments[_i], text_settings).size);
                                 }
@@ -39183,7 +39189,7 @@ var CanvasText = function () {
                             var type = text_info.type[i];
                             switch (type) {
                                 case 'straight':
-                                    var word = words.reduce(text_info.isRTL ? reduceLeft : reduceRight);
+                                    var word = text_info.isRTL ? text.split().reverse().join() : text;
                                     var texcoord = void 0;
 
                                     if (CanvasText.texcoord_cache[tile_key][style][word].texcoord) {
@@ -39291,7 +39297,7 @@ var CanvasText = function () {
                             switch (type) {
                                 case 'straight':
                                     var size = text_info.total_size.texture_size;
-                                    var word = text_info.segments.reduce(text_info.isRTL ? reduceLeft : reduceRight);
+                                    var word = text_info.isRTL ? text.split().reverse().join() : text;
 
                                     if (size[0] > column_width) {
                                         column_width = size[0];
@@ -39444,6 +39450,11 @@ var CanvasText = function () {
                 CanvasText.text_cache_count = 0;
                 (0, _log2.default)('debug', 'CanvasText: pruning text cache');
             }
+
+            if (Object.keys(CanvasText.segment_cache).length > CanvasText.segment_cache_count_max) {
+                CanvasText.segment_cache = {};
+                (0, _log2.default)('debug', 'CanvasText: pruning segment cache');
+            }
         }
     }]);
 
@@ -39459,34 +39470,38 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.text_cache_count = 0; // current size of cache (measured as # of entries)
-CanvasText.text_cache_count_max = 5000; // prune cache when it exceeds this size
+CanvasText.text_cache_count_max = 4000; // prune cache when it exceeds this size
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
-
-function reduceLeft(prev, next) {
-    return next + prev;
-}
-function reduceRight(prev, next) {
-    return prev + next;
-}
 
 // Contextual Shaping Languages - Unicode ranges
 var context_langs = {
     Arabic: '\u0600-\u06FF',
-    Bengali: '\u0980-\u09FF',
-    Burmese: '\u1000-\u109F',
-    Devanagari: '\u0900-\u097F',
-    Khmer: '\u1780-\u17FF',
-    Gujarati: '\u0A80-\u0AFF',
-    Gurmukhi: '\u0A00-\u0A7F',
-    Kannada: '\u0C80-\u0CFF',
-    Lao: '\u0E80-\u0EFF',
-    Mongolian: '\u1800-\u18AF',
-    Oriya: '\u0B00-\u0B7F',
-    Tamil: '\u0B80-\u0BFF',
-    Telugu: '\u0C00-\u0C7F',
-    Tibetan: '\u0F00-\u0FFF'
+    Mongolian: '\u1800-\u18AF'
 };
+
+var accents_and_vowels = '[:\u0300-\u036F' + // Combining Diacritical Marks
+'\u0900-\u0903\u093A-\u094C\u094E\u094F\u0951-\u0957\u0962\u0963' + // Devanagari
+'\u0981-\u0983\u09BC\u09BE-\u09CC\u09D7\u09E2\u09E3' + // Bengali
+'\u0A01-\u0A03\u0A3C-\u0A4C\u0A51' + // Gurmukhi
+'\u0A81-\u0A83\u0ABC\u0ABE-\u0ACC\u0AE2\u0AE3' + // Gujarati
+'\u0B01-\u0B03\u0B3C\u0B3E-\u0B4C\u0B56\u0B57\u0B62\u0B63' + // Oriya
+'\u0B82\u0BBE-\u0BCD\u0BD7' + // Tamil
+'\u0C00-\u0C03\u0C3E-\u0C4C\u0C55\u0C56\u0C62\u0C63' + // Telugu
+'\u0C81-\u0C83\u0CBC\u0CBE-\u0CCC\u0CD5\u0CD6\u0CE2\u0CE3' + // Kannada
+'\u0D01-\u0D03\u0D3E-\u0D4C\u0D4E\u0D57\u0D62\u0D63' + // Malayalam
+'\u0D82\u0D83\u0DCA-\u0DDF\u0DF2\u0DF3' + // Sinhala
+'\u0E31\u0E34-\u0E3A\u0E47-\u0E4E' + // Thai
+'\u0EB1\u0EB4-\u0EBC\u0EC8-\u0ECD' + // Lao
+'\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F83\u0F86\u0F87\u0F8D-\u0FBC\u0FC6' + // Tibetan
+'\u102B-\u1038\u103A-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D' + // Burmese
+'\u17B4-\u17D1\u17D3' + // Khmer
+'\u1A55-\u1A5E\u1A61-\u1A7C' + // Tai Tham
+'\u1DC0-\u1DFF' + // Combining Diacritical Marks Supplement
+'\u20D0-\u20FF' + // Combining Diacritical Marks for Symbols
+"]";
+var combo_characters = '[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0C4D\u0CCD\u0D4D\u0F84\u1039\u17D2\u1A60\u1A7F]';
+var graphemeRegex = new RegExp("^.(?:" + accents_and_vowels + "+)?" + "(" + combo_characters + "\\W(?:" + accents_and_vowels + "+)?)*");
 
 var reg_ex_shaping = '[';
 for (var key in context_langs) {
@@ -39502,7 +39517,7 @@ function isTextShaped(s) {
 
 // Right-to-left / bi-directional text handling
 // Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-var rtlDirCheck = new RegExp('^[\0-/:-@[-`{-\xBF\xD7\xF7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]+$');
+var rtlDirCheck = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
 function isTextRTL(s) {
     return rtlDirCheck.test(s);
 }
@@ -39514,42 +39529,73 @@ function isTextNeutral(s) {
 
 var markRTL = '\u200F'; // explicit right-to-left marker
 
+CanvasText.segment_cache = {};
+CanvasText.segment_cache_count_max = 1000;
+CanvasText.cache_stats.segment_hits = 0;
+CanvasText.cache_stats.segment_misses = 0;
+
 // Splitting strategy for chopping a label into segments
 function splitLabelText(text, rtl) {
     if (text.length < codon_length) {
         return [text];
     }
 
-    var segments = [];
-
-    while (text.length) {
-        var segment = text.substring(0, codon_length);
-
-        if (segment.length <= Math.floor(0.5 * codon_length)) {
-            segments[segments.length - 1] += segment;
-        } else {
-            // if RTL, check to see if segment starts or ends on a neutral character
-            // in which case we need to add the neutral segments separately (codon_length = 1) in reverse order
-            if (rtl) {
-                var neutral_segment = [];
-                while (segment.length > 0 && isTextNeutral(segment[0] || isTextNeutral(segment[segment.length - 1]))) {
-                    neutral_segment.unshift(segment[segment.length - 1]);
-                    segment = segment.substring(0, segment.length - 1);
-                }
-                segments.push(segment);
-                if (neutral_segment.length > 0) {
-                    segments = segments.concat(neutral_segment);
-                }
-            } else {
-                segment = text.substring(0, codon_length);
-                segments.push(segment);
-            }
-        }
-
-        text = text.substring(codon_length);
+    var key = text;
+    if (CanvasText.segment_cache[key]) {
+        CanvasText.cache_stats.segment_hits++;
+        return CanvasText.segment_cache[key].map(function (v) {
+            return v;
+        }); // copy to avoid modification
     }
 
-    return segments;
+    var segments = [];
+    while (text.length) {
+        var segment = '';
+        var testText = text;
+        var graphemeCount = 0;
+
+        for (graphemeCount; graphemeCount < codon_length && testText.length; graphemeCount++) {
+            var graphemeCluster = (graphemeRegex.exec(testText) || testText)[0];
+            segment += graphemeCluster;
+            testText = testText.substring(graphemeCluster.length);
+        }
+
+        // if RTL, check to see if segment starts or ends on a neutral character
+        // in which case we need to add the neutral segments separately
+        var take = 0;
+        if (rtl) {
+            while (segment.length > 0 && isTextNeutral(segment[0])) {
+                segments.push(segment[0]);
+                segment = segment.substring(1);
+                take++;
+            }
+
+            var neutral_segment = [];
+            while (segment.length > 0 && isTextNeutral(segment[segment.length - 1])) {
+                neutral_segment.unshift(segment[segment.length - 1]); // add trailing neutrals in reverse order
+                segment = segment.substring(0, segment.length - 1);
+                take++;
+            }
+
+            if (segment.length) {
+                segments.push(segment);
+            }
+
+            if (neutral_segment.length > 0) {
+                segments = segments.concat(neutral_segment);
+            }
+        } else {
+            segments.push(segment);
+        }
+
+        text = text.substring(segment.length + take);
+    }
+
+    CanvasText.cache_stats.segment_misses++;
+    CanvasText.segment_cache[key] = segments;
+    return segments.map(function (v) {
+        return v;
+    }); // copy to avoid modification
 }
 
 // Private class to arrange text labels into multiple lines based on
@@ -41099,11 +41145,6 @@ var Tile = function () {
         // Sum up layer feature/geometry stats from a set of tiles
 
     }], [{
-        key: 'create',
-        value: function create(spec) {
-            return new Tile(spec);
-        }
-    }, {
         key: 'coord',
         value: function coord(c) {
             return { x: c.x, y: c.y, z: c.z, key: Tile.coordKey(c) };
@@ -41848,7 +41889,7 @@ var TileManager = function () {
                 var key = _tile2.default.key(coords, source, this.view.tile_zoom);
                 if (key && !this.hasTile(key)) {
                     (0, _log2.default)('trace', 'load tile ' + key + ', distance from view center: ' + coords.center_dist);
-                    var tile = _tile2.default.create({
+                    var tile = new _tile2.default({
                         source: source,
                         coords: coords,
                         worker: this.scene.getWorkerForDataSource(source),
@@ -42486,7 +42527,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /* global MediaRecorder */
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /* global MediaRecorder, ImageData */
 
 
 var _log = _dereq_('./log');
@@ -42503,14 +42544,19 @@ var MediaCapture = function () {
     function MediaCapture() {
         _classCallCheck(this, MediaCapture);
 
+        this.canvas = null;
+        this.gl = null;
+        this.screenshot_canvas = null;
+        this.screenshot_context = null;
         this.queue_screenshot = null;
         this.video_capture = null;
     }
 
     _createClass(MediaCapture, [{
         key: 'setCanvas',
-        value: function setCanvas(canvas) {
+        value: function setCanvas(canvas, gl) {
             this.canvas = canvas;
+            this.gl = gl;
         }
 
         // Take a screenshot, returns a promise that resolves with the screenshot data when available
@@ -42539,10 +42585,46 @@ var MediaCapture = function () {
         key: 'completeScreenshot',
         value: function completeScreenshot() {
             if (this.queue_screenshot != null) {
-                // Get data URL, convert to blob
+                // Firefox appears to have an issue where its alpha conversion overflows some channels when
+                // the WebGL canvas content is captured. To get around this, we read pixels from the GL buffer
+                // directly, then flip and unmulitply the alpha on each pixel to get the desired RGB values.
+                // See https://github.com/tangrams/tangram/issues/551
+
+                // Get raw pixels from GL
+                var w = this.canvas.width;
+                var h = this.canvas.height;
+                var pixels = new Uint8Array(w * h * 4);
+                this.gl.readPixels(0, 0, w, h, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels);
+
+                // Flip Y (GL buffer is upside down)
+                var flip = new Uint8ClampedArray(w * h * 4); // canvas requires 'clamped' array type
+                for (var y = 0; y < h; y++) {
+                    for (var x = 0; x < w; x++) {
+                        var s = ((h - y - 1) * w + x) * 4; // source offset
+                        var d = (y * w + x) * 4; // destination offset
+                        var a = pixels[s + 3]; // unmultiply alpha
+                        flip[d + 0] = pixels[s + 0] * 255 / a;
+                        flip[d + 1] = pixels[s + 1] * 255 / a;
+                        flip[d + 2] = pixels[s + 2] * 255 / a;
+                        flip[d + 3] = a;
+                    }
+                }
+
+                // Draw flipped pixels to a canvas
+                this.screenshot_canvas = this.screenshot_canvas || document.createElement('canvas');
+                var canvas = this.screenshot_canvas;
+                canvas.width = w;
+                canvas.height = h;
+
+                this.screenshot_context = this.screenshot_context || canvas.getContext('2d');
+                var ctx = this.screenshot_context;
+                var image = new ImageData(flip, w, h);
+                ctx.putImageData(image, 0, 0);
+
+                // Get data URL from canvas and convert to blob
                 // Strip host/mimetype/etc., convert base64 to binary without UTF-8 mangling
                 // Adapted from: https://gist.github.com/unconed/4370822
-                var url = this.canvas.toDataURL('image/png');
+                var url = canvas.toDataURL('image/png');
                 var data = atob(url.slice(22));
                 var buffer = new Uint8Array(data.length);
                 for (var i = 0; i < data.length; ++i) {
@@ -43483,7 +43565,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.4\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.5\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
