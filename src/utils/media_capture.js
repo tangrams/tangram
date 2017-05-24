@@ -1,6 +1,7 @@
 /* global MediaRecorder, ImageData */
 import log from './log';
 import {createObjectURL} from './urls';
+import {StyleParser} from '../styles/style_parser';
 
 export default class MediaCapture {
 
@@ -19,13 +20,14 @@ export default class MediaCapture {
     }
 
     // Take a screenshot, returns a promise that resolves with the screenshot data when available
-    screenshot () {
+    // `background`: optional background color to blend screenshot with
+    screenshot ({ background } = {}) {
         if (this.queue_screenshot != null) {
             return this.queue_screenshot.promise; // only capture one screenshot at a time
         }
 
         // Will resolve once rendering is complete and render buffer is captured
-        this.queue_screenshot = {};
+        this.queue_screenshot = { background };
         this.queue_screenshot.promise = new Promise((resolve, reject) => {
             this.queue_screenshot.resolve = resolve;
             this.queue_screenshot.reject = reject;
@@ -47,6 +49,15 @@ export default class MediaCapture {
             let pixels = new Uint8Array(w * h * 4);
             this.gl.readPixels(0, 0, w, h, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels);
 
+            // Optional background to blend with (only RGB, alpha is ignored)
+            let background = this.queue_screenshot.background;
+            if (background && background !== 'transparent') {
+                background = StyleParser.parseColor(background).slice(0, 3).map(c => c * 255);
+            }
+            else {
+                background = null; // skip blend if transparent
+            }
+
             // Flip Y (GL buffer is upside down)
             let flip = new Uint8ClampedArray(w * h * 4);    // canvas requires 'clamped' array type
             for (let y=0; y < h; y++) {
@@ -58,6 +69,14 @@ export default class MediaCapture {
                     flip[d + 1] = pixels[s + 1] * 255 / a;
                     flip[d + 2] = pixels[s + 2] * 255 / a;
                     flip[d + 3] = a;
+
+                    if (background) {
+                        a /= 255;
+                        flip[d + 0] = (flip[d + 0] * a) + (background[0] * (1 - a));
+                        flip[d + 1] = (flip[d + 1] * a) + (background[1] * (1 - a));
+                        flip[d + 2] = (flip[d + 2] * a) + (background[2] * (1 - a));
+                        flip[d + 3] = 255;
+                    }
                 }
             }
 

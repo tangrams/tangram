@@ -1150,9 +1150,9 @@ export default class Scene {
     // Take a screenshot
     // Asynchronous because we have to wait for next render to capture buffer
     // Returns a promise
-    screenshot () {
+    screenshot ({ background = 'white' } = {}) {
         this.requestRedraw();
-        return this.media_capture.screenshot();
+        return this.media_capture.screenshot({background});
     }
 
     startVideoCapture () {
