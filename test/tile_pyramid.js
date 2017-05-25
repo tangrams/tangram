@@ -18,7 +18,7 @@ describe('TilePyramid', function() {
             style_zoom = coords.z;
             source = {
                 name: 'test',
-                max_zoom: 18
+                max_coord_zoom: 18
             };
 
             tile = {
@@ -42,6 +42,7 @@ describe('TilePyramid', function() {
         });
 
         it('creates one entry for an overzoomed tile', () => {
+            tile = Object.assign({}, tile);
             tile.coords = Tile.coordinateAtZoom(coords, 18);
             tile.style_zoom = 20;
             pyramid.addTile(tile);
@@ -51,11 +52,12 @@ describe('TilePyramid', function() {
         });
 
         it('creates additional entries for overzoomed tiles', () => {
+            tile = Object.assign({}, tile);
             tile.coords = Tile.coordinateAtZoom(coords, 18);
-
             tile.style_zoom = 19;
             pyramid.addTile(tile);
 
+            tile = Object.assign({}, tile);
             tile.style_zoom = 20;
             pyramid.addTile(tile);
 
@@ -71,6 +73,7 @@ describe('TilePyramid', function() {
 
         it('gets tile ancestor', () => {
             pyramid.addTile(tile);
+            tile = Object.assign({}, tile);
             tile.coords = Tile.coordinateAtZoom(tile.coords, tile.coords.z + 2);
             tile.style_zoom = tile.coords.z;
             let ancestor = pyramid.getAncestor(tile);
@@ -79,6 +82,7 @@ describe('TilePyramid', function() {
 
         it('gets tile descendant', () => {
             pyramid.addTile(tile);
+            tile = Object.assign({}, tile);
             tile.coords = Tile.coordinateAtZoom(tile.coords, tile.coords.z - 2);
             tile.style_zoom = tile.coords.z;
             let descendants = pyramid.getDescendants(tile);
