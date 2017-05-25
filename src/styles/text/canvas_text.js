@@ -567,11 +567,16 @@ CanvasText.texcoord_cache = {};
 
 // Contextual Shaping Languages - Unicode ranges
 const context_langs = {
-    Arabic: "\u0600-\u06FF",
     Mongolian: "\u1800-\u18AF"
 };
 
+// test http://localhost:8000/#16.72917/30.08541/31.28466
+const arabic_range = new RegExp(/^[\u0600-\u06FF]+$/);
+const arabic_splitters = new RegExp("[\u0622-\u0625\u0627\u062F-\u0632\u0648\u0671-\u0677\u0688-\u0699\u06C4-\u06CB\u06CF\u06D2\u06D3\u06EE\u06EF]");
+const arabic_vowels = new RegExp("^[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+");
 const accents_and_vowels = "[:\u0300-\u036F" + // Combining Diacritical Marks
+"\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7" + // Hebrew
+"\u07A6-\u07B0" + // Thaana
 "\u0900-\u0903\u093A-\u094C\u094E\u094F\u0951-\u0957\u0962\u0963" + // Devanagari
 "\u0981-\u0983\u09BC\u09BE-\u09CC\u09D7\u09E2\u09E3" + // Bengali
 "\u0A01-\u0A03\u0A3C-\u0A4C\u0A51" + // Gurmukhi
@@ -638,6 +643,25 @@ function splitLabelText(text, rtl){
     }
 
     let segments = [];
+
+    if (arabic_range.exec(text)) {
+        segments = text.split(arabic_splitters);
+        let offset = -1;
+        for (var s = 0; s < segments.length - 1; s++) {
+            if (s > 0) {
+                let carryoverVowels = arabic_vowels.exec(segments[s]);
+                if (carryoverVowels) {
+                    segments[s] = segments[s].substring(carryoverVowels[0].length);
+                    segments[s - 1] += carryoverVowels[0];
+                    offset += carryoverVowels[0].length;
+                }
+            }
+            offset += 1 + segments[s].length;
+            segments[s] += text.slice(offset, offset + 1);
+        }
+        text = "";
+    }
+
     while (text.length){
         let segment = '';
         let testText = text;
