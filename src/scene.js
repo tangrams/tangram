@@ -514,6 +514,7 @@ export default class Scene {
                 // Reset to screen buffer
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                gl.clearColor(...this.background.color); // restore scene background color
                 this.last_selection_render = this.frame;
             }
 

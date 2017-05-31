@@ -61,6 +61,7 @@ export default class FeatureSelection {
         // Switch to FBO
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
         this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
+        this.gl.clearColor(...FeatureSelection.defaultColor);
     }
 
     // Request feature selection
