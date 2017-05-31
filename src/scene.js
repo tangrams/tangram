@@ -729,19 +729,29 @@ export default class Scene {
     }
 
     // Request feature selection at given pixel. Runs async and returns results via a promise.
-    getFeatureAt(pixel) {
+    getFeatureAt(pixel, { radius } = {}) {
         if (!this.initialized) {
             log('debug', "Scene.getFeatureAt() called before scene was initialized");
             return Promise.resolve();
         }
 
-        // Point scaled to [0..1] range
-        var point = {
-            x: pixel.x * Utils.device_pixel_ratio / this.view.size.device.width,
-            y: pixel.y * Utils.device_pixel_ratio / this.view.size.device.height
+        // Scale point and radius to [0..1] range
+        let point = {
+            x: pixel.x / this.view.size.css.width,
+            y: pixel.y / this.view.size.css.height
         };
 
-        return this.selection.getFeatureAt(point).
+        if (radius > 0) {
+            radius  = {
+                x: radius / this.view.size.css.width,
+                y: radius / this.view.size.css.height
+            };
+        }
+        else {
+            radius = null;
+        }
+
+        return this.selection.getFeatureAt(point, { radius }).
             then(selection => Object.assign(selection, { pixel })).
             catch(error => Promise.resolve({ error }));
     }
