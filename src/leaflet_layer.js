@@ -143,7 +143,7 @@ function extendLeaflet(options) {
 
                 // Setup feature selection
                 this.setupSelectionEventHandlers(map);
-                this.setSelectionEvents(this.options.events);
+                this.setSelectionEvents(this.options.events, { radius: this.options.selectionRadius });
 
                 // Add GL canvas to layer container
                 this.scene.container = this.getContainer();
@@ -420,10 +420,11 @@ function extendLeaflet(options) {
             // Tie Leaflet event handlers to Tangram feature selection
             setupSelectionEventHandlers (map) {
                 this._selection_events = {};
+                this._selection_radius = null; // optional radius
 
                 this.hooks.click = (event) => {
                     if (typeof this._selection_events.click === 'function') {
-                        this.scene.getFeatureAt(event.containerPoint).
+                        this.scene.getFeatureAt(event.containerPoint, { radius: this._selection_radius }).
                             then(selection => {
                                 let results = Object.assign({}, selection, { leaflet_event: event });
                                 this._selection_events.click(results);
@@ -434,7 +435,7 @@ function extendLeaflet(options) {
 
                 this.hooks.mousemove = (event) => {
                     if (typeof this._selection_events.hover === 'function') {
-                        this.scene.getFeatureAt(event.containerPoint).
+                        this.scene.getFeatureAt(event.containerPoint, { radius: this._selection_radius }).
                             then(selection => {
                                 let results = Object.assign({}, selection, { leaflet_event: event });
                                 this._selection_events.hover(results);
@@ -455,8 +456,9 @@ function extendLeaflet(options) {
             // Set user-defined handlers for feature selection events
             // Currently only one handler can be defined for each event type
             // Event types are: `click`, `hover` (leaflet `mousemove`)
-            setSelectionEvents (events) {
+            setSelectionEvents (events, { radius } = {}) {
                 this._selection_events = Object.assign(this._selection_events, events);
+                this._selection_radius = (radius !== undefined) ? radius : this._selection_radius;
             },
 
             // Track the # of layers in the map pane
