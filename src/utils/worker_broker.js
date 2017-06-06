@@ -102,6 +102,10 @@ WorkerBroker.addTarget = function (name, target) {
     targets[name] = target;
 };
 
+WorkerBroker.removeTarget = function (name) {
+    delete targets[name];
+};
+
 // Given a dot-notation-style method name, e.g. 'Object.object.method',
 // find the object to call the method on from the list of registered targets
 function findTarget (method) {

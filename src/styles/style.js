@@ -22,7 +22,7 @@ const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.gl
 
 export var Style = {
     init ({ generation, styles, sources = {}, introspection } = {}) {
-        this.generation = generation;               // scene generation id this style was created for
+        this.setGeneration(generation);
         this.styles = styles;                       // styles for scene
         this.sources = sources;                     // data sources for scene
         this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
@@ -35,12 +35,6 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
-
-        // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = ['Style', this.name, this.generation].join('/');
-        if (Thread.is_main) {
-            WorkerBroker.addTarget(this.main_thread_target, this);
-        }
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
@@ -83,6 +77,7 @@ export var Style = {
             this.selection_program = null;
         }
 
+        WorkerBroker.removeTarget(this.main_thread_target);
         this.gl = null;
         this.initialized = false;
     },
@@ -92,6 +87,17 @@ export var Style = {
 
     baseStyle () {
         return this.base || this.name;
+    },
+
+    setGeneration (generation) {
+        // Scene generation id this style was created for
+        this.generation = generation;
+
+        // Provide a hook for this object to be called from worker threads
+        this.main_thread_target = ['Style', this.name, this.generation].join('/');
+        if (Thread.is_main) {
+            WorkerBroker.addTarget(this.main_thread_target, this);
+        }
     },
 
     fillVertexTemplate(attribute, value, { size, offset }) {
