@@ -122,13 +122,6 @@ Object.assign(Points, {
             return;
         }
 
-        // Called here because otherwise it will be delayed until the feature queue is parsed,
-        // and we want the preprocessing done before we evaluate text style below
-        draw = this.preprocess(draw);
-        if (!draw) {
-            return;
-        }
-
         // Point styling
         let style = {};
         style.color = this.parseColor(draw.color, context);
