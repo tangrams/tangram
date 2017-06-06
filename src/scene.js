@@ -783,7 +783,7 @@ export default class Scene {
     // Rebuild all tiles, without re-parsing the config or re-compiling styles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuild({ sync = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
+    rebuild({ new_generation = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -795,7 +795,7 @@ export default class Scene {
                 }
 
                 // Save queued request
-                let options = { sync, sources, serialize_funcs, profile, fade_in };
+                let options = { new_generation, sources, serialize_funcs, profile, fade_in };
                 this.building.queued = { resolve, reject, options };
                 log('trace', `Scene.rebuild(): queuing request`);
                 return;
@@ -809,10 +809,17 @@ export default class Scene {
                 this._profile('Scene.rebuild');
             }
 
-            // Update config (in case JS objects were manipulated directly)
-            if (sync) {
-                this.syncConfigToWorker({ serialize_funcs });
+            // Increment generation to ensure style/tile building stay in sync
+            // (skipped if calling function already incremented)
+            if (new_generation) {
+                this.generation = ++Scene.generation;
+                for (let style in this.styles) {
+                    this.styles[style].setGeneration(this.generation);
+                }
             }
+
+            // Update config (in case JS objects were manipulated directly)
+            this.syncConfigToWorker({ serialize_funcs });
             this.resetFeatureSelection(sources);
             this.resetTime();
 
@@ -1088,7 +1095,7 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuild(Object.assign({ serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
+            this.rebuild(Object.assign({ new_generation: false, serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
             this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
