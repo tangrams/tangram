@@ -758,6 +758,7 @@ export default class Scene {
 
     // Query features within visible tiles, with optional filter conditions
     queryFeatures({ filter, unique = false } = {}) {
+        filter = Utils.serializeWithFunctions(filter);
         let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
         return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, tile_keys }).then(results => {
             let features = [];

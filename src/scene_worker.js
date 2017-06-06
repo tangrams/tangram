@@ -230,7 +230,11 @@ Object.assign(self, {
         let features = [];
         let tiles = tile_keys.map(t => self.tiles[t]).filter(t => t);
 
-        filter = Utils.stringsToFunctions(filter, StyleParser.wrapFunction);
+        // Compile feature filter
+        if (filter != null) {
+            filter = ['{', '['].indexOf(filter[0]) > -1 ? JSON.parse(filter) : filter; // de-serialize if looks like an object
+            filter = Utils.stringsToFunctions(filter, StyleParser.wrapFunction);
+        }
         filter = buildFilter(filter, FilterOptions);
 
         tiles.forEach(tile => {
