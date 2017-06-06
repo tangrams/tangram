@@ -118,7 +118,11 @@ Utils.requestAnimationFramePolyfill = function () {
 
 // Stringify an object into JSON, but convert functions to strings
 Utils.serializeWithFunctions = function (obj) {
-    var serialized = JSON.stringify(obj, function(k, v) {
+    if (typeof obj === 'function') {
+        return obj.toString();
+    }
+
+    let serialized = JSON.stringify(obj, function(k, v) {
         // Convert functions to strings
         if (typeof v === 'function') {
             return v.toString();
