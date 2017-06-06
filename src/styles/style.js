@@ -174,7 +174,9 @@ export var Style = {
             this.tile_data[tile.key].vertex_data = this.vertex_layout.createVertexData();
         }
 
-        this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context);
+        if (this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context) > 0) {
+            feature.generation = this.generation; // track scene generation that feature was rendered for
+        }
     },
 
     buildGeometry (geometry, style, vertex_data, context) {
@@ -228,6 +230,8 @@ export var Style = {
                 }
             });
         }
+
+        return geom_count;
     },
 
     parseFeature (feature, draw, context) {

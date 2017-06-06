@@ -226,7 +226,7 @@ Object.assign(self, {
     },
 
     // Query features within visible tiles, with optional filter conditions
-    queryFeatures ({ filter, tile_keys }) {
+    queryFeatures ({ filter, visible, tile_keys }) {
         let features = [];
         let tiles = tile_keys.map(t => self.tiles[t]).filter(t => t);
 
@@ -241,6 +241,13 @@ Object.assign(self, {
             for (let layer in tile.source_data.layers) {
                 let data = tile.source_data.layers[layer];
                 data.features.forEach(feature => {
+                    // Optionally check if feature is visible (e.g. was rendered for current generation)
+                    if ((visible === true && feature.generation !== self.generation) ||
+                        (visible === false && feature.generation === self.generation)) {
+                        return;
+                    }
+
+                    // Apply feature filter
                     let context = StyleParser.getFeatureParseContext(feature, tile, self.global);
                     context.source = tile.source;  // add data source name
                     context.layer = layer;         // add data source layer name

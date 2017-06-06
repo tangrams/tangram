@@ -757,15 +757,15 @@ export default class Scene {
     }
 
     // Query features within visible tiles, with optional filter conditions
-    queryFeatures({ filter, unique = false } = {}) {
+    queryFeatures({ filter, unique = true, visible = null } = {}) {
         filter = Utils.serializeWithFunctions(filter);
         let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
-        return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, tile_keys }).then(results => {
+        return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, visible, tile_keys }).then(results => {
             let features = [];
             let keys = {};
 
-            unique = (typeof unique === 'string') ? [unique] : unique;
-            const uniqueify = obj => JSON.stringify(Array.isArray(unique) ? sliceObject(obj, unique) : obj);
+            unique = (typeof unique === 'string') ? [unique] : unique; // single property name, or list of property names
+            const uniqueify = obj => unique && JSON.stringify(Array.isArray(unique) ? sliceObject(obj, unique) : obj);
 
             results.forEach(r => r.forEach(feature => {
                 if (unique) {
