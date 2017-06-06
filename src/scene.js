@@ -748,27 +748,44 @@ export default class Scene {
     }
 
     // Query features within visible tiles, with optional filter conditions
-    queryFeatures({ filter, unique = true, visible = null } = {}) {
+    queryFeatures({ filter, unique = true, group_by = null, visible = null } = {}) {
         filter = Utils.serializeWithFunctions(filter);
         let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
         return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, visible, tile_keys }).then(results => {
             let features = [];
             let keys = {};
+            let groups = {};
 
+            // Optional uniqueify criteria
             unique = (typeof unique === 'string') ? [unique] : unique; // single property name, or list of property names
-            const uniqueify = obj => unique && JSON.stringify(Array.isArray(unique) ? sliceObject(obj, unique) : obj);
+            const uniqueify = unique && (obj => JSON.stringify(Array.isArray(unique) ? sliceObject(obj, unique) : obj));
+
+            // Optional grouping criteria
+            const group = group_by && (obj => { // single property name, or list of property names
+                return Array.isArray(group_by) ? JSON.stringify(sliceObject(obj, group_by)) : obj[group_by];
+            });
 
             results.forEach(r => r.forEach(feature => {
-                if (unique) {
-                    let str = uniqueify(feature.properties);
+                let props = feature.properties;
+
+                if (uniqueify) {
+                    let str = uniqueify(props);
                     if (keys[str]) {
                         return;
                     }
                     keys[str] = true;
                 }
-                features.push(feature);
+
+                if (group) {
+                    let str = group(props);
+                    groups[str] = groups[str] || [];
+                    groups[str].push(props);
+                }
+                else {
+                    features.push(props);
+                }
             }));
-            return features;
+            return group ? groups : features; // returned grouped results, or all results
         });
     }
 
