@@ -163,10 +163,8 @@ export var Style = {
         }
 
         let style = this.parseFeature(feature, draw, context);
-
-        // Skip feature?
         if (!style) {
-            return;
+            return; // skip feature
         }
 
         // First feature in this render style?
@@ -251,23 +249,26 @@ export var Style = {
                 return;
             }
 
-            // Feature selection (only if style supports it)
-            var selectable = false;
-            style.interactive = this.introspection || draw.interactive;
-            if (this.selection) {
-                selectable = StyleParser.evalProperty(style.interactive, context);
+            // Subclass implementation
+            style = this._parseFeature(feature, draw, context);
+            if (!style) {
+                return; // skip feature
             }
 
-            // If feature is marked as selectable
-            if (selectable) {
+            // Feature selection (only if feature is marked as interactive, and style supports it)
+            if (this.selection) {
+                style.interactive = StyleParser.evalProperty(this.introspection || draw.interactive, context);
+            }
+            else {
+                style.interactive = false;
+            }
+
+            if (style.interactive === true) {
                 style.selection_color = FeatureSelection.makeColor(feature, context.tile, context);
             }
             else {
                 style.selection_color = FeatureSelection.defaultColor;
             }
-
-            // Subclass implementation
-            style = this._parseFeature(feature, draw, context);
 
             return style;
         }
