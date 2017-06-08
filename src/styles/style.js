@@ -582,7 +582,7 @@ export var Style = {
                         let dz = tile.coords.z - raster_coords.z; // # of levels raster source is overzoomed
                         let dz2 = Math.pow(2, dz);
                         u_offsets[i] = [
-                            (tile.coords.x % dz2) / dz2,
+                            (((tile.coords.x % dz2) + dz2) % dz2) / dz2, // double-modulo to handle negative (wrapped) tile coords
                             (dz2 - 1 - (tile.coords.y % dz2)) / dz2, // GL texture coords are +Y up
                             1 / dz2
                         ];
