@@ -748,10 +748,10 @@ export default class Scene {
     }
 
     // Query features within visible tiles, with optional filter conditions
-    queryFeatures({ filter, unique = true, group_by = null, visible = null } = {}) {
+    queryFeatures({ filter, unique = true, group_by = null, visible = null, geometry = false } = {}) {
         filter = Utils.serializeWithFunctions(filter);
         let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
-        return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, visible, tile_keys }).then(results => {
+        return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, visible, geometry, tile_keys }).then(results => {
             let features = [];
             let keys = {};
             let groups = {};
@@ -766,10 +766,8 @@ export default class Scene {
             });
 
             results.forEach(r => r.forEach(feature => {
-                let props = feature.properties;
-
                 if (uniqueify) {
-                    let str = uniqueify(props);
+                    let str = uniqueify(feature.properties);
                     if (keys[str]) {
                         return;
                     }
@@ -777,12 +775,12 @@ export default class Scene {
                 }
 
                 if (group) {
-                    let str = group(props);
+                    let str = group(feature.properties);
                     groups[str] = groups[str] || [];
-                    groups[str].push(props);
+                    groups[str].push(feature);
                 }
                 else {
-                    features.push(props);
+                    features.push(feature);
                 }
             }));
             return group ? groups : features; // returned grouped results, or all results

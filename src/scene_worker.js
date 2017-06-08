@@ -5,6 +5,7 @@ import {mergeDebugSettings} from './utils/debug_settings';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Tile from './tile';
+import Geo from './geo';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
@@ -226,7 +227,7 @@ Object.assign(self, {
     },
 
     // Query features within visible tiles, with optional filter conditions
-    queryFeatures ({ filter, visible, tile_keys }) {
+    queryFeatures ({ filter, visible, geometry, tile_keys }) {
         let features = [];
         let tiles = tile_keys.map(t => self.tiles[t]).filter(t => t);
 
@@ -256,7 +257,20 @@ Object.assign(self, {
                        return;
                     }
 
-                    features.push(feature);
+                    // Info to return with each feature
+                    let subset = {
+                        type: feature.type,
+                        properties: feature.properties
+                    };
+
+                    // Optionally include geometry in response
+                    if (geometry === true) {
+                        // Transform back to lat lng (copy geometry to avoid local modification)
+                        subset.geometry = Geo.copyGeometry(feature.geometry);
+                        Geo.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min, tile.max);
+                    }
+
+                    features.push(subset);
                 });
             }
         });
