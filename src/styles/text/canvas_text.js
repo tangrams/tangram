@@ -56,35 +56,19 @@ export default class CanvasText {
                     }
 
                     if (text_settings.can_articulate){
-                        let words = text.split(' ');
-
-                        // RTL is true if every word is RTL
-                        // BIDI is true if there is RTL and LTR
-                        let hasRTL = false;
-                        let hasLTR = false;
+                        let rtl = false;
                         let bidi = false;
-                        for (var i = 0; i < words.length; i++){
-                            if (isTextRTL(words[i])) {
-                                if (hasLTR){
-                                    bidi = true;
-                                    break;
-                                }
-                                hasRTL = true;
+                        if (isTextRTL(text)) {
+                            if (!isTextNeutral(text)) {
+                                bidi = true;
                             }
                             else {
-                                if (hasRTL){
-                                    bidi = true;
-                                    break;
-                                }
-                                hasLTR = true;
+                                rtl = true;
                             }
                         }
 
-                        let rtl = (hasRTL && !hasLTR) && !bidi;
-                        let shaped = isTextShaped(text);
-
                         text_info.isRTL = rtl;
-                        text_info.no_curving = bidi || shaped; // used in LabelLine to prevent curved labels
+                        text_info.no_curving = bidi || isTextCurveBlacklisted(text); // used in LabelLine to prevent curved labels
                         text_info.vertical_buffer = this.vertical_text_buffer;
                         text_info.size = [];
 
@@ -116,10 +100,10 @@ export default class CanvasText {
     textSize (style, text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
         // Check cache first
         if (CanvasText.text_cache[style][text]) {
-            CanvasText.cache_stats.hits++;
+            CanvasText.cache_stats.text_hits++;
             return CanvasText.text_cache[style][text];
         }
-        CanvasText.cache_stats.misses++;
+        CanvasText.cache_stats.text_misses++;
         CanvasText.text_cache_count++;
 
         // Calc and store in cache
@@ -556,19 +540,31 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.text_cache_count = 0;     // current size of cache (measured as # of entries)
 CanvasText.text_cache_count_max = 4000; // prune cache when it exceeds this size
-CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
+CanvasText.segment_cache = {};
+CanvasText.segment_cache_count_max = 1000;
+CanvasText.cache_stats = { text_hits: 0, text_misses: 0, segment_hits: 0, segment_misses: 0 };
 
-// Contextual Shaping Languages - Unicode ranges
-const context_langs = {
-    Mongolian: "\u1800-\u18AF"
-};
+// Right-to-left / bi-directional text handling
+// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
+const rtlDirCheck = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
+function isTextRTL(s){
+    return rtlDirCheck.test(s);
+}
+
+const neutral_chars = '\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF';
+const neutralDirCheck = new RegExp('['+neutral_chars+']+');
+function isTextNeutral(s){
+    return neutralDirCheck.test(s);
+}
+
+const markRTL = '\u200F'; // explicit right-to-left marker
 
 // test http://localhost:8000/#16.72917/30.08541/31.28466
-const arabic_range = new RegExp(/^[\u0600-\u06FF]+$/);
-const arabic_splitters = new RegExp("[\u0622-\u0625\u0627\u062F-\u0632\u0648\u0671-\u0677\u0688-\u0699\u06C4-\u06CB\u06CF\u06D2\u06D3\u06EE\u06EF]");
-const arabic_vowels = new RegExp("^[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+");
-const accents_and_vowels = "[:\u0300-\u036F" + // Combining Diacritical Marks
+const arabic_range = new RegExp('^['+neutral_chars+'\u0600-\u06FF]+'); // all characters are Arabic or neutral
+const arabic_splitters = new RegExp('['+neutral_chars+'\u0622-\u0625\u0627\u062F-\u0632\u0648\u0671-\u0677\u0688-\u0699\u06C4-\u06CB\u06CF\u06D2\u06D3\u06EE\u06EF]');
+const arabic_vowels = new RegExp('^[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+');
+const accents_and_vowels = "[\u0300-\u036F" + // Combining Diacritical Marks
 "\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7" + // Hebrew
 "\u07A6-\u07B0" + // Thaana
 "\u0900-\u0903\u093A-\u094C\u094E\u094F\u0951-\u0957\u0962\u0963" + // Devanagari
@@ -593,36 +589,15 @@ const accents_and_vowels = "[:\u0300-\u036F" + // Combining Diacritical Marks
 const combo_characters = "[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0C4D\u0CCD\u0D4D\u0F84\u1039\u17D2\u1A60\u1A7F]";
 const graphemeRegex = new RegExp("^.(?:" + accents_and_vowels + "+)?" + "(" + combo_characters + "\\W(?:" + accents_and_vowels + "+)?)*");
 
-let reg_ex_shaping = '[';
-for (let key in context_langs){
-    reg_ex_shaping += context_langs[key];
+// Scripts that cannot be curved due (due to contextual shaping and/or layout complexity)
+const curve_blacklist = {
+    Mongolian: "\u1800-\u18AF"
+};
+const curve_blacklist_range = Object.keys(curve_blacklist).map(r => curve_blacklist[r]).join('');
+const curve_blacklist_test = new RegExp('['+curve_blacklist_range+']');
+function isTextCurveBlacklisted(s){
+    return curve_blacklist_test.test(s);
 }
-reg_ex_shaping += ']';
-
-let shaping_test = new RegExp(reg_ex_shaping);
-
-function isTextShaped(s){
-    return shaping_test.test(s);
-}
-
-// Right-to-left / bi-directional text handling
-// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-const rtlDirCheck = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
-function isTextRTL(s){
-    return rtlDirCheck.test(s);
-}
-
-const neutralDirCheck = new RegExp('[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF]$');
-function isTextNeutral(s){
-    return neutralDirCheck.test(s);
-}
-
-const markRTL = '\u200F'; // explicit right-to-left marker
-
-CanvasText.segment_cache = {};
-CanvasText.segment_cache_count_max = 1000;
-CanvasText.cache_stats.segment_hits = 0;
-CanvasText.cache_stats.segment_misses = 0;
 
 // Splitting strategy for chopping a label into segments
 const default_segment_length = 2; // character length of each segment when dividing up label text
