@@ -4,8 +4,6 @@ import Texture from '../../gl/texture';
 import FontManager from './font_manager';
 import debugSettings from '../../utils/debug_settings';
 
-const codon_length = 2; // length of chunks when breaking up label text
-
 export default class CanvasText {
 
     constructor () {
@@ -631,8 +629,14 @@ CanvasText.cache_stats.segment_hits = 0;
 CanvasText.cache_stats.segment_misses = 0;
 
 // Splitting strategy for chopping a label into segments
+const default_segment_length = 2; // character length of each segment when dividing up label text
+
 function splitLabelText(text, rtl){
-    if (text.length < codon_length) {
+    // Use single-character segments for RTL, to avoid additional handling for neutral characters
+    // (see https://github.com/tangrams/tangram/issues/541)
+    const segment_length = rtl ? 1 : default_segment_length;
+
+    if (text.length < segment_length) {
         return [text];
     }
 
@@ -667,42 +671,15 @@ function splitLabelText(text, rtl){
         let testText = text;
         let graphemeCount = 0;
 
-        for (graphemeCount; graphemeCount < codon_length && testText.length; graphemeCount++) {
+        for (graphemeCount; graphemeCount < segment_length && testText.length; graphemeCount++) {
             let graphemeCluster = (graphemeRegex.exec(testText) || testText)[0];
             segment += graphemeCluster;
             testText = testText.substring(graphemeCluster.length);
         }
 
-        // if RTL, check to see if segment starts or ends on a neutral character
-        // in which case we need to add the neutral segments separately
-        let take = 0;
-        if (rtl) {
-            while (segment.length > 0 && isTextNeutral(segment[0])) {
-                segments.push(segment[0]);
-                segment = segment.substring(1);
-                take++;
-            }
+        segments.push(segment);
+        text = text.substring(segment.length);
 
-            let neutral_segment = [];
-            while (segment.length > 0 && isTextNeutral(segment[segment.length - 1])) {
-                neutral_segment.unshift(segment[segment.length - 1]); // add trailing neutrals in reverse order
-                segment = segment.substring(0, segment.length - 1);
-                take++;
-            }
-
-            if (segment.length) {
-                segments.push(segment);
-            }
-
-            if (neutral_segment.length > 0) {
-                segments = segments.concat(neutral_segment);
-            }
-        }
-        else {
-            segments.push(segment);
-        }
-
-        text = text.substring(segment.length + take);
     }
 
     CanvasText.cache_stats.segment_misses++;
