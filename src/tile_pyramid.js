@@ -89,10 +89,6 @@ export default class TilePyramid {
                     if (source_tiles[z] && source_tiles[z].loaded) {
                         return source_tiles[z];
                     }
-
-                    if (++level > this.max_proxy_ancestor_depth) {
-                        return;
-                    }
                 }
             }
             style_zoom = source.max_zoom;

@@ -123,7 +123,7 @@ export default class TileManager {
         let proxy = false;
         this.forEachTile(tile => {
             if (this.view.zoom_direction === 1) {
-                if (tile.visible && !tile.built && tile.coords.z > 0) {
+                if (tile.visible && !tile.built) {
                     const parent = this.pyramid.getAncestor(tile);
                     if (parent) {
                         parent.setProxyFor(tile);
