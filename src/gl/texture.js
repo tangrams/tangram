@@ -8,6 +8,7 @@ import WorkerBroker from '../utils/worker_broker';
 export default class Texture {
 
     constructor(gl, name, options = {}) {
+        options = Texture.sliceOptions(options); // exclude any non-texture-specific props
         this.gl = gl;
         this.texture = gl.createTexture();
         if (this.texture) {
@@ -390,6 +391,25 @@ Texture.createDefault = function (gl) {
     return Texture.create(gl, Texture.default);
 };
 
+// Only include texture-specific properties (avoid faulty equality comparisons between
+// textures when caller may include other ancillary props)
+Texture.sliceOptions = function(options) {
+    return {
+        filtering: options.filtering,
+        sprites: options.sprites,
+        url: options.url,
+        element: options.element,
+        data: options.data,
+        width: options.width,
+        height: options.height,
+        repeat: options.repeat,
+        TEXTURE_WRAP_S: options.TEXTURE_WRAP_S,
+        TEXTURE_WRAP_T: options.TEXTURE_WRAP_T,
+        UNPACK_FLIP_Y_WEBGL: options.UNPACK_FLIP_Y_WEBGL,
+        UNPACK_PREMULTIPLY_ALPHA_WEBGL: options.UNPACK_PREMULTIPLY_ALPHA_WEBGL
+    };
+};
+
 // Indicate if a texture definition would be a change from the current cache
 Texture.changed = function (name, config) {
     let texture = Texture.textures[name];
@@ -400,6 +420,7 @@ Texture.changed = function (name, config) {
         }
 
         // compare definitions
+        config = Texture.sliceOptions(config); // exclude any non-texture-specific props
         if (Texture.texture_configs[name] === JSON.stringify(Object.assign({ name }, config))) {
             return false;
         }
