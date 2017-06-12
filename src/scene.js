@@ -767,7 +767,7 @@ export default class Scene {
 
             results.forEach(r => r.forEach(feature => {
                 if (uniqueify) {
-                    let str = uniqueify(feature.properties);
+                    let str = uniqueify(feature);
                     if (keys[str]) {
                         return;
                     }
