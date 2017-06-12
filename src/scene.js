@@ -757,11 +757,14 @@ export default class Scene {
             let groups = {};
 
             // Optional uniqueify criteria
-            unique = (typeof unique === 'string') ? [unique] : unique; // single property name, or list of property names
+            // Valid values: true, false/null, single property name, or array of property names
+            unique = (typeof unique === 'string') ? [unique] : unique;
             const uniqueify = unique && (obj => JSON.stringify(Array.isArray(unique) ? sliceObject(obj, unique) : obj));
 
             // Optional grouping criteria
-            const group = group_by && (obj => { // single property name, or list of property names
+            // Valid values: false/null, single property name, or array of property names
+            group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
+            const group = group_by && (obj => {
                 return Array.isArray(group_by) ? JSON.stringify(sliceObject(obj, group_by)) : obj[group_by];
             });
 
