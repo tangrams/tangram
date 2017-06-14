@@ -155,9 +155,9 @@ Object.assign(Lines, {
         style.next_width_unscaled = next_width;
 
         // calculate relative change in line width to next zoom
-        // NB: multiply by 2 because a given width is twice as big in screen space at the next zoom
+        // scale from the larger width to the smaller width (this enables line widths to scale up from or to a zero width)
         if (draw.next_width) {
-            next_width *= 2;
+            next_width *= 2; // NB: a given width is twice as big in screen space at the next zoom
             if (width >= next_width) {
                 style.width = width * context.units_per_meter_overzoom;
                 style.width_scale = 1 - (next_width / width);
@@ -174,8 +174,16 @@ Object.assign(Lines, {
 
         // optional adjustment to texcoord width based on scale
         if (this.texcoords) {
-            // UVs can't calc for zero-width, use next zoom width in that case
-            style.texcoord_width = (width || next_width) * context.units_per_meter_overzoom / context.tile.overzoom2; // shorten calcs
+            // when drawing an outline, use the inline's texture scale
+            // (e.g. keeps dashed outline pattern locked to inline pattern)
+            if (draw.inline_texcoord_width) {
+                style.texcoord_width = draw.inline_texcoord_width;
+            }
+            // when drawing an inline, calculate UVs based on line width
+            else {
+                // UVs can't calc for zero-width, use next zoom width in that case
+                style.texcoord_width = (style.width_unscaled || style.next_width_unscaled) * context.units_per_meter_overzoom / context.tile.overzoom2; // shorten calcs
+            }
         }
 
         return true;
@@ -288,11 +296,13 @@ Object.assign(Lines, {
                 style.outline.width.value = null;
                 style.outline.next_width.value = null;
                 style.outline.color = null;
+                style.outline.inline_texcoord_width = null;
             }
             else {
                 // Maintain consistent outline width around the line fill
                 style.outline.width.value = outline_width + style.width_unscaled;
                 style.outline.next_width.value = outline_next_width + style.next_width_unscaled;
+                style.outline.inline_texcoord_width = style.texcoord_width;
 
                 // Offset is directly copied from fill to outline, no need to re-calculate it
                 style.outline.offset_precalc = style.offset;
@@ -326,6 +336,7 @@ Object.assign(Lines, {
             style.outline.width.value = null;
             style.outline.next_width.value = null;
             style.outline.color = null;
+            style.outline.inline_texcoord_width = null;
         }
 
         return style;
