@@ -143,7 +143,7 @@ Object.assign(Lines, {
             next_width = this.calcDistanceNextZoom(draw.next_width, context);
         }
         else {
-            next_width = width;
+            next_width = width / 2; // when width is static, width at next zoom is just half as many tile units
         }
 
         if ((width === 0 && next_width === 0) || next_width < 0) {
