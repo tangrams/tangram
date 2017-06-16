@@ -167,7 +167,7 @@ function buildPolyline(line, context, extra_lines){
     if (closed_polygon){
         // Begin the polygon with a join (connecting the first and last segments)
         normPrev = Vector.normalize(Vector.perp(line[index_end - 1], coordCurr));
-        startPolygon(coordCurr, normPrev, normNext, join_type, context);
+        v = startPolygon(coordCurr, normPrev, normNext, join_type, context);
     }
     else {
         // If line begins at edge, don't add a cap
@@ -214,12 +214,11 @@ function buildPolyline(line, context, extra_lines){
 
         // Add join
         if (join_type === JOIN_TYPE.miter) {
-            addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
+            v = addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
         }
         else {
             addJoin(join_type, v, coordCurr, normPrev, normNext, false, context);
         }
-
         v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
     }
 
@@ -274,20 +273,21 @@ function getNextNonBoundarySegment (line, startIndex, tolerance) {
 // Begin a polygon with a join connecting to the last segment (if valid join-type specified)
 function startPolygon(coordCurr, normPrev, normNext, join_type, context){
     // If polygon starts on a tile boundary, don't add a join
+    var v = 0;
     if (join_type === undefined || isCoordOutsideTile(coordCurr)) {
         addVertex(coordCurr, normNext, [1, 0], context);
         addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
     }
     else {
         // If polygon starts within a tile, add a join
-        var v = 0;
         if (join_type === JOIN_TYPE.miter) {
-            addMiter(v, coordCurr, normPrev, normNext, context.miter_len_sq, true, context);
+            v = addMiter(v, coordCurr, normPrev, normNext, context.miter_len_sq, true, context);
         }
         else {
             addJoin(join_type, v, coordCurr, normPrev, normNext, true, context);
         }
     }
+    return v;
 }
 
 // End a polygon appropriately
@@ -333,7 +333,8 @@ function createMiterVec(normPrev, normNext) {
 }
 
 // Add a miter vector or a join if the miter is too sharp
-function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, context) {
+function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, context) {
+    // calculate miter angle between the two normals
     var miterVec = createMiterVec(normPrev, normNext);
     //  Miter limit: if miter join is too sharp, convert to bevel instead
     if (Vector.lengthSq(miterVec) > miter_len_sq) {
@@ -370,6 +371,7 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
             indexPairs(1, context);
         }
     }
+    return v;
 }
 
 // Add a bevel or round join
@@ -386,14 +388,14 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
-                Vector.neg(normPrev), [0,0], Vector.neg(normNext),
+                Vector.neg(normPrev), [0, 0], Vector.neg(normNext),
                 [0, v], [1, v], [0, v],
                 context
             );
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                Vector.neg(normPrev), [0,0], Vector.neg(normNext),
+                Vector.neg(normPrev), [0, 0], Vector.neg(normNext),
                 [0, v], [1, v], [0, v],
                 false, context
             );
@@ -404,7 +406,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     }
     else {
         addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, [Vector.neg(normPrev)], [0, v], context);
+        addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
 
         if (!isBeginning) {
             indexPairs(1, context);
@@ -412,21 +414,21 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
-                normPrev, [0,0], normNext,
+                normPrev, [0, 0], normNext,
                 [1, v], [0, v], [1, v],
                 context
             );
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                normPrev, [0,0], normNext,
+                normPrev, [0, 0], normNext,
                 [1, v], [0, v], [1, v],
                 false, context
             );
         }
 
         addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, [Vector.neg(normNext)], [0, v], context);
+        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
     }
 }
 
