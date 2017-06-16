@@ -541,9 +541,13 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
 
 //  addBevel    A ----- B
 //             / \     / \
-//           /   /\   /\  \
-//              /  \ /  \  \
-//                / C \
+//            /   \   /   \
+//           /     \ /     \
+//          /      /C\      \
+//         /      /   \      \
+// nA = normal A
+// nB = normal B
+// nC = normal C (usually [0,0])
 function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
     var pivotIndex = context.vertex_data.vertex_count;
 
