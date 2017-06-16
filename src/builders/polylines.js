@@ -350,7 +350,7 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         // store v for use in the second half of the miter
         var oldv = v;
         // advance the v coordinate to reach the end of the miter
-        var miterLength = context.half_width * Vector.length(miterVec) / 2.;
+        var miterLength = context.half_width * Vector.length(miterVec);
         v += context.v_scale * miterLength;
 
         addVertex(coordCurr, normPrev, [0, oldv], context);
