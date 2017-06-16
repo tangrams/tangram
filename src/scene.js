@@ -607,14 +607,15 @@ export default class Scene {
             this.view.setupTile(tile, program);
 
             // Render tile
-            let mesh = tile.meshes[style_name];
-            if (style.render(mesh)) {
-                // Don't incur additional renders while viewport is moving
-                if (!(this.view.panning || this.view.zooming)) {
-                   this.requestRedraw();
+            tile.meshes[style_name].forEach(mesh => {
+                if (style.render(mesh)) {
+                    // Don't incur additional renders while viewport is moving
+                    if (!(this.view.panning || this.view.zooming)) {
+                       this.requestRedraw();
+                    }
                 }
-            }
-            render_count += mesh.geometry_count;
+                render_count += mesh.geometry_count;
+            });
         }
 
         return render_count;
@@ -1265,7 +1266,9 @@ export default class Scene {
                 scene.tile_manager.getRenderableTiles().forEach(tile => {
                     for (let style in tile.meshes) {
                         counts[style] = counts[style] || 0;
-                        counts[style] += tile.meshes[style].geometry_count;
+                        tile.meshes[style].forEach(mesh => {
+                            counts[style] += mesh.geometry_count;
+                        });
                     }
                 });
                 return counts;
@@ -1287,7 +1290,9 @@ export default class Scene {
                 scene.tile_manager.getRenderableTiles().forEach(tile => {
                     for (let style in tile.meshes) {
                         sizes[style] = sizes[style] || 0;
-                        sizes[style] += tile.meshes[style].buffer_size;
+                        tile.meshes[style].forEach(mesh => {
+                            sizes[style] += mesh.buffer_size;
+                        });
                     }
                 });
                 return sizes;

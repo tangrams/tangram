@@ -125,7 +125,7 @@ export default class Tile {
     // Free resources owned by tile
     freeResources () {
         for (let m in this.meshes) {
-            this.meshes[m].destroy();
+            this.meshes[m].forEach(m => m.destroy());
         }
         this.meshes = {};
 
@@ -311,12 +311,7 @@ export default class Tile {
                 Promise.all(group.map(style => {
                     return style.endData(tile).then(style_data => {
                         if (style_data) {
-                            tile.mesh_data[style.name] = {
-                                vertex_data: style_data.vertex_data,
-                                vertex_elements: style_data.vertex_elements,
-                                uniforms: style_data.uniforms,
-                                textures: style_data.textures
-                            };
+                            tile.mesh_data[style.name] = style_data;
                         }
                     });
                 }))
@@ -418,15 +413,26 @@ export default class Tile {
         let meshes = {}, textures = []; // new data to be added to tile
         let mesh_data = this.mesh_data;
         if (mesh_data) {
-            for (var s in mesh_data) {
-                if (mesh_data[s].vertex_data) {
-                    if (!styles[s]) {
-                        log('warn', `Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
-                        break;
+            for (let s in mesh_data) {
+                for (let variant in mesh_data[s].meshes) {
+                    let mesh_variant = mesh_data[s].meshes[variant];
+                    if (mesh_variant.vertex_data) {
+                        if (!styles[s]) {
+                            log('warn', `Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
+                            break;
+                        }
+
+                        // first add style-level uniforms, then add any mesh-specific ones
+                        let mesh_options = Object.assign({}, mesh_data[s]);
+                        mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
+                        mesh_options.variant = mesh_variant.variant;
+
+                        let mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
+                        meshes[s] = meshes[s] || [];
+                        meshes[s].push(mesh);
+                        this.debug.buffer_size += mesh.buffer_size;
+                        this.debug.geometry_count += mesh.geometry_count;
                     }
-                    meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s].vertex_elements, mesh_data[s]);
-                    this.debug.buffer_size += meshes[s].buffer_size;
-                    this.debug.geometry_count += meshes[s].geometry_count;
                 }
 
                 // Assign texture ownership to tiles
@@ -451,7 +457,7 @@ export default class Tile {
         // New meshes
         for (let m in meshes) {
             if (this.meshes[m]) {
-                this.meshes[m].destroy(); // free old mesh
+                this.meshes[m].forEach(m => m.destroy()); // free old meshes
             }
             this.meshes[m] = meshes[m]; // set new mesh
             this.new_mesh_styles.push(m);
@@ -464,7 +470,7 @@ export default class Tile {
             // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
             for (let m in this.meshes) {
                 if (this.new_mesh_styles.indexOf(m) === -1) {
-                    this.meshes[m].destroy();
+                    this.meshes[m].forEach(m => m.destroy());
                     delete this.meshes[m];
                 }
             }

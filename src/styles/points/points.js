@@ -260,13 +260,8 @@ Object.assign(Points, {
         if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
             this.startData(tile);
         }
+        this.queues[tile.key] = this.queues[tile.key] || [];
         this.queues[tile.key].push(q);
-    },
-
-    // Override
-    startData (tile) {
-        this.queues[tile.key] = [];
-        return Style.startData.call(this, tile);
     },
 
     // Override
