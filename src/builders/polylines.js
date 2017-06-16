@@ -301,7 +301,6 @@ function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
     else {
         // If polygon ends within a tile, add Miter or no joint (join added on startPolygon)
         var miterVec = createMiterVec(normPrev, normNext);
-
         if (join_type === JOIN_TYPE.miter && Vector.lengthSq(miterVec) > context.miter_len_sq) {
             join_type = JOIN_TYPE.bevel; // switch to bevel
         }
@@ -336,6 +335,8 @@ function createMiterVec(normPrev, normNext) {
 function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, context) {
     // calculate miter angle between the two normals
     var miterVec = createMiterVec(normPrev, normNext);
+    var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
+    if (!isClockwise) miterVec = Vector.neg(miterVec);
     //  Miter limit: if miter join is too sharp, convert to bevel instead
     if (Vector.lengthSq(miterVec) > miter_len_sq) {
         addJoin(JOIN_TYPE.bevel, v, coordCurr, normPrev, normNext, isBeginning, context);
