@@ -204,3 +204,9 @@ Vector.dot = function (v1, v2) {
     }
     return n;
 };
+
+// Reflection direction for an incident vector
+Vector.reflect = function (v1, v2) {
+    // I - 2.0 * dot(N, I) * N.
+    return Vector.sub(v1, Vector.mult(Vector.mult(v2, Vector.dot(v2, v1)), 2.0));
+}
