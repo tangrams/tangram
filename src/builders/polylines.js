@@ -348,33 +348,31 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
             indexPairs(1, context);
         }
 
-        // // store v for use in the second half of the miter
-        var oldv = v;
-        // // advance the v coordinate to reach the end of the miter
+        // advance the v coordinate to reach the end of the miter
         var miterLength = context.half_width * Vector.length(miterVec);
         v += context.v_scale * miterLength;
 
-
-        // addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        // addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        // if (!isBeginning) {
-        //     indexPairs(1, context);
-        // }
-
-
-        addVertex(coordCurr, normPrev, [0, oldv], context);
+        // addVertex(coordCurr, normPrev, [0, oldv], context);
         addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
         if (!isBeginning) {
             indexPairs(1, context);
         }
 
         addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        addVertex(coordCurr, normNext, [0, oldv], context);
+        v += context.v_scale * miterLength;
+        addVertex(coordCurr, normNext, [0, v], context);
         if (!isBeginning) {
             indexPairs(1, context);
         }
 
-        // v += context.v_scale * miterLength;
+        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        if (!isBeginning) {
+            indexPairs(1, context);
+        }
+
+        v += context.v_scale * miterLength;
         addVertex(coordCurr, normNext, [1, v], context);
         addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
         if (!isBeginning) {
