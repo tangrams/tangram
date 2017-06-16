@@ -319,10 +319,17 @@ function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
     }
 }
 
+// place a miter vertex
 function createMiterVec(normPrev, normNext) {
-    var miterVec = Vector.normalize(Vector.add(normPrev, normNext));
-    var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, miterVec)));
-    return Vector.mult(miterVec, scale * scale);
+    var miterVec = Vector.add(normPrev, normNext);
+    var scale = 1;
+    if (miterVec[0] === 0 && miterVec[1] === 0) {
+        miterVec = Vector.perp(normNext, normPrev);
+    }
+    else {
+        scale = 2 / Vector.dot(miterVec, miterVec);
+    }
+    return Vector.mult(miterVec, scale);
 }
 
 // Add a miter vector or a join if the miter is too sharp
