@@ -335,14 +335,37 @@ function createMiterVec(normPrev, normNext) {
 // Add a miter vector or a join if the miter is too sharp
 function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, context) {
     var miterVec = createMiterVec(normPrev, normNext);
-
     //  Miter limit: if miter join is too sharp, convert to bevel instead
     if (Vector.lengthSq(miterVec) > miter_len_sq) {
         addJoin(JOIN_TYPE.bevel, v, coordCurr, normPrev, normNext, isBeginning, context);
     }
     else {
-        addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, normPrev, [0, v], context);
+        addVertex(coordCurr, Vector.neg(normPrev), [1, v], context);
+        if (!isBeginning) {
+            indexPairs(1, context);
+        }
+
+        // store v for use in the second half of the miter
+        var oldv = v;
+        // advance the v coordinate to reach the end of the miter
+        var miterLength = context.half_width * Vector.length(miterVec) / 2.;
+        v += context.v_scale * miterLength;
+
+        addVertex(coordCurr, normPrev, [0, oldv], context);
+        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        if (!isBeginning) {
+            indexPairs(1, context);
+        }
+        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        addVertex(coordCurr, normNext, [0, oldv], context);
+        if (!isBeginning) {
+            indexPairs(1, context);
+        }
+
+        v += context.v_scale * miterLength;
+        addVertex(coordCurr, normNext, [1, v], context);
+        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
         if (!isBeginning) {
             indexPairs(1, context);
         }
