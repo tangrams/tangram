@@ -335,15 +335,27 @@ function createMiterVec(normPrev, normNext) {
 function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, context) {
     // calculate miter angle between the two normals
     var miterVec = createMiterVec(normPrev, normNext);
-    var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
-    if (!isClockwise) miterVec = Vector.neg(miterVec);
+    // var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
+    // if (!isClockwise) miterVec = Vector.neg(miterVec);
+
     //  Miter limit: if miter join is too sharp, convert to bevel instead
     if (Vector.lengthSq(miterVec) > miter_len_sq) {
         addJoin(JOIN_TYPE.bevel, v, coordCurr, normPrev, normNext, isBeginning, context);
     }
+
     else {
-        addVertex(coordCurr, normPrev, [0, v], context);
-        addVertex(coordCurr, Vector.neg(normPrev), [1, v], context);
+
+       var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
+
+        // addVertex(coordCurr, normPrev, [0, v], context);
+        // addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+        // addVertex(coordCurr, Vector.neg([miterVec[0], -miterVec[1]]), [1, v], context);
+        // addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        // addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        // addVertex(coordCurr, miterVec, [1, v], context);
+        // console.log(Vector.reflect(miterVec, normPrev));
+        addVertex(coordCurr, miterVec, [1, v], context);
+        addVertex(coordCurr, Vector.reflect(miterVec, normPrev), [1, v], context);
         if (!isBeginning) {
             indexPairs(1, context);
         }
@@ -353,31 +365,54 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         v += context.v_scale * miterLength;
 
         // addVertex(coordCurr, normPrev, [0, oldv], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
-        if (!isBeginning) {
-            indexPairs(1, context);
-        }
+        // addVertex(coordCurr, miterVec, [1, v], context);
+        // addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
 
-        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        v += context.v_scale * miterLength;
-        addVertex(coordCurr, normNext, [0, v], context);
-        if (!isBeginning) {
-            indexPairs(1, context);
-        }
+    // var pivotIndex = context.vertex_data.vertex_count;
+    // var vertex_elements = context.vertex_data.vertex_elements;
 
-        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        if (!isBeginning) {
-            indexPairs(1, context);
-        }
 
-        v += context.v_scale * miterLength;
-        addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+    //     vertex_elements.push(pivotIndex + (isClockwise ? 2 : 1));
+    //     vertex_elements.push(pivotIndex);
+    //     vertex_elements.push(pivotIndex + (isClockwise ? 1 : 2));
+
+        // addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        // addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        // if (!isBeginning) {
+        //     indexPairs(1, context);
+        // }
+
+        // addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        // v += context.v_scale * miterLength;
+        // addVertex(coordCurr, normNext, [0, v], context);
+        // if (!isBeginning) {
+        //     indexPairs(1, context);
+        // }
+
+        // addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+        // addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        // if (!isBeginning) {
+        //     indexPairs(1, context);
+        // }
+
+        // v += context.v_scale * miterLength;
+        // addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        // addVertex(coordCurr, Vector.neg([-miterVec[0], miterVec[1]]), [1, v], context);
+        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+        // addVertex(coordCurr, Vector.reflect(miterVec, normNext), [1, v], context);
+        addVertex(coordCurr, Vector.reflect(miterVec, Vector.neg(normNext)), [1, v], context);
+        // addVertex(coordCurr, Vector.reflect(Vector.neg(miterVec), Vector.neg(normNext)), [1, v], context);
+        // addVertex(coordCurr, miterVec, [1, v], context);
+        // addVertex(coordCurr, normNext, [1, v], context);
+        // addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
         if (!isBeginning) {
             indexPairs(1, context);
         }
+        // addVertex(coordCurr, normNext, [1, v], context);
+        // addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+        // if (!isBeginning) {
+        //     indexPairs(1, context);
+        // }
     }
     return v;
 }
