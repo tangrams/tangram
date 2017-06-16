@@ -344,11 +344,10 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
 
 // Add a bevel or round join
 function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context) {
-    var miterVec = createMiterVec(normPrev, normNext);
     var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
 
     if (isClockwise){
-        addVertex(coordCurr, miterVec, [1, v], context);
+        addVertex(coordCurr, normPrev, [1, v], context);
         addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
 
         if (!isBeginning) {
@@ -357,25 +356,25 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
-                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
+                Vector.neg(normPrev), [0,0], Vector.neg(normNext),
                 [0, v], [1, v], [0, v],
                 context
             );
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
+                Vector.neg(normPrev), [0,0], Vector.neg(normNext),
                 [0, v], [1, v], [0, v],
                 false, context
             );
         }
 
-        addVertex(coordCurr, miterVec, [1, v], context);
+        addVertex(coordCurr, normNext, [1, v], context);
         addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
     }
     else {
         addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, [Vector.neg(normPrev)], [0, v], context);
 
         if (!isBeginning) {
             indexPairs(1, context);
@@ -383,21 +382,21 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
-                normPrev, Vector.neg(miterVec), normNext,
+                normPrev, [0,0], normNext,
                 [1, v], [0, v], [1, v],
                 context
             );
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                normPrev, Vector.neg(miterVec), normNext,
+                normPrev, [0,0], normNext,
                 [1, v], [0, v], [1, v],
                 false, context
             );
         }
 
         addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, [Vector.neg(normNext)], [0, v], context);
     }
 }
 
