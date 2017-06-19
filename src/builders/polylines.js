@@ -335,8 +335,6 @@ function createMiterVec(normPrev, normNext) {
 function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, context) {
     // calculate miter angle between the two normals
     var miterVec = createMiterVec(normPrev, normNext);
-    // var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
-    // if (!isClockwise) miterVec = Vector.neg(miterVec);
 
     //  Miter limit: if miter join is too sharp, convert to bevel instead
     if (Vector.lengthSq(miterVec) > miter_len_sq) {
@@ -346,47 +344,55 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
     else {
         var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
 
-        addVertex(coordCurr, miterVec, [1, v], context);
+        var index = context.vertex_data.vertex_count;
+        var vertex_elements = context.vertex_data.vertex_elements;
+
+        // add vertices to vertex_elements first, to ensure that the last two
+        // vertices are in the right place for the next triangle-drawing function
+
+        // add vertices before the start of the join -
+        // these two vertices define the "base" of the join triangles
+
+        // outside 1 = index + 0
         addVertex(coordCurr, Vector.reflect(miterVec,normPrev), [1, v], context);
-        // if (!isBeginning) {
-        //     indexPairs(1, context);
-        // }
 
         // advance the v coordinate to reach the end of the miter
         var miterLength = context.half_width * Vector.length(miterVec);
         v += context.v_scale * miterLength;
 
+        // outside corner = index + 1
         addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        addVertex(coordCurr, miterVec, [1, v], context);
-        // if (!isBeginning) {
-        //     indexPairs(1, context);
-        // }
 
         v += context.v_scale * miterLength;
 
+        // inside corner "pivot" = index + 2
         addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        // if (!isBeginning) {
-        //     indexPairs(1, context);
-        // }
 
         v += context.v_scale * miterLength;
 
-        addVertex(coordCurr, miterVec, [1, v], context);
+        // outside 2 = index + 3
         addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, v], context);
-        if (!isBeginning) {
-            indexPairs(4, context);
-        }
 
+        // add triangles
 
-        // var pivotIndex = context.vertex_data.vertex_count;
-        // var vertex_elements = context.vertex_data.vertex_elements;
-        // vertex_elements.push(pivotIndex + (isClockwise ? 2 : 1));
-        // vertex_elements.push(pivotIndex);
-        // vertex_elements.push(pivotIndex + (isClockwise ? 1 : 2));
-        // vertex_elements.push(pivotIndex + (isClockwise ? 5 : 4));
-        // vertex_elements.push(pivotIndex) + 3;
-        // vertex_elements.push(pivotIndex + (isClockwise ? 4 : 5));
+        // first two triangles before the join are the end of previous line segment
+        vertex_elements.push(index - 0);
+        vertex_elements.push(index - 1);
+        vertex_elements.push(index - 2);
+
+        vertex_elements.push(index + 0);
+        vertex_elements.push(index - 2);
+        vertex_elements.push(index + 2);
+
+        // first half of the miter join
+        vertex_elements.push(index);
+        vertex_elements.push(index + 2);
+        vertex_elements.push(index + 1);
+
+        // second half of the miter join
+        vertex_elements.push(index + 1);
+        vertex_elements.push(index + 2);
+        vertex_elements.push(index + 3);
 
     }
     return v;
