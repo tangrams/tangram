@@ -26,7 +26,7 @@ Object.assign(Lines, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false, static: [0, 0] }, // static value by default
             { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
@@ -59,6 +59,16 @@ Object.assign(Lines, {
         }
 
         this.vertex_layout = new VertexLayout(attribs);
+
+        // Modified vertex layout with dynamic offsets
+        attribs = attribs.map(x => Object.assign({}, x)); // copy attribs
+        attribs.forEach(attrib => {
+            // clear the static attribute value for offsets
+            if (attrib.name === 'a_offset') {
+                attrib.static = null;
+            }
+        });
+        this.vertex_layout_offset = new VertexLayout(attribs);
 
         // Additional single-allocated object used for holding outline style as it is processed
         // Separate from this.feature_style so that outline properties do not overwrite calculated
@@ -362,6 +372,24 @@ Object.assign(Lines, {
         return draw;
     },
 
+    // Override
+    offset_mesh_variant: 1,
+    vertexLayoutForMeshVariant (variant) {
+        // TODO could be a mapping from variants to layouts
+        if (variant === this.offset_mesh_variant) {
+            return this.vertex_layout_offset;
+        }
+        return this.vertex_layout;
+    },
+
+    // Override
+    meshVariantTypeForDraw (draw) {
+        if (draw.offset) {
+            return this.offset_mesh_variant;
+        }
+        return this.default_mesh_variant;
+    },
+
     /**
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
@@ -381,8 +409,11 @@ Object.assign(Lines, {
         this.vertex_template[i++] = 0;
 
         // a_offset.xy - normal vector
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
+        // offset can be static or dynamic depending on style
+        if (style.offset) {
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
+        }
 
         // a_scaling.xy - scaling to previous and next zoom
         this.vertex_template[i++] = style.width_scale * 1024;    // line width
@@ -426,6 +457,7 @@ Object.assign(Lines, {
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
         let vertex_template = this.makeVertexTemplate(style);
+        let vertex_layout = vertex_data.vertex_layout;
         return buildPolylines(
             lines,
             style.width,
@@ -435,9 +467,9 @@ Object.assign(Lines, {
                 cap: style.cap,
                 join: style.join,
                 miter_limit: style.miter_limit,
-                extrude_index: this.vertex_layout.index.a_extrude,
-                offset_index: this.vertex_layout.index.a_offset,
-                texcoord_index: this.vertex_layout.index.a_texcoord,
+                extrude_index: vertex_layout.index.a_extrude,
+                offset_index: vertex_layout.index.a_offset,
+                texcoord_index: vertex_layout.index.a_texcoord,
                 texcoord_width: style.texcoord_width,
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
                 closed_polygon: options && options.closed_polygon,
