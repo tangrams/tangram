@@ -343,53 +343,49 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
 
     else {
         var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
+        var ab = Vector.angleBetween(miterVec,normPrev);
+        var oa = Math.PI/2 - ab;
+        var miterLength = context.half_width * Vector.length(miterVec);
+        // the projected length along the line of the miter vector
+        var vdiff = context.v_scale * Math.sin(oa) * miterLength;
+        if (!isClockwise) { miterVec = Vector.neg(miterVec); }
 
-        var oldv = v;
+        // calculate UVs
+
         // back off v a bit to account for the fact that the first two points
         // are being drawn a bit before coord
-        // debugger
-        var ab = Vector.angleBetween(miterVec,normPrev);
-
-        console.log('angleBetween:', ab, ab*180/Math.PI)
-        var oa = Math.PI/2 - ab;
-        console.log('other angle:', oa, oa*180/Math.PI);
-        var miterLength = context.half_width * Vector.length(miterVec);
-        var vdiff = context.v_scale * Math.sin(oa) * miterLength;
-        var oldv = v;
-        if (!isClockwise) { miterVec = Vector.neg(miterVec); }
+        var firstv = v - vdiff;
+        // advance the v coordinate to reach the miter corner
+        var cornerv = v + vdiff;
+        // advance the v coordinate to reach the end of the miter
+        var lastv = v + vdiff * 3;
 
         // count indices before adding any more vertices
         var index = context.vertex_data.vertex_count;
 
-        // advance the v coordinate to reach the end of the miter
-
         // add vertices to vertex_elements first, to ensure that the last two
         // vertices are in the right place for the next triangle-drawing function
 
-        v -= vdiff;
-
         // 1st outside point: index + 0
-        addVertex(coordCurr, Vector.reflect(miterVec,normPrev), [1, v], context);
-
-        v += vdiff * 2;
-
+        addVertex(coordCurr, Vector.reflect(miterVec,normPrev), [1, firstv], context);
         // 2nd outside point (miter corner): index + 1
-        addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-        // v += context.v_scale * miterLength;
-        v += vdiff;
+        addVertex(coordCurr, Vector.neg(miterVec), [0, cornerv], context);
 
         if (isClockwise) {
             // inside corner point (pivot): index + 2
-            addVertex(coordCurr, miterVec, [1, v], context);
-            // 3rd outside point: index + 3
-            addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, v], context);
+            addVertex(coordCurr, miterVec, [1, firstv], context);
+            // inside corner point (pivot): index + 3 (need another one with different UVs)
+            addVertex(coordCurr, miterVec, [1, lastv], context);
+            // 3rd outside point: index + 4
+            addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, lastv], context);
 
         } else {
-            // 3rd outside point: index + 2
+            // inside corner point (pivot): index + 2
+            addVertex(coordCurr, miterVec, [1, firstv], context);
+            // 3rd outside point: index + 3
             addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, v], context);
-            // inside corner point (pivot): index + 3
-            addVertex(coordCurr, miterVec, [1, oldv], context);
-            // v += context.v_scale * miterLength;
+            // inside corner point (pivot): index + 4 (need another one with different UVs)
+            addVertex(coordCurr, miterVec, [1, lastv], context);
 
         }
         // add triangles
@@ -401,21 +397,21 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         vertex_elements.push(index - 2);
 
         vertex_elements.push(index);
-        vertex_elements.push(index + (isClockwise ? - 2 : 3));
+        vertex_elements.push(index + (isClockwise ? - 2 : 2));
         vertex_elements.push(index + (isClockwise ? 2 : -1));
 
         // first half of the miter join
         vertex_elements.push(index);
-        vertex_elements.push(index + (isClockwise ? 2 : 1));
-        vertex_elements.push(index + (isClockwise ? 1 : 3));
+        vertex_elements.push(index + (isClockwise ? 3 : 1));
+        vertex_elements.push(index + (isClockwise ? 1 : 2));
 
         // second half of the miter join
         vertex_elements.push(index + 1);
-        vertex_elements.push(index + 2);
         vertex_elements.push(index + 3);
+        vertex_elements.push(index + 4);
 
     }
-    return v;
+    return lastv;
 }
 
 // Add a bevel or round join
