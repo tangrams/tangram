@@ -402,7 +402,7 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
 
         // first half of the miter join
         vertex_elements.push(index);
-        vertex_elements.push(index + (isClockwise ? 3 : 1));
+        vertex_elements.push(index + (isClockwise ? 2 : 1));
         vertex_elements.push(index + (isClockwise ? 1 : 2));
 
         // second half of the miter join
