@@ -383,7 +383,7 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
             // inside corner point (pivot): index + 2
             addVertex(coordCurr, miterVec, [1, firstv], context);
             // 3rd outside point: index + 3
-            addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, v], context);
+            addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, lastv], context);
             // inside corner point (pivot): index + 4 (need another one with different UVs)
             addVertex(coordCurr, miterVec, [1, lastv], context);
 
