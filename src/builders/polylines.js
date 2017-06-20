@@ -380,6 +380,15 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
 
             // first two triangles before the join are the end of previous line segment
             vertex_elements.push(index - 0);
+
+            // vertex_elements.push(index - 0);
+            // vertex_elements.push(index - 1);
+            // vertex_elements.push(index - 2);
+
+            // vertex_elements.push(index + 0);
+            // vertex_elements.push(index - 2);
+            // vertex_elements.push(index + 2);
+
             vertex_elements.push(index - 1);
             vertex_elements.push(index - 2);
 
@@ -411,9 +420,9 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
 //             indexPairs(1, context);
 // return
 
-            // outside corner = index + 1
+            // outside corner = index + 0
             addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-            // outside 1 = index + 0
+            // outside 1 = index + 1
             addVertex(coordCurr, Vector.reflect(miterVec,normPrev), [1, v], context);
 
             // advance the v coordinate to reach the end of the miter
@@ -425,32 +434,32 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
 
             v += context.v_scale * miterLength;
 
-            // outside 2 = index + 3
+            // outside 2 = index + 2
             addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, v], context);
-            // inside corner "pivot" = index + 2
+            // inside corner "pivot" = index + 3
             addVertex(coordCurr, miterVec, [1, v], context);
 
 
             // add triangles
 
             // first two triangles before the join are the end of previous line segment
-            vertex_elements.push(index - 0);
+            vertex_elements.push(index + 1);
             vertex_elements.push(index - 1);
             vertex_elements.push(index - 2);
 
-            vertex_elements.push(index + 0);
-            vertex_elements.push(index - 2);
-            vertex_elements.push(index + 2);
+            vertex_elements.push(index -1);
+            vertex_elements.push(index +1);
+            vertex_elements.push(index +3);
 
             // first half of the miter join
             vertex_elements.push(index + 1);
-            vertex_elements.push(index + 2);
             vertex_elements.push(index + 0);
+            vertex_elements.push(index + 3);
 
             // second half of the miter join
             vertex_elements.push(index + 3);
+            vertex_elements.push(index + 0);
             vertex_elements.push(index + 2);
-            vertex_elements.push(index + 1);
 
         }
     }
