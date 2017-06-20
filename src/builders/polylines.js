@@ -346,8 +346,8 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         var ab = Vector.angleBetween(miterVec,normPrev);
         var oa = Math.PI/2 - ab;
         var miterLength = context.half_width * Vector.length(miterVec);
-        // the projected length along the line of the miter vector
-        var vdiff = context.v_scale * Math.sin(oa) * miterLength;
+        // get the projected length along the line of the miter vector using law of Sines
+        var vdiff = context.v_scale * Math.cos(oa) * miterLength;
         if (!isClockwise) { miterVec = Vector.neg(miterVec); }
 
         // calculate UVs
