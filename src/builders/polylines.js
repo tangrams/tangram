@@ -379,20 +379,11 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
             // add triangles
 
             // first two triangles before the join are the end of previous line segment
-            vertex_elements.push(index - 0);
-
-            // vertex_elements.push(index - 0);
-            // vertex_elements.push(index - 1);
-            // vertex_elements.push(index - 2);
-
-            // vertex_elements.push(index + 0);
-            // vertex_elements.push(index - 2);
-            // vertex_elements.push(index + 2);
-
+            vertex_elements.push(index);
             vertex_elements.push(index - 1);
             vertex_elements.push(index - 2);
 
-            vertex_elements.push(index + 0);
+            vertex_elements.push(index);
             vertex_elements.push(index - 2);
             vertex_elements.push(index + 2);
 
@@ -402,64 +393,49 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
             vertex_elements.push(index + 1);
 
             // second half of the miter join
-            vertex_elements.push(index + (isClockwise ? 1 : 3));
+            vertex_elements.push(index + 1);
             vertex_elements.push(index + 2);
-            vertex_elements.push(index + (isClockwise ? 3 : 1));
+            vertex_elements.push(index + 3);
         } else {
+            miterVec = Vector.neg(miterVec);
+            var miterLength = context.half_width * Vector.length(miterVec);
             // add vertices to vertex_elements first, to ensure that the last two
             // vertices are in the right place for the next triangle-drawing function
 
-            // add vertices before the start of the join -
-            // these two vertices define the "base" of the join triangles
-            miterVec = Vector.neg(miterVec);
-
-
-
-//             addVertex(coordCurr, Vector.mult(miterVec, 2), [1, v], context);
-//             addVertex(coordCurr, [0,0], [1, v], context);
-//             indexPairs(1, context);
-// return
-
-            // outside corner = index + 0
-            addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
-            // outside 1 = index + 1
+            // 1st outside point: index + 0
             addVertex(coordCurr, Vector.reflect(miterVec,normPrev), [1, v], context);
-
             // advance the v coordinate to reach the end of the miter
-            var miterLength = context.half_width * Vector.length(miterVec);
             v += context.v_scale * miterLength;
-
-
+            // 2nd outside point (corner): index + 1
+            addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
             v += context.v_scale * miterLength;
-
-            v += context.v_scale * miterLength;
-
-            // outside 2 = index + 2
+            // 3rd outside point: index + 2
             addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, v], context);
-            // inside corner "pivot" = index + 3
+            v += context.v_scale * miterLength;
+            // inside corner (pivot): index + 3
             addVertex(coordCurr, miterVec, [1, v], context);
 
 
-            // add triangles
+            // add triangles before the start of the join -
+            // this is the last segment of the line before the join
 
-            // first two triangles before the join are the end of previous line segment
-            vertex_elements.push(index + 1);
+            vertex_elements.push(index);
             vertex_elements.push(index - 1);
             vertex_elements.push(index - 2);
 
-            vertex_elements.push(index -1);
-            vertex_elements.push(index +1);
-            vertex_elements.push(index +3);
+            vertex_elements.push(index);
+            vertex_elements.push(index + 3);
+            vertex_elements.push(index - 1);
 
             // first half of the miter join
+            vertex_elements.push(index);
             vertex_elements.push(index + 1);
-            vertex_elements.push(index + 0);
             vertex_elements.push(index + 3);
 
             // second half of the miter join
-            vertex_elements.push(index + 3);
-            vertex_elements.push(index + 0);
+            vertex_elements.push(index + 1);
             vertex_elements.push(index + 2);
+            vertex_elements.push(index + 3);
 
         }
     }
