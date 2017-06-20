@@ -91,22 +91,12 @@ styles:
                     color.rgb *= 1.25; // pump up the colors
                     color.a = 0.5;     // translucent
         draw: # default draw parameters
-            # color: function() { return feature.colour || 'gray'; }
             color: function() { return feature.colour_name; }
             width: 6px
             outline:
                 color: [.8, .8, .8]
                 width: 1px
             interactive: true
-            # offset: |
-            #     function() {
-            #         if (feature.ref === 'F') {
-            #             return 5;
-            #         }
-            #         else if (feature.ref === 'G') {
-            #             return -5;
-            #         }
-            #     }
 
     rainbow:
         base: polygons
@@ -796,7 +786,6 @@ layers:
                             style: italic
                             fill: rgba(136, 45, 23, 0.9)
 
-
     transit:
         data: { source: mapzen }
         filter: { $zoom: { min: 15 } }
@@ -804,30 +793,24 @@ layers:
             lines:
                 style: transit-lines
                 order: 400
+                width: [[15, 6px], [16, 12px]]
 
-        F:
-            filter: { ref: F }
-            draw:
-                lines:
-                    # width: [[15, 0px], [16, 6px], [18, 16px]]
-                    # offset: [[15, 0px], [16, 3.5px], [18, 8.5px], [19, 8.5px], [20, 0px]]
-                    width: [[15, 0px], [16, 12px], [17, 16px], [18, 16px]]
-                    # offset: [[15, 0px], [16, 6.5px], [17, 8.5px], [18, 8.5px], [19, 8.5px], [20, -8.5px]]
-                    # offset: [[15, 0px], [16, 6.5px], [17, 8.5px], [18, -8.5px], [19, -8.5px], [20, 0]]
-                    offset: [[15, 0px], [16, 6.5px], [17, 8.5px], [19, -8.5px]]
+        NYC:
+            filter: { network: 'NYC Subway' }
 
-        G:
-            filter: { ref: G }
-            draw:
-                lines:
-                    # width: [[15, 0px], [16, 6px], [18, 16px]]
-                    # offset: [[15, 0px], [16, -3.5px], [18, -8.5px], [19, -8.5px], [20, 0px]]
-                    width: [[15, 0px], [16, 12px], [17, 16px], [18, 16px]]
-                    # offset: [[15, 0px], [16, -6.5px], [17, -8.5px], [18, -8.5px], [19, -8.5px], [20, 8.5px]]
-                    # offset: [[15, 0px], [16, -6.5px], [17, -8.5px], [18, 8.5px], [19, 8.5px], [20, 0]]
-                    offset: [[15, 0px], [16, -6.5px], [17, -8.5px], [19, 8.5px]]
+            F:
+                filter: { ref: F }
+                draw:
+                    lines:
+                        offset: [[15, 3.5px], [16, 6.5px]]
 
-                    # order: function () { return feature.sort_rank + 1; }
+            G:
+                filter: { ref: G }
+                draw:
+                    lines:
+                        offset: [[15, -3.5px], [16, -6.5px]]
+                        order: function () { return feature.sort_rank + 1; }
+
 
     # schools:
     #     data: { source: schools }
