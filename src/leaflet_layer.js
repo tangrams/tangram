@@ -159,8 +159,13 @@ function extendLeaflet(options) {
                 });
 
                 // Use leaflet's existing event system as the callback mechanism
-                this.scene.load(this.options.scene,
-                    { config_path: this.options.sceneBasePath, blocking: false }).then(() => {
+                this.scene.load(
+                    this.options.scene,
+                    {
+                        base_path: this.options.sceneBasePath,
+                        file_type: this.options.sceneFileType,
+                        blocking: false
+                    }).then(() => {
 
                     this._updating_tangram = true;
 

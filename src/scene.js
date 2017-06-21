@@ -105,7 +105,7 @@ export default class Scene {
 
     // Load scene (or reload existing scene if no new source specified)
     // Options:
-    //   `config_path`: base URL against which roo scene resources should be resolved (useful for Play) (default nulll)
+    //   `base_path`: base URL against which scene resources should be resolved (useful for Play) (default nulll)
     //   `blocking`: should rendering block on scene load completion (default true)
     load(config_source = null, options = {}) {
         if (this.initializing) {
@@ -117,17 +117,16 @@ export default class Scene {
         this.initialized = false;
         this.initial_build_time = null;
 
-        // Backwards compatibilty for passing `config_path` string as second argument
+        // Backwards compatibilty for passing `base_path` string as second argument
         // (since transitioned to using options argument to accept more parameters)
-        options = (typeof options === 'string') ? { config_path: options } : options;
-        let config_path = options.config_path;
+        options = (typeof options === 'string') ? { base_path: options } : options;
 
         // Should rendering block on load (not desirable for initial load, often desired for live style-switching)
         options.blocking = (options.blocking !== undefined) ? options.blocking : true;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
         this.createCanvas();
-        this.initializing = this.loadScene(config_source, config_path)
+        this.initializing = this.loadScene(config_source, options)
             .then(() => this.createWorkers())
             .then(() => {
                 this.resetFeatureSelection();
@@ -145,7 +144,7 @@ export default class Scene {
                 this.initializing = null;
                 this.initialized = true;
                 this.last_valid_config_source = this.config_source;
-                this.last_valid_config_path = this.config_path;
+                this.last_valid_options = { base_path: options.base_path, file_type: options.file_type };
 
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
@@ -171,7 +170,7 @@ export default class Scene {
             if (this.last_valid_config_source) {
                 log('warn', message, error);
                 log('info', `Scene.load() reverting to last valid configuration`);
-                return this.load(this.last_valid_config_source, this.last_valid_config_path);
+                return this.load(this.last_valid_config_source, this.last_valid_base_path);
             }
             log('error', message, error);
             throw error;
@@ -826,18 +825,22 @@ export default class Scene {
        Load (or reload) the scene config
        @return {Promise}
     */
-    loadScene(config_source = null, config_path = null) {
+    loadScene(config_source = null, { base_path, file_type } = {}) {
         this.config_source = config_source || this.config_source;
         this.config_globals_applied = [];
 
         if (typeof this.config_source === 'string') {
-            this.config_path = URLs.pathForURL(config_path || this.config_source);
+            this.base_path = URLs.pathForURL(base_path || this.config_source);
         }
         else {
-            this.config_path = URLs.pathForURL(config_path);
+            this.base_path = URLs.pathForURL(base_path);
         }
 
-        return SceneLoader.loadScene(this.config_source, this.config_path).then(({config, bundle}) => {
+        // backwards compatibility for accessing base path under previous name
+        // TODO: schedule for deprecation
+        this.config_path = this.base_path;
+
+        return SceneLoader.loadScene(this.config_source, { path: this.base_path, type: file_type }).then(({config, bundle}) => {
             this.config = config;
             this.config_bundle = bundle;
             return this.config;
