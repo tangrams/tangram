@@ -42,3 +42,6 @@ Math.hypot = Math.hypot || function() {
     }
     return Math.sqrt(y);
 };
+
+// Math.log2 polyfill
+Math.log2 = Math.log2 || function(x) { return Math.log(x) * Math.LOG2E; };
