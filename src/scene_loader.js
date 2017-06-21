@@ -10,9 +10,9 @@ var SceneLoader;
 export default SceneLoader = {
 
     // Load scenes definitions from URL & proprocess
-    loadScene(url, path = null) {
+    loadScene(url, { path, type } = {}) {
         let errors = [];
-        return this.loadSceneRecursive({ url, path }, null, errors).
+        return this.loadSceneRecursive({ url, path, type }, null, errors).
             then(result => this.finalize(result)).
             then(({ config, bundle }) => {
                 if (!config) {
