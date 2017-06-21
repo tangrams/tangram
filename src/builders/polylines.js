@@ -361,9 +361,9 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         // are being drawn a bit before coord
         var firstv = v - vdiff;
         // advance the v coordinate to reach the miter corner
-        var cornerv = v + vdiff;
+        var cornerv = v;
         // advance the v coordinate to reach the end of the miter
-        var lastv = v + vdiff * 3;
+        var lastv = v + vdiff;
 
         // count indices before adding any more vertices
         var index = context.vertex_data.vertex_count;
@@ -416,7 +416,7 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         vertex_elements.push(index + 4);
 
     }
-    return lastv;
+    return v;
 }
 
 // Add a bevel or round join
