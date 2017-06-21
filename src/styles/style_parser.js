@@ -333,7 +333,7 @@ StyleParser.evalCachedColorProperty = function(val, context = {}) {
         }
         // Single array color
         else {
-            val.static = val.value;
+            val.static = val.value.map(x => x); // copy to avoid modifying
             if (val.static && val.static[3] == null) {
                 val.static[3] = 1; // default alpha
             }
@@ -368,6 +368,7 @@ StyleParser.parseColor = function(val, context = {}) {
 
     // Defaults
     if (Array.isArray(val)) {
+        val = val.map(x => x); // copy to avoid modifying
         // alpha
         if (val[3] == null) {
             val[3] = 1;
