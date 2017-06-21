@@ -352,7 +352,8 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
         var oa = Math.PI/2 - ab;
         // I thought this should be sin() but cos() works better, hmm
-        var vdiff = Math.cos(oa) * miterLength * context.v_scale;
+        // TODO: * .7? ??
+        var vdiff = Math.cos(oa) * miterLength * context.v_scale * .7;
         if (!isClockwise) { miterVec = Vector.neg(miterVec); }
 
         // calculate UVs
@@ -374,22 +375,24 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         // 1st outside point: index + 0
         addVertex(coordCurr, Vector.reflect(miterVec,normPrev), [1, firstv], context);
         // 2nd outside point (miter corner): index + 1
-        addVertex(coordCurr, Vector.neg(miterVec), [0, cornerv], context);
+        addVertex(coordCurr, Vector.neg(miterVec), [0, lastv], context);
+        // 2nd outside point (miter corner): index + 2
+        addVertex(coordCurr, Vector.neg(miterVec), [0, firstv], context);
 
         if (isClockwise) {
-            // inside corner point (pivot): index + 2
+            // index + 3: inside corner point (pivot)
             addVertex(coordCurr, miterVec, [1, firstv], context);
-            // inside corner point (pivot): index + 3 (need another one with different UVs)
+            // index + 4: inside corner point (pivot) (need another one with different UVs)
             addVertex(coordCurr, miterVec, [1, lastv], context);
-            // 3rd outside point: index + 4
+            // index + 5: 3rd outside point
             addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, lastv], context);
 
         } else {
-            // inside corner point (pivot): index + 2
+            // index + 3: inside corner point (pivot)
             addVertex(coordCurr, miterVec, [1, firstv], context);
-            // 3rd outside point: index + 3
+            // index + 4: 3rd outside point
             addVertex(coordCurr, Vector.reflect(miterVec,normNext), [1, lastv], context);
-            // inside corner point (pivot): index + 4 (need another one with different UVs)
+            // index + 5: inside corner point (pivot) (need another one with different UVs)
             addVertex(coordCurr, miterVec, [1, lastv], context);
 
         }
@@ -402,18 +405,18 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         vertex_elements.push(index - 2);
 
         vertex_elements.push(index);
-        vertex_elements.push(index + (isClockwise ? - 2 : 2));
-        vertex_elements.push(index + (isClockwise ? 2 : -1));
+        vertex_elements.push(index + (isClockwise ? - 2 : 3));
+        vertex_elements.push(index + (isClockwise ? 3 : -1));
 
         // first half of the miter join
         vertex_elements.push(index);
-        vertex_elements.push(index + (isClockwise ? 2 : 1));
-        vertex_elements.push(index + (isClockwise ? 1 : 2));
+        vertex_elements.push(index + (isClockwise ? 3 : 1));
+        vertex_elements.push(index + (isClockwise ? 1 : 3));
 
         // second half of the miter join
-        vertex_elements.push(index + 1);
-        vertex_elements.push(index + 3);
+        vertex_elements.push(index + 2);
         vertex_elements.push(index + 4);
+        vertex_elements.push(index + 5);
 
     }
     return v;
