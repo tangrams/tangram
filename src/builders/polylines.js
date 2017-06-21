@@ -352,7 +352,7 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
         var oa = Math.PI/2 - ab;
         // I thought this should be sin() but cos() works better, hmm
-        var vdiff = Math.cos(oa) * miterLength * context.v_scale;
+        var vdiff = Math.cos(oa) * miterLength * context.v_scale * .666;
         if (!isClockwise) { miterVec = Vector.neg(miterVec); }
 
         // calculate UVs
