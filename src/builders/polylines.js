@@ -343,11 +343,16 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
 
     else {
         var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
-        var ab = Vector.angleBetween(miterVec,normPrev);
-        var oa = Math.PI/2 - ab;
         var miterLength = context.half_width * Vector.length(miterVec);
+
         // get the projected length along the line of the miter vector using law of Sines
-        var vdiff = context.v_scale * Math.cos(oa) * miterLength;
+        // find the angle between the miterVec and the previous Normal
+        var ab = Vector.angleBetween(miterVec,normPrev);
+        // the angle between the miterVec and the line is the other angle
+        // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
+        var oa = Math.PI/2 - ab;
+        // I thought this should be sin() but cos() works better, hmm
+        var vdiff = Math.cos(oa) * miterLength * context.v_scale;
         if (!isClockwise) { miterVec = Vector.neg(miterVec); }
 
         // calculate UVs
