@@ -423,13 +423,35 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
 function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context) {
     var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
 
+    // calculate miter angle between the two normals
+    var miterVec = createMiterVec(normPrev, normNext);
+    // if (!isClockwise){miterVec = Vector.neg(miterVec);}
+    var miterLength = context.half_width * Vector.length(miterVec);
+
+    // get the projected length along the line of the miter vector using law of Sines
+    // find the angle between the miterVec and the previous Normal
+    var ab = Vector.angleBetween(miterVec,normPrev);
+    // the angle between the miterVec and the line is the other angle
+    // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
+    var oa = Math.PI/2 - ab;
+    // I thought this should be sin() but cos() works better, hmm
+    var diff = Math.cos(oa) * miterLength * context.v_scale * .666;
+
+
     if (isClockwise){
-        addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+        // addVertex(coordCurr, normPrev, [1, v], context);
+        addVertex(coordCurr, miterVec, [1, v], context);
+        // addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+
+        // addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+        addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normPrev)), [0, v], context);
 
         if (!isBeginning) {
             indexPairs(1, context);
         }
+
+        addVertex(coordCurr, miterVec, [1, v], context);
+        // addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
@@ -439,19 +461,31 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
             );
         }
         else if (join_type === JOIN_TYPE.round) {
-            addFan(coordCurr,
-                Vector.neg(normPrev), [0, 0], Vector.neg(normNext),
-                [0, v], [1, v], [0, v],
+            // addFan(coordCurr,
+            //     Vector.neg(normPrev), miterVec, Vector.neg(normNext),
+            //     [0, v-diff], [1, v], [0, v+diff],
+            //     false, context
+            // );
+            addFan(Vector.add(coordCurr, Vector.mult(Vector.mult(miterVec, Math.sin(oa)), context.half_width * )),
+                Vector.neg(Vector.mult(normPrev, 2)), [0,0], Vector.neg(Vector.mult(normNext, 2)),
+                [0, v-diff], [1, v], [0, v+diff],
                 false, context
             );
+            // addFan(coordCurr,
+            //     Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
+            //     [0, v], [1, v], [0, v],
+            //     false, context
+            // );
         }
 
-        addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+        // addVertex(coordCurr, normNext, [1, v+diff], context);
+        addVertex(coordCurr, miterVec, [1, v+diff], context);
+        // addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+        addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normNext)), [0, v+diff], context);
     }
     else {
         addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
 
         if (!isBeginning) {
             indexPairs(1, context);
@@ -466,14 +500,14 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                normPrev, [0, 0], normNext,
+                normPrev, Vector.neg(miterVec), normNext,
                 [1, v], [0, v], [1, v],
                 false, context
             );
         }
 
         addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
     }
 }
 
