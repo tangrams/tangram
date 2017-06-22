@@ -895,10 +895,6 @@ export default class Scene {
         }
         else {
             this.base_path = URLs.pathForURL(base_path);
-
-            // shallow copy to avoid modifying provided object, allowing a single config object to be loaded multiple times
-            // TODO: address possible modifications to nested properties (mostly harmless / due to data normalization)
-            this.config_source = Object.assign({}, this.config_source);
         }
 
         // backwards compatibility for accessing base path under previous name

@@ -234,6 +234,9 @@ function loadResource (source) {
                 }
             }, reject);
         } else {
+            // shallow copy to avoid modifying provided object, allowing a single config object to be loaded multiple times
+            // TODO: address possible modifications to nested properties (mostly harmless / due to data normalization)
+            source = Object.assign({}, source);
             resolve(source);
         }
     });
