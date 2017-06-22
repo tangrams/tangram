@@ -386,6 +386,7 @@ export default class CanvasText {
                                 if (size[0] > column_width) {
                                     column_width = size[0];
                                 }
+
                                 if (cy + size[1] < max_texture_size) {
                                     texture_position = [cx, cy];
 
@@ -397,12 +398,12 @@ export default class CanvasText {
                                 else { // start new column if taller than texture
                                     cx += column_width;
                                     column_width = 0;
-                                    cy = 0;
-                                    texture_position = [cx, cy];
+                                    texture_position = [cx, 0];
+                                    cy = size[1];
                                 }
 
                                 CanvasText.texcoord_cache[tile_key][style][word] = {
-                                    texture_position: texture_position
+                                    texture_position
                                 };
                                 break;
                             case 'curved':
@@ -416,6 +417,7 @@ export default class CanvasText {
                                         if (width > column_width) {
                                             column_width = width;
                                         }
+
                                         if (cy + size[1] < max_texture_size) {
                                             texture_position = [cx, cy];
 
@@ -427,12 +429,12 @@ export default class CanvasText {
                                         else { // start new column if taller than texture
                                             cx += column_width;
                                             column_width = 0;
-                                            cy = 0;
-                                            texture_position = [cx, cy];
+                                            texture_position = [cx, 0];
+                                            cy = size[1];
                                         }
 
                                         CanvasText.texcoord_cache[tile_key][style][word] = {
-                                            texture_position: texture_position
+                                            texture_position
                                         };
                                     }
                                 }
@@ -459,8 +461,8 @@ export default class CanvasText {
                         else { // start new column if taller than texture
                             cx += column_width;
                             column_width = 0;
-                            cy = 0;
-                            text_info.align[align].texture_position = [cx, cy];
+                            text_info.align[align].texture_position = [cx, 0];
+                            cy = size[1];
                         }
                     }
                 }
