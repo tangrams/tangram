@@ -23675,7 +23675,7 @@ function triangulatePolygon(data) {
     return (0, _earcut2.default)(data.vertices, data.holes, data.dimensions);
 }
 
-},{"../geo":201,"../vector":270,"./common":196,"earcut":72}],199:[function(_dereq_,module,exports){
+},{"../geo":201,"../vector":271,"./common":196,"earcut":72}],199:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -24271,18 +24271,13 @@ function addCap(coord, v, normal, type, isBeginning, context) {
     }
 }
 
-// For IE Math.log2 support
-var log2 = Math.log2 || function (x) {
-    return Math.log(x) * Math.LOG2E;
-};
-
 // Calculate number of triangles for a fan given an angle and line width
 function trianglesPerArc(angle, width) {
     if (angle < 0) {
         angle = -angle;
     }
 
-    var numTriangles = width > 2 * DEFAULT.MIN_FAN_WIDTH ? log2(width / DEFAULT.MIN_FAN_WIDTH) : 1;
+    var numTriangles = width > 2 * DEFAULT.MIN_FAN_WIDTH ? Math.log2(width / DEFAULT.MIN_FAN_WIDTH) : 1;
     return Math.ceil(angle / Math.PI * numTriangles);
 }
 
@@ -24300,7 +24295,7 @@ function permuteLine(line, startIndex) {
     return newLine;
 }
 
-},{"../geo":201,"../vector":270,"./common":196}],200:[function(_dereq_,module,exports){
+},{"../geo":201,"../vector":271,"./common":196}],200:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -24667,7 +24662,7 @@ var FlatCamera = function (_IsometricCamera) {
     return FlatCamera;
 }(IsometricCamera);
 
-},{"./gl/shader_program":207,"./utils/gl-matrix":257,"./utils/utils":267}],201:[function(_dereq_,module,exports){
+},{"./gl/shader_program":207,"./utils/gl-matrix":257,"./utils/utils":268}],201:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -24791,6 +24786,57 @@ Geo.latLngToMeters = function (_ref6) {
     return [x, y];
 };
 
+// Transform from local tile coordinats to lat lng
+Geo.tileSpaceToLatlng = function (geometry, z, min, max) {
+    var units_per_meter = Geo.unitsPerMeter(z);
+    Geo.transformGeometry(geometry, function (coord) {
+        coord[0] = coord[0] / units_per_meter + min.x;
+        coord[1] = coord[1] / units_per_meter + min.y;
+
+        var _Geo$metersToLatLng = Geo.metersToLatLng(coord),
+            _Geo$metersToLatLng2 = _slicedToArray(_Geo$metersToLatLng, 2),
+            x = _Geo$metersToLatLng2[0],
+            y = _Geo$metersToLatLng2[1];
+
+        coord[0] = x;
+        coord[1] = y;
+    });
+    return geometry;
+};
+
+// Copy GeoJSON geometry
+Geo.copyGeometry = function (geometry) {
+    if (geometry == null) {
+        return; // skip if missing geometry (valid GeoJSON)
+    }
+
+    var copy = { type: geometry.type };
+
+    if (geometry.type === 'Point') {
+        copy.coordinates = [geometry.coordinates[0], geometry.coordinates[1]];
+    } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
+        copy.coordinates = geometry.coordinates.map(function (c) {
+            return [c[0], c[1]];
+        });
+    } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
+        copy.coordinates = geometry.coordinates.map(function (ring) {
+            return ring.map(function (c) {
+                return [c[0], c[1]];
+            });
+        });
+    } else if (geometry.type === 'MultiPolygon') {
+        copy.coordinates = geometry.coordinates.map(function (polygon) {
+            return polygon.map(function (ring) {
+                return ring.map(function (c) {
+                    return [c[0], c[1]];
+                });
+            });
+        });
+    }
+    // TODO: support GeometryCollection
+    return copy;
+};
+
 // Run an in-place transform function on each cooordinate in a GeoJSON geometry
 Geo.transformGeometry = function (geometry, transform) {
     if (geometry == null) {
@@ -24802,13 +24848,13 @@ Geo.transformGeometry = function (geometry, transform) {
     } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
         geometry.coordinates.forEach(transform);
     } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
-        geometry.coordinates.forEach(function (coordinates) {
-            return coordinates.forEach(transform);
+        geometry.coordinates.forEach(function (ring) {
+            return ring.forEach(transform);
         });
     } else if (geometry.type === 'MultiPolygon') {
         geometry.coordinates.forEach(function (polygon) {
-            polygon.forEach(function (coordinates) {
-                return coordinates.forEach(transform);
+            polygon.forEach(function (ring) {
+                return ring.forEach(transform);
             });
         });
     }
@@ -26335,6 +26381,7 @@ var Texture = function () {
 
         _classCallCheck(this, Texture);
 
+        options = Texture.sliceOptions(options); // exclude any non-texture-specific props
         this.gl = gl;
         this.texture = gl.createTexture();
         if (this.texture) {
@@ -26745,6 +26792,25 @@ Texture.createDefault = function (gl) {
     return Texture.create(gl, Texture.default);
 };
 
+// Only include texture-specific properties (avoid faulty equality comparisons between
+// textures when caller may include other ancillary props)
+Texture.sliceOptions = function (options) {
+    return {
+        filtering: options.filtering,
+        sprites: options.sprites,
+        url: options.url,
+        element: options.element,
+        data: options.data,
+        width: options.width,
+        height: options.height,
+        repeat: options.repeat,
+        TEXTURE_WRAP_S: options.TEXTURE_WRAP_S,
+        TEXTURE_WRAP_T: options.TEXTURE_WRAP_T,
+        UNPACK_FLIP_Y_WEBGL: options.UNPACK_FLIP_Y_WEBGL,
+        UNPACK_PREMULTIPLY_ALPHA_WEBGL: options.UNPACK_PREMULTIPLY_ALPHA_WEBGL
+    };
+};
+
 // Indicate if a texture definition would be a change from the current cache
 Texture.changed = function (name, config) {
     var texture = Texture.textures[name];
@@ -26756,6 +26822,7 @@ Texture.changed = function (name, config) {
         }
 
         // compare definitions
+        config = Texture.sliceOptions(config); // exclude any non-texture-specific props
         if (Texture.texture_configs[name] === JSON.stringify(Object.assign({ name: name }, config))) {
             return false;
         }
@@ -26831,7 +26898,7 @@ Texture.activeUnit = null;
 _worker_broker2.default.addTarget('Texture', Texture);
 (0, _subscribe2.default)(Texture);
 
-},{"../utils/log":259,"../utils/subscribe":264,"../utils/utils":267,"../utils/worker_broker":269}],209:[function(_dereq_,module,exports){
+},{"../utils/log":259,"../utils/subscribe":265,"../utils/utils":268,"../utils/worker_broker":270}],209:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27867,7 +27934,7 @@ exports.default = Label;
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
 
-},{"../utils/obb":262,"../utils/utils":267,"./intersect":215,"./point_anchor":219}],217:[function(_dereq_,module,exports){
+},{"../utils/obb":262,"../utils/utils":268,"./intersect":215,"./point_anchor":219}],217:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -28821,7 +28888,7 @@ function getAbsAngleDiff(angle1, angle2) {
     return Math.abs(big - small);
 }
 
-},{"../utils/obb":262,"../vector":270,"./label":216}],218:[function(_dereq_,module,exports){
+},{"../utils/obb":262,"../vector":271,"./label":216}],218:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29571,7 +29638,7 @@ function extendLeaflet(options) {
 
                 // Setup feature selection
                 this.setupSelectionEventHandlers(map);
-                this.setSelectionEvents(this.options.events);
+                this.setSelectionEvents(this.options.events, { radius: this.options.selectionRadius });
 
                 // Add GL canvas to layer container
                 this.scene.container = this.getContainer();
@@ -29587,7 +29654,11 @@ function extendLeaflet(options) {
                 });
 
                 // Use leaflet's existing event system as the callback mechanism
-                this.scene.load(this.options.scene, { config_path: this.options.sceneBasePath, blocking: false }).then(function () {
+                this.scene.load(this.options.scene, {
+                    base_path: this.options.sceneBasePath,
+                    file_type: this.options.sceneFileType,
+                    blocking: false
+                }).then(function () {
 
                     _this._updating_tangram = true;
 
@@ -29840,10 +29911,11 @@ function extendLeaflet(options) {
                 var _this3 = this;
 
                 this._selection_events = {};
+                this._selection_radius = null; // optional radius
 
                 this.hooks.click = function (event) {
                     if (typeof _this3._selection_events.click === 'function') {
-                        _this3.scene.getFeatureAt(event.containerPoint).then(function (selection) {
+                        _this3.scene.getFeatureAt(event.containerPoint, { radius: _this3._selection_radius }).then(function (selection) {
                             var results = Object.assign({}, selection, { leaflet_event: event });
                             _this3._selection_events.click(results);
                         });
@@ -29853,7 +29925,7 @@ function extendLeaflet(options) {
 
                 this.hooks.mousemove = function (event) {
                     if (typeof _this3._selection_events.hover === 'function') {
-                        _this3.scene.getFeatureAt(event.containerPoint).then(function (selection) {
+                        _this3.scene.getFeatureAt(event.containerPoint, { radius: _this3._selection_radius }).then(function (selection) {
                             var results = Object.assign({}, selection, { leaflet_event: event });
                             _this3._selection_events.hover(results);
                         });
@@ -29875,7 +29947,11 @@ function extendLeaflet(options) {
             // Currently only one handler can be defined for each event type
             // Event types are: `click`, `hover` (leaflet `mousemove`)
             setSelectionEvents: function setSelectionEvents(events) {
+                var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+                    radius = _ref.radius;
+
                 this._selection_events = Object.assign(this._selection_events, events);
+                this._selection_radius = radius !== undefined ? radius : this._selection_radius;
             },
 
 
@@ -29931,7 +30007,7 @@ function extendLeaflet(options) {
     }
 }
 
-},{"./geo":201,"./scene":226,"./utils/debounce":254,"./utils/debug_settings":255,"./utils/thread":265}],223:[function(_dereq_,module,exports){
+},{"./geo":201,"./scene":226,"./utils/debounce":254,"./utils/debug_settings":255,"./utils/thread":266}],223:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30364,7 +30440,7 @@ var SpotLight = function (_PointLight) {
 
 Light.types['spotlight'] = SpotLight;
 
-},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./styles/style_parser":245,"./vector":270}],224:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./styles/style_parser":245,"./vector":271}],224:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30687,7 +30763,7 @@ module.exports = {
     version: _version2.default
 };
 
-},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./gl/texture":208,"./gl/vertex_data":211,"./labels/collision":214,"./leaflet_layer":222,"./light":223,"./material":224,"./scene":226,"./scene_worker":229,"./selection":230,"./sources/data_source":231,"./sources/geojson":232,"./sources/mvt":233,"./sources/raster":234,"./sources/topojson":235,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./utils/debug_settings":255,"./utils/log":259,"./utils/polyfills":263,"./utils/thread":265,"./utils/utils":267,"./utils/version":268,"./utils/worker_broker":269,"./vector":270,"js-yaml":97,"jszip":133}],226:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./gl/texture":208,"./gl/vertex_data":211,"./labels/collision":214,"./leaflet_layer":222,"./light":223,"./material":224,"./scene":226,"./scene_worker":229,"./selection":230,"./sources/data_source":231,"./sources/geojson":232,"./sources/mvt":233,"./sources/raster":234,"./sources/topojson":235,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./utils/debug_settings":255,"./utils/log":259,"./utils/polyfills":263,"./utils/thread":266,"./utils/utils":268,"./utils/version":269,"./utils/worker_broker":270,"./vector":271,"js-yaml":97,"jszip":133}],226:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30721,6 +30797,10 @@ var _worker_broker2 = _interopRequireDefault(_worker_broker);
 var _subscribe = _dereq_('./utils/subscribe');
 
 var _subscribe2 = _interopRequireDefault(_subscribe);
+
+var _slice = _dereq_('./utils/slice');
+
+var _slice2 = _interopRequireDefault(_slice);
 
 var _context = _dereq_('./gl/context');
 
@@ -30879,7 +30959,7 @@ var Scene = function () {
 
         // Load scene (or reload existing scene if no new source specified)
         // Options:
-        //   `config_path`: base URL against which roo scene resources should be resolved (useful for Play) (default nulll)
+        //   `base_path`: base URL against which scene resources should be resolved (useful for Play) (default nulll)
         //   `blocking`: should rendering block on scene load completion (default true)
         value: function load() {
             var _this = this;
@@ -30896,17 +30976,16 @@ var Scene = function () {
             this.initialized = false;
             this.initial_build_time = null;
 
-            // Backwards compatibilty for passing `config_path` string as second argument
+            // Backwards compatibilty for passing `base_path` string as second argument
             // (since transitioned to using options argument to accept more parameters)
-            options = typeof options === 'string' ? { config_path: options } : options;
-            var config_path = options.config_path;
+            options = typeof options === 'string' ? { base_path: options } : options;
 
             // Should rendering block on load (not desirable for initial load, often desired for live style-switching)
             options.blocking = options.blocking !== undefined ? options.blocking : true;
 
             // Load scene definition (sources, styles, etc.), then create styles & workers
             this.createCanvas();
-            this.initializing = this.loadScene(config_source, config_path).then(function () {
+            this.initializing = this.loadScene(config_source, options).then(function () {
                 return _this.createWorkers();
             }).then(function () {
                 _this.resetFeatureSelection();
@@ -30924,7 +31003,7 @@ var Scene = function () {
                 _this.initializing = null;
                 _this.initialized = true;
                 _this.last_valid_config_source = _this.config_source;
-                _this.last_valid_config_path = _this.config_path;
+                _this.last_valid_options = { base_path: options.base_path, file_type: options.file_type };
 
                 if (_this.render_loop !== false) {
                     _this.setupRenderLoop();
@@ -30950,7 +31029,7 @@ var Scene = function () {
                 if (_this.last_valid_config_source) {
                     (0, _log2.default)('warn', message, error);
                     (0, _log2.default)('info', 'Scene.load() reverting to last valid configuration');
-                    return _this.load(_this.last_valid_config_source, _this.last_valid_config_path);
+                    return _this.load(_this.last_valid_config_source, _this.last_valid_base_path);
                 }
                 (0, _log2.default)('error', message, error);
                 throw error;
@@ -31350,6 +31429,7 @@ var Scene = function () {
                     // Reset to screen buffer
                     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                    gl.clearColor.apply(gl, _toConsumableArray(this.background.color)); // restore scene background color
                     this.last_selection_render = this.frame;
                 }
 
@@ -31592,21 +31672,95 @@ var Scene = function () {
     }, {
         key: 'getFeatureAt',
         value: function getFeatureAt(pixel) {
+            var _ref6 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+                radius = _ref6.radius;
+
             if (!this.initialized) {
                 (0, _log2.default)('debug', "Scene.getFeatureAt() called before scene was initialized");
                 return Promise.resolve();
             }
 
-            // Point scaled to [0..1] range
+            // Scale point and radius to [0..1] range
             var point = {
-                x: pixel.x * _utils2.default.device_pixel_ratio / this.view.size.device.width,
-                y: pixel.y * _utils2.default.device_pixel_ratio / this.view.size.device.height
+                x: pixel.x / this.view.size.css.width,
+                y: pixel.y / this.view.size.css.height
             };
 
-            return this.selection.getFeatureAt(point).then(function (selection) {
+            if (radius > 0) {
+                radius = {
+                    x: radius / this.view.size.css.width,
+                    y: radius / this.view.size.css.height
+                };
+            } else {
+                radius = null;
+            }
+
+            return this.selection.getFeatureAt(point, { radius: radius }).then(function (selection) {
                 return Object.assign(selection, { pixel: pixel });
             }).catch(function (error) {
                 return Promise.resolve({ error: error });
+            });
+        }
+
+        // Query features within visible tiles, with optional filter conditions
+
+    }, {
+        key: 'queryFeatures',
+        value: function queryFeatures() {
+            var _ref7 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                filter = _ref7.filter,
+                _ref7$unique = _ref7.unique,
+                unique = _ref7$unique === undefined ? true : _ref7$unique,
+                _ref7$group_by = _ref7.group_by,
+                group_by = _ref7$group_by === undefined ? null : _ref7$group_by,
+                _ref7$visible = _ref7.visible,
+                visible = _ref7$visible === undefined ? null : _ref7$visible,
+                _ref7$geometry = _ref7.geometry,
+                geometry = _ref7$geometry === undefined ? false : _ref7$geometry;
+
+            filter = _utils2.default.serializeWithFunctions(filter);
+            var tile_keys = this.tile_manager.getRenderableTiles().map(function (t) {
+                return t.key;
+            });
+            return _worker_broker2.default.postMessage(this.workers, 'self.queryFeatures', { filter: filter, visible: visible, geometry: geometry, tile_keys: tile_keys }).then(function (results) {
+                var features = [];
+                var keys = {};
+                var groups = {};
+
+                // Optional uniqueify criteria
+                // Valid values: true, false/null, single property name, or array of property names
+                unique = typeof unique === 'string' ? [unique] : unique;
+                var uniqueify = unique && function (obj) {
+                    return JSON.stringify(Array.isArray(unique) ? (0, _slice2.default)(obj, unique) : obj);
+                };
+
+                // Optional grouping criteria
+                // Valid values: false/null, single property name, or array of property names
+                group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
+                var group = group_by && function (obj) {
+                    return Array.isArray(group_by) ? JSON.stringify((0, _slice2.default)(obj, group_by)) : obj[group_by];
+                };
+
+                results.forEach(function (r) {
+                    return r.forEach(function (feature) {
+                        if (uniqueify) {
+                            var str = uniqueify(feature);
+                            if (keys[str]) {
+                                return;
+                            }
+                            keys[str] = true;
+                        }
+
+                        if (group) {
+                            var _str = group(feature.properties);
+                            groups[_str] = groups[_str] || [];
+                            groups[_str].push(feature);
+                        } else {
+                            features.push(feature);
+                        }
+                    });
+                });
+                return group ? groups : features; // returned grouped results, or all results
             });
         }
 
@@ -31619,16 +31773,16 @@ var Scene = function () {
         value: function rebuild() {
             var _this8 = this;
 
-            var _ref6 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref6$sync = _ref6.sync,
-                sync = _ref6$sync === undefined ? true : _ref6$sync,
-                _ref6$sources = _ref6.sources,
-                sources = _ref6$sources === undefined ? null : _ref6$sources,
-                serialize_funcs = _ref6.serialize_funcs,
-                _ref6$profile = _ref6.profile,
-                profile = _ref6$profile === undefined ? false : _ref6$profile,
-                _ref6$fade_in = _ref6.fade_in,
-                fade_in = _ref6$fade_in === undefined ? false : _ref6$fade_in;
+            var _ref8 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref8$new_generation = _ref8.new_generation,
+                new_generation = _ref8$new_generation === undefined ? true : _ref8$new_generation,
+                _ref8$sources = _ref8.sources,
+                sources = _ref8$sources === undefined ? null : _ref8$sources,
+                serialize_funcs = _ref8.serialize_funcs,
+                _ref8$profile = _ref8.profile,
+                profile = _ref8$profile === undefined ? false : _ref8$profile,
+                _ref8$fade_in = _ref8.fade_in,
+                fade_in = _ref8$fade_in === undefined ? false : _ref8$fade_in;
 
             return new Promise(function (resolve, reject) {
                 // Skip rebuild if already in progress
@@ -31641,7 +31795,7 @@ var Scene = function () {
                     }
 
                     // Save queued request
-                    var options = { sync: sync, sources: sources, serialize_funcs: serialize_funcs, profile: profile, fade_in: fade_in };
+                    var options = { new_generation: new_generation, sources: sources, serialize_funcs: serialize_funcs, profile: profile, fade_in: fade_in };
                     _this8.building.queued = { resolve: resolve, reject: reject, options: options };
                     (0, _log2.default)('trace', 'Scene.rebuild(): queuing request');
                     return;
@@ -31655,10 +31809,17 @@ var Scene = function () {
                     _this8._profile('Scene.rebuild');
                 }
 
-                // Update config (in case JS objects were manipulated directly)
-                if (sync) {
-                    _this8.syncConfigToWorker({ serialize_funcs: serialize_funcs });
+                // Increment generation to ensure style/tile building stay in sync
+                // (skipped if calling function already incremented)
+                if (new_generation) {
+                    _this8.generation = ++Scene.generation;
+                    for (var style in _this8.styles) {
+                        _this8.styles[style].setGeneration(_this8.generation);
+                    }
                 }
+
+                // Update config (in case JS objects were manipulated directly)
+                _this8.syncConfigToWorker({ serialize_funcs: serialize_funcs });
                 _this8.resetFeatureSelection(sources);
                 _this8.resetTime();
 
@@ -31716,20 +31877,27 @@ var Scene = function () {
             var _this9 = this;
 
             var config_source = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-            var config_path = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+            var _ref9 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+                base_path = _ref9.base_path,
+                file_type = _ref9.file_type;
 
             this.config_source = config_source || this.config_source;
             this.config_globals_applied = [];
 
             if (typeof this.config_source === 'string') {
-                this.config_path = URLs.pathForURL(config_path || this.config_source);
+                this.base_path = URLs.pathForURL(base_path || this.config_source);
             } else {
-                this.config_path = URLs.pathForURL(config_path);
+                this.base_path = URLs.pathForURL(base_path);
             }
 
-            return _scene_loader2.default.loadScene(this.config_source, this.config_path).then(function (_ref7) {
-                var config = _ref7.config,
-                    bundle = _ref7.bundle;
+            // backwards compatibility for accessing base path under previous name
+            // TODO: schedule for deprecation
+            this.config_path = this.base_path;
+
+            return _scene_loader2.default.loadScene(this.config_source, { path: this.base_path, type: file_type }).then(function (_ref10) {
+                var config = _ref10.config,
+                    bundle = _ref10.bundle;
 
                 _this9.config = config;
                 _this9.config_bundle = bundle;
@@ -31955,16 +32123,16 @@ var Scene = function () {
     }, {
         key: 'updateConfig',
         value: function updateConfig() {
-            var _ref8 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref8$load_event = _ref8.load_event,
-                load_event = _ref8$load_event === undefined ? false : _ref8$load_event,
-                _ref8$rebuild = _ref8.rebuild,
-                rebuild = _ref8$rebuild === undefined ? true : _ref8$rebuild,
-                serialize_funcs = _ref8.serialize_funcs,
-                _ref8$normalize = _ref8.normalize,
-                normalize = _ref8$normalize === undefined ? true : _ref8$normalize,
-                _ref8$fade_in = _ref8.fade_in,
-                fade_in = _ref8$fade_in === undefined ? false : _ref8$fade_in;
+            var _ref11 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref11$load_event = _ref11.load_event,
+                load_event = _ref11$load_event === undefined ? false : _ref11$load_event,
+                _ref11$rebuild = _ref11.rebuild,
+                rebuild = _ref11$rebuild === undefined ? true : _ref11$rebuild,
+                serialize_funcs = _ref11.serialize_funcs,
+                _ref11$normalize = _ref11.normalize,
+                normalize = _ref11$normalize === undefined ? true : _ref11$normalize,
+                _ref11$fade_in = _ref11.fade_in,
+                fade_in = _ref11$fade_in === undefined ? false : _ref11$fade_in;
 
             this.generation = ++Scene.generation;
             this.updating++;
@@ -31988,7 +32156,7 @@ var Scene = function () {
             this.updateStyles();
 
             // Optionally rebuild geometry
-            var done = rebuild ? this.rebuild(Object.assign({ serialize_funcs: serialize_funcs, fade_in: fade_in }, (typeof rebuild === 'undefined' ? 'undefined' : _typeof(rebuild)) === 'object' && rebuild)) : this.syncConfigToWorker({ serialize_funcs: serialize_funcs }); // rebuild() also syncs config
+            var done = rebuild ? this.rebuild(Object.assign({ new_generation: false, serialize_funcs: serialize_funcs, fade_in: fade_in }, (typeof rebuild === 'undefined' ? 'undefined' : _typeof(rebuild)) === 'object' && rebuild)) : this.syncConfigToWorker({ serialize_funcs: serialize_funcs }); // rebuild() also syncs config
 
             // Finish by updating bounds and re-rendering
             this.updating--;
@@ -32003,9 +32171,9 @@ var Scene = function () {
     }, {
         key: 'syncConfigToWorker',
         value: function syncConfigToWorker() {
-            var _ref9 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref9$serialize_funcs = _ref9.serialize_funcs,
-                serialize_funcs = _ref9$serialize_funcs === undefined ? true : _ref9$serialize_funcs;
+            var _ref12 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref12$serialize_func = _ref12.serialize_funcs,
+                serialize_funcs = _ref12$serialize_func === undefined ? true : _ref12$serialize_func;
 
             // Tell workers we're about to rebuild (so they can update styles, etc.)
             var config_serialized = serialize_funcs ? _utils2.default.serializeWithFunctions(this.config) : JSON.stringify(this.config);
@@ -32126,8 +32294,12 @@ var Scene = function () {
     }, {
         key: 'screenshot',
         value: function screenshot() {
+            var _ref13 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref13$background = _ref13.background,
+                background = _ref13$background === undefined ? 'white' : _ref13$background;
+
             this.requestRedraw();
-            return this.media_capture.screenshot();
+            return this.media_capture.screenshot({ background: background });
         }
     }, {
         key: 'startVideoCapture',
@@ -32262,7 +32434,7 @@ exports.default = Scene;
 Scene.id = 0; // unique id for a scene instance
 Scene.generation = 0; // id that is incremented each time a scene config is re-parsed
 
-},{"./gl/context":203,"./gl/render_state":206,"./gl/shader_program":207,"./gl/texture":208,"./gl/vao":209,"./light":223,"./scene_loader":228,"./selection":230,"./sources/data_source":231,"./styles/style":243,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./styles/text/font_manager":247,"./tile":251,"./tile_manager":252,"./utils/debug_settings":255,"./utils/log":259,"./utils/media_capture":260,"./utils/subscribe":264,"./utils/urls":266,"./utils/utils":267,"./utils/worker_broker":269,"./view":271}],227:[function(_dereq_,module,exports){
+},{"./gl/context":203,"./gl/render_state":206,"./gl/shader_program":207,"./gl/texture":208,"./gl/vao":209,"./light":223,"./scene_loader":228,"./selection":230,"./sources/data_source":231,"./styles/style":243,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./styles/text/font_manager":247,"./tile":251,"./tile_manager":252,"./utils/debug_settings":255,"./utils/log":259,"./utils/media_capture":260,"./utils/slice":264,"./utils/subscribe":265,"./utils/urls":267,"./utils/utils":268,"./utils/worker_broker":270,"./view":272}],227:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -32538,7 +32710,7 @@ var ZipSceneBundle = exports.ZipSceneBundle = function (_SceneBundle) {
 function createSceneBundle(url, path, parent) {
     var type = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
 
-    if (type === 'zip' || typeof url === 'string' && !URLs.isLocalURL(url) && URLs.extensionForURL(url) === 'zip') {
+    if (type != null && type === 'zip' || typeof url === 'string' && !URLs.isLocalURL(url) && URLs.extensionForURL(url) === 'zip') {
         return new ZipSceneBundle(url, path, parent);
     }
     return new SceneBundle(url, path, parent);
@@ -32578,12 +32750,15 @@ function loadResource(source) {
                 }
             }, reject);
         } else {
+            // shallow copy to avoid modifying provided object, allowing a single config object to be loaded multiple times
+            // TODO: address possible modifications to nested properties (mostly harmless / due to data normalization)
+            source = Object.assign({}, source);
             resolve(source);
         }
     });
 }
 
-},{"./utils/urls":266,"./utils/utils":267,"js-yaml":97,"jszip":133}],228:[function(_dereq_,module,exports){
+},{"./utils/urls":267,"./utils/utils":268,"js-yaml":97,"jszip":133}],228:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -32628,14 +32803,16 @@ exports.default = SceneLoader = {
     loadScene: function loadScene(url) {
         var _this = this;
 
-        var path = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+        var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+            path = _ref.path,
+            type = _ref.type;
 
         var errors = [];
-        return this.loadSceneRecursive({ url: url, path: path }, null, errors).then(function (result) {
+        return this.loadSceneRecursive({ url: url, path: path, type: type }, null, errors).then(function (result) {
             return _this.finalize(result);
-        }).then(function (_ref) {
-            var config = _ref.config,
-                bundle = _ref.bundle;
+        }).then(function (_ref2) {
+            var config = _ref2.config,
+                bundle = _ref2.bundle;
 
             if (!config) {
                 // root scene failed to load, reject with first error
@@ -32657,10 +32834,10 @@ exports.default = SceneLoader = {
     // Optional *initial* path only (won't be passed to recursive 'import' calls)
     // Useful for loading resources in base scene file from a separate location
     // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
-    loadSceneRecursive: function loadSceneRecursive(_ref2, parent) {
-        var url = _ref2.url,
-            path = _ref2.path,
-            type = _ref2.type;
+    loadSceneRecursive: function loadSceneRecursive(_ref3, parent) {
+        var url = _ref3.url,
+            path = _ref3.path,
+            type = _ref3.type;
 
         var _this2 = this;
 
@@ -32803,11 +32980,11 @@ exports.default = SceneLoader = {
 
                 // Shader uniforms
                 if (style.shaders && style.shaders.uniforms) {
-                    _glsl2.default.parseUniforms(style.shaders.uniforms).forEach(function (_ref3) {
-                        var type = _ref3.type,
-                            value = _ref3.value,
-                            key = _ref3.key,
-                            uniforms = _ref3.uniforms;
+                    _glsl2.default.parseUniforms(style.shaders.uniforms).forEach(function (_ref4) {
+                        var type = _ref4.type,
+                            value = _ref4.value,
+                            key = _ref4.key,
+                            uniforms = _ref4.uniforms;
 
                         // Texture by URL (string-named texture not referencing existing texture definition)
                         if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] && !(0, _scene_bundle.isGlobal)(value)) {
@@ -32843,10 +33020,10 @@ exports.default = SceneLoader = {
         // at run-time. Once a global property substitution has been recorderd, it will always be re-applied
         // on subsequent scene updates, even if the target property was updated to another literal value.
         // This is unlikely to be a common occurrence an acceptable limitation for now.
-        applied.forEach(function (_ref4) {
-            var prop = _ref4.prop,
-                target = _ref4.target,
-                key = _ref4.key;
+        applied.forEach(function (_ref5) {
+            var prop = _ref5.prop,
+                target = _ref5.target,
+                key = _ref5.key;
 
             if (target) {
                 target[key] = props[prop];
@@ -32938,11 +33115,11 @@ exports.default = SceneLoader = {
 
                 // Shader uniforms
                 if (style.shaders && style.shaders.uniforms) {
-                    _glsl2.default.parseUniforms(style.shaders.uniforms).forEach(function (_ref5) {
-                        var type = _ref5.type,
-                            value = _ref5.value,
-                            key = _ref5.key,
-                            uniforms = _ref5.uniforms;
+                    _glsl2.default.parseUniforms(style.shaders.uniforms).forEach(function (_ref6) {
+                        var type = _ref6.type,
+                            value = _ref6.value,
+                            key = _ref6.key,
+                            uniforms = _ref6.uniforms;
 
                         // Texture by URL (string-named texture not referencing existing texture definition)
                         if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
@@ -32963,9 +33140,9 @@ exports.default = SceneLoader = {
 
 
     // Normalize some scene-wide settings that apply to the final, merged scene
-    finalize: function finalize(_ref6) {
-        var config = _ref6.config,
-            bundle = _ref6.bundle;
+    finalize: function finalize(_ref7) {
+        var config = _ref7.config,
+            bundle = _ref7.bundle;
 
         if (!config) {
             return {};
@@ -33025,7 +33202,7 @@ function flattenProperties(obj) {
 
 (0, _subscribe2.default)(SceneLoader);
 
-},{"./gl/glsl":205,"./scene_bundle":227,"./utils/log":259,"./utils/merge":261,"./utils/subscribe":264,"./utils/urls":266}],229:[function(_dereq_,module,exports){
+},{"./gl/glsl":205,"./scene_bundle":227,"./utils/log":259,"./utils/merge":261,"./utils/subscribe":265,"./utils/urls":267}],229:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33055,6 +33232,10 @@ var _tile = _dereq_('./tile');
 
 var _tile2 = _interopRequireDefault(_tile);
 
+var _geo = _dereq_('./geo');
+
+var _geo2 = _interopRequireDefault(_geo);
+
 var _data_source = _dereq_('./sources/data_source');
 
 var _data_source2 = _interopRequireDefault(_data_source);
@@ -33068,6 +33249,8 @@ var _style_parser = _dereq_('./styles/style_parser');
 var _style_manager = _dereq_('./styles/style_manager');
 
 var _layer = _dereq_('./styles/layer');
+
+var _filter = _dereq_('./styles/filter');
 
 var _texture = _dereq_('./gl/texture');
 
@@ -33303,11 +33486,75 @@ if (_thread2.default.is_worker) {
         },
 
 
+        // Query features within visible tiles, with optional filter conditions
+        queryFeatures: function queryFeatures(_ref3) {
+            var filter = _ref3.filter,
+                visible = _ref3.visible,
+                geometry = _ref3.geometry,
+                tile_keys = _ref3.tile_keys;
+
+            var features = [];
+            var tiles = tile_keys.map(function (t) {
+                return self.tiles[t];
+            }).filter(function (t) {
+                return t;
+            });
+
+            // Compile feature filter
+            if (filter != null) {
+                filter = ['{', '['].indexOf(filter[0]) > -1 ? JSON.parse(filter) : filter; // de-serialize if looks like an object
+                filter = _utils2.default.stringsToFunctions(filter, _style_parser.StyleParser.wrapFunction);
+            }
+            filter = (0, _filter.buildFilter)(filter, _layer.FilterOptions);
+
+            tiles.forEach(function (tile) {
+                var _loop = function _loop(layer) {
+                    var data = tile.source_data.layers[layer];
+                    data.features.forEach(function (feature) {
+                        // Optionally check if feature is visible (e.g. was rendered for current generation)
+                        if (visible === true && feature.generation !== self.generation || visible === false && feature.generation === self.generation) {
+                            return;
+                        }
+
+                        // Apply feature filter
+                        var context = _style_parser.StyleParser.getFeatureParseContext(feature, tile, self.global);
+                        context.source = tile.source; // add data source name
+                        context.layer = layer; // add data source layer name
+
+                        if (!filter(context)) {
+                            return;
+                        }
+
+                        // Info to return with each feature
+                        var subset = {
+                            type: feature.type,
+                            properties: feature.properties
+                        };
+
+                        // Optionally include geometry in response
+                        if (geometry === true) {
+                            // Transform back to lat lng (copy geometry to avoid local modification)
+                            subset.geometry = _geo2.default.copyGeometry(feature.geometry);
+                            _geo2.default.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min, tile.max);
+                        }
+
+                        features.push(subset);
+                    });
+                };
+
+                for (var layer in tile.source_data.layers) {
+                    _loop(layer);
+                }
+            });
+            return features;
+        },
+
+
         // Get a feature from the selection map
         getFeatureSelection: function getFeatureSelection() {
-            var _ref3 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                id = _ref3.id,
-                key = _ref3.key;
+            var _ref4 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                id = _ref4.id,
+                key = _ref4.key;
 
             var selection = _selection2.default.map[key];
 
@@ -33365,7 +33612,7 @@ if (_thread2.default.is_worker) {
     _worker_broker2.default.addTarget('self', self);
 }
 
-},{"./gl/texture":208,"./gl/vertex_elements":212,"./selection":230,"./sources/data_source":231,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":265,"./utils/utils":267,"./utils/worker_broker":269}],230:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/texture":208,"./gl/vertex_elements":212,"./selection":230,"./sources/data_source":231,"./styles/filter":236,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":266,"./utils/utils":268,"./utils/worker_broker":270}],230:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33388,6 +33635,8 @@ var _worker_broker2 = _interopRequireDefault(_worker_broker);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var FeatureSelection = function () {
@@ -33408,16 +33657,13 @@ var FeatureSelection = function () {
             this.feature = null; // currently selected feature
             this.read_delay = 0; // delay time from selection render to framebuffer sample, to avoid CPU/GPU sync lock
             this.read_delay_timer = null; // current timer (setTimeout) for delayed selection reads
-
-            this.pixel = new Uint8Array(4);
-            this.pixel32 = new Float32Array(this.pixel.buffer);
+            this.pixels = null; // allocated lazily on request
 
             // Frame buffer for selection
             // TODO: initiate lazily in case we don't need to do any selection
             this.fbo = this.gl.createFramebuffer();
             this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
             this.fbo_size = { width: 256, height: 256 }; // TODO: make configurable / adaptive based on canvas size
-            this.fbo_size.aspect = this.fbo_size.width / this.fbo_size.height;
 
             // Texture for the FBO color attachment
             var fbo_texture = _texture2.default.create(this.gl, 'selection_fbo', { filtering: 'nearest' });
@@ -33449,9 +33695,12 @@ var FeatureSelection = function () {
     }, {
         key: 'bind',
         value: function bind() {
+            var _gl;
+
             // Switch to FBO
             this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
             this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
+            (_gl = this.gl).clearColor.apply(_gl, _toConsumableArray(FeatureSelection.defaultColor));
         }
 
         // Request feature selection
@@ -33459,8 +33708,10 @@ var FeatureSelection = function () {
 
     }, {
         key: 'getFeatureAt',
-        value: function getFeatureAt(point) {
+        value: function getFeatureAt(point, _ref) {
             var _this = this;
+
+            var radius = _ref.radius;
 
             // ensure requested point is in canvas bounds
             if (!point || point.x < 0 || point.y < 0 || point.x > 1 || point.y > 1) {
@@ -33473,6 +33724,7 @@ var FeatureSelection = function () {
                 _this.requests[_this.selection_request_id] = {
                     id: _this.selection_request_id,
                     point: point,
+                    radius: radius,
                     resolve: resolve,
                     reject: reject
                 };
@@ -33540,11 +33792,71 @@ var FeatureSelection = function () {
                     }
 
                     // Check selection map against FBO
-                    gl.readPixels(Math.floor(request.point.x * _this2.fbo_size.width), Math.floor((1 - request.point.y) * _this2.fbo_size.height), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, _this2.pixel);
-                    var feature_key = _this2.pixel[0] + (_this2.pixel[1] << 8) + (_this2.pixel[2] << 16) + (_this2.pixel[3] << 24) >>> 0;
+                    var feature_key = void 0,
+                        worker_id = 255;
+                    var point = request.point,
+                        radius = request.radius;
+
+                    var diam_px = void 0;
+
+                    if (!radius) {
+                        radius = { x: 0, y: 0 };
+                        diam_px = { x: 1, y: 1 };
+                    } else {
+                        // diameter in selection buffer pixels
+                        var max_radius = Math.min(_this2.fbo_size.width, _this2.fbo_size.height);
+                        diam_px = {
+                            x: Math.min(Math.ceil(radius.x * 2 * _this2.fbo_size.width), max_radius),
+                            y: Math.min(Math.ceil(radius.y * 2 * _this2.fbo_size.height), max_radius)
+                        };
+                    }
+
+                    // allocate or resize
+                    if (_this2.pixels == null || _this2.pixels.byteLength < diam_px.x * diam_px.y * 4) {
+                        _this2.pixels = new Uint8Array(diam_px.x * diam_px.y * 4);
+                    }
+
+                    // clear pixels
+                    if (_this2.pixels.fill instanceof Function) {
+                        _this2.pixels.fill(0); // native typed array fill
+                    } else {
+                        for (var _p = 0; _p < _this2.pixels.length; _p++) {
+                            _this2.pixels[_p] = 0;
+                        }
+                    }
+
+                    // capture pixels
+                    gl.readPixels(Math.round((point.x - radius.x) * _this2.fbo_size.width), Math.round((1 - point.y - radius.y) * _this2.fbo_size.height), diam_px.x, diam_px.y, gl.RGBA, gl.UNSIGNED_BYTE, _this2.pixels);
+
+                    // first check center pixel (avoid scanning all pixels if cursor is directly on a feature)
+                    var p = (Math.round(diam_px.y / 2) * diam_px.x + Math.round(diam_px.x / 2)) * 4;
+                    var v = _this2.pixels[p] + (_this2.pixels[p + 1] << 8) + (_this2.pixels[p + 2] << 16); // feature id in RGB channels
+                    if (v > 0) {
+                        feature_key = v + (_this2.pixels[p + 3] << 24) >>> 0; // worker id in alpha channel
+                        worker_id = _this2.pixels[p + 3];
+                    } else {
+                        // scan all pixels for feature closest to cursor
+                        var min_dist = -1 >>> 0;
+                        p = 0;
+                        for (var y = 0; y < diam_px.y; y++) {
+                            for (var x = 0; x < diam_px.x; x++, p += 4) {
+                                v = _this2.pixels[p] + (_this2.pixels[p + 1] << 8) + (_this2.pixels[p + 2] << 16); // feature id in RGB channels
+                                if (v > 0) {
+                                    // non-zero value indicates a feature
+                                    // check to see if closer than last found feature
+                                    var dist = (x - diam_px.x / 2) * (x - diam_px.x / 2) + (y - diam_px.y / 2) * (y - diam_px.y / 2);
+                                    if (dist <= min_dist) {
+                                        // get worker id from alpha channel
+                                        feature_key = v + (_this2.pixels[p + 3] << 24) >>> 0;
+                                        worker_id = _this2.pixels[p + 3];
+                                        min_dist = dist;
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // If feature found, ask appropriate web worker to lookup feature
-                    var worker_id = _this2.pixel[3];
                     if (worker_id !== 255) {
                         // 255 indicates an empty selection buffer pixel
                         if (_this2.workers[worker_id] != null) {
@@ -33722,7 +34034,7 @@ FeatureSelection.map_entry = 0;
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];
 
-},{"./gl/texture":208,"./utils/log":259,"./utils/worker_broker":269}],231:[function(_dereq_,module,exports){
+},{"./gl/texture":208,"./utils/log":259,"./utils/worker_broker":270}],231:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33805,6 +34117,9 @@ var DataSource = function () {
         // overzoom will apply for zooms higher than this
         this.max_zoom = config.max_zoom != null ? config.max_zoom : _geo2.default.default_source_max_zoom;
 
+        this.setTileSize(config.tile_size);
+        this.max_coord_zoom = this.max_zoom + this.zoom_bias;
+
         // no tiles will be requested or displayed outside of these min/max values
         this.min_display_zoom = config.min_display_zoom != null ? config.min_display_zoom : 0;
         this.max_display_zoom = config.max_display_zoom != null ? config.max_display_zoom : null;
@@ -33857,6 +34172,22 @@ var DataSource = function () {
         key: '_load',
         value: function _load(dest) {
             throw new _errors.MethodNotImplemented('_load');
+        }
+
+        // Set the internal tile size in pixels, e.g. '256px' (default), '512px', etc.
+        // Must be a power of 2, and greater than or equal to 256
+
+    }, {
+        key: 'setTileSize',
+        value: function setTileSize(tile_size) {
+            this.tile_size = tile_size || 256;
+            if (typeof this.tile_size !== 'number' || this.tile_size < 256 || !_utils2.default.isPowerOf2(this.tile_size)) {
+                (0, _log2.default)({ level: 'warn', once: true }, 'Data source \'' + this.name + '\': \'tile_size\' parameter must be a number that is a power of 2 greater than or equal to 256, but was \'' + tile_size + '\'');
+                this.tile_size = 256;
+            }
+
+            // # of zoom levels bigger than 256px tiles - 8 in place of log2(256)
+            this.zoom_bias = Math.log2(this.tile_size) - 8;
         }
 
         // Infer winding for data source from first ring of provided geometry
@@ -34204,7 +34535,7 @@ var NetworkTileSource = exports.NetworkTileSource = function (_NetworkSource) {
     return NetworkTileSource;
 }(NetworkSource);
 
-},{"../geo":201,"../utils/errors":256,"../utils/log":259,"../utils/urls":266,"../utils/utils":267}],232:[function(_dereq_,module,exports){
+},{"../geo":201,"../utils/errors":256,"../utils/log":259,"../utils/urls":267,"../utils/utils":268}],232:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35110,7 +35441,7 @@ function buildFilter(filter, options) {
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.LayerTree = exports.LayerLeaf = exports.reserved = undefined;
+exports.FilterOptions = exports.LayerTree = exports.LayerLeaf = exports.reserved = undefined;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
@@ -35561,7 +35892,7 @@ var LayerTree = exports.LayerTree = function (_Layer2) {
     return LayerTree;
 }(Layer);
 
-var FilterOptions = {
+var FilterOptions = exports.FilterOptions = {
     // Handle unit conversions on filter ranges
     rangeTransform: function rangeTransform(val) {
         if (typeof val === 'string' && val.trim().slice(-3) === 'px2') {
@@ -35710,7 +36041,7 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
     return matched;
 }
 
-},{"../utils/log":259,"../utils/merge":261,"../utils/utils":267,"./filter":236,"./style_parser":245}],238:[function(_dereq_,module,exports){
+},{"../utils/log":259,"../utils/merge":261,"../utils/utils":268,"./filter":236,"./style_parser":245}],238:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -36277,13 +36608,6 @@ Object.assign(Points, {
     addFeature: function addFeature(feature, draw, context) {
         var tile = context.tile;
         if (tile.generation !== this.generation) {
-            return;
-        }
-
-        // Called here because otherwise it will be delayed until the feature queue is parsed,
-        // and we want the preprocessing done before we evaluate text style below
-        draw = this.preprocess(draw);
-        if (!draw) {
             return;
         }
 
@@ -36922,7 +37246,7 @@ Object.assign(Points, {
     }
 });
 
-},{"../../builders/points":197,"../../geo":201,"../../gl/constants":202,"../../gl/texture":208,"../../gl/vertex_layout":213,"../../labels/collision":214,"../../labels/label_point":218,"../../labels/point_placement":220,"../../utils/debug_settings":255,"../../utils/log":259,"../../vector":270,"../../view":271,"../style":243,"../style_parser":245,"../text/text_labels":249}],241:[function(_dereq_,module,exports){
+},{"../../builders/points":197,"../../geo":201,"../../gl/constants":202,"../../gl/texture":208,"../../gl/vertex_layout":213,"../../labels/collision":214,"../../labels/label_point":218,"../../labels/point_placement":220,"../../utils/debug_settings":255,"../../utils/log":259,"../../vector":271,"../../view":272,"../style":243,"../style_parser":245,"../text/text_labels":249}],241:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37214,7 +37538,7 @@ var Style = exports.Style = {
             sources = _ref$sources === undefined ? {} : _ref$sources,
             introspection = _ref.introspection;
 
-        this.generation = generation; // scene generation id this style was created for
+        this.setGeneration(generation);
         this.styles = styles; // styles for scene
         this.sources = sources; // data sources for scene
         this.defines = this.hasOwnProperty('defines') && this.defines || {}; // #defines to be injected into the shaders
@@ -37227,12 +37551,6 @@ var Style = exports.Style = {
         this.feature_style = {}; // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = []; // shared single-vertex template, filled out by each style
         this.tile_data = {};
-
-        // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = ['Style', this.name, this.generation].join('/');
-        if (_thread2.default.is_main) {
-            _worker_broker2.default.addTarget(this.main_thread_target, this);
-        }
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
@@ -37275,12 +37593,23 @@ var Style = exports.Style = {
             this.selection_program = null;
         }
 
+        _worker_broker2.default.removeTarget(this.main_thread_target);
         this.gl = null;
         this.initialized = false;
     },
     reset: function reset() {},
     baseStyle: function baseStyle() {
         return this.base || this.name;
+    },
+    setGeneration: function setGeneration(generation) {
+        // Scene generation id this style was created for
+        this.generation = generation;
+
+        // Provide a hook for this object to be called from worker threads
+        this.main_thread_target = ['Style', this.name, this.generation].join('/');
+        if (_thread2.default.is_main) {
+            _worker_broker2.default.addTarget(this.main_thread_target, this);
+        }
     },
     fillVertexTemplate: function fillVertexTemplate(attribute, value, _ref2) {
         var size = _ref2.size,
@@ -37351,10 +37680,8 @@ var Style = exports.Style = {
         }
 
         var style = this.parseFeature(feature, draw, context);
-
-        // Skip feature?
         if (!style) {
-            return;
+            return; // skip feature
         }
 
         // First feature in this render style?
@@ -37362,7 +37689,9 @@ var Style = exports.Style = {
             this.tile_data[tile.key].vertex_data = this.vertex_layout.createVertexData();
         }
 
-        this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context);
+        if (this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context) > 0) {
+            feature.generation = this.generation; // track scene generation that feature was rendered for
+        }
     },
     buildGeometry: function buildGeometry(geometry, style, vertex_data, context) {
         var _this = this;
@@ -37413,6 +37742,8 @@ var Style = exports.Style = {
                 }
             });
         }
+
+        return geom_count;
     },
     parseFeature: function parseFeature(feature, draw, context) {
         try {
@@ -37431,22 +37762,24 @@ var Style = exports.Style = {
                 return;
             }
 
-            // Feature selection (only if style supports it)
-            var selectable = false;
-            style.interactive = this.introspection || draw.interactive;
-            if (this.selection) {
-                selectable = _style_parser.StyleParser.evalProperty(style.interactive, context);
+            // Subclass implementation
+            style = this._parseFeature(feature, draw, context);
+            if (!style) {
+                return; // skip feature
             }
 
-            // If feature is marked as selectable
-            if (selectable) {
+            // Feature selection (only if feature is marked as interactive, and style supports it)
+            if (this.selection) {
+                style.interactive = _style_parser.StyleParser.evalProperty(this.introspection || draw.interactive, context);
+            } else {
+                style.interactive = false;
+            }
+
+            if (style.interactive === true) {
                 style.selection_color = _selection2.default.makeColor(feature, context.tile, context);
             } else {
                 style.selection_color = _selection2.default.defaultColor;
             }
-
-            // Subclass implementation
-            style = this._parseFeature(feature, draw, context);
 
             return style;
         } catch (error) {
@@ -37464,7 +37797,7 @@ var Style = exports.Style = {
                 // Merge each property separately to avoid modifying `draw` instance identity
                 for (var param in this.draw) {
                     var val = this.draw[param];
-                    if ((typeof val === 'undefined' ? 'undefined' : _typeof(val)) === 'object') {
+                    if ((typeof val === 'undefined' ? 'undefined' : _typeof(val)) === 'object' && !Array.isArray(val)) {
                         // nested param (e.g. `outline`)
                         draw[param] = (0, _merge2.default)({}, val, draw[param]);
                     } else if (draw[param] == null) {
@@ -37789,7 +38122,8 @@ var Style = exports.Style = {
                 if (tile.coords.z > raster_coords.z) {
                     var dz = tile.coords.z - raster_coords.z; // # of levels raster source is overzoomed
                     var dz2 = Math.pow(2, dz);
-                    u_offsets[i] = [tile.coords.x % dz2 / dz2, (dz2 - 1 - tile.coords.y % dz2) / dz2, // GL texture coords are +Y up
+                    u_offsets[i] = [(tile.coords.x % dz2 + dz2) % dz2 / dz2, // double-modulo to handle negative (wrapped) tile coords
+                    (dz2 - 1 - tile.coords.y % dz2) / dz2, // GL texture coords are +Y up
                     1 / dz2];
                 } else {
                     u_offsets[i] = [0, 0, 1];
@@ -37908,7 +38242,7 @@ function addLayerDebugEntry(target, layer, faeture_count, geom_count, styles, ba
     }
 }
 
-},{"../gl/shader_program":207,"../gl/texture":208,"../gl/vbo_mesh":210,"../light":223,"../material":224,"../selection":230,"../sources/raster":234,"../utils/debug_settings":255,"../utils/log":259,"../utils/merge":261,"../utils/thread":265,"../utils/worker_broker":269,"./style_parser":245}],244:[function(_dereq_,module,exports){
+},{"../gl/shader_program":207,"../gl/texture":208,"../gl/vbo_mesh":210,"../light":223,"../material":224,"../selection":230,"../sources/raster":234,"../utils/debug_settings":255,"../utils/log":259,"../utils/merge":261,"../utils/thread":266,"../utils/worker_broker":270,"./style_parser":245}],244:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38460,7 +38794,7 @@ var StyleParser = exports.StyleParser = {};
 // - $geometry: the type of geometry, 'point', 'line', or 'polygon'
 // - $meters_per_pixel: conversion for meters/pixels at current map zoom
 StyleParser.wrapFunction = function (func) {
-    var f = '\n        var feature = context.feature.properties;\n        var global = context.global;\n        var $zoom = context.zoom;\n        var $layer = context.layer;\n        var $geometry = context.geometry;\n        var $meters_per_pixel = context.meters_per_pixel;\n\n        var val = (function(){ ' + func + ' }());\n\n        if (typeof val === \'number\' && isNaN(val)) {\n            val = null; // convert NaNs to nulls\n        }\n\n        return val;\n    ';
+    var f = '\n        var feature = context.feature.properties;\n        var global = context.global;\n        var $zoom = context.zoom;\n        var $layer = context.layer;\n        var $source = context.source;\n        var $geometry = context.geometry;\n        var $meters_per_pixel = context.meters_per_pixel;\n\n        var val = (function(){ ' + func + ' }());\n\n        if (typeof val === \'number\' && isNaN(val)) {\n            val = null; // convert NaNs to nulls\n        }\n\n        return val;\n    ';
     return f;
 };
 
@@ -38766,7 +39100,9 @@ StyleParser.evalCachedColorProperty = function (val) {
                 }
                 // Single array color
                 else {
-                        val.static = val.value;
+                        val.static = val.value.map(function (x) {
+                            return x;
+                        }); // copy to avoid modifying
                         if (val.static && val.static[3] == null) {
                             val.static[3] = 1; // default alpha
                         }
@@ -38802,6 +39138,9 @@ StyleParser.parseColor = function (val) {
 
     // Defaults
     if (Array.isArray(val)) {
+        val = val.map(function (x) {
+            return x;
+        }); // copy to avoid modifying
         // alpha
         if (val[3] == null) {
             val[3] = 1;
@@ -38839,7 +39178,7 @@ StyleParser.evalProperty = function (prop, context) {
     return prop;
 };
 
-},{"../geo":201,"../utils/utils":267,"csscolorparser":71}],246:[function(_dereq_,module,exports){
+},{"../geo":201,"../utils/utils":268,"csscolorparser":71}],246:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38873,8 +39212,6 @@ var _debug_settings2 = _interopRequireDefault(_debug_settings);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var codon_length = 2; // length of chunks when breaking up label text
 
 var CanvasText = function () {
     function CanvasText() {
@@ -38944,46 +39281,26 @@ var CanvasText = function () {
                         }
 
                         if (text_settings.can_articulate) {
-                            var words = text.split(' ');
-
-                            // RTL is true if every word is RTL
-                            // BIDI is true if there is RTL and LTR
-                            var hasRTL = false;
-                            var hasLTR = false;
+                            var rtl = false;
                             var bidi = false;
-                            for (var i = 0; i < words.length; i++) {
-                                if (isTextRTL(words[i])) {
-                                    if (hasLTR) {
-                                        bidi = true;
-                                        break;
-                                    }
-                                    hasRTL = true;
+                            if (isTextRTL(text)) {
+                                if (!isTextNeutral(text)) {
+                                    bidi = true;
                                 } else {
-                                    if (hasRTL) {
-                                        bidi = true;
-                                        break;
-                                    }
-                                    hasLTR = true;
+                                    rtl = true;
                                 }
                             }
 
-                            var rtl = hasRTL && !hasLTR && !bidi;
-                            var shaped = isTextShaped(text);
-
                             text_info.isRTL = rtl;
-                            text_info.no_curving = bidi || shaped; // used in LabelLine to prevent curved labels
+                            text_info.no_curving = bidi || isTextCurveBlacklisted(text); // used in LabelLine to prevent curved labels
                             text_info.vertical_buffer = _this.vertical_text_buffer;
                             text_info.size = [];
 
                             if (!text_info.no_curving) {
                                 var segments = splitLabelText(text, rtl);
-                                if (rtl) {
-                                    segments.reverse();
-                                }
-
                                 text_info.segments = segments;
-                                for (var _i = 0; _i < segments.length; _i++) {
-                                    text_info.size.push(_this.textSize(style, segments[_i], text_settings).size);
+                                for (var i = 0; i < segments.length; i++) {
+                                    text_info.size.push(_this.textSize(style, segments[i], text_settings).size);
                                 }
                             }
 
@@ -39016,10 +39333,10 @@ var CanvasText = function () {
 
             // Check cache first
             if (CanvasText.text_cache[style][text]) {
-                CanvasText.cache_stats.hits++;
+                CanvasText.cache_stats.text_hits++;
                 return CanvasText.text_cache[style][text];
             }
-            CanvasText.cache_stats.misses++;
+            CanvasText.cache_stats.text_misses++;
             CanvasText.text_cache_count++;
 
             // Calc and store in cache
@@ -39211,8 +39528,8 @@ var CanvasText = function () {
                                 case 'curved':
                                     text_info.texcoords.curved = [];
                                     text_info.texcoords_stroke = [];
-                                    for (var _i2 = 0; _i2 < words.length; _i2++) {
-                                        var _word = words[_i2];
+                                    for (var _i = 0; _i < words.length; _i++) {
+                                        var _word = words[_i];
                                         var _texcoord = void 0;
                                         var texcoord_stroke = void 0;
 
@@ -39322,12 +39639,12 @@ var CanvasText = function () {
                                     };
                                     break;
                                 case 'curved':
-                                    for (var _i3 = 0; _i3 < text_info.size.length; _i3++) {
-                                        var _word2 = text_info.segments[_i3];
+                                    for (var _i2 = 0; _i2 < text_info.size.length; _i2++) {
+                                        var _word2 = text_info.segments[_i2];
 
                                         if (!CanvasText.texcoord_cache[tile_key][style][_word2]) {
 
-                                            var _size2 = text_info.size[_i3].texture_size;
+                                            var _size2 = text_info.size[_i2].texture_size;
                                             var width = 2 * _size2[0];
                                             if (width > column_width) {
                                                 column_width = width;
@@ -39471,16 +39788,33 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.text_cache_count = 0; // current size of cache (measured as # of entries)
 CanvasText.text_cache_count_max = 4000; // prune cache when it exceeds this size
-CanvasText.cache_stats = { hits: 0, misses: 0 };
 CanvasText.texcoord_cache = {};
+CanvasText.segment_cache = {};
+CanvasText.segment_cache_count_max = 1000;
+CanvasText.cache_stats = { text_hits: 0, text_misses: 0, segment_hits: 0, segment_misses: 0 };
 
-// Contextual Shaping Languages - Unicode ranges
-var context_langs = {
-    Arabic: '\u0600-\u06FF',
-    Mongolian: '\u1800-\u18AF'
-};
+// Right-to-left / bi-directional text handling
+// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
+var rtlDirCheck = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
+function isTextRTL(s) {
+    return rtlDirCheck.test(s);
+}
 
-var accents_and_vowels = '[:\u0300-\u036F' + // Combining Diacritical Marks
+var neutral_chars = '\0-/:-@[-`{-\xBF\xD7\xF7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF';
+var neutralDirCheck = new RegExp('[' + neutral_chars + ']+');
+function isTextNeutral(s) {
+    return neutralDirCheck.test(s);
+}
+
+var markRTL = '\u200F'; // explicit right-to-left marker
+
+// test http://localhost:8000/#16.72917/30.08541/31.28466
+var arabic_range = new RegExp('^[' + neutral_chars + '\u0600-\u06FF]+'); // all characters are Arabic or neutral
+var arabic_splitters = new RegExp('[' + neutral_chars + '\u0622-\u0625\u0627\u062F-\u0632\u0648\u0671-\u0677\u0688-\u0699\u06C4-\u06CB\u06CF\u06D2\u06D3\u06EE\u06EF]');
+var arabic_vowels = new RegExp('^[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+');
+var accents_and_vowels = '[\u0300-\u036F' + // Combining Diacritical Marks
+'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7' + // Hebrew
+'\u07A6-\u07B0' + // Thaana
 '\u0900-\u0903\u093A-\u094C\u094E\u094F\u0951-\u0957\u0962\u0963' + // Devanagari
 '\u0981-\u0983\u09BC\u09BE-\u09CC\u09D7\u09E2\u09E3' + // Bengali
 '\u0A01-\u0A03\u0A3C-\u0A4C\u0A51' + // Gurmukhi
@@ -39503,99 +39837,78 @@ var accents_and_vowels = '[:\u0300-\u036F' + // Combining Diacritical Marks
 var combo_characters = '[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0C4D\u0CCD\u0D4D\u0F84\u1039\u17D2\u1A60\u1A7F]';
 var graphemeRegex = new RegExp("^.(?:" + accents_and_vowels + "+)?" + "(" + combo_characters + "\\W(?:" + accents_and_vowels + "+)?)*");
 
-var reg_ex_shaping = '[';
-for (var key in context_langs) {
-    reg_ex_shaping += context_langs[key];
+// Scripts that cannot be curved due (due to contextual shaping and/or layout complexity)
+var curve_blacklist = {
+    Mongolian: '\u1800-\u18AF'
+};
+var curve_blacklist_range = Object.keys(curve_blacklist).map(function (r) {
+    return curve_blacklist[r];
+}).join('');
+var curve_blacklist_test = new RegExp('[' + curve_blacklist_range + ']');
+function isTextCurveBlacklisted(s) {
+    return curve_blacklist_test.test(s);
 }
-reg_ex_shaping += ']';
-
-var shaping_test = new RegExp(reg_ex_shaping);
-
-function isTextShaped(s) {
-    return shaping_test.test(s);
-}
-
-// Right-to-left / bi-directional text handling
-// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-var rtlDirCheck = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
-function isTextRTL(s) {
-    return rtlDirCheck.test(s);
-}
-
-var neutralDirCheck = new RegExp('[\0-/:-@[-`{-\xBF\xD7\xF7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF]$');
-function isTextNeutral(s) {
-    return neutralDirCheck.test(s);
-}
-
-var markRTL = '\u200F'; // explicit right-to-left marker
-
-CanvasText.segment_cache = {};
-CanvasText.segment_cache_count_max = 1000;
-CanvasText.cache_stats.segment_hits = 0;
-CanvasText.cache_stats.segment_misses = 0;
 
 // Splitting strategy for chopping a label into segments
+var default_segment_length = 2; // character length of each segment when dividing up label text
+
 function splitLabelText(text, rtl) {
-    if (text.length < codon_length) {
+    // Use single-character segments for RTL, to avoid additional handling for neutral characters
+    // (see https://github.com/tangrams/tangram/issues/541)
+    var segment_length = rtl ? 1 : default_segment_length;
+
+    if (text.length < segment_length) {
         return [text];
     }
 
     var key = text;
     if (CanvasText.segment_cache[key]) {
         CanvasText.cache_stats.segment_hits++;
-        return CanvasText.segment_cache[key].map(function (v) {
-            return v;
-        }); // copy to avoid modification
+        return CanvasText.segment_cache[key];
     }
 
     var segments = [];
+
+    if (arabic_range.exec(text)) {
+        segments = text.split(arabic_splitters);
+        var offset = -1;
+        for (var s = 0; s < segments.length - 1; s++) {
+            if (s > 0) {
+                var carryoverVowels = arabic_vowels.exec(segments[s]);
+                if (carryoverVowels) {
+                    segments[s] = segments[s].substring(carryoverVowels[0].length);
+                    segments[s - 1] += carryoverVowels[0];
+                    offset += carryoverVowels[0].length;
+                }
+            }
+            offset += 1 + segments[s].length;
+            segments[s] += text.slice(offset, offset + 1);
+        }
+        text = "";
+    }
+
     while (text.length) {
         var segment = '';
         var testText = text;
         var graphemeCount = 0;
 
-        for (graphemeCount; graphemeCount < codon_length && testText.length; graphemeCount++) {
+        for (graphemeCount; graphemeCount < segment_length && testText.length; graphemeCount++) {
             var graphemeCluster = (graphemeRegex.exec(testText) || testText)[0];
             segment += graphemeCluster;
             testText = testText.substring(graphemeCluster.length);
         }
 
-        // if RTL, check to see if segment starts or ends on a neutral character
-        // in which case we need to add the neutral segments separately
-        var take = 0;
-        if (rtl) {
-            while (segment.length > 0 && isTextNeutral(segment[0])) {
-                segments.push(segment[0]);
-                segment = segment.substring(1);
-                take++;
-            }
+        segments.push(segment);
+        text = text.substring(segment.length);
+    }
 
-            var neutral_segment = [];
-            while (segment.length > 0 && isTextNeutral(segment[segment.length - 1])) {
-                neutral_segment.unshift(segment[segment.length - 1]); // add trailing neutrals in reverse order
-                segment = segment.substring(0, segment.length - 1);
-                take++;
-            }
-
-            if (segment.length) {
-                segments.push(segment);
-            }
-
-            if (neutral_segment.length > 0) {
-                segments = segments.concat(neutral_segment);
-            }
-        } else {
-            segments.push(segment);
-        }
-
-        text = text.substring(segment.length + take);
+    if (rtl) {
+        segments.reverse();
     }
 
     CanvasText.cache_stats.segment_misses++;
     CanvasText.segment_cache[key] = segments;
-    return segments.map(function (v) {
-        return v;
-    }); // copy to avoid modification
+    return segments;
 }
 
 // Private class to arrange text labels into multiple lines based on
@@ -39784,7 +40097,7 @@ var Line = function () {
     return Line;
 }();
 
-},{"../../gl/texture":208,"../../utils/debug_settings":255,"../../utils/log":259,"../../utils/utils":267,"./font_manager":247}],247:[function(_dereq_,module,exports){
+},{"../../gl/texture":208,"../../utils/debug_settings":255,"../../utils/log":259,"../../utils/utils":268,"./font_manager":247}],247:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39957,7 +40270,7 @@ var FontManager = {
 
 exports.default = FontManager;
 
-},{"../../utils/log":259,"../../utils/utils":267,"fontfaceobserver":74}],248:[function(_dereq_,module,exports){
+},{"../../utils/log":259,"../../utils/utils":268,"fontfaceobserver":74}],248:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40059,13 +40372,6 @@ Object.assign(TextStyle, {
 
         var tile = context.tile;
         if (tile.generation !== this.generation) {
-            return;
-        }
-
-        // Called here because otherwise it will be delayed until the feature queue is parsed,
-        // and we want the preprocessing done before we evaluate text style below
-        draw = this.preprocess(draw);
-        if (!draw) {
             return;
         }
 
@@ -40652,7 +40958,7 @@ var TextLabels = exports.TextLabels = {
     }
 };
 
-},{"../../geo":201,"../../gl/texture":208,"../../labels/collision":214,"../../utils/log":259,"../../utils/thread":265,"../../utils/worker_broker":269,"../style_parser":245,"../text/canvas_text":246,"../text/text_settings":250}],250:[function(_dereq_,module,exports){
+},{"../../geo":201,"../../gl/texture":208,"../../labels/collision":214,"../../utils/log":259,"../../utils/thread":266,"../../utils/worker_broker":270,"../style_parser":245,"../text/canvas_text":246,"../text/text_settings":250}],250:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40777,7 +41083,7 @@ exports.default = TextSettings = {
     }
 };
 
-},{"../../geo":201,"../../utils/utils":267,"../style_parser":245}],251:[function(_dereq_,module,exports){
+},{"../../geo":201,"../../utils/utils":268,"../style_parser":245}],251:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40860,11 +41166,11 @@ var Tile = function () {
         this.error = null;
         this.debug = {};
 
-        this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
         this.style_zoom = style_zoom; // zoom level to be used for styling
+        this.coords = Tile.normalizedCoordinate(coords, this.source, this.style_zoom);
+        this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
         this.overzoom2 = Math.pow(2, this.overzoom);
-        this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = _geo2.default.metersForTile(this.coords);
         this.max = _geo2.default.metersForTile({ x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }), this.span = { x: this.max.x - this.min.x, y: this.max.y - this.min.y };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
@@ -41161,19 +41467,30 @@ var Tile = function () {
     }, {
         key: 'key',
         value: function key(coords, source, style_zoom) {
-            coords = Tile.coordinateWithMaxZoom(coords, source.max_zoom);
             if (coords.y < 0 || coords.y >= 1 << coords.z || coords.z < 0) {
                 return; // cull tiles out of range (x will wrap)
             }
             return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
         }
     }, {
+        key: 'normalizedKey',
+        value: function normalizedKey(coords, source, style_zoom) {
+            return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source, style_zoom);
+        }
+    }, {
+        key: 'normalizedCoordinate',
+        value: function normalizedCoordinate(coords, source, style_zoom) {
+            if (source.zoom_bias) {
+                coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
+            }
+            return Tile.coordinateWithMaxZoom(coords, source.max_zoom);
+        }
+    }, {
         key: 'coordinateAtZoom',
         value: function coordinateAtZoom(_ref5, zoom) {
             var x = _ref5.x,
                 y = _ref5.y,
-                z = _ref5.z,
-                key = _ref5.key;
+                z = _ref5.z;
 
             if (z !== zoom) {
                 var zscale = Math.pow(2, z - zoom);
@@ -41545,7 +41862,7 @@ function addDebugLayers(node, tree) {
     }
 }
 
-},{"./geo":201,"./gl/texture":208,"./labels/collision":214,"./styles/style":243,"./styles/style_parser":245,"./utils/gl-matrix":257,"./utils/log":259,"./utils/merge":261,"./utils/utils":267,"./utils/worker_broker":269}],252:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/texture":208,"./labels/collision":214,"./styles/style":243,"./styles/style_parser":245,"./utils/gl-matrix":257,"./utils/log":259,"./utils/merge":261,"./utils/utils":268,"./utils/worker_broker":270}],252:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41726,7 +42043,7 @@ var TileManager = function () {
             var proxy = false;
             this.forEachTile(function (tile) {
                 if (_this2.view.zoom_direction === 1) {
-                    if (tile.visible && !tile.built && tile.coords.z > 0) {
+                    if (tile.visible && !tile.built) {
                         var parent = _this2.pyramid.getAncestor(tile);
                         if (parent) {
                             parent.setProxyFor(tile);
@@ -41886,14 +42203,14 @@ var TileManager = function () {
                     continue;
                 }
 
-                var key = _tile2.default.key(coords, source, this.view.tile_zoom);
+                var key = _tile2.default.normalizedKey(coords, source, this.view.tile_zoom);
                 if (key && !this.hasTile(key)) {
                     (0, _log2.default)('trace', 'load tile ' + key + ', distance from view center: ' + coords.center_dist);
                     var tile = new _tile2.default({
                         source: source,
                         coords: coords,
                         worker: this.scene.getWorkerForDataSource(source),
-                        style_zoom: this.view.styleZoom(coords.z),
+                        style_zoom: this.view.baseZoom(coords.z),
                         view: this.view
                     });
 
@@ -42035,7 +42352,7 @@ var TileManager = function () {
 
 exports.default = TileManager;
 
-},{"./geo":201,"./tile":251,"./tile_pyramid":253,"./utils/log":259,"./utils/worker_broker":269}],253:[function(_dereq_,module,exports){
+},{"./geo":201,"./tile":251,"./tile_pyramid":253,"./utils/log":259,"./utils/worker_broker":270}],253:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42147,20 +42464,16 @@ var TilePyramid = function () {
             }
 
             // First check overzoomed tiles at same coordinate zoom
-            if (style_zoom > source.max_zoom) {
+            if (style_zoom > source.max_coord_zoom) {
                 var source_tiles = this.sourceTiles(coords, source);
                 if (source_tiles) {
-                    for (var z = style_zoom - 1; z >= source.max_zoom; z--) {
+                    for (var z = style_zoom - 1; z >= source.max_coord_zoom; z--) {
                         if (source_tiles[z] && source_tiles[z].loaded) {
                             return source_tiles[z];
                         }
-
-                        if (++level > this.max_proxy_ancestor_depth) {
-                            return;
-                        }
                     }
                 }
-                style_zoom = source.max_zoom;
+                style_zoom = source.max_coord_zoom;
             }
 
             // Check tiles at next zoom up
@@ -42186,7 +42499,7 @@ var TilePyramid = function () {
             var descendants = [];
 
             // First check overzoomed tiles at same coordinate zoom
-            if (style_zoom >= source.max_zoom) {
+            if (style_zoom >= source.max_coord_zoom) {
                 var source_tiles = this.sourceTiles(coords, source);
                 if (source_tiles) {
                     var search_max_zoom = Math.max(_geo2.default.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
@@ -42211,7 +42524,7 @@ var TilePyramid = function () {
                         descendants.push(child_tiles[style_zoom]);
                     }
                     // didn't find child, try next level
-                    else if (level <= this.max_proxy_descendant_depth && child.z <= source.max_zoom) {
+                    else if (level <= this.max_proxy_descendant_depth && child.z <= source.max_coord_zoom) {
                             descendants.push.apply(descendants, _toConsumableArray(this.getDescendants({ coords: child, source: source, style_zoom: style_zoom }, level + 1)));
                         }
                 }
@@ -42520,7 +42833,7 @@ if (_thread2.default.is_main) {
 _worker_broker2.default.addTarget('_logProxy', log); // proxy log messages from worker to main thread
 _worker_broker2.default.addTarget('_logSetLevelProxy', log.setLevel); // proxy log level setting from main to worker thread
 
-},{"./thread":265,"./version":268,"./worker_broker":269}],260:[function(_dereq_,module,exports){
+},{"./thread":266,"./version":269,"./worker_broker":270}],260:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42535,6 +42848,8 @@ var _log = _dereq_('./log');
 var _log2 = _interopRequireDefault(_log);
 
 var _urls = _dereq_('./urls');
+
+var _style_parser = _dereq_('../styles/style_parser');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -42560,18 +42875,22 @@ var MediaCapture = function () {
         }
 
         // Take a screenshot, returns a promise that resolves with the screenshot data when available
+        // `background`: optional background color to blend screenshot with
 
     }, {
         key: 'screenshot',
         value: function screenshot() {
             var _this = this;
 
+            var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                background = _ref.background;
+
             if (this.queue_screenshot != null) {
                 return this.queue_screenshot.promise; // only capture one screenshot at a time
             }
 
             // Will resolve once rendering is complete and render buffer is captured
-            this.queue_screenshot = {};
+            this.queue_screenshot = { background: background };
             this.queue_screenshot.promise = new Promise(function (resolve, reject) {
                 _this.queue_screenshot.resolve = resolve;
                 _this.queue_screenshot.reject = reject;
@@ -42596,6 +42915,16 @@ var MediaCapture = function () {
                 var pixels = new Uint8Array(w * h * 4);
                 this.gl.readPixels(0, 0, w, h, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels);
 
+                // Optional background to blend with (only RGB, alpha is ignored)
+                var background = this.queue_screenshot.background;
+                if (background && background !== 'transparent') {
+                    background = _style_parser.StyleParser.parseColor(background).slice(0, 3).map(function (c) {
+                        return c * 255;
+                    });
+                } else {
+                    background = null; // skip blend if transparent
+                }
+
                 // Flip Y (GL buffer is upside down)
                 var flip = new Uint8ClampedArray(w * h * 4); // canvas requires 'clamped' array type
                 for (var y = 0; y < h; y++) {
@@ -42607,6 +42936,14 @@ var MediaCapture = function () {
                         flip[d + 1] = pixels[s + 1] * 255 / a;
                         flip[d + 2] = pixels[s + 2] * 255 / a;
                         flip[d + 3] = a;
+
+                        if (background) {
+                            a /= 255;
+                            flip[d + 0] = flip[d + 0] * a + background[0] * (1 - a);
+                            flip[d + 1] = flip[d + 1] * a + background[1] * (1 - a);
+                            flip[d + 2] = flip[d + 2] * a + background[2] * (1 - a);
+                            flip[d + 3] = 255;
+                        }
                     }
                 }
 
@@ -42724,7 +43061,7 @@ var MediaCapture = function () {
 
 exports.default = MediaCapture;
 
-},{"./log":259,"./urls":266}],261:[function(_dereq_,module,exports){
+},{"../styles/style_parser":245,"./log":259,"./urls":267}],261:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42885,7 +43222,7 @@ var OBB = function () {
 
 exports.default = OBB;
 
-},{"../vector":270}],263:[function(_dereq_,module,exports){
+},{"../vector":271}],263:[function(_dereq_,module,exports){
 'use strict';
 
 _dereq_('core-js/es6/promise');
@@ -42934,7 +43271,27 @@ Math.hypot = Math.hypot || function () {
     return Math.sqrt(y);
 };
 
+// Math.log2 polyfill
+Math.log2 = Math.log2 || function (x) {
+    return Math.log(x) * Math.LOG2E;
+};
+
 },{"core-js/es6/promise":6}],264:[function(_dereq_,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = sliceObject;
+function sliceObject(obj, keys) {
+    var sliced = {};
+    keys.forEach(function (k) {
+        return sliced[k] = obj[k];
+    });
+    return sliced;
+}
+
+},{}],265:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42994,7 +43351,7 @@ function subscribeMixin(target) {
     });
 }
 
-},{"./log":259}],265:[function(_dereq_,module,exports){
+},{"./log":259}],266:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -43026,7 +43383,7 @@ try {
     }
 }
 
-},{}],266:[function(_dereq_,module,exports){
+},{}],267:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43246,7 +43603,7 @@ function getURLParameter(name, url) {
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
 
-},{"./log":259}],267:[function(_dereq_,module,exports){
+},{"./log":259}],268:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43388,6 +43745,10 @@ Utils.requestAnimationFramePolyfill = function () {
 
 // Stringify an object into JSON, but convert functions to strings
 Utils.serializeWithFunctions = function (obj) {
+    if (typeof obj === 'function') {
+        return obj.toString();
+    }
+
     var serialized = JSON.stringify(obj, function (k, v) {
         // Convert functions to strings
         if (typeof v === 'function') {
@@ -43558,18 +43919,18 @@ Utils.pointInTile = function (point) {
     return point[0] >= 0 && point[1] > -_geo2.default.tile_scale && point[0] < _geo2.default.tile_scale && point[1] <= 0;
 };
 
-},{"../geo":201,"./log":259,"./thread":265,"./worker_broker":269}],268:[function(_dereq_,module,exports){
+},{"../geo":201,"./log":259,"./thread":266,"./worker_broker":270}],269:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.12.5\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.13.0\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
-},{}],269:[function(_dereq_,module,exports){
+},{}],270:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43690,6 +44051,10 @@ var messages = {};
 var targets = {};
 WorkerBroker.addTarget = function (name, target) {
     targets[name] = target;
+};
+
+WorkerBroker.removeTarget = function (name) {
+    delete targets[name];
 };
 
 // Given a dot-notation-style method name, e.g. 'Object.object.method',
@@ -44131,7 +44496,7 @@ if (_thread2.default.is_worker) {
     setupWorkerThread();
 }
 
-},{"./log":259,"./thread":265}],270:[function(_dereq_,module,exports){
+},{"./log":259,"./thread":266}],271:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44338,7 +44703,7 @@ Vector.dot = function (v1, v2) {
     return n;
 };
 
-},{}],271:[function(_dereq_,module,exports){
+},{}],272:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44411,7 +44776,6 @@ var View = function () {
         this.buffer = 0;
         this.continuous_zoom = typeof options.continuousZoom === 'boolean' ? options.continuousZoom : true;
         this.wrap = options.wrapView === false ? false : true;
-        this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.preserve_tiles_within_zoom = 1;
 
         this.reset();
@@ -44539,7 +44903,7 @@ var View = function () {
             }
 
             var last_tile_zoom = this.tile_zoom;
-            var tile_zoom = this.tileZoom(zoom);
+            var tile_zoom = this.baseZoom(zoom);
             if (!this.continuous_zoom) {
                 zoom = tile_zoom;
             }
@@ -44568,22 +44932,6 @@ var View = function () {
         key: 'baseZoom',
         value: function baseZoom(zoom) {
             return Math.floor(zoom);
-        }
-
-        // For a given view zoom, what tile zoom should be loaded?
-
-    }, {
-        key: 'tileZoom',
-        value: function tileZoom(view_zoom) {
-            return Math.max(this.baseZoom(view_zoom) - this.tile_simplification_level, 0);
-        }
-
-        // For a given tile zoom, what style zoom should be used?
-
-    }, {
-        key: 'styleZoom',
-        value: function styleZoom(tile_zoom) {
-            return this.baseZoom(tile_zoom) + this.tile_simplification_level;
         }
     }, {
         key: 'setPanning',
@@ -44786,6 +45134,6 @@ var View = function () {
 
 exports.default = View;
 
-},{"./camera":200,"./geo":201,"./tile":251,"./utils/log":259,"./utils/subscribe":264,"./utils/utils":267}]},{},[225])(225)
+},{"./camera":200,"./geo":201,"./tile":251,"./utils/log":259,"./utils/subscribe":265,"./utils/utils":268}]},{},[225])(225)
 });})();
 //# sourceMappingURL=tangram.debug.js.map
