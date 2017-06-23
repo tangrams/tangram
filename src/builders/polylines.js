@@ -425,7 +425,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
     // calculate miter angle between the two normals
     var miterVec = createMiterVec(normPrev, normNext);
-    // if (!isClockwise){miterVec = Vector.neg(miterVec);}
+    if (!isClockwise){miterVec = Vector.neg(miterVec);}
     var miterLength = context.half_width * Vector.length(miterVec);
 
     // get the projected length along the line of the miter vector using law of Sines
@@ -466,12 +466,15 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normNext)), [0, v+diff], context);
     }
     else {
-        addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normPrev)), [0, v], context);
+        addVertex(coordCurr, miterVec, [1, v], context);
 
         if (!isBeginning) {
             indexPairs(1, context);
         }
+
+        addVertex(coordCurr, miterVec, [1, v], context);
+
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
@@ -482,14 +485,14 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                normPrev, Vector.neg(miterVec), normNext,
-                [1, v], [0, v], [1, v],
+                Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
+                [0, v-diff], [1, v], [0, v+diff],
                 false, context
             );
         }
 
-        addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normNext)), [0, v+diff], context);
+        addVertex(coordCurr, miterVec, [0, v+diff], context);
     }
 }
 
