@@ -437,13 +437,8 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     // I thought this should be sin() but cos() works better, hmm
     var diff = Math.cos(oa) * miterLength * context.v_scale * .666;
 
-
     if (isClockwise){
-        // addVertex(coordCurr, normPrev, [1, v], context);
         addVertex(coordCurr, miterVec, [1, v], context);
-        // addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
-
-        // addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
         addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normPrev)), [0, v], context);
 
         if (!isBeginning) {
@@ -451,7 +446,6 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
 
         addVertex(coordCurr, miterVec, [1, v], context);
-        // addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
@@ -461,11 +455,6 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
             );
         }
         else if (join_type === JOIN_TYPE.round) {
-            // addFan(coordCurr,
-            //     Vector.neg(normPrev), miterVec, Vector.neg(normNext),
-            //     [0, v-diff], [1, v], [0, v+diff],
-            //     false, context
-            // );
             addFan(coordCurr,
                 Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
                 [0, v-diff], [1, v], [0, v+diff],
@@ -473,9 +462,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
             );
         }
 
-        // addVertex(coordCurr, normNext, [1, v+diff], context);
         addVertex(coordCurr, miterVec, [1, v+diff], context);
-        // addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
         addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normNext)), [0, v+diff], context);
     }
     else {
@@ -556,7 +543,6 @@ function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, con
 //                                             \./
 function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
 
-    console.log('nA:', nA, 'nB:', nB, 'nC:', nC)
     var cross = nA[0] * nB[1] - nA[1] * nB[0];
     var dot = Vector.dot(nA, nB);
 
@@ -564,26 +550,18 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     while (angle >= Math.PI) {
         angle -= 2*Math.PI;
     }
-    console.log('angle:', angle, angle * 180 / Math.PI);
 
-    var nAR = Vector.reflect(nC,nA);
-
-    var numTriangles = trianglesPerArc(angle, context.half_width);
+    var numTriangles = trianglesPerArc(angle, context.half_width)/2;
     if (numTriangles < 1) {
         return;
     }
-    console.log('numTriangles:', numTriangles)
-    // numTriangles = 4;
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
 
     addVertex(coord, nC, uvC, context);
     addVertex(coord, nA, uvA, context);
-    // addVertex(coord, nAR, uvA, context);
-    
+
     var blade = nA;
-    // var blade = nAR;
-    console.log('  first blade:', blade)
 
     if (context.texcoord_index !== undefined) {
         var uvCurr;
@@ -597,25 +575,16 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         }
     }
 
-    var angle_step = angle / numTriangles;
+    var angle_step = angle / numTriangles / 2;
 
-    console.log("  angle_step:", angle_step.toFixed(2), angle_step * 180 / Math.PI);
-
+    // get first vector as seen from the miter point
+    var sub = Vector.sub(nA, nC);
     for (var i = 0; i < numTriangles; i++) {
-        blade = Vector.rot(blade, angle_step);
-        console.log('length:', Vector.length(blade).toFixed(3))
 
-        var ang = Vector.angleBetween(blade, nA);
-        var deg = ang * 180 / Math.PI;
-        console.log(' angle:', ang.toFixed(3), 'aka', deg.toFixed(0));
-        var factor = Math.sin(ang);
-        // var factor = Math.sin(ang + .5*Math.PI);
-        // var factor2 = 1 - factor * (1 - (Math.sqrt(2)-1));
-        var factor2 = Math.pow((factor * .5 - Math.PI * .25), 2) + (Math.sqrt(2)-1);
-        // console.log('*', factor.toFixed(3), '*', factor2.toFixed(3));
-        console.log(' *', factor2.toFixed(3));
-        var blade2 = Vector.mult(blade, factor2);
-        console.log('  =', Vector.length(blade2).toFixed(3))
+        // rotate vector from the miter point
+        sub = Vector.rot(sub, angle_step);
+        // get result as seen from the vertex coordinate
+        blade = Vector.add(nC, sub);
 
         if (context.texcoord_index !== undefined) {
             if (isCap){
@@ -629,7 +598,8 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
                 uvCurr = Vector.add(uvCurr, uv_delta);
             }
         }
-        addVertex(coord, blade2, uvCurr, context);
+        // addVertex(coord, blade2, uvCurr, context);
+        addVertex(coord, blade, uvCurr, context);
 
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 2 : 1));
         vertex_elements.push(pivotIndex);
