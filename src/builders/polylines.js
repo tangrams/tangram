@@ -461,8 +461,13 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
             );
         }
         else if (join_type === JOIN_TYPE.round) {
+            // addFan(coordCurr,
+            //     Vector.neg(normPrev), miterVec, Vector.neg(normNext),
+            //     [0, v-diff], [1, v], [0, v+diff],
+            //     false, context
+            // );
             addFan(coordCurr,
-                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
+                Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
                 [0, v-diff], [1, v], [0, v+diff],
                 false, context
             );
@@ -551,7 +556,6 @@ function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, con
 //                                             \./
 function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
 
-
     console.log('nA:', nA, 'nB:', nB, 'nC:', nC)
     var cross = nA[0] * nB[1] - nA[1] * nB[0];
     var dot = Vector.dot(nA, nB);
@@ -560,7 +564,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     while (angle >= Math.PI) {
         angle -= 2*Math.PI;
     }
-    console.log('angle:', angle)
+    console.log('angle:', angle, angle * 180 / Math.PI);
 
     var nAR = Vector.reflect(nC,nA);
 
@@ -568,14 +572,18 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     if (numTriangles < 1) {
         return;
     }
-
+    console.log('numTriangles:', numTriangles)
+    // numTriangles = 4;
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
 
-    addVertex(coord, nAR, uvA, context);
     addVertex(coord, nC, uvC, context);
-
-    var blade = nAR;
+    addVertex(coord, nA, uvA, context);
+    // addVertex(coord, nAR, uvA, context);
+    
+    var blade = nA;
+    // var blade = nAR;
+    console.log('  first blade:', blade)
 
     if (context.texcoord_index !== undefined) {
         var uvCurr;
@@ -591,65 +599,23 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
 
     var angle_step = angle / numTriangles;
 
+    console.log("  angle_step:", angle_step.toFixed(2), angle_step * 180 / Math.PI);
 
-
-    var c = Vector.length(nC);
-    var nCR = Vector.reflect(nC, nA);
-    var b = Vector.length(nCR); // starts equal to c
-    var A = Vector.angleBetween(nC, nCR);
-    // law of cosines to get opposite side
-    var a = Math.sqrt(b*b + c*c - (2*b*c*Math.cos(A)));
-    // angles B & C start out equal, and are both (180 - A)/2;
-    var B = (Math.PI - A)/2;
-    var C = (Math.PI - A)/2;
-
-    console.log('a:', a, 'b:', b, 'c:', c)
-    console.log('A:', A, 'B:', B, 'C:', C)
-
-    // cos(A) = (c2 + a2 - b2)/2ca
-    // A = Math.acos((c*c + a*a - b*b)/2*c*a);
-    
-    // total angle to traverse = 2B
-
-    // then what?
-    // 2B - angle_step
-
-    var A2, B2, C2, r, D, E, F, G, rx, ry;
-    B2 = B;
-    console.log("angle_step:", angle_step)
-    console.log('width:', context.half_width)
-    // blade = [0, 0];
     for (var i = 0; i < numTriangles; i++) {
-        // blade = Vector.rot(blade, angle_step);
+        blade = Vector.rot(blade, angle_step);
+        console.log('length:', Vector.length(blade).toFixed(3))
 
-        B2 += angle_step;
-        // new triangle - we want to know r
-        // SAS 
-        r = Math.sqrt(a*a + c*c - (2*a*c*Math.cos(B2)));
-        console.log("r:", r)
-        // sin(C2) / C = sin(B2)/r
-        // sin(C2) = sin(B2)/r*C
-        C2 = Math.asin(Math.sin(B2)/r*C);
-        A2 = Math.PI - B2 - C2;
-        console.log("A2:", A2, "B2:", B2, "C2:", C2)
-        D = Math.PI/2 - B;
-        E = Math.PI/2 - D;
-        F = Math.PI - E - A2;
-        G = Math.PI/2 - F;
-        console.log("D:", D, "E:", E, "F:", F, "G:", G)
-        // rx = r*Math.cos(G);
-        // ry = r*Math.cos(F);
-        ry = Math.sin(F)*r;
-        rx = Math.sin(G)*r;
-        // rx = Math.sin(F); // hmm
-        // ry = Math.sin(G);
-        // no this makes sense because of law of sines -
-        // r is always the hypotenuse of a right triangle - 
-        // sin(90) = 1, so 
-        blade = [rx, ry];
-        // blade = [blade[0]+Math.sin(i), blade[1]+Math.cos(i)]
-        console.log('blade:', blade)
-        // debugger
+        var ang = Vector.angleBetween(blade, nA);
+        var deg = ang * 180 / Math.PI;
+        console.log(' angle:', ang.toFixed(3), 'aka', deg.toFixed(0));
+        var factor = Math.sin(ang);
+        // var factor = Math.sin(ang + .5*Math.PI);
+        // var factor2 = 1 - factor * (1 - (Math.sqrt(2)-1));
+        var factor2 = Math.pow((factor * .5 - Math.PI * .25), 2) + (Math.sqrt(2)-1);
+        // console.log('*', factor.toFixed(3), '*', factor2.toFixed(3));
+        console.log(' *', factor2.toFixed(3));
+        var blade2 = Vector.mult(blade, factor2);
+        console.log('  =', Vector.length(blade2).toFixed(3))
 
         if (context.texcoord_index !== undefined) {
             if (isCap){
@@ -663,8 +629,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
                 uvCurr = Vector.add(uvCurr, uv_delta);
             }
         }
-
-        addVertex(coord, blade, uvCurr, context);
+        addVertex(coord, blade2, uvCurr, context);
 
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 2 : 1));
         vertex_elements.push(pivotIndex);
