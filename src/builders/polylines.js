@@ -217,7 +217,7 @@ function buildPolyline(line, context, extra_lines){
             v = addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
         }
         else {
-            addJoin(join_type, v, coordCurr, normPrev, normNext, false, context);
+            v = addJoin(join_type, v, coordCurr, normPrev, normNext, false, context);
         }
         v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
     }
@@ -284,7 +284,7 @@ function startPolygon(coordCurr, normPrev, normNext, join_type, context){
             v = addMiter(v, coordCurr, normPrev, normNext, context.miter_len_sq, true, context);
         }
         else {
-            addJoin(join_type, v, coordCurr, normPrev, normNext, true, context);
+            v = addJoin(join_type, v, coordCurr, normPrev, normNext, true, context);
         }
     }
     return v;
@@ -352,7 +352,9 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
         var oa = Math.PI/2 - ab;
         // I thought this should be sin() but cos() works better, hmm
-        var vdiff = Math.cos(oa) * miterLength * context.v_scale * .666;
+        // var vdiff = Math.sin(oa) * miterLength * context.v_scale;
+        // var vdiff = Math.cos(oa) * miterLength * context.v_scale * .666;
+        var vdiff = Math.cos(oa) * miterLength * context.v_scale;
         if (!isClockwise) { miterVec = Vector.neg(miterVec); }
 
         // calculate UVs
@@ -434,8 +436,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     // the angle between the miterVec and the line is the other angle
     // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
     var oa = Math.PI/2 - ab;
-    // I thought this should be sin() but cos() works better, hmm
-    var diff = Math.cos(oa) * miterLength * context.v_scale * .666;
+    var diff = Math.cos(oa) * Math.PI/2. * miterLength * context.v_scale;
 
     if (isClockwise){
         addVertex(coordCurr, miterVec, [1, v], context);
@@ -456,10 +457,15 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
+                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
                 [0, v-diff], [1, v], [0, v+diff],
                 false, context
             );
+            // addFan(coordCurr,
+            //     Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
+            //     [0, v-diff], [1, v], [0, v+diff],
+            //     false, context
+            // );
         }
 
         addVertex(coordCurr, miterVec, [1, v+diff], context);
@@ -485,15 +491,21 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         }
         else if (join_type === JOIN_TYPE.round) {
             addFan(coordCurr,
-                Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
+                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
                 [0, v-diff], [1, v], [0, v+diff],
                 false, context
             );
+            // addFan(coordCurr,
+            //     Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
+            //     [0, v-diff], [1, v], [0, v+diff],
+            //     false, context
+            // );
         }
 
         addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normNext)), [0, v+diff], context);
         addVertex(coordCurr, miterVec, [0, v+diff], context);
     }
+    return v+diff;
 }
 
 // Add indices to vertex_elements
@@ -554,17 +566,20 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         angle -= 2*Math.PI;
     }
 
-    var numTriangles = trianglesPerArc(angle, context.half_width)/2;
+    var numTriangles = trianglesPerArc(angle, context.half_width);
     if (numTriangles < 1) {
         return;
     }
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
 
-    addVertex(coord, nC, uvC, context);
-    addVertex(coord, nA, uvA, context);
+    var nAR = Vector.reflect(nC,nA);
+    var nBR = Vector.reflect(nC,nB);
 
-    var blade = nA;
+    addVertex(coord, nC, uvC, context);
+    addVertex(coord, nAR, uvA, context);
+
+    var blade = nAR;
 
     if (context.texcoord_index !== undefined) {
         var uvCurr;
@@ -578,10 +593,10 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         }
     }
 
-    var angle_step = angle / numTriangles / 2;
+    var angle_step = angle / numTriangles;
 
     // get first vector as seen from the miter point
-    var sub = Vector.sub(nA, nC);
+    var sub = Vector.sub(nAR, nC);
     for (var i = 0; i < numTriangles; i++) {
 
         // rotate vector from the miter point
