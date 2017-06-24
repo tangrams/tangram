@@ -448,8 +448,8 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
-                Vector.neg(normPrev), [0, 0], Vector.neg(normNext),
-                [0, v], [1, v], [0, v],
+                Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
+                [0, v-diff], [1, v], [0, v+diff],
                 context
             );
         }
@@ -477,8 +477,8 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
 
         if (join_type === JOIN_TYPE.bevel) {
             addBevel(coordCurr,
-                normPrev, [0, 0], normNext,
-                [1, v], [0, v], [1, v],
+                Vector.reflect(miterVec,normPrev), miterVec, Vector.reflect(miterVec,normNext),
+                [1, v-diff], [0, v], [1, v+diff],
                 context
             );
         }
