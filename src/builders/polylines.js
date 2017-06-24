@@ -352,18 +352,18 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
         var oa = Math.PI/2 - ab;
         // calculate distance uvs should travel around the join
-        var vdiff = Math.cos(oa) * miterLength * context.v_scale;
+        var diff = Math.cos(oa) * miterLength * context.v_scale / 2.;
         if (!isClockwise) { miterVec = Vector.neg(miterVec); }
 
         // calculate UVs
 
         // back off v a bit to account for the fact that the first two points
         // are being drawn a bit before coord
-        var firstv = v - vdiff;
+        var firstv = v - diff;
         // advance the v coordinate to reach the miter corner
-        var cornerv = v + vdiff;
+        var cornerv = v + diff;
         // advance the v coordinate to reach the end of the miter
-        var lastv = v + vdiff * 3;
+        var lastv = v + diff * 3;
 
         // count indices before adding any more vertices
         var index = context.vertex_data.vertex_count;
