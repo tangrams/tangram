@@ -465,8 +465,8 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normNext)), [0, v+diff], context);
     }
     else {
-        addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normPrev)), [0, v], context);
-        addVertex(coordCurr, miterVec, [1, v], context);
+        addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normPrev)), [0, v-diff], context);
+        addVertex(coordCurr, miterVec, [1, v-diff], context);
 
         if (!isBeginning) {
             indexPairs(1, context);
