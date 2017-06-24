@@ -351,9 +351,7 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
         // the angle between the miterVec and the line is the other angle
         // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
         var oa = Math.PI/2 - ab;
-        // I thought this should be sin() but cos() works better, hmm
-        // var vdiff = Math.sin(oa) * miterLength * context.v_scale;
-        // var vdiff = Math.cos(oa) * miterLength * context.v_scale * .666;
+        // calculate distance uvs should travel around the join
         var vdiff = Math.cos(oa) * miterLength * context.v_scale;
         if (!isClockwise) { miterVec = Vector.neg(miterVec); }
 
@@ -436,11 +434,11 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     // the angle between the miterVec and the line is the other angle
     // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
     var oa = Math.PI/2 - ab;
-    var diff = Math.cos(oa) * Math.PI/2. * miterLength * context.v_scale;
+    var diff = Math.cos(oa) * miterLength * context.v_scale;
 
     if (isClockwise){
-        addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normPrev)), [0, v], context);
+        addVertex(coordCurr, miterVec, [1, v-diff], context);
+        addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normPrev)), [0, v-diff], context);
 
         if (!isBeginning) {
             indexPairs(1, context);
@@ -461,11 +459,6 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
                 [0, v-diff], [1, v], [0, v+diff],
                 false, context
             );
-            // addFan(coordCurr,
-            //     Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
-            //     [0, v-diff], [1, v], [0, v+diff],
-            //     false, context
-            // );
         }
 
         addVertex(coordCurr, miterVec, [1, v+diff], context);
@@ -495,11 +488,6 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
                 [0, v-diff], [1, v], [0, v+diff],
                 false, context
             );
-            // addFan(coordCurr,
-            //     Vector.reflect(miterVec,Vector.neg(normPrev)), miterVec, Vector.reflect(miterVec,Vector.neg(normNext)),
-            //     [0, v-diff], [1, v], [0, v+diff],
-            //     false, context
-            // );
         }
 
         addVertex(coordCurr, Vector.reflect(miterVec,Vector.neg(normNext)), [0, v+diff], context);
