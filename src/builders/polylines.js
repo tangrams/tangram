@@ -567,7 +567,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     addVertex(coord, nC, uvC, context);
     addVertex(coord, nAR, uvA, context);
 
-    var blade = nAR;
+    var blade = (cross > 0 ? Vector.neg(nA) : nA);
 
     if (context.texcoord_index !== undefined) {
         var uvCurr;
@@ -583,14 +583,10 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
 
     var angle_step = angle / numTriangles;
 
-    // get first vector as seen from the miter point
-    var sub = Vector.sub(nAR, nC);
     for (var i = 0; i < numTriangles; i++) {
 
-        // rotate vector from the miter point
-        sub = Vector.rot(sub, angle_step);
-        // get result as seen from the vertex coordinate
-        blade = Vector.add(nC, sub);
+        // rotate vector
+        blade = Vector.rot(blade, angle_step);
 
         if (context.texcoord_index !== undefined) {
             if (isCap){
@@ -611,6 +607,12 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         vertex_elements.push(pivotIndex);
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 1 : 2));
     }
+
+    addVertex(coord, nBR, uvA, context);
+    vertex_elements.push(pivotIndex + i + (cross > 0 ? 2 : 1));
+    vertex_elements.push(pivotIndex);
+    vertex_elements.push(pivotIndex + i + (cross > 0 ? 1 : 2));
+
 }
 
 //  addBevel    A ----- B
