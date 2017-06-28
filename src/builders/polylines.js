@@ -545,7 +545,6 @@ function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, con
 //  and interpolating their UVs               \ p /
 //                                             \./
 function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
-
     var cross = nA[0] * nB[1] - nA[1] * nB[0];
     var dot = Vector.dot(nA, nB);
 
@@ -564,8 +563,29 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     var nAR = Vector.reflect(nC,nA);
     var nBR = Vector.reflect(nC,nB);
 
+
+    var miterLength = context.half_width * Vector.length(nC);
+    // get the projected length along the line of the miter vector using law of Sines
+    // find the angle between the miterVec and the previous Normal
+    var ab = Vector.angleBetween(nC,nA);
+    // the angle between the miterVec and the line is the other angle
+    // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
+    var oa = Math.PI/2 - ab;
+    var diff = Math.cos(oa) * miterLength * context.v_scale;
+
+    // add triangle from square end of line segment to beginning of regular fan
     addVertex(coord, nC, uvC, context);
-    addVertex(coord, nAR, uvA, context);
+    addVertex(coord, nAR, [uvA[0], uvA[1] - diff], context);
+
+    // uvA = [uvA[0], uvA[1] - diff]
+    // addVertex(coord, (cross > 0 ? Vector.neg(nAR) : nAR), uvA, context);
+    addVertex(coord, (cross > 0 ? Vector.neg(nA) : nA), uvA, context);
+
+    var blade = (cross > 0 ? Vector.neg(nA) : nA);
+
+    vertex_elements.push(pivotIndex + ((cross > 0) ? 2 : 1));
+    vertex_elements.push(pivotIndex);
+    vertex_elements.push(pivotIndex + ((cross > 0) ? 1 : 2));
 
     var blade = (cross > 0 ? Vector.neg(nA) : nA);
 
@@ -583,7 +603,8 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
 
     var angle_step = angle / numTriangles;
 
-    for (var i = 0; i < numTriangles; i++) {
+    // begin regular fan
+    for (var i = 1; i < numTriangles+1; i++) {
 
         // rotate vector
         blade = Vector.rot(blade, angle_step);
@@ -608,7 +629,10 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 1 : 2));
     }
 
-    addVertex(coord, nBR, uvA, context);
+    uvB = [uvB[0], uvB[1] + diff];
+
+    // add triangle from end of regular fan to square end of next line segment
+    addVertex(coord, nBR, uvB, context);
     vertex_elements.push(pivotIndex + i + (cross > 0 ? 2 : 1));
     vertex_elements.push(pivotIndex);
     vertex_elements.push(pivotIndex + i + (cross > 0 ? 1 : 2));
