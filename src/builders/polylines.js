@@ -567,24 +567,18 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     // var diff = Math.sin(ab) * miterLength * context.v_scale;
     var diff = uvB[1]-uvA[1];
 
-
-    var rotatedAngle = Vector.angleBetween(nA, nAR);
-    var sinFactor = Math.abs(Math.PI/2/ab);
-    var uvDistanceFactor = (1/(2*Math.sqrt(2)))*Math.sin(sinFactor*rotatedAngle/8 - Math.PI/4)+.5;
-
+    var rotatedAngle = Vector.angleBetween(nC, nA);
+    var sinFactor = Math.PI/2/ab;
+    var uvDistanceFactor = (1/(2*Math.sqrt(2)))*Math.sin(sinFactor*rotatedAngle - Math.PI/4)+.5;
 
     var uv1 = uvA[1];
     var uv2 = uvA[1] + diff*uvDistanceFactor;
+    var uv4 = uvB[1] - diff*uvDistanceFactor;
     var uv5 = uvB[1];
 
     // add triangle from square end of line segment to beginning of regular fan
     addVertex(coord, nC, uvC, context);
-    // addVertex(coord, nAR, [uvA[0], uvA[1] - diff], context);
     addVertex(coord, nAR, uvA, context);
-
-    addVertex(coord, (cross > 0 ? Vector.neg(nA) : nA), [0, uv2], context);
-
-    var blade = (cross > 0 ? Vector.neg(nA) : nA);
 
     vertex_elements.push(pivotIndex + ((cross > 0) ? 2 : 1));
     vertex_elements.push(pivotIndex);
@@ -605,7 +599,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     }
 
     var angle_step = angle / numTriangles;
-    var sinFactor = Math.abs(Math.PI/2/ab);
+    var sinFactor = Math.PI/2/ab;
 
     // begin regular fan
     for (var i = 1; i < numTriangles+1; i++) {
@@ -625,6 +619,8 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
             }
             else {
                 // UV textures go "around" the join
+                // var uv_delta = Vector.div(Vector.sub(uv4, uv2), numTriangles);
+                // uvCurr = Vector.add(uvCurr, uv_delta);
                 var newUV = uv1+diff*uvDistanceFactor;
                 uvCurr = [0, newUV];
             }
@@ -637,7 +633,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     }
 
     // add triangle from end of regular fan to square end of next line segment
-    addVertex(coord, nBR, [0, uv5], context);
+    addVertex(coord, nBR, uvB, context);
     vertex_elements.push(pivotIndex + i + (cross > 0 ? 2 : 1));
     vertex_elements.push(pivotIndex);
     vertex_elements.push(pivotIndex + i + (cross > 0 ? 1 : 2));
