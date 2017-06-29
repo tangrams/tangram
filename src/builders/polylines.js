@@ -567,16 +567,20 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     // var diff = Math.sin(ab) * miterLength * context.v_scale;
     var diff = uvB[1]-uvA[1];
 
+
+    var rotatedAngle = Vector.angleBetween(nA, nAR);
+    var sinFactor = Math.abs(Math.PI/2/ab);
+    var uvDistanceFactor = (1/(2*Math.sqrt(2)))*Math.sin(sinFactor*rotatedAngle/8 - Math.PI/4)+.5;
+
+
     var uv1 = uvA[1];
-    var uv2 = uvA[1] + diff*.25;
-    var uv3 = uvA[1] + diff*.5;
-    var uv4 = uvA[1] + diff*.75;
+    var uv2 = uvA[1] + diff*uvDistanceFactor;
     var uv5 = uvB[1];
 
     // add triangle from square end of line segment to beginning of regular fan
-    addVertex(coord, nC, [0, uv3], context);
+    addVertex(coord, nC, uvC, context);
     // addVertex(coord, nAR, [uvA[0], uvA[1] - diff], context);
-    addVertex(coord, nAR, [0, uv1], context);
+    addVertex(coord, nAR, uvA, context);
 
     addVertex(coord, (cross > 0 ? Vector.neg(nA) : nA), [0, uv2], context);
 
@@ -601,6 +605,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     }
 
     var angle_step = angle / numTriangles;
+    var sinFactor = Math.abs(Math.PI/2/ab);
 
     // begin regular fan
     for (var i = 1; i < numTriangles+1; i++) {
@@ -609,7 +614,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         blade = Vector.rot(blade, angle_step);
 
         var rotatedAngle = Vector.angleBetween(nA, blade);
-        var uvDistanceFactor = (1/(2*Math.sqrt(2)))*Math.sin(rotatedAngle - Math.PI/4)+.5;
+        var uvDistanceFactor = (1/(2*Math.sqrt(2)))*Math.sin(sinFactor*rotatedAngle - Math.PI/4)+.5;
 
         if (context.texcoord_index !== undefined) {
             if (isCap){
@@ -630,8 +635,6 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         vertex_elements.push(pivotIndex);
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 1 : 2));
     }
-
-    // uvB = [uvB[0], uvB[1] + diff];
 
     // add triangle from end of regular fan to square end of next line segment
     addVertex(coord, nBR, [0, uv5], context);
