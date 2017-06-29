@@ -431,10 +431,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     // get the projected length along the line of the miter vector using law of Sines
     // find the angle between the miterVec and the previous Normal
     var ab = Vector.angleBetween(miterVec,normPrev);
-    // the angle between the miterVec and the line is the other angle
-    // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
-    var oa = Math.PI/2 - ab;
-    var diff = Math.cos(oa) * miterLength * context.v_scale;
+    var diff = Math.sin(ab) * miterLength * context.v_scale;
 
     if (isClockwise){
         addVertex(coordCurr, miterVec, [1, v-diff], context);
@@ -568,10 +565,7 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     // get the projected length along the line of the miter vector using law of Sines
     // find the angle between the miterVec and the previous Normal
     var ab = Vector.angleBetween(nC,nA);
-    // the angle between the miterVec and the line is the other angle
-    // in the 30-60-90 triangle, aka 180 - 90 - ab degrees
-    var oa = Math.PI/2 - ab;
-    var diff = Math.cos(oa) * miterLength * context.v_scale;
+    var diff = Math.sin(ab) * miterLength * context.v_scale;
 
     // add triangle from square end of line segment to beginning of regular fan
     addVertex(coord, nC, uvC, context);
