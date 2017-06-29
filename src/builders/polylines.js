@@ -560,20 +560,25 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     var nAR = Vector.reflect(nC,nA);
     var nBR = Vector.reflect(nC,nB);
 
-
     var miterLength = context.half_width * Vector.length(nC);
     // get the projected length along the line of the miter vector using law of Sines
     // find the angle between the miterVec and the previous Normal
-    var ab = Vector.angleBetween(nC,nA);
-    var diff = Math.sin(ab) * miterLength * context.v_scale;
+    var ab = Vector.angleBetween(nB,nA);
+    // var diff = Math.sin(ab) * miterLength * context.v_scale;
+    var diff = uvB[1]-uvA[1];
+
+    var uv1 = uvA[1];
+    var uv2 = uvA[1] + diff*.25;
+    var uv3 = uvA[1] + diff*.5;
+    var uv4 = uvA[1] + diff*.75;
+    var uv5 = uvB[1];
 
     // add triangle from square end of line segment to beginning of regular fan
-    addVertex(coord, nC, uvC, context);
-    addVertex(coord, nAR, [uvA[0], uvA[1] - diff], context);
+    addVertex(coord, nC, [0, uv3], context);
+    // addVertex(coord, nAR, [uvA[0], uvA[1] - diff], context);
+    addVertex(coord, nAR, [0, uv1], context);
 
-    // uvA = [uvA[0], uvA[1] - diff]
-    // addVertex(coord, (cross > 0 ? Vector.neg(nAR) : nAR), uvA, context);
-    addVertex(coord, (cross > 0 ? Vector.neg(nA) : nA), uvA, context);
+    addVertex(coord, (cross > 0 ? Vector.neg(nA) : nA), [0, uv2], context);
 
     var blade = (cross > 0 ? Vector.neg(nA) : nA);
 
@@ -590,8 +595,8 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
             var affine_uvCurr = Vector.sub(uvA, uvC);
         }
         else {
-            uvCurr = Vector.set(uvA);
-            var uv_delta = Vector.div(Vector.sub(uvB, uvA), numTriangles);
+            uvCurr = [0, uv2];
+            var uv_delta = diff*.5/numTriangles;
         }
     }
 
@@ -603,6 +608,9 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         // rotate vector
         blade = Vector.rot(blade, angle_step);
 
+        var rotatedAngle = Vector.angleBetween(nA, blade);
+        var uvDistanceFactor = (1/(2*Math.sqrt(2)))*Math.sin(rotatedAngle - Math.PI/4)+.5;
+
         if (context.texcoord_index !== undefined) {
             if (isCap){
                 // UV textures go "through" the cap
@@ -612,10 +620,10 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
             }
             else {
                 // UV textures go "around" the join
-                uvCurr = Vector.add(uvCurr, uv_delta);
+                var newUV = uv1+diff*uvDistanceFactor;
+                uvCurr = [0, newUV];
             }
         }
-        // addVertex(coord, blade2, uvCurr, context);
         addVertex(coord, blade, uvCurr, context);
 
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 2 : 1));
@@ -623,10 +631,10 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 1 : 2));
     }
 
-    uvB = [uvB[0], uvB[1] + diff];
+    // uvB = [uvB[0], uvB[1] + diff];
 
     // add triangle from end of regular fan to square end of next line segment
-    addVertex(coord, nBR, uvB, context);
+    addVertex(coord, nBR, [0, uv5], context);
     vertex_elements.push(pivotIndex + i + (cross > 0 ? 2 : 1));
     vertex_elements.push(pivotIndex);
     vertex_elements.push(pivotIndex + i + (cross > 0 ? 1 : 2));
