@@ -3,6 +3,7 @@ import Utils from './utils/utils';
 import debugSettings from './utils/debug_settings';
 import * as URLs from './utils/urls';
 import WorkerBroker from './utils/worker_broker';
+import Task from './utils/task';
 import subscribeMixin from './utils/subscribe';
 import sliceObject from './utils/slice';
 import Context from './gl/context';
@@ -456,6 +457,9 @@ export default class Scene {
 
         // Pre-render loop hook
         this.trigger('preUpdate', will_render);
+
+        // Pending background tasks
+        Task.processAll();
 
         // Bail if no need to render
         if (!will_render) {

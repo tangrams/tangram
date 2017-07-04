@@ -1,3 +1,5 @@
+/* global self, WorkerGlobalScope */
+
 // Promises polyfill
 import 'core-js/es6/promise';
 
@@ -45,3 +47,23 @@ Math.hypot = Math.hypot || function() {
 
 // Math.log2 polyfill
 Math.log2 = Math.log2 || function(x) { return Math.log(x) * Math.LOG2E; };
+
+// performance.now() polyfill
+let perf;
+if (typeof window !== 'undefined') {
+    if ('performance' in window === false) {
+        window.performance = {};
+    }
+    perf = window.performance;
+}
+else if (typeof self !== 'undefined' && typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope) {
+    if ('performance' in self === false) {
+        self.performance = {};
+    }
+    perf = self.performance;
+}
+
+if (perf && typeof perf.now !== 'function') {
+    let start = +new Date();
+    perf.now = function() { return +new Date() - start; };
+}
