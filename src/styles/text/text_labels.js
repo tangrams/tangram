@@ -6,6 +6,7 @@ import Geo from '../../geo';
 import log from '../../utils/log';
 import Thread from '../../utils/thread';
 import WorkerBroker from '../../utils/worker_broker';
+import Task from '../../utils/task';
 import Collision from '../../labels/collision';
 import TextSettings from '../text/text_settings';
 import CanvasText from '../text/canvas_text';
@@ -175,11 +176,11 @@ export const TextLabels = {
                 return {};
             }
 
-            if (labels.length === 0) {
+            let texts = this.texts[tile.key];
+            if (texts == null || labels.length === 0) {
                 return {};
             }
 
-            let texts = this.texts[tile.key];
             this.cullTextStyles(texts, labels);
 
             // set alignments
@@ -203,13 +204,17 @@ export const TextLabels = {
             });
 
             // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
+            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, textures, generation }) => {
+                if (generation !== this.generation) {
+                    return {};
+                }
+
                 if (tile.canceled) {
                     log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
                     return {};
                 }
 
-                return { labels, texts, texture };
+                return { labels, texts, textures };
             });
         });
     },
@@ -249,33 +254,66 @@ export const TextLabels = {
 
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts (tile_key, texts) {
-        let canvas = this.canvas;
-        let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size, tile_key);
-        log('trace', `text summary for tile ${tile_key}: fits in ${texture_size[0]}x${texture_size[1]}px`);
+        // let canvas = this.canvas;
+        let canvas = new CanvasText();
 
-        // fits in max texture size?
-        if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
-            // update canvas size & rasterize all the text strings we need
-            canvas.resize(...texture_size);
-            canvas.rasterize(texts, texture_size, tile_key);
-        }
-        else {
-            log('error', [
-                `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
-                `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join('')
-            );
-        }
+        // TODO set appropriate max texture size
+        return canvas.setTextureTextPositions(texts, 1024 /* max_texture_size */, tile_key, this.generation).then(({ textures, generation }) => {
+            if (generation !== this.generation) {
+                return { generation };
+            }
 
-        // create a texture
-        let t = 'labels-' + tile_key + '-' + (text_texture_id++);
-        Texture.create(this.gl, t, {
-            element: canvas.canvas,
-            filtering: 'linear',
-            UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+            return canvas.rasterize(texts, textures, tile_key, this.generation).then(({ textures, generation }) => {
+                if (generation !== this.generation) {
+                    return { generation };
+                }
+
+                let texture_prefix = 'labels-' + tile_key + '-' + text_texture_id + '-';
+                text_texture_id++;
+
+                return Task.add({
+                    type: 'createLabelTextures',
+                    target: this,
+                    method: 'processTextureCreateTask',
+                    tile_key,
+                    texture_prefix,
+                    texts,
+                    textures,
+                    generation,
+                    cursor: {
+                        texture_num: 0,
+                        texture_names: []
+                    }
+                });
+            });
         });
-        Texture.retain(t);
+    },
 
-        return { texts, texture: t }; // texture is returned by name (not instance)
+    processTextureCreateTask (task) {
+        let { cursor, texts, textures, texture_prefix, generation } = task;
+
+        // create a textures
+        while (cursor.texture_num < textures.length) {
+            let tname = texture_prefix + cursor.texture_num;
+            Texture.create(this.gl, tname, {
+                element: textures[cursor.texture_num].canvas,
+                filtering: 'linear',
+                UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+            });
+            Texture.retain(tname);
+            cursor.texture_names.push(tname);
+
+            cursor.texture_num++;
+            if (!Task.shouldContinue(task)) {
+                return false;
+            }
+        }
+
+        // Task.finish(task, { texts, textures: cursor.texture_names, generation }); // textures are returned by name (not instance)
+        Task.finish(task, { texts, textures: cursor.texture_names, generation }).then(() => {
+            // CanvasText.pruneTextCache(); // TODO: fix text cache prune, currently removing cache entries expected by future calls
+            return true;
+        });
     },
 
     preprocessText (draw) {

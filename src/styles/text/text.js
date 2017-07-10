@@ -114,8 +114,8 @@ Object.assign(TextStyle, {
 
         return this.prepareTextLabels(tile, this.name, queue).
             then(labels => this.collideAndRenderTextLabels(tile, this.name, labels)).
-            then(({ labels, texts, texture }) => {
-                if (texts) {
+            then(({ labels, texts, textures }) => {
+                if (labels && texts) {
                     this.texts[tile.key] = texts;
 
                     // Build queued features
@@ -137,16 +137,19 @@ Object.assign(TextStyle, {
                             if (q.label.type === 'straight'){
                                 style.size.straight = text_info.total_size.logical_size;
                                 style.texcoords.straight = text_info.texcoords.straight;
+                                style.label_texture = textures[text_info.texcoords.straight.texture_id];
                             }
                             else{
                                 style.size.curved = text_info.size.map(function(size){ return size.logical_size; });
                                 style.texcoords_stroke = text_info.texcoords_stroke;
                                 style.texcoords.curved = text_info.texcoords.curved;
+                                style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
                             }
                         }
                         else {
                             style.size = text_info.size.logical_size;
                             style.texcoords = text_info.align[q.label.align].texcoords;
+                            style.label_texture = textures[text_info.align[q.label.align].texture_id];
                         }
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
@@ -157,9 +160,8 @@ Object.assign(TextStyle, {
                 // Finish tile mesh
                 return Style.endData.call(this, tile).then(tile_data => {
                     // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (texture && tile_data) {
-                        tile_data.uniforms.u_texture = texture;
-                        tile_data.textures.push(texture); // assign texture ownership to tile
+                    if (textures && textures.length && tile_data) {
+                        tile_data.textures.push(...textures); // assign texture ownership to tile
                         return tile_data;
                     }
                 });

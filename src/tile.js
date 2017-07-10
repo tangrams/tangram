@@ -422,6 +422,13 @@ export default class Tile {
                             break;
                         }
 
+                        // Mesh has no data
+                        // TODO: ideally shouldn't occur but is happening because point/text styles are redirecting
+                        // mesh data to different label texture mesh variant after first mesh variant has been initialized
+                        if (mesh_variant.vertex_data.byteLength === 0) {
+                            continue;
+                        }
+
                         // first add style-level uniforms, then add any mesh-specific ones
                         let mesh_options = Object.assign({}, mesh_data[s]);
                         mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
