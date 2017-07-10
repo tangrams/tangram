@@ -359,24 +359,6 @@ export default class Scene {
         }
     }
 
-    // Assign tile to worker thread based on data source
-    getWorkerForDataSource(source) {
-        let worker;
-
-        if (source.tiled) {
-            // Round robin tiled sources across all workers
-            worker = this.workers[this.next_worker];
-            this.next_worker = (this.next_worker + 1) % this.workers.length;
-        }
-        else {
-            // Pin all tiles from each non-tiled source to a single worker
-            // Prevents data for these sources from being loaded more than once
-            worker = this.workers[source.id % this.workers.length];
-        }
-
-        return worker;
-    }
-
     // Scene is ready for rendering
     ready() {
         if (!this.view.ready() || Object.keys(this.sources).length === 0) {
