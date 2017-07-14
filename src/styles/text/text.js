@@ -104,26 +104,26 @@ Object.assign(TextStyle, {
         }
 
         // Register with collision manager
-        Collision.addStyle(this.name, tile.key);
+        Collision.addStyle(this.name, tile.id);
     },
 
     // Override
     endData (tile) {
-        let queue = this.queues[tile.key];
-        delete this.queues[tile.key];
+        let queue = this.queues[tile.id];
+        delete this.queues[tile.id];
 
         return this.prepareTextLabels(tile, this.name, queue).
             then(labels => this.collideAndRenderTextLabels(tile, this.name, labels)).
             then(({ labels, texts, textures }) => {
                 if (labels && texts) {
-                    this.texts[tile.key] = texts;
+                    this.texts[tile.id] = texts;
 
                     // Build queued features
                     labels.forEach(q => {
                         let text_settings_key = q.text_settings_key;
                         let text_info =
-                            this.texts[tile.key][text_settings_key] &&
-                            this.texts[tile.key][text_settings_key][q.text];
+                            this.texts[tile.id][text_settings_key] &&
+                            this.texts[tile.id][text_settings_key][q.text];
 
                         // setup styling object expected by Style class
                         let style = this.feature_style;
@@ -160,10 +160,10 @@ Object.assign(TextStyle, {
                 // Finish tile mesh
                 return Style.endData.call(this, tile).then(tile_data => {
                     // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (textures && textures.length && tile_data) {
+                    if (textures && textures.length) {
                         tile_data.textures.push(...textures); // assign texture ownership to tile
-                        return tile_data;
                     }
+                    return tile_data;
                 });
             });
     },
@@ -174,11 +174,11 @@ Object.assign(TextStyle, {
     },
 
     // Implements label building for TextLabels mixin
-    buildTextLabels (tile_key, feature_queue) {
+    buildTextLabels (tile, feature_queue) {
         let labels = [];
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
-            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            let text_info = this.texts[tile.id][fq.text_settings_key][fq.text];
             let feature_labels;
 
             fq.layout.vertical_buffer = text_info.vertical_buffer;

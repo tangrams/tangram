@@ -314,6 +314,13 @@ export default class TileManager {
         else {
             // Update tile with properties from worker
             if (this.tiles[tile.key]) {
+                // Ignore if from a previously discarded tile
+                if (tile.id < this.tiles[tile.key].id) {
+                    log('trace', `discarded tile ${tile.key} for id ${tile.id} in TileManager.buildTileStylesCompleted because built for discarded tile id`);
+                    Tile.abortBuild(tile);
+                    return;
+                }
+
                 tile = this.tiles[tile.key].merge(tile);
             }
 

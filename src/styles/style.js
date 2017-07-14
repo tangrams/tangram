@@ -119,7 +119,7 @@ export var Style = {
 
     // Returns an object to hold feature data (for a tile or other object)
     startData (tile) {
-        this.tile_data[tile.key] = this.tile_data[tile.key] || {
+        this.tile_data[tile.id] = this.tile_data[tile.id] || {
             meshes: {},
             uniforms: {},
             textures: []
@@ -128,8 +128,8 @@ export var Style = {
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
-        var tile_data = this.tile_data[tile.key];
-        this.tile_data[tile.key] = null;
+        var tile_data = this.tile_data[tile.id];
+        this.tile_data[tile.id] = null;
 
         if (tile_data && Object.keys(tile_data.meshes).length > 0) {
             for (let variant in tile_data.meshes) {
@@ -151,12 +151,12 @@ export var Style = {
     },
 
     // Has mesh data for a given tile?
-    hasDataForTile (tile_key) {
-        return this.tile_data[tile_key] != null;
+    hasDataForTile (tile) {
+        return this.tile_data[tile.id] != null;
     },
 
     getTileMesh (tile, variant) {
-        let meshes = this.tile_data[tile.key].meshes;
+        let meshes = this.tile_data[tile.id].meshes;
         if (meshes[variant] == null) {
             meshes[variant] = {
                 variant,
@@ -181,7 +181,7 @@ export var Style = {
             return;
         }
 
-        if (!this.tile_data[tile.key]) {
+        if (!this.tile_data[tile.id]) {
             this.startData(tile);
         }
 

@@ -26,7 +26,7 @@ export const TextLabels = {
     },
 
     freeText (tile) {
-        delete this.texts[tile.key];
+        delete this.texts[tile.id];
     },
 
     parseTextFeature (feature, draw, context, tile) {
@@ -42,8 +42,8 @@ export const TextLabels = {
         let text_settings_key = TextSettings.key(text_settings);
 
         // first label in tile, or with this style?
-        this.texts[tile.key] = this.texts[tile.key] || {};
-        let sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
+        this.texts[tile.id] = this.texts[tile.id] || {};
+        let sizes = this.texts[tile.id][text_settings_key] = this.texts[tile.id][text_settings_key] || {};
 
         if (text instanceof Object){
             let results = [];
@@ -143,40 +143,39 @@ export const TextLabels = {
     },
 
     prepareTextLabels (tile, collision_group, queue) {
-        if (Object.keys(this.texts[tile.key]||{}).length === 0) {
+        if (Object.keys(this.texts[tile.id]||{}).length === 0) {
             return Promise.resolve({});
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', this.texts[tile.key]).then(texts => {
-
+        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', this.texts[tile.id]).then(texts => {
             if (tile.canceled) {
                 log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
                 return;
             }
 
-            this.texts[tile.key] = texts;
+            this.texts[tile.id] = texts;
             if (!texts) {
                 return;
             }
 
-            return this.buildTextLabels(tile.key, queue);
+            return this.buildTextLabels(tile, queue);
         });
     },
 
     collideAndRenderTextLabels (tile, collision_group, labels) {
         if (!labels) {
-            Collision.collide({}, collision_group, tile.key);
+            Collision.collide({}, collision_group, tile.id);
             return Promise.resolve({});
         }
 
-        return Collision.collide(labels, collision_group, tile.key).then(labels => {
+        return Collision.collide(labels, collision_group, tile.id).then(labels => {
             if (tile.canceled) {
                 log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
                 return {};
             }
 
-            let texts = this.texts[tile.key];
+            let texts = this.texts[tile.id];
             if (texts == null || labels.length === 0) {
                 return {};
             }
@@ -204,11 +203,7 @@ export const TextLabels = {
             });
 
             // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, textures, generation }) => {
-                if (generation !== this.generation) {
-                    return {};
-                }
-
+            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.id, tile.key, texts).then(({ texts, textures }) => {
                 if (tile.canceled) {
                     log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
                     return {};
@@ -217,6 +212,7 @@ export const TextLabels = {
                 return { labels, texts, textures };
             });
         });
+
     },
 
     // Remove unused text/style combinations to avoid unnecessary rasterization
@@ -253,33 +249,33 @@ export const TextLabels = {
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
-    rasterizeTexts (tile_key, texts) {
+    rasterizeTexts (tile_id, tile_key, texts) {
         // let canvas = this.canvas;
         let canvas = new CanvasText();
 
         // TODO set appropriate max texture size
-        return canvas.setTextureTextPositions(texts, 1024 /* max_texture_size */, tile_key, this.generation).then(({ textures, generation }) => {
-            if (generation !== this.generation) {
-                return { generation };
+        return canvas.setTextureTextPositions(texts, 1024 /* max_texture_size */, tile_id).then(({ textures }) => {
+            if (!textures) {
+                return {};
             }
 
-            return canvas.rasterize(texts, textures, tile_key, this.generation).then(({ textures, generation }) => {
-                if (generation !== this.generation) {
-                    return { generation };
+            return canvas.rasterize(texts, textures, tile_id).then(({ textures }) => {
+                if (!textures) {
+                    return {};
                 }
 
-                let texture_prefix = 'labels-' + tile_key + '-' + text_texture_id + '-';
+                let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
                 text_texture_id++;
 
                 return Task.add({
                     type: 'createLabelTextures',
                     target: this,
-                    method: 'processTextureCreateTask',
-                    tile_key,
+                    method: 'doTextureCreateTask',
+                    cancel: 'cancelTextureCreateTask',
+                    tile_id,
                     texture_prefix,
                     texts,
                     textures,
-                    generation,
                     cursor: {
                         texture_num: 0,
                         texture_names: []
@@ -289,8 +285,8 @@ export const TextLabels = {
         });
     },
 
-    processTextureCreateTask (task) {
-        let { cursor, texts, textures, texture_prefix, generation } = task;
+    doTextureCreateTask (task) {
+        let { cursor, texts, textures, texture_prefix } = task;
 
         // create a textures
         while (cursor.texture_num < textures.length) {
@@ -309,11 +305,16 @@ export const TextLabels = {
             }
         }
 
-        // Task.finish(task, { texts, textures: cursor.texture_names, generation }); // textures are returned by name (not instance)
-        Task.finish(task, { texts, textures: cursor.texture_names, generation }).then(() => {
+        // textures are returned by name (not instance)
+        Task.finish(task, { texts, textures: cursor.texture_names }).then(() => {
             // CanvasText.pruneTextCache(); // TODO: fix text cache prune, currently removing cache entries expected by future calls
             return true;
         });
+    },
+
+    cancelTextureCreateTask (task) {
+        log('trace', `TextureCreateTask: release textures [${task.cursor.texture_names.join(', ')}]`);
+        task.cursor.texture_names.forEach(t => Texture.release(t));
     },
 
     preprocessText (draw) {

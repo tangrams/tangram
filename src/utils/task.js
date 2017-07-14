@@ -3,7 +3,7 @@ import log from './log';
 const Task = {
     id: 0,
     queue: [],
-    max_time: 2,
+    max_time: 4,
     start_time: null,
 
     add (task) {
@@ -64,6 +64,14 @@ const Task = {
         return task.promise;
     },
 
+    cancel (task) {
+        let val;
+        if (task.target[task.cancel] instanceof Function) {
+            val = task.target[task.cancel](task); // optional cancel function
+        }
+        task.resolve(val || {}); // resolve with result of cancel function, or empty object
+    },
+
     shouldContinue (task) {
         task.elapsed = performance.now() - task.start_time;
         this.elapsed = performance.now() - this.start_time;
@@ -71,10 +79,11 @@ const Task = {
         return (this.elapsed < Task.max_time);
     },
 
-    removeForTile (tile_key) {
+    removeForTile (tile_id) {
         for (let idx = this.queue.length-1; idx >= 0; idx--) {
-            if (this.queue[idx].tile_key === tile_key) {
-                log('debug', `remove tasks for tile ${tile_key}`);
+            if (this.queue[idx].tile_id === tile_id) {
+                log('trace', `Task: remove tasks for tile ${tile_id}`);
+                this.cancel(this.queue[idx]);
                 this.queue.splice(idx, 1);
             }
         }

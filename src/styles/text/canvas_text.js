@@ -236,15 +236,14 @@ export default class CanvasText {
         this.context.fillText(str, tx, ty);
     }
 
-    rasterize (texts, textures, tile_key, generation) {
+    rasterize (texts, textures, tile_id) {
         return Task.add({
             type: 'rasterizeLabels',
             target: this,
             method: 'processRasterizeTask',
             texts,
             textures,
-            tile_key,
-            generation,
+            tile_id,
             cursor: {
                 styles: Object.keys(texts),
                 texts: null,
@@ -255,7 +254,7 @@ export default class CanvasText {
     }
 
     processRasterizeTask (task) {
-        let { cursor, texts, textures, tile_key } = task;
+        let { cursor, texts, textures } = task;
         cursor.style_idx = cursor.style_idx || 0;
 
         while (cursor.style_idx < cursor.styles.length) {
@@ -426,12 +425,12 @@ export default class CanvasText {
             cursor.style_idx++;
         }
 
-        Task.finish(task, { textures, generation: task.generation });
+        Task.finish(task, { textures });
         return true;
     }
 
     // Place text labels within an atlas of the given max size
-    setTextureTextPositions (texts, max_texture_size, tile_key, generation) {
+    setTextureTextPositions (texts, max_texture_size, tile_id) {
         return Task.add({
             type: 'setLabelTexturePositions',
             target: this,
@@ -440,8 +439,7 @@ export default class CanvasText {
             textures: [],           // texture sizes and caches
             texcoord_cache: {},     // current texcoord cache
             max_texture_size,
-            tile_key,
-            generation,
+            tile_id,
             cursor: {
                 styles: Object.keys(texts),
                 texts: null,
@@ -457,7 +455,7 @@ export default class CanvasText {
     }
 
     processTextureTextPositionsTask (task) {
-        let { cursor, texts, max_texture_size, textures, tile_key, texcoord_cache } = task;
+        let { cursor, texts, max_texture_size, textures, texcoord_cache } = task;
         cursor.style_idx = cursor.style_idx || 0;
 
         // Layout labels, stacked in columns
@@ -473,7 +471,7 @@ export default class CanvasText {
             while (cursor.text_idx < cursor.texts.length) {
                 let text = cursor.texts[cursor.text_idx];
                 let text_info = text_infos[text];
-                let texture_position
+                let texture_position;
                 let prev_column_width;
 
                 if (text_info.text_settings.can_articulate){
@@ -683,7 +681,7 @@ export default class CanvasText {
         }
 
         // return overall atlas size
-        Task.finish(task, { textures, generation: task.generation });
+        Task.finish(task, { textures });
         return true;
     }
 

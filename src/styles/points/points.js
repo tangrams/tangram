@@ -225,13 +225,13 @@ Object.assign(Points, {
             // (they should stay fixed relative to the point)
             tf.layout.move_into_tile = false;
 
-            Collision.addStyle(this.collision_group_text, tile.key);
+            Collision.addStyle(this.collision_group_text, tile.id);
         }
 
         this.queueFeature({ feature, draw, context, style, text_feature: tf }, tile); // queue the feature for later processing
 
         // Register with collision manager
-        Collision.addStyle(this.collision_group_points, tile.key);
+        Collision.addStyle(this.collision_group_points, tile.id);
     },
 
     hasSprites() {
@@ -257,11 +257,11 @@ Object.assign(Points, {
 
     // Queue features for deferred processing (collect all features first so we can do collision on the whole group)
     queueFeature (q, tile) {
-        if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
+        if (!this.tile_data[tile.id] || !this.queues[tile.id]) {
             this.startData(tile);
         }
-        this.queues[tile.key] = this.queues[tile.key] || [];
-        this.queues[tile.key].push(q);
+        this.queues[tile.id] = this.queues[tile.id] || [];
+        this.queues[tile.id].push(q);
     },
 
     // Override
@@ -271,8 +271,8 @@ Object.assign(Points, {
             return Promise.resolve();
         }
 
-        let queue = this.queues[tile.key];
-        delete this.queues[tile.key];
+        let queue = this.queues[tile.id];
+        delete this.queues[tile.id];
 
         // For each point feature, create one or more labels
         let text_objs = [];
@@ -321,7 +321,7 @@ Object.assign(Points, {
         return Promise.
             all([
                 // Points
-                Collision.collide(point_objs, this.collision_group_points, tile.key).then(point_objs => {
+                Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
                     point_objs.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
@@ -356,7 +356,7 @@ Object.assign(Points, {
                 // Finish tile mesh
                 return Style.endData.call(this, tile).then(tile_data => {
                     // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (textures && textures.length && tile_data) {
+                    if (textures && textures.length) {
                         tile_data.textures = tile_data.textures || [];
                         tile_data.textures.push(...textures); // assign texture ownership to tile
                     }
@@ -478,11 +478,11 @@ Object.assign(Points, {
     },
 
     // Implements label building for TextLabels mixin
-    buildTextLabels (tile_key, feature_queue) {
+    buildTextLabels (tile, feature_queue) {
         let labels = [];
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
-            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            let text_info = this.texts[tile.id][fq.text_settings_key][fq.text];
             let size = text_info.size.collision_size;
             fq.label = new LabelPoint(fq.point_label.position, size, fq.layout);
             labels.push(fq);
