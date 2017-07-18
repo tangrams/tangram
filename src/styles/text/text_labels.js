@@ -144,19 +144,20 @@ export const TextLabels = {
 
     prepareTextLabels (tile, collision_group, queue) {
         if (Object.keys(this.texts[tile.id]||{}).length === 0) {
-            return Promise.resolve({});
+            return Promise.resolve([]);
         }
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.id, this.texts[tile.id]).then(({ texts }) => {
             if (tile.canceled) {
                 log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
-                return;
+                return [];
             }
 
-            this.texts[tile.id] = texts;
+            this.texts[tile.id] = texts || [];
             if (!texts) {
-                return;
+                Collision.abortTile(tile.id);
+                return [];
             }
 
             return this.buildTextLabels(tile, queue);
@@ -164,8 +165,8 @@ export const TextLabels = {
     },
 
     collideAndRenderTextLabels (tile, collision_group, labels) {
-        if (!labels) {
-            Collision.collide({}, collision_group, tile.id);
+        if (labels.length === 0) {
+            Collision.collide([], collision_group, tile.id);
             return Promise.resolve({});
         }
 
