@@ -3,7 +3,7 @@ import log from './log';
 const Task = {
     id: 0,
     queue: [],
-    max_time: 4,
+    max_time: 20,
     start_time: null,
 
     add (task) {
@@ -14,6 +14,7 @@ const Task = {
             task.reject = reject;
         });
         task.promise = promise;
+        task.stats = { calls: 0 };
         this.queue.push(task);
 
         // Run task immediately if under total frame time
@@ -38,6 +39,8 @@ const Task = {
     },
 
     process (task) {
+        task.stats.calls++;
+        // log('debug', `Task type ${task.type}, tile ${task.id}, call #${task.stats.calls}`);
         task.start_time = performance.now(); // start task timer
         return task.target[task.method](task);
     },
@@ -59,6 +62,7 @@ const Task = {
     },
 
     finish (task, value) {
+        // log('debug', `Task type ${task.type}, tile ${task.id}, finish after ${task.stats.calls} calls`);
         this.remove(task);
         task.resolve(value);
         return task.promise;
