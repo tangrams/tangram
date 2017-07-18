@@ -582,7 +582,7 @@ export default class CanvasText {
 
                                     if (!texcoord_cache[style][word]) {
                                         let size = text_info.size[w].texture_size;
-                                        let width = 2 * size[0];
+                                        let width = 2 * size[0]; // doubled to account for side-by-side rendering of fill and stroke
                                         if (width > cursor.column_width) {
                                             prev_column_width = cursor.column_width;
                                             cursor.column_width = width;
@@ -601,7 +601,7 @@ export default class CanvasText {
                                         }
                                         else if (cursor.cx + cursor.column_width < max_texture_size) { // start new column if taller than texture
                                             cursor.cx += cursor.column_width;
-                                            cursor.column_width = size[0];
+                                            cursor.column_width = width;
                                             texture_position = [cursor.cx, 0];
                                             cursor.cy = size[1];
                                         }
@@ -619,7 +619,7 @@ export default class CanvasText {
                                             texcoord_cache[style] = {};
 
                                             cursor.texture_id++;
-                                            cursor.column_width = size[0];
+                                            cursor.column_width = width;
                                             cursor.cx = 0;
                                             cursor.cy = size[1];
                                             cursor.height = size[1];
