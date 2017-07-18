@@ -148,7 +148,7 @@ export const TextLabels = {
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', this.texts[tile.id]).then(texts => {
+        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.id, this.texts[tile.id]).then(({ texts }) => {
             if (tile.canceled) {
                 log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
                 return;
@@ -244,8 +244,8 @@ export const TextLabels = {
     // Called on main thread from worker, to compute the size of each text string,
     // were it to be rendered. This info is then used to perform initial label culling, *before*
     // labels are actually rendered.
-    calcTextSizes (texts) {
-        return this.canvas.textSizes(texts);
+    calcTextSizes (tile_id, texts) {
+        return this.canvas.textSizes(tile_id, texts);
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile

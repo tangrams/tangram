@@ -41,63 +41,95 @@ export default class CanvasText {
         ctx.miterLimit = 2;
     }
 
-    textSizes (texts) {
-        let dpr;
+    textSizes (tile_id, texts) {
         return FontManager.loadFonts().then(() => {
-            for (let style in texts) {
-                CanvasText.initTextCache(style);
-
-                let text_infos = texts[style];
-                let first = true;
-
-                for (let text in text_infos) {
-                    let text_info = text_infos[text];
-                    let text_settings = text_info.text_settings;
-
-                    if (first) {
-                        this.setFont(text_settings);
-                        dpr = Utils.device_pixel_ratio * text_settings.supersample;
-                        first = false;
-                    }
-
-                    if (text_settings.can_articulate){
-                        let rtl = false;
-                        let bidi = false;
-                        if (isTextRTL(text)) {
-                            if (!isTextNeutral(text)) {
-                                bidi = true;
-                            }
-                            else {
-                                rtl = true;
-                            }
-                        }
-
-                        text_info.isRTL = rtl;
-                        text_info.no_curving = bidi || isTextCurveBlacklisted(text); // used in LabelLine to prevent curved labels
-                        text_info.vertical_buffer = this.vertical_text_buffer;
-                        text_info.size = [];
-
-                        if (!text_info.no_curving) {
-                            let segments = splitLabelText(text, rtl);
-                            text_info.segments = segments;
-                            for (let i = 0; i < segments.length; i++){
-                                text_info.size.push(this.textSize(style, segments[i], text_settings).size);
-                            }
-                        }
-
-                        // add full text as well
-                        text_info.total_size = this.textSize(style, text, text_settings).size;
-                    }
-                    else {
-                        // Only send text sizes back to worker (keep computed text line info
-                        // on main thread, for future rendering)
-                        text_info.size = this.textSize(style, text, text_settings).size;
-                    }
+            return Task.add({
+                type: 'textSizes',
+                target: this,
+                method: 'processTextSizesTask',
+                texts,
+                tile_id,
+                cursor: {
+                    styles: Object.keys(texts),
+                    texts: null,
+                    style_idx: null,
+                    text_idx: null
                 }
+            });
+        });
+    }
+
+    processTextSizesTask (task) {
+        let { cursor, texts  } = task;
+        cursor.style_idx = cursor.style_idx || 0;
+
+        while (cursor.style_idx < cursor.styles.length) {
+            let style = cursor.styles[cursor.style_idx];
+            if (cursor.text_idx == null) {
+                cursor.text_idx = 0;
+                cursor.texts = Object.keys(texts[style]);
             }
 
-            return texts;
-        });
+            CanvasText.initTextCache(style);
+            let text_infos = texts[style];
+            let first = true;
+
+            while (cursor.text_idx < cursor.texts.length) {
+                let text = cursor.texts[cursor.text_idx];
+                let text_info = text_infos[text];
+                let text_settings = text_info.text_settings;
+
+                if (first) {
+                    this.setFont(text_settings);
+                    first = false;
+                }
+
+                if (text_settings.can_articulate){
+                    let rtl = false;
+                    let bidi = false;
+                    if (isTextRTL(text)) {
+                        if (!isTextNeutral(text)) {
+                            bidi = true;
+                        }
+                        else {
+                            rtl = true;
+                        }
+                    }
+
+                    text_info.isRTL = rtl;
+                    text_info.no_curving = bidi || isTextCurveBlacklisted(text); // used in LabelLine to prevent curved labels
+                    text_info.vertical_buffer = this.vertical_text_buffer;
+                    text_info.size = [];
+
+                    if (!text_info.no_curving) {
+                        let segments = splitLabelText(text, rtl);
+                        text_info.segments = segments;
+                        for (let i = 0; i < segments.length; i++){
+                            text_info.size.push(this.textSize(style, segments[i], text_settings).size);
+                        }
+                    }
+
+                    // add full text as well
+                    text_info.total_size = this.textSize(style, text, text_settings).size;
+                }
+                else {
+                    // Only send text sizes back to worker (keep computed text line info
+                    // on main thread, for future rendering)
+                    text_info.size = this.textSize(style, text, text_settings).size;
+                }
+
+                cursor.text_idx++;
+
+                if (!Task.shouldContinue(task)) {
+                    return false;
+                }
+            }
+            cursor.text_idx = null;
+            cursor.style_idx++;
+        }
+
+        Task.finish(task, { texts });
+        return true;
     }
 
     // Computes width and height of text based on current font style
@@ -731,8 +763,9 @@ export default class CanvasText {
 
     static pruneTextCache () {
         // TODO: remove hard-coded task names
-        if (Task.pendingForType('rasterizeLabels') ||
+        if (Task.pendingForType('textSizes') ||
             Task.pendingForType('setLabelTexturePositions') ||
+            Task.pendingForType('rasterizeLabels') ||
             Task.pendingForType('createLabelTextures')) {
             log('debug', 'CanvasText: skip cache prune due to pending tasks');
             return;
