@@ -344,7 +344,7 @@ export default class Tile {
                     }
                 })
                 .catch((e) => {
-                    log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e);
+                    log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e.stack);
                 });
             }
         }
