@@ -72,7 +72,7 @@ export const TextLabels = {
                 });
             }
 
-            return results;
+            return (results.length > 0 && results); // return null if no boundary labels found
         }
         else {
             // unique text strings, grouped by text drawing style
