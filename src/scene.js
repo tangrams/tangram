@@ -126,6 +126,10 @@ export default class Scene {
         // Should rendering block on load (not desirable for initial load, often desired for live style-switching)
         options.blocking = (options.blocking !== undefined) ? options.blocking : true;
 
+        if (this.render_loop !== false) {
+            this.setupRenderLoop();
+        }
+
         // Load scene definition (sources, styles, etc.), then create styles & workers
         this.createCanvas();
         this.initializing = this.loadScene(config_source, options)
@@ -148,9 +152,6 @@ export default class Scene {
                 this.last_valid_config_source = this.config_source;
                 this.last_valid_options = { base_path: options.base_path, file_type: options.file_type };
 
-                if (this.render_loop !== false) {
-                    this.setupRenderLoop();
-                }
                 this.requestRedraw();
         }).catch(error => {
             this.initializing = null;
@@ -409,6 +410,9 @@ export default class Scene {
             this.update();
         }
 
+        // Pending background tasks
+        Task.processAll();
+
         // Request the next frame if not scheduled to stop
         if (!this.render_loop_stop) {
             window.requestAnimationFrame(this.renderLoop.bind(this));
@@ -439,9 +443,6 @@ export default class Scene {
 
         // Pre-render loop hook
         this.trigger('preUpdate', will_render);
-
-        // Pending background tasks
-        Task.processAll();
 
         // Bail if no need to render
         if (!will_render) {
