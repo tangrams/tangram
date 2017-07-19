@@ -136,12 +136,12 @@ export default class CanvasText {
     // Includes word wrapping, returns size info for whole text block and individual lines
     textSize (style, text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
         // Check cache first
-        if (CanvasText.text_cache[style][text]) {
-            CanvasText.cache_stats.text_hits++;
-            return CanvasText.text_cache[style][text];
+        if (CanvasText.cache.text[style][text]) {
+            CanvasText.cache.stats.text_hits++;
+            return CanvasText.cache.text[style][text];
         }
-        CanvasText.cache_stats.text_misses++;
-        CanvasText.text_cache_count++;
+        CanvasText.cache.stats.text_misses++;
+        CanvasText.cache.text_count++;
 
         // Calc and store in cache
         let dpr = Utils.device_pixel_ratio * supersample;
@@ -176,11 +176,11 @@ export default class CanvasText {
         ];
 
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
-        CanvasText.text_cache[style][text] = {
+        CanvasText.cache.text[style][text] = {
             lines,
             size: { collision_size, texture_size, logical_size, line_height }
         };
-        return CanvasText.text_cache[style][text];
+        return CanvasText.cache.text[style][text];
     }
 
     // Draw multiple lines of text
@@ -334,8 +334,8 @@ export default class CanvasText {
                                 }
                                 else {
                                     let texture_position = cache.texture_position;
-                                    let size = CanvasText.text_cache[style][word].size;
-                                    let line = CanvasText.text_cache[style][word].lines;
+                                    let size = CanvasText.cache.text[style][word].size;
+                                    let line = CanvasText.cache.text[style][word].lines;
 
                                     this.drawTextMultiLine(line, texture_position, size, text_settings, type);
 
@@ -381,8 +381,8 @@ export default class CanvasText {
                                     }
                                     else {
                                         let texture_position = cache.texture_position;
-                                        let size = CanvasText.text_cache[style][word].size;
-                                        let line = CanvasText.text_cache[style][word].lines;
+                                        let size = CanvasText.cache.text[style][word].size;
+                                        let line = CanvasText.cache.text[style][word].lines;
 
                                         this.drawTextMultiLine(line, texture_position, size, text_settings, type);
 
@@ -420,7 +420,7 @@ export default class CanvasText {
                     }
                 }
                 else {
-                    let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
+                    let lines = CanvasText.cache.text[style][text].lines; // get previously computed lines of text
                     for (let align in text_info.align) {
                         let texture = textures[text_info.align[align].texture_id];
 
@@ -758,7 +758,7 @@ export default class CanvasText {
     }
 
     static initTextCache (style) {
-        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+        CanvasText.cache.text[style] = CanvasText.cache.text[style] || {};
     }
 
     static pruneTextCache () {
@@ -771,14 +771,14 @@ export default class CanvasText {
             return;
         }
 
-        if (CanvasText.text_cache_count > CanvasText.text_cache_count_max) {
-            CanvasText.text_cache = {};
-            CanvasText.text_cache_count = 0;
+        if (CanvasText.cache.text_count > CanvasText.cache.text_count_max) {
+            CanvasText.cache.text = {};
+            CanvasText.cache.text_count = 0;
             log('debug', 'CanvasText: pruning text cache');
         }
 
-        if (Object.keys(CanvasText.segment_cache).length > CanvasText.segment_cache_count_max) {
-            CanvasText.segment_cache = {};
+        if (Object.keys(CanvasText.cache.segment).length > CanvasText.cache.segment_count_max) {
+            CanvasText.cache.segment = {};
             log('debug', 'CanvasText: pruning segment cache');
         }
     }
@@ -789,13 +789,14 @@ export default class CanvasText {
 CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 
 // Cache sizes of rendered text
-CanvasText.text_cache = {}; // by text style, then text string
-CanvasText.text_cache_count = 0;     // current size of cache (measured as # of entries)
-CanvasText.text_cache_count_max = 4000; // prune cache when it exceeds this size
-CanvasText.texcoord_cache = {};
-CanvasText.segment_cache = {};
-CanvasText.segment_cache_count_max = 1000;
-CanvasText.cache_stats = { text_hits: 0, text_misses: 0, segment_hits: 0, segment_misses: 0 };
+CanvasText.cache = {
+    text: {},                   // size and line parsing, by text style, then text string
+    text_count: 0,              // current size of cache (measured as # of entries)
+    text_count_max: 4000,       // prune cache when it exceeds this size
+    segment: {},                // segmentation of text (by run of characters or grapheme clusters), by text string
+    segment_count_max: 1000,    // prune cache when it exceeds this size
+    stats: { text_hits: 0, text_misses: 0, segment_hits: 0, segment_misses: 0 }
+};
 
 // Right-to-left / bi-directional text handling
 // Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
@@ -864,9 +865,9 @@ function splitLabelText(text, rtl){
     }
 
     let key = text;
-    if (CanvasText.segment_cache[key]) {
-        CanvasText.cache_stats.segment_hits++;
-        return CanvasText.segment_cache[key];
+    if (CanvasText.cache.segment[key]) {
+        CanvasText.cache.stats.segment_hits++;
+        return CanvasText.cache.segment[key];
     }
 
     let segments = [];
@@ -908,8 +909,8 @@ function splitLabelText(text, rtl){
         segments.reverse();
     }
 
-    CanvasText.cache_stats.segment_misses++;
-    CanvasText.segment_cache[key] = segments;
+    CanvasText.cache.stats.segment_misses++;
+    CanvasText.cache.segment[key] = segments;
     return segments;
 }
 

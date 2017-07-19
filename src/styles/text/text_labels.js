@@ -164,56 +164,57 @@ export const TextLabels = {
         });
     },
 
-    collideAndRenderTextLabels (tile, collision_group, labels) {
-        if (labels.length === 0) {
-            Collision.collide([], collision_group, tile.id);
-            return Promise.resolve({});
-        }
-
-        return Collision.collide(labels, collision_group, tile.id).then(labels => {
-            if (tile.canceled) {
-                log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
-                return {};
+    collideAndRenderTextLabels (tile, collision_group, queue) {
+        return this.prepareTextLabels(tile, collision_group, queue).then(labels => {
+            if (labels.length === 0) {
+                Collision.collide([], collision_group, tile.id);
+                return Promise.resolve({});
             }
 
-            let texts = this.texts[tile.id];
-            if (texts == null || labels.length === 0) {
-                return {};
-            }
-
-            this.cullTextStyles(texts, labels);
-
-            // set alignments
-            labels.forEach(q => {
-                let text_settings_key = q.text_settings_key;
-                let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-                if (!text_info.text_settings.can_articulate){
-                    text_info.align = text_info.align || {};
-                    text_info.align[q.label.align] = {};
-                }
-                else {
-                    // consider making it a set
-                    if (!text_info.type) {
-                        text_info.type = [];
-                    }
-
-                    if (text_info.type.indexOf(q.label.type) === -1){
-                        text_info.type.push(q.label.type);
-                    }
-                }
-            });
-
-            // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.id, tile.key, texts).then(({ texts, textures }) => {
+            return Collision.collide(labels, collision_group, tile.id).then(labels => {
                 if (tile.canceled) {
-                    log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
+                    log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
                     return {};
                 }
 
-                return { labels, texts, textures };
+                let texts = this.texts[tile.id];
+                if (texts == null || labels.length === 0) {
+                    return {};
+                }
+
+                this.cullTextStyles(texts, labels);
+
+                // set alignments
+                labels.forEach(q => {
+                    let text_settings_key = q.text_settings_key;
+                    let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+                    if (!text_info.text_settings.can_articulate){
+                        text_info.align = text_info.align || {};
+                        text_info.align[q.label.align] = {};
+                    }
+                    else {
+                        // consider making it a set
+                        if (!text_info.type) {
+                            text_info.type = [];
+                        }
+
+                        if (text_info.type.indexOf(q.label.type) === -1){
+                            text_info.type.push(q.label.type);
+                        }
+                    }
+                });
+
+                // second call to main thread, for rasterizing the set of texts
+                return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.id, tile.key, texts).then(({ texts, textures }) => {
+                    if (tile.canceled) {
+                        log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
+                        return {};
+                    }
+
+                    return { labels, texts, textures };
+                });
             });
         });
-
     },
 
     // Remove unused text/style combinations to avoid unnecessary rasterization
@@ -307,10 +308,7 @@ export const TextLabels = {
         }
 
         // textures are returned by name (not instance)
-        Task.finish(task, { texts, textures: cursor.texture_names }).then(() => {
-            // CanvasText.pruneTextCache(); // TODO: fix text cache prune, currently removing cache entries expected by future calls
-            return true;
-        });
+        Task.finish(task, { texts, textures: cursor.texture_names });
     },
 
     cancelTextureCreateTask (task) {

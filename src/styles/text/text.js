@@ -112,8 +112,7 @@ Object.assign(TextStyle, {
         let queue = this.queues[tile.id];
         delete this.queues[tile.id];
 
-        return this.prepareTextLabels(tile, this.name, queue).
-            then(labels => this.collideAndRenderTextLabels(tile, this.name, labels)).
+        return this.collideAndRenderTextLabels(tile, this.name, queue).
             then(({ labels, texts, textures }) => {
                 if (labels && texts) {
                     this.texts[tile.id] = texts;

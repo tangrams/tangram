@@ -849,6 +849,8 @@ export default class Scene {
     // Tile manager finished building tiles
     // TODO move to tile manager
     tileManagerBuildDone() {
+        CanvasText.pruneTextCache();
+
         if (this.building) {
             log('info', `Scene: build geometry finished`);
             if (this.building.resolve) {
@@ -1182,7 +1184,6 @@ export default class Scene {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
             !this.tile_manager.isLoadingVisibleTiles()) {
             this.last_complete_generation = this.generation;
-            CanvasText.pruneTextCache();
             this.trigger('view_complete');
         }
     }

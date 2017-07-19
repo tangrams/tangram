@@ -329,8 +329,7 @@ Object.assign(Points, {
                     });
                 }),
                 // Labels
-                this.prepareTextLabels(tile, this.collision_group_text, text_objs).
-                    then(labels => this.collideAndRenderTextLabels(tile, this.collision_group_text, labels))
+                this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)
             ]).then(([, { labels, texts, textures }]) => {
                 // Process labels
                 if (labels && texts) {
