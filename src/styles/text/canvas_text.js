@@ -70,7 +70,6 @@ export default class CanvasText {
                 cursor.texts = Object.keys(texts[style]);
             }
 
-            CanvasText.initTextCache(style);
             let text_infos = texts[style];
             let first = true;
 
@@ -136,6 +135,7 @@ export default class CanvasText {
     // Includes word wrapping, returns size info for whole text block and individual lines
     textSize (style, text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
         // Check cache first
+        CanvasText.cache.text[style] = CanvasText.cache.text[style] || {};
         if (CanvasText.cache.text[style][text]) {
             CanvasText.cache.stats.text_hits++;
             return CanvasText.cache.text[style][text];
@@ -268,123 +268,90 @@ export default class CanvasText {
         this.context.fillText(str, tx, ty);
     }
 
-    rasterize (texts, textures, tile_id) {
+    rasterize (texts, textures, tile_id, texture_prefix, gl) {
         return Task.add({
             type: 'rasterizeLabels',
             target: this,
             method: 'processRasterizeTask',
+            cancel: 'cancelRasterizeTask',
+            // max_time: 100, // 10
+            // pause_factor: 2, // 3
+            no_motion: true,
             texts,
             textures,
+            texture_prefix,
+            gl,
             tile_id,
             cursor: {
                 styles: Object.keys(texts),
                 texts: null,
-                style_idx: null,
-                text_idx: null
+                style_idx: 0,
+                text_idx: null,
+                texture_idx: 0,
+                texture_resize: true,
+                texture_names: []
             }
         });
     }
 
     processRasterizeTask (task) {
         let { cursor, texts, textures } = task;
-        cursor.style_idx = cursor.style_idx || 0;
+        let texture;
 
-        while (cursor.style_idx < cursor.styles.length) {
-            let style = cursor.styles[cursor.style_idx];
-            if (cursor.text_idx == null) {
-                cursor.text_idx = 0;
-                cursor.texts = Object.keys(texts[style]);
+        // Rasterize one texture at a time, so we only have to keep one canvas in memory (they can be large)
+        while (cursor.texture_idx < task.textures.length) {
+            texture = textures[cursor.texture_idx];
+
+            if (cursor.texture_resize) {
+                cursor.texture_resize = false;
+                this.resize(...texture.texture_size);
             }
 
-            let text_infos = texts[style];
-            let first = true;
-
-            while (cursor.text_idx < cursor.texts.length) {
-                let text = cursor.texts[cursor.text_idx];
-                let text_info = text_infos[text];
-                let text_settings = text_info.text_settings;
-
-                // set font on first occurence of new font style
-                if (first) {
-                    this.setFont(text_settings);
-                    first = false;
+            while (cursor.style_idx < cursor.styles.length) {
+                let style = cursor.styles[cursor.style_idx];
+                if (cursor.text_idx == null) {
+                    cursor.text_idx = 0;
+                    cursor.texts = Object.keys(texts[style]);
                 }
 
-                if (text_settings.can_articulate){
-                    text_info.texcoords = {};
-                    for (let t = 0; t < text_info.type.length; t++){
+                let text_infos = texts[style];
+                let first = true;
 
-                        let type = text_info.type[t];
-                        switch (type){
-                            case 'straight':
-                                let word = (text_info.isRTL) ? text.split().reverse().join() : text;
-                                let texture = textures[text_info.textures[t]];
-                                let cache = texture.texcoord_cache[style][word];
+                while (cursor.text_idx < cursor.texts.length) {
+                    let text = cursor.texts[cursor.text_idx];
+                    let text_info = text_infos[text];
+                    let text_settings = text_info.text_settings;
 
-                                // set canvas for texture
-                                if (this.canvas !== texture.canvas) {
-                                    this.canvas = texture.canvas;
-                                    this.context = texture.context;
-                                    this.setFont(text_settings); // reset font style
-                                }
+                    // set font on first occurence of new font style
+                    if (first) {
+                        this.setFont(text_settings);
+                        first = false;
+                    }
 
-                                let texcoord;
-                                if (cache.texcoord){
-                                    texcoord = cache.texcoord;
-                                }
-                                else {
-                                    let texture_position = cache.texture_position;
-                                    let size = CanvasText.cache.text[style][word].size;
-                                    let line = CanvasText.cache.text[style][word].lines;
+                    if (text_settings.can_articulate){
+                        text_info.texcoords = text_info.texcoords || {};
+                        for (let t = 0; t < text_info.type.length; t++){
 
-                                    this.drawTextMultiLine(line, texture_position, size, text_settings, type);
-
-                                    texcoord = Texture.getTexcoordsForSprite(
-                                        texture_position,
-                                        size.texture_size,
-                                        texture.texture_size
-                                    );
-
-                                    cache.texcoord = texcoord;
-                                }
-
-                                text_info.texcoords[type] = {
-                                    texcoord,
-                                    texture_id: cache.texture_id
-                                };
-
-                                break;
-
-                            case 'curved':
-                                let words = text_info.segments;
-                                text_info.texcoords.curved = [];
-                                text_info.texcoords_stroke = [];
-
-                                for (let w = 0; w < words.length; w++){
-                                    let word = words[w];
-                                    let texture = textures[text_info.textures[t][w]];
-                                    let cache = texture.texcoord_cache[style][word];
-
-                                    // set canvas for texture
-                                    if (this.canvas !== texture.canvas) {
-                                        this.canvas = texture.canvas;
-                                        this.context = texture.context;
-                                        this.setFont(text_settings); // reset font style
+                            let type = text_info.type[t];
+                            switch (type){
+                                case 'straight':
+                                    // Only render for current texture
+                                    if (text_info.textures[t] !== cursor.texture_idx) {
+                                        continue;
                                     }
 
+                                    let word = (text_info.isRTL) ? text.split().reverse().join() : text;
+                                    let cache = texture.texcoord_cache[style][word];
+
                                     let texcoord;
-                                    let texcoord_stroke;
                                     if (cache.texcoord){
                                         texcoord = cache.texcoord;
-                                        texcoord_stroke = cache.texcoord_stroke;
-                                        text_info.texcoords_stroke.push(texcoord_stroke);
                                     }
                                     else {
                                         let texture_position = cache.texture_position;
-                                        let size = CanvasText.cache.text[style][word].size;
-                                        let line = CanvasText.cache.text[style][word].lines;
+                                        let { size, lines } = this.textSize(style, word, text_settings);
 
-                                        this.drawTextMultiLine(line, texture_position, size, text_settings, type);
+                                        this.drawTextMultiLine(lines, texture_position, size, text_settings, type);
 
                                         texcoord = Texture.getTexcoordsForSprite(
                                             texture_position,
@@ -392,73 +359,134 @@ export default class CanvasText {
                                             texture.texture_size
                                         );
 
-                                        let texture_position_stroke = [
-                                            texture_position[0] + size.texture_size[0],
-                                            texture_position[1]
-                                        ];
-
-                                        texcoord_stroke = Texture.getTexcoordsForSprite(
-                                            texture_position_stroke,
-                                            size.texture_size,
-                                            texture.texture_size
-                                        );
-
                                         cache.texcoord = texcoord;
-                                        cache.texcoord_stroke = texcoord_stroke;
-
-                                        // NB: texture_id is the same between stroke and fill, so it's not duplicated here
-                                        text_info.texcoords_stroke.push(texcoord_stroke);
                                     }
 
-                                    text_info.texcoords.curved.push({
+                                    text_info.texcoords[type] = {
                                         texcoord,
                                         texture_id: cache.texture_id
-                                    });
-                                }
-                                break;
+                                    };
+
+                                    break;
+
+                                case 'curved':
+                                    let words = text_info.segments;
+                                    text_info.texcoords.curved = text_info.texcoords.curved || [];
+                                    text_info.texcoords_stroke = text_info.texcoords_stroke || [];
+
+                                    for (let w = 0; w < words.length; w++){
+                                        // Only render for current texture
+                                        if (text_info.textures[t][w] !== cursor.texture_idx) {
+                                            continue;
+                                        }
+
+                                        let word = words[w];
+                                        let cache = texture.texcoord_cache[style][word];
+
+                                        let texcoord;
+                                        let texcoord_stroke;
+                                        if (cache.texcoord){
+                                            texcoord = cache.texcoord;
+                                            texcoord_stroke = cache.texcoord_stroke;
+                                            text_info.texcoords_stroke.push(texcoord_stroke);
+                                        }
+                                        else {
+                                            let texture_position = cache.texture_position;
+                                            let { size, lines } = this.textSize(style, word, text_settings);
+
+                                            this.drawTextMultiLine(lines, texture_position, size, text_settings, type);
+
+                                            texcoord = Texture.getTexcoordsForSprite(
+                                                texture_position,
+                                                size.texture_size,
+                                                texture.texture_size
+                                            );
+
+                                            let texture_position_stroke = [
+                                                texture_position[0] + size.texture_size[0],
+                                                texture_position[1]
+                                            ];
+
+                                            texcoord_stroke = Texture.getTexcoordsForSprite(
+                                                texture_position_stroke,
+                                                size.texture_size,
+                                                texture.texture_size
+                                            );
+
+                                            cache.texcoord = texcoord;
+                                            cache.texcoord_stroke = texcoord_stroke;
+
+                                            // NB: texture_id is the same between stroke and fill, so it's not duplicated here
+                                            text_info.texcoords_stroke.push(texcoord_stroke);
+                                        }
+
+                                        text_info.texcoords.curved.push({
+                                            texcoord,
+                                            texture_id: cache.texture_id
+                                        });
+                                    }
+                                    break;
+                            }
                         }
                     }
-                }
-                else {
-                    let lines = CanvasText.cache.text[style][text].lines; // get previously computed lines of text
-                    for (let align in text_info.align) {
-                        let texture = textures[text_info.align[align].texture_id];
+                    else {
+                        let lines = this.textSize(style, text, text_settings).lines;
 
-                        // set canvas for texture
-                        if (this.canvas !== texture.canvas) {
-                            this.canvas = texture.canvas;
-                            this.context = texture.context;
-                            this.setFont(text_settings); // reset font style
+                        for (let align in text_info.align) {
+                            // Only render for current texture
+                            if (text_info.align[align].texture_id !== cursor.texture_idx) {
+                                continue;
+                            }
+
+                            this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, {
+                                stroke: text_settings.stroke,
+                                stroke_width: text_settings.stroke_width,
+                                transform: text_settings.transform,
+                                supersample: text_settings.supersample,
+                                align: align
+                            });
+
+                            text_info.align[align].texcoords = Texture.getTexcoordsForSprite(
+                                text_info.align[align].texture_position,
+                                text_info.size.texture_size,
+                                texture.texture_size
+                            );
                         }
+                    }
 
-                        this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, {
-                            stroke: text_settings.stroke,
-                            stroke_width: text_settings.stroke_width,
-                            transform: text_settings.transform,
-                            supersample: text_settings.supersample,
-                            align: align
-                        });
+                    cursor.text_idx++;
 
-                        text_info.align[align].texcoords = Texture.getTexcoordsForSprite(
-                            text_info.align[align].texture_position,
-                            text_info.size.texture_size,
-                            texture.texture_size
-                        );
+                    if (!Task.shouldContinue(task)) {
+                        return false;
                     }
                 }
-
-                cursor.text_idx++;
-
-                if (!Task.shouldContinue(task)) {
-                    return false;
-                }
+                cursor.text_idx = null;
+                cursor.style_idx++;
             }
-            cursor.text_idx = null;
-            cursor.style_idx++;
+
+            // Create GL texture (canvas element will be reused for next texture)
+            let tname = task.texture_prefix + cursor.texture_idx;
+            Texture.create(task.gl, tname, {
+                element: this.canvas,
+                filtering: 'linear',
+                UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+            });
+            Texture.retain(tname);
+            cursor.texture_names.push(tname);
+
+            cursor.texture_idx++;
+            cursor.texture_resize = true;
+            cursor.style_idx = 0;
         }
 
-        Task.finish(task, { textures });
+        Task.finish(task, { textures: cursor.texture_names });
         return true;
+    }
+
+    // Free any textures that have been allocated part-way through label rasterization for a tile
+    cancelRasterizeTask (task) {
+        log('trace', `RasterizeTask: release textures [${task.cursor.texture_names.join(', ')}]`);
+        task.cursor.texture_names.forEach(t => Texture.release(t));
     }
 
     // Place text labels within an atlas of the given max size
@@ -467,6 +495,7 @@ export default class CanvasText {
             type: 'setLabelTexturePositions',
             target: this,
             method: 'processTextureTextPositionsTask',
+            // immediate: true,
             texts,
             textures: [],           // texture sizes and caches
             texcoord_cache: {},     // current texcoord cache
@@ -579,12 +608,8 @@ export default class CanvasText {
         if (cursor.column_width > 0 && cursor.height > 0) {
             task.textures[cursor.texture_id] = {
                 texture_size: [cursor.width, cursor.height],
-                texcoord_cache: task.texcoord_cache,
-                canvas: this.canvas,
-                context: this.context
+                texcoord_cache: task.texcoord_cache
             };
-            this.resize(...task.textures[cursor.texture_id].texture_size);
-            // NB: don't need to initialize new canvas for this instance because it shouldn't be used for rendering again
         }
 
         // return overall atlas size
@@ -626,12 +651,8 @@ export default class CanvasText {
             // save size and cache of last texture
             task.textures[cursor.texture_id] = {
                 texture_size: [cursor.width, cursor.height],
-                texcoord_cache: task.texcoord_cache,
-                canvas: this.canvas,
-                context: this.context
+                texcoord_cache: task.texcoord_cache
             };
-            this.resize(...task.textures[cursor.texture_id].texture_size);
-            this.createCanvas(); // new canvas
             task.texcoord_cache = {}; // reset cache
             task.texcoord_cache[style] = {};
 
@@ -687,20 +708,7 @@ export default class CanvasText {
         return px_size;
     }
 
-    static initTextCache (style) {
-        CanvasText.cache.text[style] = CanvasText.cache.text[style] || {};
-    }
-
     static pruneTextCache () {
-        // TODO: remove hard-coded task names
-        if (Task.pendingForType('textSizes') ||
-            Task.pendingForType('setLabelTexturePositions') ||
-            Task.pendingForType('rasterizeLabels') ||
-            Task.pendingForType('createLabelTextures')) {
-            log('debug', 'CanvasText: skip cache prune due to pending tasks');
-            return;
-        }
-
         if (CanvasText.cache.text_count > CanvasText.cache.text_count_max) {
             CanvasText.cache.text = {};
             CanvasText.cache.text_count = 0;

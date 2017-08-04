@@ -1,12 +1,10 @@
 // Text label rendering methods, can be mixed into a rendering style
 
 import {StyleParser} from '../style_parser';
-import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import log from '../../utils/log';
 import Thread from '../../utils/thread';
 import WorkerBroker from '../../utils/worker_broker';
-import Task from '../../utils/task';
 import Collision from '../../labels/collision';
 import TextSettings from '../text/text_settings';
 import CanvasText from '../text/canvas_text';
@@ -252,68 +250,24 @@ export const TextLabels = {
 
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts (tile_id, tile_key, texts) {
-        // let canvas = this.canvas;
-        let canvas = new CanvasText();
+        let canvas = new CanvasText(); // one per style per tile (style may be rendering multiple tiles at once)
 
         // TODO set appropriate max texture size
-        return canvas.setTextureTextPositions(texts, 1024 /* max_texture_size */, tile_id).then(({ textures }) => {
+        return canvas.setTextureTextPositions(texts, 2048 /*this.max_texture_size*/, tile_id).then(({ textures }) => {
             if (!textures) {
                 return {};
             }
 
-            return canvas.rasterize(texts, textures, tile_id).then(({ textures }) => {
+            let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
+            text_texture_id++;
+
+            return canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl).then(({ textures }) => {
                 if (!textures) {
                     return {};
                 }
-
-                let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
-                text_texture_id++;
-
-                return Task.add({
-                    type: 'createLabelTextures',
-                    target: this,
-                    method: 'doTextureCreateTask',
-                    cancel: 'cancelTextureCreateTask',
-                    tile_id,
-                    texture_prefix,
-                    texts,
-                    textures,
-                    cursor: {
-                        texture_num: 0,
-                        texture_names: []
-                    }
-                });
+                return { texts, textures };
             });
         });
-    },
-
-    doTextureCreateTask (task) {
-        let { cursor, texts, textures, texture_prefix } = task;
-
-        // create a textures
-        while (cursor.texture_num < textures.length) {
-            let tname = texture_prefix + cursor.texture_num;
-            Texture.create(this.gl, tname, {
-                element: textures[cursor.texture_num].canvas,
-                filtering: 'linear',
-                UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
-            });
-            Texture.retain(tname);
-            cursor.texture_names.push(tname);
-
-            cursor.texture_num++;
-            if (!Task.shouldContinue(task)) {
-                return false;
-            }
-        }
-
-        // textures are returned by name (not instance)
-        Task.finish(task, { texts, textures: cursor.texture_names });
-    },
-
-    cancelTextureCreateTask (task) {
-        log('trace', `TextureCreateTask: release textures [${task.cursor.texture_names.join(', ')}]`);
-        task.cursor.texture_names.forEach(t => Texture.release(t));
     },
 
     preprocessText (draw) {

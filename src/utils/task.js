@@ -91,10 +91,6 @@ const Task = {
                 this.queue.splice(idx, 1);
             }
         }
-    },
-
-    pendingForType (type) {
-        return this.queue.some(x => x.type === type);
     }
 
 };
