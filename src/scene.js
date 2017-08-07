@@ -598,10 +598,7 @@ export default class Scene {
             // Render tile
             tile.meshes[style_name].forEach(mesh => {
                 if (style.render(mesh)) {
-                    // Don't incur additional renders while viewport is moving
-                    if (!(this.view.panning || this.view.zooming)) {
-                       this.requestRedraw();
-                    }
+                    this.requestRedraw();
                 }
                 render_count += mesh.geometry_count;
             });
