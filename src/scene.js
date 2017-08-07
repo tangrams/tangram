@@ -444,6 +444,9 @@ export default class Scene {
         // Pre-render loop hook
         this.trigger('preUpdate', will_render);
 
+        // Update view (needs to update user input timer even if no render will occur)
+        this.view.update();
+
         // Bail if no need to render
         if (!will_render) {
             return false;
@@ -474,7 +477,6 @@ export default class Scene {
         var gl = this.gl;
 
         // Update styles, camera, lights
-        this.view.update();
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
         // Render main pass

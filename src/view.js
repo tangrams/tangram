@@ -26,6 +26,10 @@ export default class View {
         this.zooming = false;
         this.zoom_direction = 0;
 
+        this.user_input_at = 0;
+        this.user_input_timeout = 50;
+        this.user_input_active = false;
+
         // Size of viewport in CSS pixels, device pixels, and mercator meters
         this.size = {
             css: {},
@@ -91,6 +95,7 @@ export default class View {
     update () {
         this.camera.update();
         this.pan_snap_timer = ((+new Date()) - this.panning_stop_at) / 1000;
+        this.user_input_active = ((+new Date() - this.user_input_at) < this.user_input_timeout);
     }
 
     // Set logical pixel size of viewport
@@ -132,9 +137,6 @@ export default class View {
         if (this.zooming) {
             this.zooming = false;
         }
-        else {
-            this.last_zoom = this.zoom;
-        }
 
         let last_tile_zoom = this.tile_zoom;
         let tile_zoom = this.baseZoom(zoom);
@@ -146,7 +148,6 @@ export default class View {
             this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1;
         }
 
-        this.last_zoom = this.zoom;
         this.zoom = zoom;
         this.tile_zoom = tile_zoom;
 
@@ -154,14 +155,13 @@ export default class View {
         this.scene.requestRedraw();
     }
 
-    startZoom () {
-        this.last_zoom = this.zoom;
-        this.zooming = true;
-    }
-
     // Choose the base zoom level to use for a given fractional zoom
     baseZoom (zoom) {
         return Math.floor(zoom);
+    }
+
+    setZooming (zooming) {
+        this.zooming = zooming;
     }
 
     setPanning (panning) {
@@ -169,6 +169,10 @@ export default class View {
         if (!this.panning) {
             this.panning_stop_at = (+new Date());
         }
+    }
+
+    markUserInput () {
+        this.user_input_at = (+new Date());
     }
 
     ready () {
