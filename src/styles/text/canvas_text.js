@@ -494,7 +494,6 @@ export default class CanvasText {
             type: 'setLabelTexturePositions',
             target: this,
             method: 'processTextureTextPositionsTask',
-            // immediate: true,
             texts,
             textures: [],           // texture sizes and caches
             texcoord_cache: {},     // current texcoord cache

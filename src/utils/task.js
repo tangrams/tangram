@@ -94,10 +94,7 @@ const Task = {
     cancel (task) {
         let val;
 
-        if (task.cancel instanceof Function) {
-            val = task.cancel(task); // optional cancel function
-        }
-        else if (task.target[task.cancel] instanceof Function) {
+        if (task.cancel && task.target[task.cancel] instanceof Function) {
             val = task.target[task.cancel](task); // optional cancel function
         }
 
