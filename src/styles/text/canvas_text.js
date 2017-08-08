@@ -729,9 +729,9 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 CanvasText.cache = {
     text: {},                   // size and line parsing, by text style, then text string
     text_count: 0,              // current size of cache (measured as # of entries)
-    text_count_max: 4000,       // prune cache when it exceeds this size
+    text_count_max: 2000,       // prune cache when it exceeds this size
     segment: {},                // segmentation of text (by run of characters or grapheme clusters), by text string
-    segment_count_max: 1000,    // prune cache when it exceeds this size
+    segment_count_max: 2000,    // prune cache when it exceeds this size
     stats: { text_hits: 0, text_misses: 0, segment_hits: 0, segment_misses: 0 }
 };
 
