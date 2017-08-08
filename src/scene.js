@@ -411,6 +411,7 @@ export default class Scene {
         }
 
         // Pending background tasks
+        Task.setState({ user_moving_view: this.view.user_input_active });
         Task.processAll();
 
         // Request the next frame if not scheduled to stop

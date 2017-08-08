@@ -274,9 +274,8 @@ export default class CanvasText {
             target: this,
             method: 'processRasterizeTask',
             cancel: 'cancelRasterizeTask',
-            // max_time: 100, // 10
-            // pause_factor: 2, // 3
-            no_motion: true,
+            pause_factor: 2,         // pause 2 frames when task run past allowed time
+            user_moving_view: false, // don't run task when user is moving view
             texts,
             textures,
             texture_prefix,
