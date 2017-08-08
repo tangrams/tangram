@@ -23,7 +23,6 @@ export default class View {
         this.panning = false;
         this.panning_stop_at = 0;
         this.pan_snap_timer = 0;
-        this.zooming = false;
         this.zoom_direction = 0;
 
         this.user_input_at = 0;
@@ -134,10 +133,6 @@ export default class View {
     }
 
     setZoom (zoom) {
-        if (this.zooming) {
-            this.zooming = false;
-        }
-
         let last_tile_zoom = this.tile_zoom;
         let tile_zoom = this.baseZoom(zoom);
         if (!this.continuous_zoom) {
@@ -158,10 +153,6 @@ export default class View {
     // Choose the base zoom level to use for a given fractional zoom
     baseZoom (zoom) {
         return Math.floor(zoom);
-    }
-
-    setZooming (zooming) {
-        this.zooming = zooming;
     }
 
     setPanning (panning) {
