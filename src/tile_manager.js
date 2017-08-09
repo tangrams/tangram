@@ -191,7 +191,7 @@ export default class TileManager {
 
         if (source.tiled) {
             // Pin tile to a worker thread based on its coordinates
-            worker = this.scene.workers[(coords.x + coords.y + coords.z) % this.scene.workers.length];
+            worker = this.scene.workers[Math.abs(coords.x + coords.y + coords.z) % this.scene.workers.length];
         }
         else {
             // Pin all tiles from each non-tiled source to a single worker
