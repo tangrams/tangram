@@ -253,7 +253,7 @@ export const TextLabels = {
         let canvas = new CanvasText(); // one per style per tile (style may be rendering multiple tiles at once)
 
         // TODO set appropriate max texture size
-        return canvas.setTextureTextPositions(texts, 2048 /*this.max_texture_size*/, tile_id).then(({ textures }) => {
+        return canvas.setTextureTextPositions(texts, 2048 /*this.max_texture_size*/).then(({ textures }) => {
             if (!textures) {
                 return {};
             }

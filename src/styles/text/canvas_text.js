@@ -489,53 +489,29 @@ export default class CanvasText {
     }
 
     // Place text labels within an atlas of the given max size
-    setTextureTextPositions (texts, max_texture_size, tile_id) {
-        return Task.add({
-            type: 'setLabelTexturePositions',
-            target: this,
-            method: 'processTextureTextPositionsTask',
-            texts,
-            textures: [],           // texture sizes and caches
-            texcoord_cache: {},     // current texcoord cache
-            max_texture_size,
-            tile_id,
-            cursor: {
-                styles: Object.keys(texts),
-                texts: null,
-                style_idx: null,
-                text_idx: null,
-                texture_id: 0,      // current texture number
-                column_width: 0,    // current column width
-                cx: 0,              // current x/y position in atlas
+    setTextureTextPositions (texts, max_texture_size) {
+        let texture = {
+                cx: 0,
                 cy: 0,
-                width: 0,           // overall atlas width
-                height: 0           // overall atlas height
-            }
-        });
-    }
+                width: 0,
+                height: 0,
+                column_width: 0,
+                texture_id: 0,
+                texcoord_cache: {}
+            },
+            textures = [];
+        let texcoord_cache = texture.texcoord_cache;
 
-    processTextureTextPositionsTask (task) {
-        let { cursor, texts } = task;
-        cursor.style_idx = cursor.style_idx || 0;
-
-        // Layout labels, stacked in columns
-        while (cursor.style_idx < cursor.styles.length) {
-            let style = cursor.styles[cursor.style_idx];
-            if (cursor.text_idx == null) {
-                cursor.text_idx = 0;
-                cursor.texts = Object.keys(texts[style]);
-            }
-
+        for (let style in texts) {
             let text_infos = texts[style];
 
-            while (cursor.text_idx < cursor.texts.length) {
-                let text = cursor.texts[cursor.text_idx];
+            for (let text in text_infos) {
                 let text_info = text_infos[text];
                 let texture_position;
 
                 if (text_info.text_settings.can_articulate){
                     text_info.textures = [];
-                    task.texcoord_cache[style] = task.texcoord_cache[style] || {};
+                    texcoord_cache[style] = texcoord_cache[style] || {};
 
                     for (let t = 0; t < text_info.type.length; t++){
                         let type = text_info.type[t];
@@ -544,16 +520,16 @@ export default class CanvasText {
                             case 'straight':
                                 let word = (text_info.isRTL) ? text.split().reverse().join() : text;
 
-                                if (!task.texcoord_cache[style][word]) {
+                                if (!texcoord_cache[style][word]) {
                                     let size = text_info.total_size.texture_size;
-                                    texture_position = this.placeText(size[0], size[1], task);
-                                    task.texcoord_cache[style][word] = {
-                                        texture_id: cursor.texture_id,
+                                    texture_position = this.placeText(size[0], size[1], style, texture, textures, max_texture_size);
+                                    texcoord_cache[style][word] = {
+                                        texture_id: texture.texture_id,
                                         texture_position
                                     };
                                 }
 
-                                text_info.textures[t] = cursor.texture_id;
+                                text_info.textures[t] = texture.texture_id;
 
                                 break;
 
@@ -563,17 +539,17 @@ export default class CanvasText {
                                 for (let w = 0; w < text_info.size.length; w++) {
                                     let word = text_info.segments[w];
 
-                                    if (!task.texcoord_cache[style][word]) {
+                                    if (!texcoord_cache[style][word]) {
                                         let size = text_info.size[w].texture_size;
                                         let width = 2 * size[0]; // doubled to account for side-by-side rendering of fill and stroke
-                                        texture_position = this.placeText(width, size[1], task);
-                                        task.texcoord_cache[style][word] = {
-                                            texture_id: cursor.texture_id,
+                                        texture_position = this.placeText(width, size[1], style, texture, textures, max_texture_size);
+                                        texcoord_cache[style][word] = {
+                                            texture_id: texture.texture_id,
                                             texture_position
                                         };
                                     }
 
-                                    text_info.textures[t].push(cursor.texture_id);
+                                    text_info.textures[t].push(texture.texture_id);
                                 }
 
                                 break;
@@ -586,80 +562,69 @@ export default class CanvasText {
 
                     // but each alignment needs to be rendered separately
                     for (let align in text_info.align) {
-                        texture_position = this.placeText (size[0], size[1], task);
-                        text_info.align[align].texture_id = cursor.texture_id;
+                        texture_position = this.placeText (size[0], size[1], style, texture, textures, max_texture_size);
+                        text_info.align[align].texture_id = texture.texture_id;
                         text_info.align[align].texture_position = texture_position;
                     }
                 }
-
-                cursor.text_idx++;
-
-                if (!Task.shouldContinue(task)) {
-                    return false;
-                }
             }
-            cursor.text_idx = null;
-            cursor.style_idx++;
         }
 
         // save final texture
-        if (cursor.column_width > 0 && cursor.height > 0) {
-            task.textures[cursor.texture_id] = {
-                texture_size: [cursor.width, cursor.height],
-                texcoord_cache: task.texcoord_cache
+        if (texture.column_width > 0 && texture.height > 0) {
+            textures[texture.texture_id] = {
+                texture_size: [texture.width, texture.height],
+                texcoord_cache: texture.texcoord_cache
             };
         }
 
-        // return overall atlas size
-        Task.finish(task, { textures: task.textures });
-        return true;
+        // return computed texture sizes and UV cache
+        return Promise.resolve({ textures });
     }
 
     // Place text sprite in texture atlas, enlarging current texture, or starting new one if max texture size reached
-    placeText (text_width, text_height, task) {
-        let cursor = task.cursor;
-        let style = cursor.styles[cursor.style_idx];
+    placeText (text_width, text_height, style, texture, textures, max_texture_size) {
         let texture_position;
 
         // TODO: what if first label is wider than entire max texture?
 
-        if (cursor.cy + text_height > task.max_texture_size) {
+        if (texture.cy + text_height > max_texture_size) {
             // start new column
-            cursor.cx += cursor.column_width;
-            cursor.cy = 0;
-            cursor.column_width = text_width;
+            texture.cx += texture.column_width;
+            texture.cy = 0;
+            texture.column_width = text_width;
         }
         else {
             // expand current column
-            cursor.column_width = Math.max(cursor.column_width, text_width);
+            texture.column_width = Math.max(texture.column_width, text_width);
         }
 
-        if (cursor.cx + cursor.column_width <= task.max_texture_size) {
+        if (texture.cx + texture.column_width <= max_texture_size) {
             // add label to current texture
-            texture_position = [cursor.cx, cursor.cy];
+            texture_position = [texture.cx, texture.cy];
 
-            cursor.cy += text_height;
+            texture.cy += text_height;
 
             // expand texture if needed
-            cursor.height = Math.max(cursor.height, cursor.cy);
-            cursor.width = Math.max(cursor.width, cursor.cx + cursor.column_width);
+            texture.height = Math.max(texture.height, texture.cy);
+            texture.width = Math.max(texture.width, texture.cx + texture.column_width);
         }
         else {
             // start new texture
             // save size and cache of last texture
-            task.textures[cursor.texture_id] = {
-                texture_size: [cursor.width, cursor.height],
-                texcoord_cache: task.texcoord_cache
+            textures[texture.texture_id] = {
+                texture_size: [texture.width, texture.height],
+                texcoord_cache: texture.texcoord_cache
             };
-            task.texcoord_cache = {}; // reset cache
-            task.texcoord_cache[style] = {};
+            texture.texcoord_cache = {}; // reset cache
+            texture.texcoord_cache[style] = {};
 
-            cursor.texture_id++;
-            cursor.cx = 0;
-            cursor.cy = text_height;
-            cursor.column_width = text_width;
-            cursor.width = text_width;
-            cursor.height = text_height;
+            texture.texture_id++;
+            texture.cx = 0;
+            texture.cy = text_height;
+            texture.column_width = text_width;
+            texture.width = text_width;
+            texture.height = text_height;
             texture_position = [0, 0]; // TODO: allocate zero array once
         }
 
