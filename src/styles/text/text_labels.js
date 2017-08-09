@@ -251,9 +251,9 @@ export const TextLabels = {
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts (tile_id, tile_key, texts) {
         let canvas = new CanvasText(); // one per style per tile (style may be rendering multiple tiles at once)
+        let max_texture_size = Math.min(this.max_texture_size, 2048); // cap each label texture at 2048x2048
 
-        // TODO set appropriate max texture size
-        return canvas.setTextureTextPositions(texts, 2048 /*this.max_texture_size*/).then(({ textures }) => {
+        return canvas.setTextureTextPositions(texts, max_texture_size).then(({ textures }) => {
             if (!textures) {
                 return {};
             }
