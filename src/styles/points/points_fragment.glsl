@@ -10,9 +10,7 @@ uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
 
 uniform sampler2D u_texture;
-
-uniform sampler2D u_label_texture;
-varying float v_sampler;
+uniform float u_point_type;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
@@ -53,21 +51,25 @@ void main (void) {
 
     vec4 color = v_color;
 
-    if (v_sampler == 0.) { // sprite sampler
-        #ifdef TANGRAM_TEXTURE_POINT
-            color *= texture2D(u_texture, v_texcoord); // draw sprite
-        #else
-            drawPoint(color); // draw a point
-        #endif
+    // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)
+    if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture
+        color *= texture2D(u_texture, v_texcoord);
 
-        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)
         #pragma tangram: color
         #pragma tangram: filter
     }
-    else { // label sampler
-        color = texture2D(u_label_texture, v_texcoord);
+    else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture
+        color = texture2D(u_texture, v_texcoord);
         color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
     }
+    #ifdef TANGRAM_SHADER_POINT
+        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
+            drawPoint(color); // draw a point
+
+            #pragma tangram: color
+            #pragma tangram: filter
+        }
+    #endif
 
     color.a *= v_alpha_factor;
 
