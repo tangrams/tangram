@@ -17,7 +17,7 @@ Object.assign(Lines, {
     built_in: true,
     vertex_shader_src: shaderSrc_polygonsVertex,
     fragment_shader_src: shaderSrc_polygonsFragment,
-    selection: true, // turn feature selection on
+    selection: true, // enable feature selection
 
     init() {
         Style.init.apply(this, arguments);
@@ -26,17 +26,13 @@ Object.assign(Lines, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
         // Tell the shader we want a order in vertex attributes, and to extrude lines
         this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
-
-        // Optional feature selection
-        if (this.selection) {
-            attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-        }
 
         // Optional line texture or dash array
         // (latter will be rendered at compile-time, when GL context available)

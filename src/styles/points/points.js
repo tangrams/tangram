@@ -42,46 +42,60 @@ Object.assign(Points, {
     built_in: true,
     vertex_shader_src: shaderSrc_pointsVertex,
     fragment_shader_src: shaderSrc_pointsFragment,
+    selection: true,  // enable feature selection
     collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
-    init(options = {}, extra_attributes = []) {
+    init(options = {}) {
         Style.init.call(this, options);
 
-        var attribs = [
+        // Vertex layout
+        let attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: [0, 0, 0, 0] },
+            { name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false, static: 0 },
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
-        if (extra_attributes.length){
-            Array.prototype.push.apply(attribs, extra_attributes);
-        }
+        this.vertex_layout = new VertexLayout(attribs);
 
-        // Feature selection
-        this.selection = true;
-        attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+        // Modified vertex layout for shader-drawn points
+        attribs = attribs.map(x => Object.assign({}, x)); // copy attribs
+        attribs.forEach(attrib => {
+            // clear the static attribute value for shader points
+            if (attrib.name === 'a_outline_color' || attrib.name === 'a_outline_edge') {
+                attrib.static = null;
+            }
+        });
+        this.vertex_layout_shader_point = new VertexLayout(attribs);
 
-        // If we're not rendering as overlay, we need a layer attribute
-        if (this.blend !== 'overlay') {
-            this.defines.TANGRAM_LAYER_ORDER = true;
-        }
+        // Shader defines
+        this.setupDefines();
+
+        // Include code for SDF-drawn shader points
+        this.defines.TANGRAM_HAS_SHADER_POINTS = true;
 
         // texture types
         this.defines.TANGRAM_POINT_TYPE_TEXTURE = TANGRAM_POINT_TYPE_TEXTURE;
         this.defines.TANGRAM_POINT_TYPE_LABEL = TANGRAM_POINT_TYPE_LABEL;
         this.defines.TANGRAM_POINT_TYPE_SHADER = TANGRAM_POINT_TYPE_SHADER;
 
-        // if no texture defined, use a shader-drawn point
-        if (!this.texture) {
-            this.defines.TANGRAM_SHADER_POINT = true;
-            attribs.push({ name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-            attribs.push({ name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false });
-        }
+        this.collision_group_points = this.name+'-points';
+        this.collision_group_text = this.name+'-text';
 
-        this.vertex_layout = new VertexLayout(attribs);
+        this.reset();
+    },
+
+    // Setup defines common to points base and child (text) styles
+    setupDefines () {
+        // If we're not rendering as overlay, we need a layer attribute
+        if (this.blend !== 'overlay') {
+            this.defines.TANGRAM_LAYER_ORDER = true;
+        }
 
         // Fade out when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
@@ -101,11 +115,6 @@ Object.assign(Points, {
         if (debugSettings.suppress_label_snap_animation !== true) {
             this.defines.TANGRAM_VIEW_PAN_SNAP_RATE = 1 / VIEW_PAN_SNAP_TIME; // inverse time in seconds
         }
-
-        this.collision_group_points = this.name+'-points';
-        this.collision_group_text = this.name+'-text';
-
-        this.reset();
     },
 
     reset () {
@@ -127,7 +136,7 @@ Object.assign(Points, {
 
         // optional or default texture
         // TODO: make texture and point rendering compatible within same style
-        style.texture = draw.texture || this.texture;
+        style.texture = (draw.texture !== undefined ? draw.texture : this.texture);
 
         // require color or texture
         if (!style.color && !style.texture) {
@@ -588,8 +597,8 @@ Object.assign(Points, {
         // color
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
 
-        // outline
-        if (this.defines.TANGRAM_SHADER_POINT) {
+        // outline (can be static or dynamic depending on style)
+        if (this.defines.TANGRAM_HAS_SHADER_POINTS && !style.texture) {
             let outline_color = style.outline_color || StyleParser.defaults.outline.color;
             this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
             this.fillVertexTemplate('a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, { size: 1 });
@@ -609,13 +618,13 @@ Object.assign(Points, {
             vertex_data,
             vertex_template,
             {
-                texcoord_index: this.vertex_layout.index.a_texcoord,
-                position_index: this.vertex_layout.index.a_position,
-                shape_index: this.vertex_layout.index.a_shape,
-                offset_index: this.vertex_layout.index.a_offset,
-                offsets_index: this.vertex_layout.index.a_offsets,
-                pre_angles_index: this.vertex_layout.index.a_pre_angles,
-                angles_index: this.vertex_layout.index.a_angles
+                texcoord_index: vertex_data.vertex_layout.index.a_texcoord,
+                position_index: vertex_data.vertex_layout.index.a_position,
+                shape_index: vertex_data.vertex_layout.index.a_shape,
+                offset_index: vertex_data.vertex_layout.index.a_offset,
+                offsets_index: vertex_data.vertex_layout.index.a_offsets,
+                pre_angles_index: vertex_data.vertex_layout.index.a_pre_angles,
+                angles_index: vertex_data.vertex_layout.index.a_angles
             },
             {
                 quad: size,
@@ -799,7 +808,16 @@ Object.assign(Points, {
     },
 
     // Override
+    vertexLayoutForMeshVariant (variant) {
+        if (variant === this.default_mesh_variant) {
+            return this.vertex_layout_shader_point;
+        }
+        return this.vertex_layout;
+    },
+
+    // Override
     meshVariantTypeForDraw (draw) {
+        // TODO: possible name collisions with default/numeric mesh variant and texture names
         return draw.label_texture || draw.texture || this.default_mesh_variant;
     },
 

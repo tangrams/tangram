@@ -7,6 +7,7 @@ import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
+import VertexLayout from '../../gl/vertex_layout';
 
 export let TextStyle = Object.create(Points);
 
@@ -16,27 +17,30 @@ Object.assign(TextStyle, {
     built_in: true,
 
     init(options = {}) {
-        let extra_attributes = [
+        Style.init.call(this, options);
+
+        var attribs = [
+            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
+            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
-            { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false }
+            { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
-        this.super.init.call(this, options, extra_attributes);
+        this.vertex_layout = new VertexLayout(attribs);
 
-        // Set texture/point config (override parent Point class)
-        this.defines.TANGRAM_SHADER_POINT = false;  // standalone text never draws a shader point
+        // Shader defines
+        this.setupDefines();
+
+        // Omit some code for SDF-drawn shader points
+        this.defines.TANGRAM_HAS_SHADER_POINTS = false;
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;
-
-        // Fade out text when tile is zooming out, e.g. acting as proxy tiles
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
-
-        // Used to fade out curved labels
-        this.defines.TANGRAM_FADE_ON_ZOOM_IN = true;
-        this.defines.TANGRAM_FADE_ON_ZOOM_IN_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
 
         this.reset();
     },
@@ -254,7 +258,18 @@ Object.assign(TextStyle, {
             }
         }
         return labels;
-    }
+    },
+
+    // Override
+    vertexLayoutForMeshVariant (variant) {
+        return this.vertex_layout;
+    },
+
+    // Override
+    meshVariantTypeForDraw (draw) {
+        return this.default_mesh_variant;
+    },
+
 });
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures

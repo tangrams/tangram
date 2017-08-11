@@ -18,8 +18,6 @@ uniform mat3 u_inverseNormalMatrix;
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
-attribute float a_outline_edge;
-attribute vec4 a_outline_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
 
@@ -36,7 +34,10 @@ varying vec2 v_texcoord;
 varying vec4 v_world_position;
 varying float v_alpha_factor;
 
-#ifdef TANGRAM_SHADER_POINT
+#ifdef TANGRAM_HAS_SHADER_POINTS
+    attribute float a_outline_edge;
+    attribute vec4 a_outline_color;
+
     varying float v_outline_edge;
     varying vec4 v_outline_color;
     varying float v_aa_factor;
@@ -57,15 +58,17 @@ vec2 rotate2D(vec2 _st, float _angle) {
                 sin(_angle),cos(_angle)) * _st;
 }
 
-// Assumes stops are [0, 0.33, 0.66, 0.99];
-float mix4linear(float a, float b, float c, float d, float x) {
-    return mix(mix(a, b, 3. * x),
-               mix(b,
-                   mix(c, d, 3. * (max(x, .66) - .66)),
-                   3. * (clamp(x, .33, .66) - .33)),
-               step(0.33, x)
-            );
-}
+#ifdef TANGRAM_CURVED_LABEL
+    // Assumes stops are [0, 0.33, 0.66, 0.99];
+    float mix4linear(float a, float b, float c, float d, float x) {
+        return mix(mix(a, b, 3. * x),
+                   mix(b,
+                       mix(c, d, 3. * (max(x, .66) - .66)),
+                       3. * (clamp(x, .33, .66) - .33)),
+                   step(0.33, x)
+                );
+    }
+#endif
 
 void main() {
     // Initialize globals
@@ -75,7 +78,7 @@ void main() {
     v_color = a_color;
     v_texcoord = a_texcoord;
 
-    #ifdef TANGRAM_SHADER_POINT
+    #ifdef TANGRAM_HAS_SHADER_POINTS
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
         v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;
@@ -156,7 +159,11 @@ void main() {
 
     // Snap to pixel grid
     // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active
+    #ifdef TANGRAM_HAS_SHADER_POINTS
     if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {
+    #else
+    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {
+    #endif
         vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);
         vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);
 
