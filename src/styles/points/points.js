@@ -125,15 +125,19 @@ Object.assign(Points, {
         let style = {};
         style.color = this.parseColor(draw.color, context);
 
+        // optional or default texture
+        // TODO: make texture and point rendering compatible within same style
+        style.texture = draw.texture || this.texture;
+
         // require color or texture
-        if (!style.color && !this.texture) {
+        if (!style.color && !style.texture) {
             return;
         }
 
         // optional sprite
         let sprite_info;
-        if (this.hasSprites()) {
-            sprite_info = this.parseSprite(draw, context);
+        if (this.hasSprites(style)) {
+            sprite_info = this.parseSprite(style, draw, context);
             if (sprite_info) {
                 style.texcoords = sprite_info.texcoords;
             }
@@ -233,24 +237,26 @@ Object.assign(Points, {
         Collision.addStyle(this.collision_group_points, tile.id);
     },
 
-    hasSprites() {
-        return this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites;
+    hasSprites (style) {
+        return style.texture && Texture.textures[style.texture] && Texture.textures[style.texture].sprites;
     },
 
-    getSpriteInfo (sprite) {
-        let info = Texture.textures[this.texture].sprites[sprite] && Texture.getSpriteInfo(this.texture, sprite);
+    getSpriteInfo (style, sprite) {
+        let info = Texture.textures[style.texture].sprites[sprite] && Texture.getSpriteInfo(style.texture, sprite);
         if (sprite && !info) {
-            if (!this.texture_missing_sprites[sprite]) { // only log each missing sprite once
-                log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
-                this.texture_missing_sprites[sprite] = true;
+            // track misisng sprites (per texture)
+            this.texture_missing_sprites[style.texture] = this.texture_missing_sprites[style.texture] || {};
+            if (!this.texture_missing_sprites[style.texture][sprite]) { // only log each missing sprite once
+                log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${style.texture}'`);
+                this.texture_missing_sprites[style.texture][sprite] = true;
             }
         }
         return info;
     },
 
-    parseSprite (draw, context) {
+    parseSprite (style, draw, context) {
         let sprite = StyleParser.evalProperty(draw.sprite, context);
-        let sprite_info = this.getSpriteInfo(sprite) || this.getSpriteInfo(draw.sprite_default);
+        let sprite_info = this.getSpriteInfo(style, sprite) || this.getSpriteInfo(style, draw.sprite_default);
         return sprite_info;
     },
 
@@ -665,8 +671,8 @@ Object.assign(Points, {
             mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
             mesh_data.uniforms.u_apply_color_blocks = false;
         }
-        else if (this.texture) {
-            mesh_data.uniforms.u_texture = this.texture;
+        else if (style.texture) {
+            mesh_data.uniforms.u_texture = style.texture;
             mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_TEXTURE;
             mesh_data.uniforms.u_apply_color_blocks = true;
         }
@@ -794,11 +800,7 @@ Object.assign(Points, {
 
     // Override
     meshVariantTypeForDraw (draw) {
-        // TODO: restore support for varying sprite textures too (?)
-        if (draw.label_texture) {
-            return draw.label_texture;
-        }
-        return this.default_mesh_variant;
+        return draw.label_texture || draw.texture || this.default_mesh_variant;
     },
 
     makeMesh (vertex_data, vertex_elements, options = {}) {
