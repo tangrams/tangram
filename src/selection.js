@@ -299,13 +299,12 @@ export default class FeatureSelection {
             source_name: context.source,
             source_layer: context.layer,
             layers: context.layers,
-            tile: this.tiles[tile.key].tile,
-            hover_color: draw.hover_color,
-            click_color: draw.click_color
+            tile: this.tiles[tile.key].tile
         };
 
         let group;
-        if (group_value) {
+        let group_type = typeof group_value;
+        if (group_type === 'string' || group_type === 'number') {
             group = this.groups[group_key];
             if (!group) {
                 this.group_index++;
@@ -317,11 +316,9 @@ export default class FeatureSelection {
         }
 
         selector.group = {
-            index: group, // || [255, 255, 255, 255],
+            index: group,
             key: group_key,
-            value: group_value//,
-            // hover_color: draw.hover_color,
-            // click_color: draw.click_color
+            value: group_value
         };
 
         return selector;
@@ -336,12 +333,12 @@ export default class FeatureSelection {
     }
 
     static clearTile(key) {
-        // TODO: update this to reference count features so we only delete when all refs released
-        // if (this.tiles[key]) {
-        //     this.tiles[key].entries.forEach(k => delete this.map[k]);
-        //     this.map_size -= this.tiles[key].entries.length;
-        //     delete this.tiles[key];
-        // }
+        // TODO: add reference counting to keep FeatureSelection.groups from growing unbounded?
+        if (this.tiles[key]) {
+            this.tiles[key].entries.forEach(k => delete this.map[k]);
+            this.map_size -= this.tiles[key].entries.length;
+            delete this.tiles[key];
+        }
     }
 
     static getMapSize() {
