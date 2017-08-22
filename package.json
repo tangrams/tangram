@@ -94,7 +94,7 @@
     "glob": "4.0.6",
     "jshint": "2.9.4",
     "karma": "1.5.0",
-    "karma-browserify": "5.1.0",
+    "karma-browserify": "5.1.1",
     "karma-chrome-launcher": "2.0.0",
     "karma-mocha": "0.1.9",
     "karma-mocha-reporter": "1.0.0",
