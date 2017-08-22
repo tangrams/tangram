@@ -37,7 +37,7 @@ varying float v_alpha_factor;
 #ifdef TANGRAM_SHADER_POINT
     varying float v_outline_edge;
     varying vec4 v_outline_color;
-    varying float v_aa_factor;
+    varying float v_size;
 #endif
 
 #ifdef TANGRAM_MULTI_SAMPLER
@@ -89,12 +89,13 @@ void main() {
 
     v_alpha_factor = 1.0;
     v_color = a_color;
-    v_texcoord = a_texcoord;
 
     #ifdef TANGRAM_SHADER_POINT
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
-        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;
+        v_size = abs(a_shape.x/128.);
+        v_texcoord = sign(a_shape.xy)*(v_size*1.+4.)/(v_size*1.);
+        v_size+=4.;
     #endif
 
     // Position
@@ -173,6 +174,9 @@ void main() {
     // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
+    #ifdef TANGRAM_SHADER_POINT
+      position.xy += sign(shape)*position.w * 2. * u_device_pixel_ratio / u_resolution;
+    #endif
 
     // Snap to pixel grid
     // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active

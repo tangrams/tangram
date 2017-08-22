@@ -18,6 +18,7 @@ varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 varying float v_alpha_factor;
+varying float v_size;
 
 #ifdef TANGRAM_SHADER_POINT
     varying vec4 v_outline_color;
@@ -34,16 +35,30 @@ varying float v_alpha_factor;
 #pragma tangram: global
 
 #ifdef TANGRAM_SHADER_POINT
+
+    float antialias(vec2 uv, float R){
+        float l=length(uv);
+        float pixelOffset=1.41/v_size;
+        pixelOffset=min(pixelOffset, 1.41/v_size);
+        float low=max(0., R-pixelOffset);
+        float high=max(0., R+pixelOffset);
+        return 1.-smoothstep(low, high, l);
+    }
+
     // Draw an SDF-style point
     void drawPoint (inout vec4 color) {
-        vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge
-        float point_dist = length(uv);
-        color = mix(
-            color,
-            v_outline_color,
-            (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)
-        );
-        color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));
+        vec2 uv = v_texcoord; // fade alpha near circle
+        float exteriorAlpha=antialias(uv, 1.);
+        if (v_outline_edge>0.){
+          float middleAlpha=antialias(uv, 1.-v_outline_edge*0.5);
+          float interiorAlpha=antialias(uv, 1.-v_outline_edge);
+          vec4 outlineColor=v_outline_color;
+          vec4 mixColor=outlineColor.a*outlineColor.rgba + (1.-outlineColor.a)*color.rgba*color.a;
+          mixColor.a=1.;
+          color=mix(mixColor, color, interiorAlpha);
+          color=mix(outlineColor, color, middleAlpha);
+        }
+        color.a*=exteriorAlpha;
     }
 #endif
 
