@@ -95,7 +95,7 @@ void main() {
         v_outline_edge = a_outline_edge;
         v_size = abs(a_shape.x/128.);
         v_texcoord = sign(a_shape.xy)*(v_size+2.)/(v_size);
-        v_size+=4.;
+        v_size+=2.;
     #endif
 
     // Position
