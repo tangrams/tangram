@@ -94,7 +94,7 @@ void main() {
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
         v_size = abs(a_shape.x/128.);
-        v_texcoord = sign(a_shape.xy)*(v_size*1.+4.)/(v_size*1.);
+        v_texcoord = sign(a_shape.xy)*(v_size+2.)/(v_size);
         v_size+=4.;
     #endif
 
@@ -175,7 +175,7 @@ void main() {
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
     #ifdef TANGRAM_SHADER_POINT
-      position.xy += sign(shape)*position.w * 2. * u_device_pixel_ratio / u_resolution;
+      position.xy += sign(shape)*position.w  * u_device_pixel_ratio / u_resolution;
     #endif
 
     // Snap to pixel grid
