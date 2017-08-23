@@ -52,8 +52,10 @@ varying float v_alpha_factor;
           float middleAlpha=antialias(uv, 1.-v_outline_edge*0.5);
           float interiorAlpha=antialias(uv, 1.-v_outline_edge);
           vec4 outlineColor=v_outline_color;
-          vec4 mixColor=outlineColor.a*outlineColor.rgba + (1.-outlineColor.a)*color.rgba*color.a;
-          mixColor.a=1.;
+          vec4 mixColor;
+          mixColor.rgb=outlineColor.a*outlineColor.rgb + (1.-outlineColor.a)*color.rgb*color.a;
+          mixColor.a=outlineColor.a + (1.-outlineColor.a)*color.a;
+          mixColor.rgb/=mixColor.a;
           color=mix(mixColor, color, interiorAlpha);
           color=mix(outlineColor, color, middleAlpha);
         }
