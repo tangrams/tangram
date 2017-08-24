@@ -92,7 +92,9 @@ export default class View {
 
     // Update method called once per frame
     update () {
-        this.camera.update();
+        if (this.camera != null) {
+            this.camera.update();
+        }
         this.pan_snap_timer = ((+new Date()) - this.panning_stop_at) / 1000;
         this.user_input_active = ((+new Date() - this.user_input_at) < this.user_input_timeout);
     }
