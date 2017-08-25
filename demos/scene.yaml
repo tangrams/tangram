@@ -62,15 +62,15 @@ textures:
 styles:
     buildings:
         base: polygons
+        blend: translucent
         shaders:
             blocks:
                 color: |
-                    // Modify lighting
-                    material.ambient.rgb = vec3(2.);
-                    material.diffuse.rgb = vec3(.5);
-
                     // Shade by building height
-                    color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
+                    color.rgb *= vec3((worldPosition().z*.0005 + .9));
+
+                    // Add translucency at higher zoom
+                    color.a = clamp(mix(1., 0., (u_map_position.z - 15.) * .25), .5, 1.);
 
     icons:
         base: points
