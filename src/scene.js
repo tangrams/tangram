@@ -57,7 +57,6 @@ export default class Scene {
 
         this.building = null;                           // tracks current scene building state (tiles being built, etc.)
         this.dirty = true;                              // request a redraw
-        this.animated = false;                          // request redraw every frame
 
         if (options.preUpdate){
             // optional pre-render loop hook
@@ -1008,13 +1007,15 @@ export default class Scene {
             this.styles[style].setGL(this.gl);
         }
 
-        // Use explicitly set scene animation flag if defined, otherwise turn on animation if there are any animated styles
-        this.animated =
-            this.config.scene.animated !== undefined ?
-                this.config.scene.animated :
-                Object.keys(this.styles).some(s => this.styles[s].animated);
-
         this.dirty = true;
+    }
+
+    // Is scene currently animating?
+    get animated () {
+        // Use explicitly set scene animation flag if defined, otherwise enabled animation if any animated styles are in view
+        return (this.config.scene.animated !== undefined ?
+                this.config.scene.animated :
+                this.tile_manager.getActiveStyles().some(s => this.styles[s].animated));
     }
 
     // Get active camera - for public API
