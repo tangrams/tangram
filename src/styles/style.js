@@ -135,6 +135,12 @@ export var Style = {
             for (let variant in tile_data.meshes) {
                 let mesh = tile_data.meshes[variant];
 
+                // Remove empty mesh variants
+                if (mesh.vertex_data.vertex_count === 0) {
+                    delete tile_data.meshes[variant];
+                    continue;
+                }
+
                 // Only keep final byte buffer
                 mesh.vertex_data.end();
                 mesh.vertex_elements = mesh.vertex_data.element_buffer;
