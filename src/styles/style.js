@@ -668,6 +668,7 @@ export var Style = {
     // Render state settings by blend mode
     render_states: {
         opaque: { depth_test: true, depth_write: true },
+        translucent: { depth_test: true, depth_write: true },
         add: { depth_test: true, depth_write: false },
         multiply: { depth_test: true, depth_write: false },
         inlay: { depth_test: true, depth_write: false },
@@ -677,10 +678,11 @@ export var Style = {
     // Default sort order for blend modes
     default_blend_orders: {
         opaque: 0,
-        add: 1,
-        multiply: 2,
-        inlay: 3,
-        overlay: 4
+        translucent: 1,
+        add: 2,
+        multiply: 3,
+        inlay: 4,
+        overlay: 5
     },
 
     // Comparison function for sorting styles by blend
