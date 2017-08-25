@@ -150,10 +150,18 @@ Object.assign(TextStyle, {
 
                 // Finish tile mesh
                 return Style.endData.call(this, tile).then(tile_data => {
-                    // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (textures && textures.length) {
-                        tile_data.textures.push(...textures); // assign texture ownership to tile
+                    if (tile_data) {
+                        // Attach tile-specific label atlas to mesh as a texture uniform
+                        if (textures && textures.length) {
+                            tile_data.textures.push(...textures); // assign texture ownership to tile
+                        }
+
+                        // Always apply shader blocks to standalone text
+                        for (let m in tile_data.meshes) {
+                            tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
+                        }
                     }
+
                     return tile_data;
                 });
             });

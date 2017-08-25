@@ -663,14 +663,17 @@ Object.assign(Points, {
         if (style.label_texture) {
             mesh_data.uniforms.u_texture = style.label_texture;
             mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh_data.uniforms.u_apply_color_blocks = false;
         }
         else if (this.texture) {
             mesh_data.uniforms.u_texture = this.texture;
             mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_TEXTURE;
+            mesh_data.uniforms.u_apply_color_blocks = true;
         }
         else {
             mesh_data.uniforms.u_texture = Texture.default; // ensure a tetxure is always bound to avoid GL warnings ('no texture bound to unit' in Chrome)
             mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_SHADER;
+            mesh_data.uniforms.u_apply_color_blocks = true;
         }
 
         let offset = label.offset;
@@ -713,6 +716,7 @@ Object.assign(Points, {
             mesh_data.uniforms = mesh_data.uniforms || {};
             mesh_data.uniforms.u_texture = style.label_texture;
             mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh_data.uniforms.u_apply_color_blocks = false;
 
             let offset = label.offset || [0,0];
             let position = label.position;
@@ -749,6 +753,7 @@ Object.assign(Points, {
             mesh_data.uniforms = mesh_data.uniforms || {};
             mesh_data.uniforms.u_texture = style.label_texture;
             mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh_data.uniforms.u_apply_color_blocks = false;
 
             let offset = label.offset || [0,0];
             let position = label.position;
