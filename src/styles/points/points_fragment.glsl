@@ -22,7 +22,7 @@ varying float v_alpha_factor;
 #ifdef TANGRAM_SHADER_POINT
     varying vec4 v_outline_color;
     varying float v_outline_edge;
-    varying float v_size;
+    varying float v_aa_offset;
 #endif
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
@@ -37,10 +37,8 @@ varying float v_alpha_factor;
 
     float antialias(vec2 uv, float R){
         float l=length(uv);
-        float pixelOffset=1.41/v_size;
-        pixelOffset=min(pixelOffset, 1.41/v_size);
-        float low=max(0., R-pixelOffset);
-        float high=max(0., R+pixelOffset);
+        float low=R-v_aa_offset;
+        float high=R+v_aa_offset;
         return 1.-smoothstep(low, high, l);
     }
 
@@ -52,11 +50,11 @@ varying float v_alpha_factor;
           float middleAlpha=antialias(uv, 1.-v_outline_edge*0.5);
           float interiorAlpha=antialias(uv, 1.-v_outline_edge);
           vec4 outlineColor=v_outline_color;
-          vec4 mixColor;
-          mixColor.rgb=outlineColor.a*outlineColor.rgb + (1.-outlineColor.a)*color.rgb*color.a;
-          mixColor.a=outlineColor.a + (1.-outlineColor.a)*color.a;
-          mixColor.rgb/=mixColor.a;
-          color=mix(mixColor, color, interiorAlpha);
+          vec4 middleColor;
+          middleColor.rgb=outlineColor.a*outlineColor.rgb + (1.-outlineColor.a)*color.rgb*color.a;
+          middleColor.a=outlineColor.a + (1.-outlineColor.a)*color.a;
+          middleColor.rgb/=middleColor.a;
+          color=mix(middleColor, color, interiorAlpha);
           color=mix(outlineColor, color, middleAlpha);
         }
         color.a*=exteriorAlpha;

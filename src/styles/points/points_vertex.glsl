@@ -37,7 +37,7 @@ varying float v_alpha_factor;
 #ifdef TANGRAM_SHADER_POINT
     varying float v_outline_edge;
     varying vec4 v_outline_color;
-    varying float v_size;
+    varying float v_aa_offset;
 #endif
 
 #ifdef TANGRAM_MULTI_SAMPLER
@@ -93,9 +93,10 @@ void main() {
     #ifdef TANGRAM_SHADER_POINT
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
-        v_size = abs(a_shape.x/128.);
-        v_texcoord = sign(a_shape.xy)*(v_size+2.)/(v_size);
-        v_size+=2.;
+        float size = abs(a_shape.x/128.); //Width size in pixels of the quad
+        v_texcoord = sign(a_shape.xy)*(size+1.)/(size);
+        size+=2.;
+        v_aa_offset=2./size;
     #endif
 
     // Position
