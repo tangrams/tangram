@@ -92,7 +92,7 @@ export default class View {
 
     // Update method called once per frame
     update () {
-        if (this.camera != null) {
+        if (this.camera != null && this.ready()) {
             this.camera.update();
         }
         this.pan_snap_timer = ((+new Date()) - this.panning_stop_at) / 1000;
@@ -174,7 +174,7 @@ export default class View {
             typeof this.size.css.height !== 'number' ||
             this.center == null ||
             typeof this.zoom !== 'number') {
-             return false;
+            return false;
         }
         return true;
     }
