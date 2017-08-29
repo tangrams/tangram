@@ -12,6 +12,8 @@ import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/
 
 export var Lines = Object.create(Style);
 
+Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
+
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
@@ -22,23 +24,9 @@ Object.assign(Lines, {
     init() {
         Style.init.apply(this, arguments);
 
-        // Basic attributes, others can be added (see texture UVs below)
-        var attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false, static: [0, 0] }, // static value by default
-            { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
-        ];
-
         // Tell the shader we want a order in vertex attributes, and to extrude lines
         this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
-
-        // Optional feature selection
-        if (this.selection) {
-            attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-        }
 
         // Optional line texture or dash array
         // (latter will be rendered at compile-time, when GL context available)
@@ -53,28 +41,36 @@ Object.assign(Lines, {
             // Scaling factor to add precision to line texture V coordinate packed as normalized short
             this.defines.TANGRAM_DASH_SCALE = 1;
             this.defines.TANGRAM_V_SCALE_ADJUST = Geo.tile_scale * this.defines.TANGRAM_DASH_SCALE;
-
-            // Add vertex attribute for UVs only when needed
-            attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
         }
-
-        this.vertex_layout = new VertexLayout(attribs);
-
-        // Modified vertex layout with dynamic offsets
-        attribs = attribs.map(x => Object.assign({}, x)); // copy attribs
-        attribs.forEach(attrib => {
-            // clear the static attribute value for offsets
-            if (attrib.name === 'a_offset') {
-                attrib.static = null;
-            }
-        });
-        this.vertex_layout_offset = new VertexLayout(attribs);
 
         // Additional single-allocated object used for holding outline style as it is processed
         // Separate from this.feature_style so that outline properties do not overwrite calculated
         // inline properties (outline call is made *within* the inline call)
         this.outline_feature_style = {};
         this.inline_feature_style = this.feature_style; // save reference to main computed style object
+    },
+
+    // Create or return desired vertex layout permutation based on flags
+    getVertexLayout (texcoords, offset) {
+        if (Lines.vertex_layouts[texcoords][offset] == null) {
+            // Basic attributes, others can be added (see texture UVs below)
+            let attribs = [
+                { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false, static: (offset ? null : [0, 0]) },
+                { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+            ];
+
+            // Add vertex attribute for UVs only when needed
+            if (texcoords) {
+                attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
+            }
+
+            Lines.vertex_layouts[texcoords][offset] = new VertexLayout(attribs);
+        }
+        return Lines.vertex_layouts[texcoords][offset];
     },
 
     // Override
@@ -375,11 +371,9 @@ Object.assign(Lines, {
     // Override
     offset_mesh_variant: 1,
     vertexLayoutForMeshVariant (variant) {
-        // TODO could be a mapping from variants to layouts
-        if (variant === this.offset_mesh_variant) {
-            return this.vertex_layout_offset;
-        }
-        return this.vertex_layout;
+        return this.getVertexLayout(
+            (this.texcoords ? 1 : 0),                        // has texcoords?
+            (variant === this.offset_mesh_variant ? 1 : 0)); // has offsets?
     },
 
     // Override
