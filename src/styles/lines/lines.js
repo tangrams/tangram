@@ -13,6 +13,7 @@ import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/
 export var Lines = Object.create(Style);
 
 Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
+Lines.dash_textures = {}; // needs to be cleared on scene config update
 
 Object.assign(Lines, {
     name: 'lines',
@@ -96,15 +97,20 @@ Object.assign(Lines, {
             this.defines.TANGRAM_DASH_SCALE = 20;
             this.defines.TANGRAM_V_SCALE_ADJUST = Geo.tile_scale * this.defines.TANGRAM_DASH_SCALE;
 
-            // Render line pattern
-            const dash = renderDashArray(this.dash, { scale: this.defines.TANGRAM_DASH_SCALE });
-            this.texture = '_' + this.name + '_dasharray';
-            Texture.create(this.gl, this.texture, {
-                data: dash.pixels,
-                height: dash.length,
-                width: 1,
-                filtering: 'nearest'
-            });
+            // Render dash pattern texture
+            this.dash_key = JSON.stringify(this.dash);
+            if (Lines.dash_textures[this.dash_key] == null) {
+                // Render line pattern
+                const dash = renderDashArray(this.dash, { scale: this.defines.TANGRAM_DASH_SCALE });
+                Lines.dash_textures[this.dash_key] = '__dash_' + this.dash_key;
+                Texture.create(this.gl, Lines.dash_textures[this.dash_key], {
+                    data: dash.pixels,
+                    height: dash.length,
+                    width: 1,
+                    filtering: 'nearest'
+                });
+            }
+            this.texture = Lines.dash_textures[this.dash_key];
         }
 
         // Specify a line texture (either directly, or rendered dash pattern from above)
