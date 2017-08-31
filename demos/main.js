@@ -9,7 +9,7 @@ We're glad you're interested in how Tangram can be used to make amazing maps!
 
 This demo is meant to show off various visual styles, but it has a really complex setup - we had to jump through a lot of hoops to implement the style-switcher and rebuild the dat.gui interface on the fly, which are things you would probably never have to do in a real-world use case.
 
-So instead of rummaging through this rather confusing example, we recommend you check out our documentation, which is chock-full of specific, targeted demos highlighting all of the nifty features of the Tangram library:
+If you're looking for examples, we recommend you check out our documentation, which is chock-full of specific, targeted demos highlighting all of the nifty features of the Tangram library:
 
 https://github.com/tangrams/tangram/wiki/
 
