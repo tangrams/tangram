@@ -11,7 +11,7 @@ This demo is meant to show off various visual styles, but it has a really comple
 
 If you're looking for examples, we recommend you check out our documentation, which is chock-full of specific, targeted demos highlighting all of the nifty features of the Tangram library:
 
-https://github.com/tangrams/tangram/wiki/
+https://mapzen.com/documentation/tangram/
 
 Enjoy!
 - The Mapzen Tangram team
