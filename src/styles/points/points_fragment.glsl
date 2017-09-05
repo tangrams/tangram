@@ -34,30 +34,11 @@ varying float v_alpha_factor;
 #pragma tangram: global
 
 #ifdef TANGRAM_SHADER_POINT
-
-    float antialias(vec2 uv, float R){
-        float l=length(uv);
-        float low=R-v_aa_offset;
-        float high=R+v_aa_offset;
-        return 1.-smoothstep(low, high, l);
-    }
-
-    // Draw an SDF-style point
-    void drawPoint (inout vec4 color) {
-        vec2 uv = v_texcoord; // fade alpha near circle
-        float exteriorAlpha=antialias(uv, 1.);
-        if (v_outline_edge>0.){
-          float middleAlpha=antialias(uv, 1.-v_outline_edge*0.5);
-          float interiorAlpha=antialias(uv, 1.-v_outline_edge);
-          vec4 outlineColor=v_outline_color;
-          vec4 middleColor;
-          middleColor.rgb=outlineColor.a*outlineColor.rgb + (1.-outlineColor.a)*color.rgb*color.a;
-          middleColor.a=outlineColor.a + (1.-outlineColor.a)*color.a;
-          middleColor.rgb/=middleColor.a;
-          color=mix(middleColor, color, interiorAlpha);
-          color=mix(outlineColor, color, middleAlpha);
-        }
-        color.a*=exteriorAlpha;
+    //l is the distance from the center to the fragment, R is the radius of the drawn point
+    float _tangram_antialias(float l, float R){
+        float low  = R - v_aa_offset;
+        float high = R + v_aa_offset;
+        return 1. - smoothstep(low, high, l);
     }
 #endif
 
@@ -71,7 +52,17 @@ void main (void) {
         #ifdef TANGRAM_TEXTURE_POINT
             color *= texture2D(u_texture, v_texcoord); // draw sprite
         #else
-            drawPoint(color); // draw a point
+            float outline_edge = v_outline_edge;
+            vec4 outlineColor  = v_outline_color;
+            // Distance to this fragment from the center.
+            float l = length(v_texcoord);
+            // Mask of outermost circle, either outline or point boundary.
+            float outer_alpha  = _tangram_antialias(l, 1.);
+            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
+            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
+            // Apply alpha compositing with stroke 'over' fill.
+            color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
+            color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
         #endif
 
         // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)
