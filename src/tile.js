@@ -446,6 +446,13 @@ export default class Tile {
                     }
                 }
 
+                // Sort mesh variants by explicit render order (if present)
+                meshes[s].sort((a, b) => {
+                    // Sort variant order ascending if present, then all null values (where order is unspecified)
+                    let ao = a.variant.order, bo = b.variant.order;
+                    return (ao == null ? 1 : (bo == null ? -1 : (ao < bo ? -1 : 1)));
+                });
+
                 // Assign texture ownership to tiles
                 // Note that it's valid for a single texture to be referenced from multiple styles
                 // (e.g. same raster texture attached to multiple sources). This means the same
