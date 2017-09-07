@@ -77,10 +77,6 @@ styles:
         base: points
         texture: icons
 
-    dashed:
-        base: lines
-        dash: [2, 1]
-
     transit-lines:
         base: lines
         blend: overlay
@@ -346,7 +342,7 @@ layers:
             filter: { kind: path }
             draw:
                 lines:
-                    style: dashed
+                    dash: [2, 1]
                     color: white
                     width: [[15, 0px], [18, 3px]]
                     outline:
@@ -366,7 +362,7 @@ layers:
             filter: { kind: ferry }
             draw:
                 lines:
-                    style: dashed
+                    dash: [2, 1]
                     color: '#8db3ce'
                     width: [[14, 1px], [18, 2px]]
                     outline:
