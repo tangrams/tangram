@@ -168,7 +168,7 @@ Object.assign(Points, {
         style.outline_edge_pct = 0;
         if (style.outline_width && style.outline_color) {
             let outline_width = style.outline_width;
-            style.size[0] += outline_width; // bump outline by 1px to balance out antialiasing
+            style.size[0] += outline_width;
             style.size[1] += outline_width;
             style.outline_edge_pct = outline_width / Math.min(style.size[0], style.size[1]) * 2; // UV distance at which outline starts
         }

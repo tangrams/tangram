@@ -44,7 +44,6 @@ varying float v_alpha_factor;
 
 #define PI 3.14159265359
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
-#define TANGRAM_PX_FADE_RANGE 2.
 
 #pragma tangram: camera
 #pragma tangram: material
