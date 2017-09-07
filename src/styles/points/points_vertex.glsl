@@ -73,14 +73,19 @@ void main() {
 
     v_alpha_factor = 1.0;
     v_color = a_color;
+    v_texcoord = a_texcoord; // UV from vertex
 
     #ifdef TANGRAM_SHADER_POINT
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
-        float size = abs(a_shape.x/128.); //Width size in pixels of the quad
-        v_texcoord = sign(a_shape.xy)*(size+1.)/(size);
-        size+=2.;
-        v_aa_offset=2./size;
+        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
+            v_outline_color = a_outline_color;
+            v_outline_edge = a_outline_edge;
+            float size = abs(a_shape.x/128.); // radius in pixels
+            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);
+            size+=2.;
+            v_aa_offset=2./size;
+        }
     #endif
 
     // Position
@@ -156,7 +161,10 @@ void main() {
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
     #ifdef TANGRAM_SHADER_POINT
-      position.xy += sign(shape)*position.w  * u_device_pixel_ratio / u_resolution;
+        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
+            // enlarge by 1px to catch missed MSAA fragments
+            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;
+        }
     #endif
 
     // Snap to pixel grid
