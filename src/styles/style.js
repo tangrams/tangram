@@ -197,7 +197,9 @@ export var Style = {
         }
 
         let vertex_data = this.getTileMesh(tile, this.meshVariantTypeForDraw(style)).vertex_data;
-        this.buildGeometry(feature.geometry, style, vertex_data, context);
+        if (this.buildGeometry(feature.geometry, style, vertex_data, context) > 0) {
+            feature.generation = this.generation; // track scene generation that feature was rendered for
+        }
     },
 
     buildGeometry (geometry, style, vertex_data, context) {
