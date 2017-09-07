@@ -43,8 +43,9 @@ export default SceneLoader = {
         let bundle = createSceneBundle(url, path, parent, type);
 
         return bundle.load().then(config => {
+            this.normalize(config, bundle);
             if (config.import == null) {
-                return this.normalize(config, bundle);
+                return { config, bundle };
             }
 
             // accept single entry or array
@@ -69,7 +70,7 @@ export default SceneLoader = {
                     then(results => {
                         let configs = results.map(r => r.config);
                         config = mergeObjects({}, ...configs, config);
-                        return this.normalize(config, bundle);
+                        return { config, bundle };
                     });
         }).catch(error => {
             // Collect scene load errors as we go
