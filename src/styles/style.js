@@ -676,10 +676,10 @@ export var Style = {
     // Default sort order for blend modes
     default_blend_orders: {
         opaque: 0,
-        translucent: 1,
-        add: 2,
-        multiply: 3,
-        inlay: 4,
+        add: 1,
+        multiply: 2,
+        inlay: 3,
+        translucent: 4,
         overlay: 5
     },
 
