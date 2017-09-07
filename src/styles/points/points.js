@@ -633,17 +633,17 @@ Object.assign(Points, {
     },
 
     // Build quad for point sprite
-    build (style, vertex_data, context) {
+    build (style, mesh, context) {
         let label = style.label;
         if (label.type === 'curved') {
-            return this.buildArticulatedLabel(label, style, vertex_data, context);
+            return this.buildArticulatedLabel(label, style, mesh, context);
         }
         else {
-            return this.buildLabel(label, style, vertex_data, context);
+            return this.buildLabel(label, style, mesh, context);
         }
     },
 
-    buildLabel (label, style, vertex_data, context) {
+    buildLabel (label, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style);
         let angle = label.angle || style.angle;
 
@@ -659,7 +659,6 @@ Object.assign(Points, {
 
         // re-point to correct label texture
         let mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
-        vertex_data = mesh_data.vertex_data;
 
         // setup style or label texture if applicable
         mesh_data.uniforms = mesh_data.uniforms || {};
@@ -693,11 +692,11 @@ Object.assign(Points, {
             null,                           // placeholder for multiple offsets
             texcoords,                      // texture UVs
             false,                          // if curved boolean
-            vertex_data, vertex_template    // VBO and data for current vertex
+            mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
 
-    buildArticulatedLabel (label, style, vertex_data, context) {
+    buildArticulatedLabel (label, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style);
         let angle = label.angle;
         let geom_count = 0;
@@ -713,7 +712,6 @@ Object.assign(Points, {
             // re-point to correct label texture
             style.label_texture = style.label_textures[i];
             let mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
-            vertex_data = mesh_data.vertex_data;
 
             // add label texture uniform if needed
             mesh_data.uniforms = mesh_data.uniforms || {};
@@ -738,7 +736,7 @@ Object.assign(Points, {
                 offsets,                        // offsets per segment
                 texcoord_stroke,                // texture UVs for stroked text
                 true,                           // if curved
-                vertex_data, vertex_template    // VBO and data for current vertex
+                mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
             );
         }
 
@@ -750,7 +748,6 @@ Object.assign(Points, {
             // re-point to correct label texture
             style.label_texture = style.label_textures[i];
             let mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
-            vertex_data = mesh_data.vertex_data;
 
             // add label texture uniform if needed
             mesh_data.uniforms = mesh_data.uniforms || {};
@@ -775,7 +772,7 @@ Object.assign(Points, {
                 offsets,                        // offsets per segment
                 texcoord,                       // texture UVs for fill text
                 true,                           // if curved
-                vertex_data, vertex_template    // VBO and data for current vertex
+                mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
             );
         }
 
@@ -783,25 +780,30 @@ Object.assign(Points, {
     },
 
     // Override to pass-through to generic point builder
-    buildLines (lines, style, vertex_data, context) {
-        return this.build(style, vertex_data, context);
+    buildLines (lines, style, mesh, context) {
+        return this.build(style, mesh, context);
     },
 
-    buildPoints (points, style, vertex_data, context) {
-        return this.build(style, vertex_data, context);
+    buildPoints (points, style, mesh, context) {
+        return this.build(style, mesh, context);
     },
 
-    buildPolygons (points, style, vertex_data, context) {
-        return this.build(style, vertex_data, context);
+    buildPolygons (points, style, mesh, context) {
+        return this.build(style, mesh, context);
     },
 
     // Override
+    point_variant: { key: 0, order: 0 }, // draw points first
+    label_variants: {},
     meshVariantTypeForDraw (draw) {
         // TODO: restore support for varying sprite textures too (?)
         if (draw.label_texture) {
-            return draw.label_texture;
+            if (this.label_variants[draw.label_texture] == null) {
+                this.label_variants[draw.label_texture] = { key: draw.label_texture, order: 1 };
+            }
+            return this.label_variants[draw.label_texture];
         }
-        return this.default_mesh_variant;
+        return this.point_variant;
     },
 
     makeMesh (vertex_data, vertex_elements, options = {}) {

@@ -438,6 +438,7 @@ export default class Tile {
                         mesh_options.variant = mesh_variant.variant;
 
                         let mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
+                        mesh.variant = mesh_options.variant;
                         meshes[s] = meshes[s] || [];
                         meshes[s].push(mesh);
                         this.debug.buffer_size += mesh.buffer_size;
