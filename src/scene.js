@@ -1112,11 +1112,15 @@ export default class Scene {
 
         this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
         if (normalize) {
+            // normalize whole scene
             SceneLoader.normalize(this.config, this.config_bundle);
+        }
+        else {
+            // just normalize top-level textures - necessary for adding base path to globals
+            SceneLoader.normalizeTextures(this.config, this.config_bundle);
         }
         this.trigger(load_event ? 'load' : 'update', { config: this.config });
 
-        SceneLoader.hoistTextures(this.config); // move inline textures into global texture set
         this.style_manager.init();
         this.view.reset();
         this.createLights();
