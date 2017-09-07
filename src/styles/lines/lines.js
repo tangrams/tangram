@@ -8,12 +8,17 @@ import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
 import renderDashArray from './dasharray';
 import Geo from '../../geo';
+import WorkerBroker from '../../utils/worker_broker';
+import hashString from '../../utils/hash';
 import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
 export var Lines = Object.create(Style);
 
 Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
+Lines.variants = {}; // mesh variants by variant key
 Lines.dash_textures = {}; // needs to be cleared on scene config update
+
+const DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
 
 Object.assign(Lines, {
     name: 'lines',
@@ -28,105 +33,13 @@ Object.assign(Lines, {
         // Tell the shader we want a order in vertex attributes, and to extrude lines
         this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
-
-        // Optional line texture or dash array
-        // (latter will be rendered at compile-time, when GL context available)
-        if (this.texture || this.dash) {
-            this.texcoords = true;
-        }
-
-        // Optional texture UVs
-        if (this.texcoords) {
-            this.defines.TANGRAM_TEXTURE_COORDS = true;
-
-            // Scaling factor to add precision to line texture V coordinate packed as normalized short
-            this.defines.TANGRAM_DASH_SCALE = 1;
-            this.defines.TANGRAM_V_SCALE_ADJUST = Geo.tile_scale * this.defines.TANGRAM_DASH_SCALE;
-        }
+        this.defines.TANGRAM_TEXTURE_COORDS = true; // texcoords attribute is set to static when not needed
 
         // Additional single-allocated object used for holding outline style as it is processed
         // Separate from this.feature_style so that outline properties do not overwrite calculated
         // inline properties (outline call is made *within* the inline call)
         this.outline_feature_style = {};
         this.inline_feature_style = this.feature_style; // save reference to main computed style object
-    },
-
-    // Create or return desired vertex layout permutation based on flags
-    getVertexLayout (texcoords, offset) {
-        if (Lines.vertex_layouts[texcoords][offset] == null) {
-            // Basic attributes, others can be added (see texture UVs below)
-            let attribs = [
-                { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-                { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
-                { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false, static: (offset ? null : [0, 0]) },
-                { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
-                { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
-            ];
-
-            // Add vertex attribute for UVs only when needed
-            if (texcoords) {
-                attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
-            }
-
-            Lines.vertex_layouts[texcoords][offset] = new VertexLayout(attribs);
-        }
-        return Lines.vertex_layouts[texcoords][offset];
-    },
-
-    // Override
-    compileSetup () {
-        if (!this.compile_setup) {
-            this.parseLineTexture();
-        }
-        return Style.compileSetup.apply(this, arguments);
-    },
-
-    // Optionally apply a dash array pattern to this line
-    parseLineTexture () {
-        // Specify a line pattern
-        if (this.dash) {
-            // Optional background color for dash pattern (defaults transparent)
-            if (this.dash_background_color) {
-                this.dash_background_color = StyleParser.parseColor(this.dash_background_color);
-                this.defines.TANGRAM_LINE_BACKGROUND_COLOR =
-                    `vec3(${this.dash_background_color.slice(0, 3).join(', ')})`;
-            }
-
-            // Adjust texcoord scale to allow for dash patterns that are a fraction of line width
-            this.defines.TANGRAM_DASH_SCALE = 20;
-            this.defines.TANGRAM_V_SCALE_ADJUST = Geo.tile_scale * this.defines.TANGRAM_DASH_SCALE;
-
-            // Render dash pattern texture
-            this.dash_key = JSON.stringify(this.dash);
-            if (Lines.dash_textures[this.dash_key] == null) {
-                // Render line pattern
-                const dash = renderDashArray(this.dash, { scale: this.defines.TANGRAM_DASH_SCALE });
-                Lines.dash_textures[this.dash_key] = '__dash_' + this.dash_key;
-                Texture.create(this.gl, Lines.dash_textures[this.dash_key], {
-                    data: dash.pixels,
-                    height: dash.length,
-                    width: 1,
-                    filtering: 'nearest'
-                });
-            }
-            this.texture = Lines.dash_textures[this.dash_key];
-        }
-
-        // Specify a line texture (either directly, or rendered dash pattern from above)
-        if (this.texture) {
-            this.defines.TANGRAM_LINE_TEXTURE = true;
-            this.shaders.uniforms = this.shaders.uniforms || {};
-            this.shaders.uniforms.u_texture = this.texture;
-            this.shaders.uniforms.u_texture_ratio = 1;
-
-            // update line pattern aspect ratio after texture loads
-            Texture.getInfo(this.texture).then(texture => {
-                if (texture) {
-                    this.shaders.uniforms.u_texture_ratio = texture.height / texture.width;
-                }
-            });
-        }
     },
 
     // Calculate width or offset at zoom given in `context`
@@ -180,7 +93,7 @@ Object.assign(Lines, {
         }
 
         // optional adjustment to texcoord width based on scale
-        if (this.texcoords) {
+        if (draw.texcoords) {
             // when drawing an outline, use the inline's texture scale
             // (e.g. keeps dashed outline pattern locked to inline pattern)
             if (draw.inline_texcoord_width) {
@@ -258,6 +171,8 @@ Object.assign(Lines, {
             return;
         }
 
+        style.variant = draw.variant; // pre-calculated mesh variant
+
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z || 0, context)) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
@@ -304,6 +219,7 @@ Object.assign(Lines, {
                 style.outline.next_width.value = null;
                 style.outline.color = null;
                 style.outline.inline_texcoord_width = null;
+                style.outline.texcoords = false;
             }
             else {
                 // Maintain consistent outline width around the line fill
@@ -317,10 +233,12 @@ Object.assign(Lines, {
 
                 // Inherited properties
                 style.outline.color = draw.outline.color;
-                style.outline.cap = draw.outline.cap || draw.cap;
-                style.outline.join = draw.outline.join || draw.join;
-                style.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
-                style.outline.style = draw.outline.style || this.name;
+                style.outline.cap = draw.outline.cap;
+                style.outline.join = draw.outline.join;
+                style.outline.miter_limit = draw.outline.miter_limit;
+                style.outline.texcoords = draw.outline.texcoords;
+                style.outline.style = draw.outline.style;
+                style.outline.variant = draw.outline.variant;
 
                 // Explicitly defined outline order, or inherited from inner line
                 if (draw.outline.order) {
@@ -337,6 +255,9 @@ Object.assign(Lines, {
 
                 // Outlines are always at half-layer intervals to avoid conflicting with inner lines
                 style.outline.order -= 0.5;
+
+                // Ensure outlines in a separate mesh variant are drawn first
+                style.outline.variant_order = 0;
             }
         }
         else {
@@ -361,35 +282,173 @@ Object.assign(Lines, {
         }
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
 
+        draw.dash = (draw.dash !== undefined ? draw.dash : this.dash);
+        draw.dash_key = draw.dash && this.dashTextureKey(draw.dash);
+        draw.dash_background_color = (draw.dash_background_color !== undefined ? draw.dash_background_color : this.dash_background_color);
+        draw.dash_background_color = draw.dash_background_color && StyleParser.parseColor(draw.dash_background_color);
+        draw.texture = draw.dash_key || ((draw.texture !== undefined ? draw.texture : this.texture));
+        draw.texcoords = ((this.texcoords || draw.texture) ? 1 : 0);
+        this.computeVariant(draw);
+
         if (draw.outline) {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
             draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
+
+            draw.outline.cap = draw.outline.cap || draw.cap;
+            draw.outline.join = draw.outline.join || draw.join;
+            draw.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
+            draw.outline.offset = draw.offset;
+
+            if (draw.outline.dash === null) {
+                // outline explicitly turning off dash
+                draw.outline.dash_key = null;
+                // use outline texture if specified, or inherit *non-dash* texture only from inline
+                draw.outline.texture = (draw.outline.texture !== undefined ? draw.outline.texture : (!draw.dash && draw.texture));
+            }
+            else {
+                // use outline dash if specified, or inherit from inline
+                draw.outline.dash = draw.outline.dash || draw.dash;
+                draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
+                // use outline OR inherited inline dash if specified, or use explicit outline texture, or inherit inline texture
+                draw.outline.texture = draw.outline.dash_key || (draw.outline.texture !== undefined ? draw.outline.texture : draw.texture);
+            }
+            draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color);
+            draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
+            draw.outline.texcoords = ((this.texcoords || draw.outline.texture) ? 1 : 0);
+            draw.outline.style = draw.outline.style || this.name;
+            this.computeVariant(draw.outline);
         }
         return draw;
     },
 
+    // Unique string key for a dash pattern (used as texture name)
+    dashTextureKey (dash) {
+        return '__dash_' + JSON.stringify(dash);
+    },
+
+    // Return or render a dash pattern texture
+    getDashTexture (dash) {
+        let dash_key = this.dashTextureKey(dash);
+
+        if (Lines.dash_textures[dash_key] == null) {
+            Lines.dash_textures[dash_key] = true;
+
+            // Render line pattern
+            const dash_texture = renderDashArray(dash, { scale: DASH_SCALE });
+            Texture.create(this.gl, dash_key, {
+                data: dash_texture.pixels,
+                height: dash_texture.length,
+                width: 1,
+                filtering: 'nearest'
+            });
+        }
+    },
+
     // Override
-    offset_mesh_variant: 1,
+    endData (tile) {
+        return Style.endData.call(this, tile).then(tile_data => {
+            if (tile_data) {
+                tile_data.uniforms.u_has_line_texture = false;
+                tile_data.uniforms.u_texture = Texture.default;
+                tile_data.uniforms.u_v_scale_adjust = Geo.tile_scale;
+
+                let pending = [];
+                for (let m in tile_data.meshes) {
+                    let variant = tile_data.meshes[m].variant;
+                    if (variant.texture) {
+                        let uniforms = tile_data.meshes[m].uniforms = tile_data.meshes[m].uniforms || {};
+                        uniforms.u_has_line_texture = true;
+                        uniforms.u_texture = variant.texture;
+                        uniforms.u_texture_ratio = 1;
+
+                        if (variant.dash) {
+                            uniforms.u_v_scale_adjust = Geo.tile_scale * DASH_SCALE;
+                            uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
+                        }
+
+                        if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
+                            Lines.dash_textures[variant.dash_key] = true;
+                            WorkerBroker.postMessage(this.main_thread_target+'.getDashTexture', variant.dash);
+                        }
+
+                        if (Texture.textures[variant.texture] == null) {
+                            pending.push(
+                                Texture.syncTexturesToWorker([variant.texture]).then(textures => {
+                                    let texture = textures[variant.texture];
+                                    if (texture) {
+                                        uniforms.u_texture_ratio = texture.height / texture.width;
+                                    }
+                                })
+                            );
+                        }
+                        else {
+                            let texture = Texture.textures[variant.texture];
+                            uniforms.u_texture_ratio = texture.height / texture.width;
+                        }
+                    }
+                }
+                return Promise.all(pending).then(() => tile_data);
+            }
+            return tile_data;
+        });
+    },
+
+    // Calculate and store mesh variant (unique by draw group but not feature)
+    computeVariant (draw) {
+        let key = (draw.offset ? 1 : 0);
+        if (draw.dash_key) {
+            key += draw.dash_key;
+            if (draw.dash_background_color) {
+                key += draw.dash_background_color;
+            }
+        }
+        key += '/' + draw.texcoords;
+        draw.variant = hashString(key);
+
+        if (Lines.variants[draw.variant] == null) {
+            Lines.variants[draw.variant] = {
+                key: draw.variant,
+                order: draw.variant_order,
+                offset: (draw.offset ? 1 : 0),
+                texcoords: draw.texcoords,
+                texture: draw.texture,
+                dash: draw.dash,
+                dash_key: draw.dash_key,
+                dash_background_color: draw.dash_background_color
+            };
+        }
+    },
+
+    // Override
+    // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
-        return this.getVertexLayout(
-            (this.texcoords ? 1 : 0),                        // has texcoords?
-            (variant === this.offset_mesh_variant ? 1 : 0)); // has offsets?
+        if (Lines.vertex_layouts[variant.key] == null) {
+            // Basic attributes, others can be added (see texture UVs below)
+            let attribs = [
+                { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false, static: (variant.offset ? null : [0, 0]) },
+                { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.texcoords ? null : [0, 0]) },
+                { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+            ];
+            Lines.vertex_layouts[variant.key] = new VertexLayout(attribs);
+        }
+        return Lines.vertex_layouts[variant.key];
     },
 
     // Override
     meshVariantTypeForDraw (draw) {
-        if (draw.offset) {
-            return this.offset_mesh_variant;
-        }
-        return this.default_mesh_variant;
+        return Lines.variants[draw.variant]; // return pre-calculated mesh variant
     },
 
     /**
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate(style) {
+    makeVertexTemplate(style, variant) {
         let i = 0;
 
         // a_position.xyz - vertex position
@@ -405,7 +464,7 @@ Object.assign(Lines, {
 
         // a_offset.xy - normal vector
         // offset can be static or dynamic depending on style
-        if (style.offset) {
+        if (variant.offset) {
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
         }
@@ -413,6 +472,13 @@ Object.assign(Lines, {
         // a_scaling.xy - scaling to previous and next zoom
         this.vertex_template[i++] = style.width_scale * 1024;    // line width
         this.vertex_template[i++] = style.offset_scale * 1024;   // line offset
+
+        // Add texture UVs to template only if needed
+        if (variant.texcoords) {
+            // a_texcoord.uv
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
+        }
 
         // a_color.rgba
         this.vertex_template[i++] = style.color[0] * 255;
@@ -429,17 +495,10 @@ Object.assign(Lines, {
             this.vertex_template[i++] = style.selection_color[3] * 255;
         }
 
-        // Add texture UVs to template only if needed
-        if (this.texcoords) {
-            // a_texcoord.uv
-            this.vertex_template[i++] = 0;
-            this.vertex_template[i++] = 0;
-        }
-
         return this.vertex_template;
     },
 
-    buildLines(lines, style, vertex_data, context, options) {
+    buildLines(lines, style, mesh, context, options) {
         // Outline (build first so that blended geometry without a depth test is drawn first/under the inner line)
         this.feature_style = this.outline_feature_style; // swap in outline-specific style holder
         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
@@ -451,8 +510,9 @@ Object.assign(Lines, {
 
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
-        let vertex_template = this.makeVertexTemplate(style);
+        let vertex_data = mesh.vertex_data;
         let vertex_layout = vertex_data.vertex_layout;
+        let vertex_template = this.makeVertexTemplate(style, mesh.variant);
         return buildPolylines(
             lines,
             style.width,
@@ -475,11 +535,11 @@ Object.assign(Lines, {
         );
     },
 
-    buildPolygons(polygons, style, vertex_data, context) {
+    buildPolygons(polygons, style, mesh, context) {
          // Render polygons as individual lines
         let geom_count = 0;
          for (let p=0; p < polygons.length; p++) {
-            geom_count += this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
+            geom_count += this.buildLines(polygons[p], style, mesh, context, { closed_polygon: true, remove_tile_edges: true });
          }
         return geom_count;
     }

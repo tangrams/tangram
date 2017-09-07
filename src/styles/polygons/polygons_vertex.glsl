@@ -33,6 +33,8 @@ attribute vec4 a_color;
     // x: zoom scaling factor for line width
     // y: zoom scaling factor for line offset
     attribute vec2 a_scaling;
+
+    uniform float u_v_scale_adjust;
 #endif
 
 varying vec4 v_position;
@@ -41,7 +43,7 @@ varying vec4 v_color;
 varying vec4 v_world_position;
 
 // Optional texture UVs
-#ifdef TANGRAM_TEXTURE_COORDS
+#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)
     attribute vec2 a_texcoord;
     varying vec2 v_texcoord;
 #endif
@@ -71,7 +73,7 @@ void main() {
     #ifdef TANGRAM_TEXTURE_COORDS
         v_texcoord = a_texcoord;
         #ifdef TANGRAM_EXTRUDE_LINES
-            v_texcoord.y *= TANGRAM_V_SCALE_ADJUST;
+            v_texcoord.y *= u_v_scale_adjust;
         #endif
     #endif
 
