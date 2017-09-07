@@ -29,7 +29,6 @@ cameras:
         active: false
 
 scene:
-    animated: true
     background:
         color: '#f0ebeb'
 
@@ -85,7 +84,7 @@ styles:
             blocks:
                 filter: |
                     color.rgb *= 1.25; // pump up the colors
-                    color.a = 0.5;     // translucent
+                    color.a *= 0.5;     // translucent
         draw: # default draw parameters
             color: function() { return feature.colour_name; }
             width: 6px
