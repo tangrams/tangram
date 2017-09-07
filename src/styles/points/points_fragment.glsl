@@ -21,7 +21,7 @@ varying float v_alpha_factor;
 #ifdef TANGRAM_SHADER_POINT
     varying vec4 v_outline_color;
     varying float v_outline_edge;
-    varying float v_aa_factor;
+    varying float v_aa_offset;
 #endif
 
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
@@ -33,16 +33,11 @@ varying float v_alpha_factor;
 #pragma tangram: global
 
 #ifdef TANGRAM_SHADER_POINT
-    // Draw an SDF-style point
-    void drawPoint (inout vec4 color) {
-        vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge
-        float point_dist = length(uv);
-        color = mix(
-            color,
-            v_outline_color,
-            (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)
-        );
-        color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));
+    //l is the distance from the center to the fragment, R is the radius of the drawn point
+    float _tangram_antialias(float l, float R){
+        float low  = R - v_aa_offset;
+        float high = R + v_aa_offset;
+        return 1. - smoothstep(low, high, l);
     }
 #endif
 
@@ -61,7 +56,17 @@ void main (void) {
     }
     #ifdef TANGRAM_SHADER_POINT
         else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
-            drawPoint(color); // draw a point
+            float outline_edge = v_outline_edge;
+            vec4 outlineColor  = v_outline_color;
+            // Distance to this fragment from the center.
+            float l = length(v_texcoord);
+            // Mask of outermost circle, either outline or point boundary.
+            float outer_alpha  = _tangram_antialias(l, 1.);
+            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
+            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
+            // Apply alpha compositing with stroke 'over' fill.
+            color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
+            color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
         }
     #endif
 
