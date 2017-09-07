@@ -8,16 +8,12 @@ import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 
-let fs = require('fs');
-const shaderSrc_textFragment = fs.readFileSync(__dirname + '/text_fragment.glsl', 'utf8');
-
 export let TextStyle = Object.create(Points);
 
 Object.assign(TextStyle, {
     name: 'text',
     super: Points,
     built_in: true,
-    fragment_shader_src: shaderSrc_textFragment,
 
     init(options = {}) {
         let extra_attributes = [
@@ -29,14 +25,10 @@ Object.assign(TextStyle, {
         this.super.init.call(this, options, extra_attributes);
 
         // Set texture/point config (override parent Point class)
-        this.defines.TANGRAM_TEXTURE_POINT = true;  // standalone text is always sampled from a texture
         this.defines.TANGRAM_SHADER_POINT = false;  // standalone text never draws a shader point
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;
-
-        // Disable dual point/text mode
-        this.defines.TANGRAM_MULTI_SAMPLER = false;
 
         // Fade out text when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
@@ -104,32 +96,25 @@ Object.assign(TextStyle, {
         }
 
         // Register with collision manager
-        Collision.addStyle(this.name, tile.key);
-    },
-
-    // Override
-    startData (tile) {
-        this.queues[tile.key] = [];
-        return Style.startData.call(this, tile);
+        Collision.addStyle(this.name, tile.id);
     },
 
     // Override
     endData (tile) {
-        let queue = this.queues[tile.key];
-        delete this.queues[tile.key];
+        let queue = this.queues[tile.id];
+        delete this.queues[tile.id];
 
-        return this.prepareTextLabels(tile, this.name, queue).
-            then(labels => this.collideAndRenderTextLabels(tile, this.name, labels)).
-            then(({ labels, texts, texture }) => {
-                if (texts) {
-                    this.texts[tile.key] = texts;
+        return this.collideAndRenderTextLabels(tile, this.name, queue).
+            then(({ labels, texts, textures }) => {
+                if (labels && texts) {
+                    this.texts[tile.id] = texts;
 
                     // Build queued features
                     labels.forEach(q => {
                         let text_settings_key = q.text_settings_key;
                         let text_info =
-                            this.texts[tile.key][text_settings_key] &&
-                            this.texts[tile.key][text_settings_key][q.text];
+                            this.texts[tile.id][text_settings_key] &&
+                            this.texts[tile.id][text_settings_key][q.text];
 
                         // setup styling object expected by Style class
                         let style = this.feature_style;
@@ -143,16 +128,19 @@ Object.assign(TextStyle, {
                             if (q.label.type === 'straight'){
                                 style.size.straight = text_info.total_size.logical_size;
                                 style.texcoords.straight = text_info.texcoords.straight;
+                                style.label_texture = textures[text_info.texcoords.straight.texture_id];
                             }
                             else{
                                 style.size.curved = text_info.size.map(function(size){ return size.logical_size; });
                                 style.texcoords_stroke = text_info.texcoords_stroke;
                                 style.texcoords.curved = text_info.texcoords.curved;
+                                style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
                             }
                         }
                         else {
                             style.size = text_info.size.logical_size;
                             style.texcoords = text_info.align[q.label.align].texcoords;
+                            style.label_texture = textures[text_info.align[q.label.align].texture_id];
                         }
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
@@ -162,12 +150,19 @@ Object.assign(TextStyle, {
 
                 // Finish tile mesh
                 return Style.endData.call(this, tile).then(tile_data => {
-                    // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (texture && tile_data) {
-                        tile_data.uniforms.u_texture = texture;
-                        tile_data.textures.push(texture); // assign texture ownership to tile
-                        return tile_data;
+                    if (tile_data) {
+                        // Attach tile-specific label atlas to mesh as a texture uniform
+                        if (textures && textures.length) {
+                            tile_data.textures.push(...textures); // assign texture ownership to tile
+                        }
+
+                        // Always apply shader blocks to standalone text
+                        for (let m in tile_data.meshes) {
+                            tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
+                        }
                     }
+
+                    return tile_data;
                 });
             });
     },
@@ -178,11 +173,11 @@ Object.assign(TextStyle, {
     },
 
     // Implements label building for TextLabels mixin
-    buildTextLabels (tile_key, feature_queue) {
+    buildTextLabels (tile, feature_queue) {
         let labels = [];
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
-            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            let text_info = this.texts[tile.id][fq.text_settings_key][fq.text];
             let feature_labels;
 
             fq.layout.vertical_buffer = text_info.vertical_buffer;

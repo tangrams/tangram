@@ -119,24 +119,33 @@ export var Style = {
 
     // Returns an object to hold feature data (for a tile or other object)
     startData (tile) {
-        this.tile_data[tile.key] = {
-            vertex_data: null,
+        this.tile_data[tile.id] = this.tile_data[tile.id] || {
+            meshes: {},
             uniforms: {},
             textures: []
         };
-        return this.tile_data[tile.key];
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
-        var tile_data = this.tile_data[tile.key];
-        this.tile_data[tile.key] = null;
+        var tile_data = this.tile_data[tile.id];
+        this.tile_data[tile.id] = null;
 
-        if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
-            // Only keep final byte buffer
-            tile_data.vertex_data.end();
-            tile_data.vertex_elements = tile_data.vertex_data.element_buffer;
-            tile_data.vertex_data = tile_data.vertex_data.vertex_buffer; // convert from instance to raw typed array
+        if (tile_data && Object.keys(tile_data.meshes).length > 0) {
+            for (let variant in tile_data.meshes) {
+                let mesh = tile_data.meshes[variant];
+
+                // Remove empty mesh variants
+                if (mesh.vertex_data.vertex_count === 0) {
+                    delete tile_data.meshes[variant];
+                    continue;
+                }
+
+                // Only keep final byte buffer
+                mesh.vertex_data.end();
+                mesh.vertex_elements = mesh.vertex_data.element_buffer;
+                mesh.vertex_data = mesh.vertex_data.vertex_buffer; // convert from instance to raw typed array
+            }
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
@@ -148,8 +157,28 @@ export var Style = {
     },
 
     // Has mesh data for a given tile?
-    hasDataForTile (tile_key) {
-        return this.tile_data[tile_key] != null;
+    hasDataForTile (tile) {
+        return this.tile_data[tile.id] != null;
+    },
+
+    getTileMesh (tile, variant) {
+        let meshes = this.tile_data[tile.id].meshes;
+        if (meshes[variant] == null) {
+            meshes[variant] = {
+                variant,
+                vertex_data: this.vertexLayoutForMeshVariant(variant).createVertexData()
+            };
+        }
+        return meshes[variant];
+    },
+
+    vertexLayoutForMeshVariant (variant) {
+        return this.vertex_layout;
+    },
+
+    default_mesh_variant: 0,
+    meshVariantTypeForDraw (draw) {
+        return this.default_mesh_variant;
     },
 
     addFeature (feature, draw, context) {
@@ -158,7 +187,7 @@ export var Style = {
             return;
         }
 
-        if (!this.tile_data[tile.key]) {
+        if (!this.tile_data[tile.id]) {
             this.startData(tile);
         }
 
@@ -167,14 +196,8 @@ export var Style = {
             return; // skip feature
         }
 
-        // First feature in this render style?
-        if (!this.tile_data[tile.key].vertex_data) {
-            this.tile_data[tile.key].vertex_data = this.vertex_layout.createVertexData();
-        }
-
-        if (this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context) > 0) {
-            feature.generation = this.generation; // track scene generation that feature was rendered for
-        }
+        let vertex_data = this.getTileMesh(tile, this.meshVariantTypeForDraw(style)).vertex_data;
+        this.buildGeometry(feature.geometry, style, vertex_data, context);
     },
 
     buildGeometry (geometry, style, vertex_data, context) {
@@ -351,7 +374,8 @@ export var Style = {
     },
 
     makeMesh (vertex_data, vertex_elements, options = {}) {
-        return new VBOMesh(this.gl, vertex_data, vertex_elements, this.vertex_layout, options);
+        let vertex_layout = this.vertexLayoutForMeshVariant(options.variant);
+        return new VBOMesh(this.gl, vertex_data, vertex_elements, vertex_layout, options);
     },
 
     render (mesh) {

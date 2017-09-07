@@ -10,9 +10,8 @@ uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
 
 uniform sampler2D u_texture;
-
-uniform sampler2D u_label_texture;
-varying float v_sampler;
+uniform float u_point_type;
+uniform bool u_apply_color_blocks;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
@@ -48,32 +47,34 @@ void main (void) {
 
     vec4 color = v_color;
 
-    if (v_sampler == 0.) { // sprite sampler
-        #ifdef TANGRAM_TEXTURE_POINT
-            color *= texture2D(u_texture, v_texcoord); // draw sprite
-        #else
-            {//Avoid name clashing with user-provided code
-                float outline_edge = v_outline_edge;
-                vec4 outlineColor  = v_outline_color;
-                // Distance to this fragment from the center.
-                float l = length(v_texcoord);
-                // Mask of outermost circle, either outline or point boundary.
-                float outer_alpha  = _tangram_antialias(l, 1.);
-                float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
-                float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
-                // Apply alpha compositing with stroke 'over' fill.
-                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
-                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
-            }
-        #endif
+    if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture
+        color *= texture2D(u_texture, v_texcoord);
+    }
+    else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture
+        color = texture2D(u_texture, v_texcoord);
+        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
+    }
+    #ifdef TANGRAM_SHADER_POINT
+        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
+            float outline_edge = v_outline_edge;
+            vec4 outlineColor  = v_outline_color;
+            // Distance to this fragment from the center.
+            float l = length(v_texcoord);
+            // Mask of outermost circle, either outline or point boundary.
+            float outer_alpha  = _tangram_antialias(l, 1.);
+            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
+            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
+            // Apply alpha compositing with stroke 'over' fill.
+            color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
+            color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
+        }
+    #endif
 
-        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)
+    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,
+    // NOT for text attached to a point (N.B.: for compatibility with ES)
+    if (u_apply_color_blocks) {
         #pragma tangram: color
         #pragma tangram: filter
-    }
-    else { // label sampler
-        color = texture2D(u_label_texture, v_texcoord);
-        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
     }
 
     color.a *= v_alpha_factor;

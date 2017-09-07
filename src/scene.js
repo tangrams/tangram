@@ -3,6 +3,7 @@ import Utils from './utils/utils';
 import debugSettings from './utils/debug_settings';
 import * as URLs from './utils/urls';
 import WorkerBroker from './utils/worker_broker';
+import Task from './utils/task';
 import subscribeMixin from './utils/subscribe';
 import sliceObject from './utils/slice';
 import Context from './gl/context';
@@ -56,7 +57,6 @@ export default class Scene {
 
         this.building = null;                           // tracks current scene building state (tiles being built, etc.)
         this.dirty = true;                              // request a redraw
-        this.animated = false;                          // request redraw every frame
 
         if (options.preUpdate){
             // optional pre-render loop hook
@@ -125,6 +125,10 @@ export default class Scene {
         // Should rendering block on load (not desirable for initial load, often desired for live style-switching)
         options.blocking = (options.blocking !== undefined) ? options.blocking : true;
 
+        if (this.render_loop !== false) {
+            this.setupRenderLoop();
+        }
+
         // Load scene definition (sources, styles, etc.), then create styles & workers
         this.createCanvas();
         this.initializing = this.loadScene(config_source, options)
@@ -147,9 +151,6 @@ export default class Scene {
                 this.last_valid_config_source = this.config_source;
                 this.last_valid_options = { base_path: options.base_path, file_type: options.file_type };
 
-                if (this.render_loop !== false) {
-                    this.setupRenderLoop();
-                }
                 this.requestRedraw();
         }).catch(error => {
             this.initializing = null;
@@ -358,24 +359,6 @@ export default class Scene {
         }
     }
 
-    // Assign tile to worker thread based on data source
-    getWorkerForDataSource(source) {
-        let worker;
-
-        if (source.tiled) {
-            // Round robin tiled sources across all workers
-            worker = this.workers[this.next_worker];
-            this.next_worker = (this.next_worker + 1) % this.workers.length;
-        }
-        else {
-            // Pin all tiles from each non-tiled source to a single worker
-            // Prevents data for these sources from being loaded more than once
-            worker = this.workers[source.id % this.workers.length];
-        }
-
-        return worker;
-    }
-
     // Scene is ready for rendering
     ready() {
         if (!this.view.ready() || Object.keys(this.sources).length === 0) {
@@ -426,6 +409,10 @@ export default class Scene {
             this.update();
         }
 
+        // Pending background tasks
+        Task.setState({ user_moving_view: this.view.user_input_active });
+        Task.processAll();
+
         // Request the next frame if not scheduled to stop
         if (!this.render_loop_stop) {
             window.requestAnimationFrame(this.renderLoop.bind(this));
@@ -457,6 +444,9 @@ export default class Scene {
         // Pre-render loop hook
         this.trigger('preUpdate', will_render);
 
+        // Update view (needs to update user input timer even if no render will occur)
+        this.view.update();
+
         // Bail if no need to render
         if (!will_render) {
             return false;
@@ -487,7 +477,6 @@ export default class Scene {
         var gl = this.gl;
 
         // Update styles, camera, lights
-        this.view.update();
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
         // Render main pass
@@ -498,7 +487,7 @@ export default class Scene {
 
         // Render selection pass (if needed)
         if (selection) {
-            if (this.view.panning || this.view.zooming) {
+            if (this.view.panning || this.view.user_input_active) {
                 this.selection.clearPendingRequests();
                 return;
             }
@@ -607,14 +596,12 @@ export default class Scene {
             this.view.setupTile(tile, program);
 
             // Render tile
-            let mesh = tile.meshes[style_name];
-            if (style.render(mesh)) {
-                // Don't incur additional renders while viewport is moving
-                if (!(this.view.panning || this.view.zooming)) {
-                   this.requestRedraw();
+            tile.meshes[style_name].forEach(mesh => {
+                if (style.render(mesh)) {
+                    this.requestRedraw();
                 }
-            }
-            render_count += mesh.geometry_count;
+                render_count += mesh.geometry_count;
+            });
         }
 
         return render_count;
@@ -862,6 +849,8 @@ export default class Scene {
     // Tile manager finished building tiles
     // TODO move to tile manager
     tileManagerBuildDone() {
+        CanvasText.pruneTextCache();
+
         if (this.building) {
             log('info', `Scene: build geometry finished`);
             if (this.building.resolve) {
@@ -1018,13 +1007,15 @@ export default class Scene {
             this.styles[style].setGL(this.gl);
         }
 
-        // Use explicitly set scene animation flag if defined, otherwise turn on animation if there are any animated styles
-        this.animated =
-            this.config.scene.animated !== undefined ?
-                this.config.scene.animated :
-                Object.keys(this.styles).some(s => this.styles[s].animated);
-
         this.dirty = true;
+    }
+
+    // Is scene currently animating?
+    get animated () {
+        // Use explicitly set scene animation flag if defined, otherwise enabled animation if any animated styles are in view
+        return (this.config.scene.animated !== undefined ?
+                this.config.scene.animated :
+                this.tile_manager.getActiveStyles().some(s => this.styles[s].animated));
     }
 
     // Get active camera - for public API
@@ -1195,7 +1186,6 @@ export default class Scene {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
             !this.tile_manager.isLoadingVisibleTiles()) {
             this.last_complete_generation = this.generation;
-            CanvasText.pruneTextCache();
             this.trigger('view_complete');
         }
     }
@@ -1265,7 +1255,9 @@ export default class Scene {
                 scene.tile_manager.getRenderableTiles().forEach(tile => {
                     for (let style in tile.meshes) {
                         counts[style] = counts[style] || 0;
-                        counts[style] += tile.meshes[style].geometry_count;
+                        tile.meshes[style].forEach(mesh => {
+                            counts[style] += mesh.geometry_count;
+                        });
                     }
                 });
                 return counts;
@@ -1287,7 +1279,9 @@ export default class Scene {
                 scene.tile_manager.getRenderableTiles().forEach(tile => {
                     for (let style in tile.meshes) {
                         sizes[style] = sizes[style] || 0;
-                        sizes[style] += tile.meshes[style].buffer_size;
+                        tile.meshes[style].forEach(mesh => {
+                            sizes[style] += mesh.buffer_size;
+                        });
                     }
                 });
                 return sizes;

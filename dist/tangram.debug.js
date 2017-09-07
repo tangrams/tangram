@@ -330,22 +330,22 @@ function placeHoldersCount (b64) {
 
 function byteLength (b64) {
   // base64 is 4/3 + up to two characters of the original data
-  return b64.length * 3 / 4 - placeHoldersCount(b64)
+  return (b64.length * 3 / 4) - placeHoldersCount(b64)
 }
 
 function toByteArray (b64) {
-  var i, j, l, tmp, placeHolders, arr
+  var i, l, tmp, placeHolders, arr
   var len = b64.length
   placeHolders = placeHoldersCount(b64)
 
-  arr = new Arr(len * 3 / 4 - placeHolders)
+  arr = new Arr((len * 3 / 4) - placeHolders)
 
   // if there are placeholders, only get up to the last complete 4 chars
   l = placeHolders > 0 ? len - 4 : len
 
   var L = 0
 
-  for (i = 0, j = 0; i < l; i += 4, j += 3) {
+  for (i = 0; i < l; i += 4) {
     tmp = (revLookup[b64.charCodeAt(i)] << 18) | (revLookup[b64.charCodeAt(i + 1)] << 12) | (revLookup[b64.charCodeAt(i + 2)] << 6) | revLookup[b64.charCodeAt(i + 3)]
     arr[L++] = (tmp >> 16) & 0xFF
     arr[L++] = (tmp >> 8) & 0xFF
@@ -413,7 +413,6 @@ function fromByteArray (uint8) {
 },{}],4:[function(_dereq_,module,exports){
 
 },{}],5:[function(_dereq_,module,exports){
-(function (global){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -426,80 +425,57 @@ function fromByteArray (uint8) {
 
 var base64 = _dereq_('base64-js')
 var ieee754 = _dereq_('ieee754')
-var isArray = _dereq_('isarray')
 
 exports.Buffer = Buffer
 exports.SlowBuffer = SlowBuffer
 exports.INSPECT_MAX_BYTES = 50
 
+var K_MAX_LENGTH = 0x7fffffff
+exports.kMaxLength = K_MAX_LENGTH
+
 /**
  * If `Buffer.TYPED_ARRAY_SUPPORT`:
  *   === true    Use Uint8Array implementation (fastest)
- *   === false   Use Object implementation (most compatible, even IE6)
+ *   === false   Print warning and recommend using `buffer` v4.x which has an Object
+ *               implementation (most compatible, even IE6)
  *
  * Browsers that support typed arrays are IE 10+, Firefox 4+, Chrome 7+, Safari 5.1+,
  * Opera 11.6+, iOS 4.2+.
  *
- * Due to various browser bugs, sometimes the Object implementation will be used even
- * when the browser supports typed arrays.
- *
- * Note:
- *
- *   - Firefox 4-29 lacks support for adding new properties to `Uint8Array` instances,
- *     See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438.
- *
- *   - Chrome 9-10 is missing the `TypedArray.prototype.subarray` function.
- *
- *   - IE10 has a broken `TypedArray.prototype.subarray` function which returns arrays of
- *     incorrect length in some situations.
-
- * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
- * get the Object implementation, which is slower but behaves correctly.
+ * We report that the browser does not support typed arrays if the are not subclassable
+ * using __proto__. Firefox 4-29 lacks support for adding new properties to `Uint8Array`
+ * (See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438). IE 10 lacks support
+ * for __proto__ and has a buggy typed array implementation.
  */
-Buffer.TYPED_ARRAY_SUPPORT = global.TYPED_ARRAY_SUPPORT !== undefined
-  ? global.TYPED_ARRAY_SUPPORT
-  : typedArraySupport()
+Buffer.TYPED_ARRAY_SUPPORT = typedArraySupport()
 
-/*
- * Export kMaxLength after typed array support is determined.
- */
-exports.kMaxLength = kMaxLength()
+if (!Buffer.TYPED_ARRAY_SUPPORT && typeof console !== 'undefined' &&
+    typeof console.error === 'function') {
+  console.error(
+    'This browser lacks typed array (Uint8Array) support which is required by ' +
+    '`buffer` v5.x. Use `buffer` v4.x if you require old browser support.'
+  )
+}
 
 function typedArraySupport () {
+  // Can typed array instances can be augmented?
   try {
     var arr = new Uint8Array(1)
     arr.__proto__ = {__proto__: Uint8Array.prototype, foo: function () { return 42 }}
-    return arr.foo() === 42 && // typed array instances can be augmented
-        typeof arr.subarray === 'function' && // chrome 9-10 lack `subarray`
-        arr.subarray(1, 1).byteLength === 0 // ie10 has broken `subarray`
+    return arr.foo() === 42
   } catch (e) {
     return false
   }
 }
 
-function kMaxLength () {
-  return Buffer.TYPED_ARRAY_SUPPORT
-    ? 0x7fffffff
-    : 0x3fffffff
-}
-
-function createBuffer (that, length) {
-  if (kMaxLength() < length) {
+function createBuffer (length) {
+  if (length > K_MAX_LENGTH) {
     throw new RangeError('Invalid typed array length')
   }
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    // Return an augmented `Uint8Array` instance, for best performance
-    that = new Uint8Array(length)
-    that.__proto__ = Buffer.prototype
-  } else {
-    // Fallback: Return an object instance of the Buffer class
-    if (that === null) {
-      that = new Buffer(length)
-    }
-    that.length = length
-  }
-
-  return that
+  // Return an augmented `Uint8Array` instance
+  var buf = new Uint8Array(length)
+  buf.__proto__ = Buffer.prototype
+  return buf
 }
 
 /**
@@ -513,10 +489,6 @@ function createBuffer (that, length) {
  */
 
 function Buffer (arg, encodingOrOffset, length) {
-  if (!Buffer.TYPED_ARRAY_SUPPORT && !(this instanceof Buffer)) {
-    return new Buffer(arg, encodingOrOffset, length)
-  }
-
   // Common case.
   if (typeof arg === 'number') {
     if (typeof encodingOrOffset === 'string') {
@@ -524,33 +496,38 @@ function Buffer (arg, encodingOrOffset, length) {
         'If encoding is specified then the first argument must be a string'
       )
     }
-    return allocUnsafe(this, arg)
+    return allocUnsafe(arg)
   }
-  return from(this, arg, encodingOrOffset, length)
+  return from(arg, encodingOrOffset, length)
+}
+
+// Fix subarray() in ES2016. See: https://github.com/feross/buffer/pull/97
+if (typeof Symbol !== 'undefined' && Symbol.species &&
+    Buffer[Symbol.species] === Buffer) {
+  Object.defineProperty(Buffer, Symbol.species, {
+    value: null,
+    configurable: true,
+    enumerable: false,
+    writable: false
+  })
 }
 
 Buffer.poolSize = 8192 // not used by this implementation
 
-// TODO: Legacy, not needed anymore. Remove in next major version.
-Buffer._augment = function (arr) {
-  arr.__proto__ = Buffer.prototype
-  return arr
-}
-
-function from (that, value, encodingOrOffset, length) {
+function from (value, encodingOrOffset, length) {
   if (typeof value === 'number') {
     throw new TypeError('"value" argument must not be a number')
   }
 
-  if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) {
-    return fromArrayBuffer(that, value, encodingOrOffset, length)
+  if (isArrayBuffer(value)) {
+    return fromArrayBuffer(value, encodingOrOffset, length)
   }
 
   if (typeof value === 'string') {
-    return fromString(that, value, encodingOrOffset)
+    return fromString(value, encodingOrOffset)
   }
 
-  return fromObject(that, value)
+  return fromObject(value)
 }
 
 /**
@@ -562,21 +539,13 @@ function from (that, value, encodingOrOffset, length) {
  * Buffer.from(arrayBuffer[, byteOffset[, length]])
  **/
 Buffer.from = function (value, encodingOrOffset, length) {
-  return from(null, value, encodingOrOffset, length)
+  return from(value, encodingOrOffset, length)
 }
 
-if (Buffer.TYPED_ARRAY_SUPPORT) {
-  Buffer.prototype.__proto__ = Uint8Array.prototype
-  Buffer.__proto__ = Uint8Array
-  if (typeof Symbol !== 'undefined' && Symbol.species &&
-      Buffer[Symbol.species] === Buffer) {
-    // Fix subarray() in ES2016. See: https://github.com/feross/buffer/pull/97
-    Object.defineProperty(Buffer, Symbol.species, {
-      value: null,
-      configurable: true
-    })
-  }
-}
+// Note: Change prototype *after* Buffer.from is defined to workaround Chrome bug:
+// https://github.com/feross/buffer/pull/148
+Buffer.prototype.__proto__ = Uint8Array.prototype
+Buffer.__proto__ = Uint8Array
 
 function assertSize (size) {
   if (typeof size !== 'number') {
@@ -586,20 +555,20 @@ function assertSize (size) {
   }
 }
 
-function alloc (that, size, fill, encoding) {
+function alloc (size, fill, encoding) {
   assertSize(size)
   if (size <= 0) {
-    return createBuffer(that, size)
+    return createBuffer(size)
   }
   if (fill !== undefined) {
     // Only pay attention to encoding if it's a string. This
     // prevents accidentally sending in a number that would
     // be interpretted as a start offset.
     return typeof encoding === 'string'
-      ? createBuffer(that, size).fill(fill, encoding)
-      : createBuffer(that, size).fill(fill)
+      ? createBuffer(size).fill(fill, encoding)
+      : createBuffer(size).fill(fill)
   }
-  return createBuffer(that, size)
+  return createBuffer(size)
 }
 
 /**
@@ -607,34 +576,28 @@ function alloc (that, size, fill, encoding) {
  * alloc(size[, fill[, encoding]])
  **/
 Buffer.alloc = function (size, fill, encoding) {
-  return alloc(null, size, fill, encoding)
+  return alloc(size, fill, encoding)
 }
 
-function allocUnsafe (that, size) {
+function allocUnsafe (size) {
   assertSize(size)
-  that = createBuffer(that, size < 0 ? 0 : checked(size) | 0)
-  if (!Buffer.TYPED_ARRAY_SUPPORT) {
-    for (var i = 0; i < size; ++i) {
-      that[i] = 0
-    }
-  }
-  return that
+  return createBuffer(size < 0 ? 0 : checked(size) | 0)
 }
 
 /**
  * Equivalent to Buffer(num), by default creates a non-zero-filled Buffer instance.
  * */
 Buffer.allocUnsafe = function (size) {
-  return allocUnsafe(null, size)
+  return allocUnsafe(size)
 }
 /**
  * Equivalent to SlowBuffer(num), by default creates a non-zero-filled Buffer instance.
  */
 Buffer.allocUnsafeSlow = function (size) {
-  return allocUnsafe(null, size)
+  return allocUnsafe(size)
 }
 
-function fromString (that, string, encoding) {
+function fromString (string, encoding) {
   if (typeof encoding !== 'string' || encoding === '') {
     encoding = 'utf8'
   }
@@ -644,32 +607,30 @@ function fromString (that, string, encoding) {
   }
 
   var length = byteLength(string, encoding) | 0
-  that = createBuffer(that, length)
+  var buf = createBuffer(length)
 
-  var actual = that.write(string, encoding)
+  var actual = buf.write(string, encoding)
 
   if (actual !== length) {
     // Writing a hex string, for example, that contains invalid characters will
     // cause everything after the first invalid character to be ignored. (e.g.
     // 'abxxcd' will be treated as 'ab')
-    that = that.slice(0, actual)
+    buf = buf.slice(0, actual)
   }
 
-  return that
+  return buf
 }
 
-function fromArrayLike (that, array) {
+function fromArrayLike (array) {
   var length = array.length < 0 ? 0 : checked(array.length) | 0
-  that = createBuffer(that, length)
+  var buf = createBuffer(length)
   for (var i = 0; i < length; i += 1) {
-    that[i] = array[i] & 255
+    buf[i] = array[i] & 255
   }
-  return that
+  return buf
 }
 
-function fromArrayBuffer (that, array, byteOffset, length) {
-  array.byteLength // this throws if `array` is not a valid ArrayBuffer
-
+function fromArrayBuffer (array, byteOffset, length) {
   if (byteOffset < 0 || array.byteLength < byteOffset) {
     throw new RangeError('\'offset\' is out of bounds')
   }
@@ -678,49 +639,43 @@ function fromArrayBuffer (that, array, byteOffset, length) {
     throw new RangeError('\'length\' is out of bounds')
   }
 
+  var buf
   if (byteOffset === undefined && length === undefined) {
-    array = new Uint8Array(array)
+    buf = new Uint8Array(array)
   } else if (length === undefined) {
-    array = new Uint8Array(array, byteOffset)
+    buf = new Uint8Array(array, byteOffset)
   } else {
-    array = new Uint8Array(array, byteOffset, length)
+    buf = new Uint8Array(array, byteOffset, length)
   }
 
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    // Return an augmented `Uint8Array` instance, for best performance
-    that = array
-    that.__proto__ = Buffer.prototype
-  } else {
-    // Fallback: Return an object instance of the Buffer class
-    that = fromArrayLike(that, array)
-  }
-  return that
+  // Return an augmented `Uint8Array` instance
+  buf.__proto__ = Buffer.prototype
+  return buf
 }
 
-function fromObject (that, obj) {
+function fromObject (obj) {
   if (Buffer.isBuffer(obj)) {
     var len = checked(obj.length) | 0
-    that = createBuffer(that, len)
+    var buf = createBuffer(len)
 
-    if (that.length === 0) {
-      return that
+    if (buf.length === 0) {
+      return buf
     }
 
-    obj.copy(that, 0, 0, len)
-    return that
+    obj.copy(buf, 0, 0, len)
+    return buf
   }
 
   if (obj) {
-    if ((typeof ArrayBuffer !== 'undefined' &&
-        obj.buffer instanceof ArrayBuffer) || 'length' in obj) {
-      if (typeof obj.length !== 'number' || isnan(obj.length)) {
-        return createBuffer(that, 0)
+    if (isArrayBufferView(obj) || 'length' in obj) {
+      if (typeof obj.length !== 'number' || numberIsNaN(obj.length)) {
+        return createBuffer(0)
       }
-      return fromArrayLike(that, obj)
+      return fromArrayLike(obj)
     }
 
-    if (obj.type === 'Buffer' && isArray(obj.data)) {
-      return fromArrayLike(that, obj.data)
+    if (obj.type === 'Buffer' && Array.isArray(obj.data)) {
+      return fromArrayLike(obj.data)
     }
   }
 
@@ -728,11 +683,11 @@ function fromObject (that, obj) {
 }
 
 function checked (length) {
-  // Note: cannot use `length < kMaxLength()` here because that fails when
+  // Note: cannot use `length < K_MAX_LENGTH` here because that fails when
   // length is NaN (which is otherwise coerced to zero.)
-  if (length >= kMaxLength()) {
+  if (length >= K_MAX_LENGTH) {
     throw new RangeError('Attempt to allocate Buffer larger than maximum ' +
-                         'size: 0x' + kMaxLength().toString(16) + ' bytes')
+                         'size: 0x' + K_MAX_LENGTH.toString(16) + ' bytes')
   }
   return length | 0
 }
@@ -745,7 +700,7 @@ function SlowBuffer (length) {
 }
 
 Buffer.isBuffer = function isBuffer (b) {
-  return !!(b != null && b._isBuffer)
+  return b != null && b._isBuffer === true
 }
 
 Buffer.compare = function compare (a, b) {
@@ -791,7 +746,7 @@ Buffer.isEncoding = function isEncoding (encoding) {
 }
 
 Buffer.concat = function concat (list, length) {
-  if (!isArray(list)) {
+  if (!Array.isArray(list)) {
     throw new TypeError('"list" argument must be an Array of Buffers')
   }
 
@@ -824,8 +779,7 @@ function byteLength (string, encoding) {
   if (Buffer.isBuffer(string)) {
     return string.length
   }
-  if (typeof ArrayBuffer !== 'undefined' && typeof ArrayBuffer.isView === 'function' &&
-      (ArrayBuffer.isView(string) || string instanceof ArrayBuffer)) {
+  if (isArrayBufferView(string) || isArrayBuffer(string)) {
     return string.byteLength
   }
   if (typeof string !== 'string') {
@@ -935,8 +889,12 @@ function slowToString (encoding, start, end) {
   }
 }
 
-// The property is used by `Buffer.isBuffer` and `is-buffer` (in Safari 5-7) to detect
-// Buffer instances.
+// This property is used by `Buffer.isBuffer` (and the `is-buffer` npm package)
+// to detect a Buffer instance. It's not possible to use `instanceof Buffer`
+// reliably in a browserify context because there could be multiple different
+// copies of the 'buffer' package in use. This method works even for Buffer
+// instances that were created from another copy of the `buffer` package.
+// See: https://github.com/feross/buffer/issues/154
 Buffer.prototype._isBuffer = true
 
 function swap (b, n, m) {
@@ -983,7 +941,7 @@ Buffer.prototype.swap64 = function swap64 () {
 }
 
 Buffer.prototype.toString = function toString () {
-  var length = this.length | 0
+  var length = this.length
   if (length === 0) return ''
   if (arguments.length === 0) return utf8Slice(this, 0, length)
   return slowToString.apply(this, arguments)
@@ -1087,7 +1045,7 @@ function bidirectionalIndexOf (buffer, val, byteOffset, encoding, dir) {
     byteOffset = -0x80000000
   }
   byteOffset = +byteOffset  // Coerce to Number.
-  if (isNaN(byteOffset)) {
+  if (numberIsNaN(byteOffset)) {
     // byteOffset: it it's undefined, null, NaN, "foo", etc, search whole buffer
     byteOffset = dir ? 0 : (buffer.length - 1)
   }
@@ -1116,8 +1074,7 @@ function bidirectionalIndexOf (buffer, val, byteOffset, encoding, dir) {
     return arrayIndexOf(buffer, val, byteOffset, encoding, dir)
   } else if (typeof val === 'number') {
     val = val & 0xFF // Search for a byte value [0-255]
-    if (Buffer.TYPED_ARRAY_SUPPORT &&
-        typeof Uint8Array.prototype.indexOf === 'function') {
+    if (typeof Uint8Array.prototype.indexOf === 'function') {
       if (dir) {
         return Uint8Array.prototype.indexOf.call(buffer, val, byteOffset)
       } else {
@@ -1219,7 +1176,7 @@ function hexWrite (buf, string, offset, length) {
   }
   for (var i = 0; i < length; ++i) {
     var parsed = parseInt(string.substr(i * 2, 2), 16)
-    if (isNaN(parsed)) return i
+    if (numberIsNaN(parsed)) return i
     buf[offset + i] = parsed
   }
   return i
@@ -1258,15 +1215,14 @@ Buffer.prototype.write = function write (string, offset, length, encoding) {
     offset = 0
   // Buffer#write(string, offset[, length][, encoding])
   } else if (isFinite(offset)) {
-    offset = offset | 0
+    offset = offset >>> 0
     if (isFinite(length)) {
-      length = length | 0
+      length = length >>> 0
       if (encoding === undefined) encoding = 'utf8'
     } else {
       encoding = length
       length = undefined
     }
-  // legacy write(string, encoding, offset, length) - remove in v0.13
   } else {
     throw new Error(
       'Buffer.write(string, encoding, offset[, length]) is no longer supported'
@@ -1465,7 +1421,7 @@ function utf16leSlice (buf, start, end) {
   var bytes = buf.slice(start, end)
   var res = ''
   for (var i = 0; i < bytes.length; i += 2) {
-    res += String.fromCharCode(bytes[i] + bytes[i + 1] * 256)
+    res += String.fromCharCode(bytes[i] + (bytes[i + 1] * 256))
   }
   return res
 }
@@ -1491,18 +1447,9 @@ Buffer.prototype.slice = function slice (start, end) {
 
   if (end < start) end = start
 
-  var newBuf
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    newBuf = this.subarray(start, end)
-    newBuf.__proto__ = Buffer.prototype
-  } else {
-    var sliceLen = end - start
-    newBuf = new Buffer(sliceLen, undefined)
-    for (var i = 0; i < sliceLen; ++i) {
-      newBuf[i] = this[i + start]
-    }
-  }
-
+  var newBuf = this.subarray(start, end)
+  // Return an augmented `Uint8Array` instance
+  newBuf.__proto__ = Buffer.prototype
   return newBuf
 }
 
@@ -1515,8 +1462,8 @@ function checkOffset (offset, ext, length) {
 }
 
 Buffer.prototype.readUIntLE = function readUIntLE (offset, byteLength, noAssert) {
-  offset = offset | 0
-  byteLength = byteLength | 0
+  offset = offset >>> 0
+  byteLength = byteLength >>> 0
   if (!noAssert) checkOffset(offset, byteLength, this.length)
 
   var val = this[offset]
@@ -1530,8 +1477,8 @@ Buffer.prototype.readUIntLE = function readUIntLE (offset, byteLength, noAssert)
 }
 
 Buffer.prototype.readUIntBE = function readUIntBE (offset, byteLength, noAssert) {
-  offset = offset | 0
-  byteLength = byteLength | 0
+  offset = offset >>> 0
+  byteLength = byteLength >>> 0
   if (!noAssert) {
     checkOffset(offset, byteLength, this.length)
   }
@@ -1546,21 +1493,25 @@ Buffer.prototype.readUIntBE = function readUIntBE (offset, byteLength, noAssert)
 }
 
 Buffer.prototype.readUInt8 = function readUInt8 (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 1, this.length)
   return this[offset]
 }
 
 Buffer.prototype.readUInt16LE = function readUInt16LE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 2, this.length)
   return this[offset] | (this[offset + 1] << 8)
 }
 
 Buffer.prototype.readUInt16BE = function readUInt16BE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 2, this.length)
   return (this[offset] << 8) | this[offset + 1]
 }
 
 Buffer.prototype.readUInt32LE = function readUInt32LE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 4, this.length)
 
   return ((this[offset]) |
@@ -1570,6 +1521,7 @@ Buffer.prototype.readUInt32LE = function readUInt32LE (offset, noAssert) {
 }
 
 Buffer.prototype.readUInt32BE = function readUInt32BE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 4, this.length)
 
   return (this[offset] * 0x1000000) +
@@ -1579,8 +1531,8 @@ Buffer.prototype.readUInt32BE = function readUInt32BE (offset, noAssert) {
 }
 
 Buffer.prototype.readIntLE = function readIntLE (offset, byteLength, noAssert) {
-  offset = offset | 0
-  byteLength = byteLength | 0
+  offset = offset >>> 0
+  byteLength = byteLength >>> 0
   if (!noAssert) checkOffset(offset, byteLength, this.length)
 
   var val = this[offset]
@@ -1597,8 +1549,8 @@ Buffer.prototype.readIntLE = function readIntLE (offset, byteLength, noAssert) {
 }
 
 Buffer.prototype.readIntBE = function readIntBE (offset, byteLength, noAssert) {
-  offset = offset | 0
-  byteLength = byteLength | 0
+  offset = offset >>> 0
+  byteLength = byteLength >>> 0
   if (!noAssert) checkOffset(offset, byteLength, this.length)
 
   var i = byteLength
@@ -1615,24 +1567,28 @@ Buffer.prototype.readIntBE = function readIntBE (offset, byteLength, noAssert) {
 }
 
 Buffer.prototype.readInt8 = function readInt8 (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 1, this.length)
   if (!(this[offset] & 0x80)) return (this[offset])
   return ((0xff - this[offset] + 1) * -1)
 }
 
 Buffer.prototype.readInt16LE = function readInt16LE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 2, this.length)
   var val = this[offset] | (this[offset + 1] << 8)
   return (val & 0x8000) ? val | 0xFFFF0000 : val
 }
 
 Buffer.prototype.readInt16BE = function readInt16BE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 2, this.length)
   var val = this[offset + 1] | (this[offset] << 8)
   return (val & 0x8000) ? val | 0xFFFF0000 : val
 }
 
 Buffer.prototype.readInt32LE = function readInt32LE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 4, this.length)
 
   return (this[offset]) |
@@ -1642,6 +1598,7 @@ Buffer.prototype.readInt32LE = function readInt32LE (offset, noAssert) {
 }
 
 Buffer.prototype.readInt32BE = function readInt32BE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 4, this.length)
 
   return (this[offset] << 24) |
@@ -1651,21 +1608,25 @@ Buffer.prototype.readInt32BE = function readInt32BE (offset, noAssert) {
 }
 
 Buffer.prototype.readFloatLE = function readFloatLE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 4, this.length)
   return ieee754.read(this, offset, true, 23, 4)
 }
 
 Buffer.prototype.readFloatBE = function readFloatBE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 4, this.length)
   return ieee754.read(this, offset, false, 23, 4)
 }
 
 Buffer.prototype.readDoubleLE = function readDoubleLE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 8, this.length)
   return ieee754.read(this, offset, true, 52, 8)
 }
 
 Buffer.prototype.readDoubleBE = function readDoubleBE (offset, noAssert) {
+  offset = offset >>> 0
   if (!noAssert) checkOffset(offset, 8, this.length)
   return ieee754.read(this, offset, false, 52, 8)
 }
@@ -1678,8 +1639,8 @@ function checkInt (buf, value, offset, ext, max, min) {
 
 Buffer.prototype.writeUIntLE = function writeUIntLE (value, offset, byteLength, noAssert) {
   value = +value
-  offset = offset | 0
-  byteLength = byteLength | 0
+  offset = offset >>> 0
+  byteLength = byteLength >>> 0
   if (!noAssert) {
     var maxBytes = Math.pow(2, 8 * byteLength) - 1
     checkInt(this, value, offset, byteLength, maxBytes, 0)
@@ -1697,8 +1658,8 @@ Buffer.prototype.writeUIntLE = function writeUIntLE (value, offset, byteLength, 
 
 Buffer.prototype.writeUIntBE = function writeUIntBE (value, offset, byteLength, noAssert) {
   value = +value
-  offset = offset | 0
-  byteLength = byteLength | 0
+  offset = offset >>> 0
+  byteLength = byteLength >>> 0
   if (!noAssert) {
     var maxBytes = Math.pow(2, 8 * byteLength) - 1
     checkInt(this, value, offset, byteLength, maxBytes, 0)
@@ -1716,89 +1677,57 @@ Buffer.prototype.writeUIntBE = function writeUIntBE (value, offset, byteLength, 
 
 Buffer.prototype.writeUInt8 = function writeUInt8 (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 1, 0xff, 0)
-  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
   this[offset] = (value & 0xff)
   return offset + 1
 }
 
-function objectWriteUInt16 (buf, value, offset, littleEndian) {
-  if (value < 0) value = 0xffff + value + 1
-  for (var i = 0, j = Math.min(buf.length - offset, 2); i < j; ++i) {
-    buf[offset + i] = (value & (0xff << (8 * (littleEndian ? i : 1 - i)))) >>>
-      (littleEndian ? i : 1 - i) * 8
-  }
-}
-
 Buffer.prototype.writeUInt16LE = function writeUInt16LE (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value & 0xff)
-    this[offset + 1] = (value >>> 8)
-  } else {
-    objectWriteUInt16(this, value, offset, true)
-  }
+  this[offset] = (value & 0xff)
+  this[offset + 1] = (value >>> 8)
   return offset + 2
 }
 
 Buffer.prototype.writeUInt16BE = function writeUInt16BE (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value >>> 8)
-    this[offset + 1] = (value & 0xff)
-  } else {
-    objectWriteUInt16(this, value, offset, false)
-  }
+  this[offset] = (value >>> 8)
+  this[offset + 1] = (value & 0xff)
   return offset + 2
-}
-
-function objectWriteUInt32 (buf, value, offset, littleEndian) {
-  if (value < 0) value = 0xffffffff + value + 1
-  for (var i = 0, j = Math.min(buf.length - offset, 4); i < j; ++i) {
-    buf[offset + i] = (value >>> (littleEndian ? i : 3 - i) * 8) & 0xff
-  }
 }
 
 Buffer.prototype.writeUInt32LE = function writeUInt32LE (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 4, 0xffffffff, 0)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset + 3] = (value >>> 24)
-    this[offset + 2] = (value >>> 16)
-    this[offset + 1] = (value >>> 8)
-    this[offset] = (value & 0xff)
-  } else {
-    objectWriteUInt32(this, value, offset, true)
-  }
+  this[offset + 3] = (value >>> 24)
+  this[offset + 2] = (value >>> 16)
+  this[offset + 1] = (value >>> 8)
+  this[offset] = (value & 0xff)
   return offset + 4
 }
 
 Buffer.prototype.writeUInt32BE = function writeUInt32BE (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 4, 0xffffffff, 0)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value >>> 24)
-    this[offset + 1] = (value >>> 16)
-    this[offset + 2] = (value >>> 8)
-    this[offset + 3] = (value & 0xff)
-  } else {
-    objectWriteUInt32(this, value, offset, false)
-  }
+  this[offset] = (value >>> 24)
+  this[offset + 1] = (value >>> 16)
+  this[offset + 2] = (value >>> 8)
+  this[offset + 3] = (value & 0xff)
   return offset + 4
 }
 
 Buffer.prototype.writeIntLE = function writeIntLE (value, offset, byteLength, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) {
-    var limit = Math.pow(2, 8 * byteLength - 1)
+    var limit = Math.pow(2, (8 * byteLength) - 1)
 
     checkInt(this, value, offset, byteLength, limit - 1, -limit)
   }
@@ -1819,9 +1748,9 @@ Buffer.prototype.writeIntLE = function writeIntLE (value, offset, byteLength, no
 
 Buffer.prototype.writeIntBE = function writeIntBE (value, offset, byteLength, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) {
-    var limit = Math.pow(2, 8 * byteLength - 1)
+    var limit = Math.pow(2, (8 * byteLength) - 1)
 
     checkInt(this, value, offset, byteLength, limit - 1, -limit)
   }
@@ -1842,9 +1771,8 @@ Buffer.prototype.writeIntBE = function writeIntBE (value, offset, byteLength, no
 
 Buffer.prototype.writeInt8 = function writeInt8 (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 1, 0x7f, -0x80)
-  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
   if (value < 0) value = 0xff + value + 1
   this[offset] = (value & 0xff)
   return offset + 1
@@ -1852,58 +1780,42 @@ Buffer.prototype.writeInt8 = function writeInt8 (value, offset, noAssert) {
 
 Buffer.prototype.writeInt16LE = function writeInt16LE (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value & 0xff)
-    this[offset + 1] = (value >>> 8)
-  } else {
-    objectWriteUInt16(this, value, offset, true)
-  }
+  this[offset] = (value & 0xff)
+  this[offset + 1] = (value >>> 8)
   return offset + 2
 }
 
 Buffer.prototype.writeInt16BE = function writeInt16BE (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value >>> 8)
-    this[offset + 1] = (value & 0xff)
-  } else {
-    objectWriteUInt16(this, value, offset, false)
-  }
+  this[offset] = (value >>> 8)
+  this[offset + 1] = (value & 0xff)
   return offset + 2
 }
 
 Buffer.prototype.writeInt32LE = function writeInt32LE (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value & 0xff)
-    this[offset + 1] = (value >>> 8)
-    this[offset + 2] = (value >>> 16)
-    this[offset + 3] = (value >>> 24)
-  } else {
-    objectWriteUInt32(this, value, offset, true)
-  }
+  this[offset] = (value & 0xff)
+  this[offset + 1] = (value >>> 8)
+  this[offset + 2] = (value >>> 16)
+  this[offset + 3] = (value >>> 24)
   return offset + 4
 }
 
 Buffer.prototype.writeInt32BE = function writeInt32BE (value, offset, noAssert) {
   value = +value
-  offset = offset | 0
+  offset = offset >>> 0
   if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
   if (value < 0) value = 0xffffffff + value + 1
-  if (Buffer.TYPED_ARRAY_SUPPORT) {
-    this[offset] = (value >>> 24)
-    this[offset + 1] = (value >>> 16)
-    this[offset + 2] = (value >>> 8)
-    this[offset + 3] = (value & 0xff)
-  } else {
-    objectWriteUInt32(this, value, offset, false)
-  }
+  this[offset] = (value >>> 24)
+  this[offset + 1] = (value >>> 16)
+  this[offset + 2] = (value >>> 8)
+  this[offset + 3] = (value & 0xff)
   return offset + 4
 }
 
@@ -1913,6 +1825,8 @@ function checkIEEE754 (buf, value, offset, ext, max, min) {
 }
 
 function writeFloat (buf, value, offset, littleEndian, noAssert) {
+  value = +value
+  offset = offset >>> 0
   if (!noAssert) {
     checkIEEE754(buf, value, offset, 4, 3.4028234663852886e+38, -3.4028234663852886e+38)
   }
@@ -1929,6 +1843,8 @@ Buffer.prototype.writeFloatBE = function writeFloatBE (value, offset, noAssert) 
 }
 
 function writeDouble (buf, value, offset, littleEndian, noAssert) {
+  value = +value
+  offset = offset >>> 0
   if (!noAssert) {
     checkIEEE754(buf, value, offset, 8, 1.7976931348623157E+308, -1.7976931348623157E+308)
   }
@@ -1977,7 +1893,7 @@ Buffer.prototype.copy = function copy (target, targetStart, start, end) {
     for (i = len - 1; i >= 0; --i) {
       target[i + targetStart] = this[i + start]
     }
-  } else if (len < 1000 || !Buffer.TYPED_ARRAY_SUPPORT) {
+  } else if (len < 1000) {
     // ascending copy from start
     for (i = 0; i < len; ++i) {
       target[i + targetStart] = this[i + start]
@@ -2046,7 +1962,7 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
   } else {
     var bytes = Buffer.isBuffer(val)
       ? val
-      : utf8ToBytes(new Buffer(val, encoding).toString())
+      : new Buffer(val, encoding)
     var len = bytes.length
     for (i = 0; i < end - start; ++i) {
       this[i + start] = bytes[i % len]
@@ -2059,11 +1975,11 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
 // HELPER FUNCTIONS
 // ================
 
-var INVALID_BASE64_RE = /[^+\/0-9A-Za-z-_]/g
+var INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g
 
 function base64clean (str) {
   // Node strips out invalid characters like \n and \t from the string, base64-js does not
-  str = stringtrim(str).replace(INVALID_BASE64_RE, '')
+  str = str.trim().replace(INVALID_BASE64_RE, '')
   // Node converts strings with length < 2 to ''
   if (str.length < 2) return ''
   // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
@@ -2071,11 +1987,6 @@ function base64clean (str) {
     str = str + '='
   }
   return str
-}
-
-function stringtrim (str) {
-  if (str.trim) return str.trim()
-  return str.replace(/^\s+|\s+$/g, '')
 }
 
 function toHex (n) {
@@ -2200,13 +2111,24 @@ function blitBuffer (src, dst, offset, length) {
   return i
 }
 
-function isnan (val) {
-  return val !== val // eslint-disable-line no-self-compare
+// ArrayBuffers from another context (i.e. an iframe) do not pass the `instanceof` check
+// but they should be treated as valid. See: https://github.com/feross/buffer/issues/166
+function isArrayBuffer (obj) {
+  return obj instanceof ArrayBuffer ||
+    (obj != null && obj.constructor != null && obj.constructor.name === 'ArrayBuffer' &&
+      typeof obj.byteLength === 'number')
 }
 
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+// Node 0.10 supports `ArrayBuffer` but lacks `ArrayBuffer.isView`
+function isArrayBufferView (obj) {
+  return (typeof ArrayBuffer.isView === 'function') && ArrayBuffer.isView(obj)
+}
 
-},{"base64-js":3,"ieee754":93,"isarray":96}],6:[function(_dereq_,module,exports){
+function numberIsNaN (obj) {
+  return obj !== obj // eslint-disable-line no-self-compare
+}
+
+},{"base64-js":3,"ieee754":93}],6:[function(_dereq_,module,exports){
 _dereq_('../modules/es6.object.to-string');
 _dereq_('../modules/es6.string.iterator');
 _dereq_('../modules/web.dom.iterable');
@@ -9506,7 +9428,7 @@ exports.uncompressWorker = function () {
     return new FlateWorker("Inflate", {});
 };
 
-},{"./stream/GenericWorker":150,"./utils":154,"pako":164}],133:[function(_dereq_,module,exports){
+},{"./stream/GenericWorker":150,"./utils":154,"pako":165}],133:[function(_dereq_,module,exports){
 'use strict';
 
 /**
@@ -12711,7 +12633,7 @@ function forEach(xs, f) {
     f(xs[i], i);
   }
 }
-},{"./_stream_readable":160,"./_stream_writable":162,"core-util-is":70,"inherits":94,"process-nextick-args":183}],159:[function(_dereq_,module,exports){
+},{"./_stream_readable":160,"./_stream_writable":162,"core-util-is":70,"inherits":94,"process-nextick-args":184}],159:[function(_dereq_,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -13622,7 +13544,7 @@ function indexOf(xs, x) {
 }
 }).call(this,_dereq_('_process'))
 
-},{"./_stream_duplex":158,"_process":184,"buffer":5,"core-util-is":70,"events":73,"inherits":94,"isarray":96,"process-nextick-args":183,"string_decoder/":185,"util":4}],161:[function(_dereq_,module,exports){
+},{"./_stream_duplex":158,"_process":185,"buffer":5,"core-util-is":70,"events":73,"inherits":94,"isarray":96,"process-nextick-args":184,"string_decoder/":164,"util":4}],161:[function(_dereq_,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -14323,7 +14245,7 @@ function CorkedRequest(state) {
 }
 }).call(this,_dereq_('_process'))
 
-},{"./_stream_duplex":158,"_process":184,"buffer":5,"core-util-is":70,"events":73,"inherits":94,"process-nextick-args":183,"util-deprecate":188}],163:[function(_dereq_,module,exports){
+},{"./_stream_duplex":158,"_process":185,"buffer":5,"core-util-is":70,"events":73,"inherits":94,"process-nextick-args":184,"util-deprecate":188}],163:[function(_dereq_,module,exports){
 var Stream = (function (){
   try {
     return _dereq_('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
@@ -14338,6 +14260,229 @@ exports.Transform = _dereq_('./lib/_stream_transform.js');
 exports.PassThrough = _dereq_('./lib/_stream_passthrough.js');
 
 },{"./lib/_stream_duplex.js":158,"./lib/_stream_passthrough.js":159,"./lib/_stream_readable.js":160,"./lib/_stream_transform.js":161,"./lib/_stream_writable.js":162}],164:[function(_dereq_,module,exports){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+var Buffer = _dereq_('buffer').Buffer;
+
+var isBufferEncoding = Buffer.isEncoding
+  || function(encoding) {
+       switch (encoding && encoding.toLowerCase()) {
+         case 'hex': case 'utf8': case 'utf-8': case 'ascii': case 'binary': case 'base64': case 'ucs2': case 'ucs-2': case 'utf16le': case 'utf-16le': case 'raw': return true;
+         default: return false;
+       }
+     }
+
+
+function assertEncoding(encoding) {
+  if (encoding && !isBufferEncoding(encoding)) {
+    throw new Error('Unknown encoding: ' + encoding);
+  }
+}
+
+// StringDecoder provides an interface for efficiently splitting a series of
+// buffers into a series of JS strings without breaking apart multi-byte
+// characters. CESU-8 is handled as part of the UTF-8 encoding.
+//
+// @TODO Handling all encodings inside a single object makes it very difficult
+// to reason about this code, so it should be split up in the future.
+// @TODO There should be a utf8-strict encoding that rejects invalid UTF-8 code
+// points as used by CESU-8.
+var StringDecoder = exports.StringDecoder = function(encoding) {
+  this.encoding = (encoding || 'utf8').toLowerCase().replace(/[-_]/, '');
+  assertEncoding(encoding);
+  switch (this.encoding) {
+    case 'utf8':
+      // CESU-8 represents each of Surrogate Pair by 3-bytes
+      this.surrogateSize = 3;
+      break;
+    case 'ucs2':
+    case 'utf16le':
+      // UTF-16 represents each of Surrogate Pair by 2-bytes
+      this.surrogateSize = 2;
+      this.detectIncompleteChar = utf16DetectIncompleteChar;
+      break;
+    case 'base64':
+      // Base-64 stores 3 bytes in 4 chars, and pads the remainder.
+      this.surrogateSize = 3;
+      this.detectIncompleteChar = base64DetectIncompleteChar;
+      break;
+    default:
+      this.write = passThroughWrite;
+      return;
+  }
+
+  // Enough space to store all bytes of a single character. UTF-8 needs 4
+  // bytes, but CESU-8 may require up to 6 (3 bytes per surrogate).
+  this.charBuffer = new Buffer(6);
+  // Number of bytes received for the current incomplete multi-byte character.
+  this.charReceived = 0;
+  // Number of bytes expected for the current incomplete multi-byte character.
+  this.charLength = 0;
+};
+
+
+// write decodes the given buffer and returns it as JS string that is
+// guaranteed to not contain any partial multi-byte characters. Any partial
+// character found at the end of the buffer is buffered up, and will be
+// returned when calling write again with the remaining bytes.
+//
+// Note: Converting a Buffer containing an orphan surrogate to a String
+// currently works, but converting a String to a Buffer (via `new Buffer`, or
+// Buffer#write) will replace incomplete surrogates with the unicode
+// replacement character. See https://codereview.chromium.org/121173009/ .
+StringDecoder.prototype.write = function(buffer) {
+  var charStr = '';
+  // if our last write ended with an incomplete multibyte character
+  while (this.charLength) {
+    // determine how many remaining bytes this buffer has to offer for this char
+    var available = (buffer.length >= this.charLength - this.charReceived) ?
+        this.charLength - this.charReceived :
+        buffer.length;
+
+    // add the new bytes to the char buffer
+    buffer.copy(this.charBuffer, this.charReceived, 0, available);
+    this.charReceived += available;
+
+    if (this.charReceived < this.charLength) {
+      // still not enough chars in this buffer? wait for more ...
+      return '';
+    }
+
+    // remove bytes belonging to the current character from the buffer
+    buffer = buffer.slice(available, buffer.length);
+
+    // get the character that was split
+    charStr = this.charBuffer.slice(0, this.charLength).toString(this.encoding);
+
+    // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
+    var charCode = charStr.charCodeAt(charStr.length - 1);
+    if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+      this.charLength += this.surrogateSize;
+      charStr = '';
+      continue;
+    }
+    this.charReceived = this.charLength = 0;
+
+    // if there are no more bytes in this buffer, just emit our char
+    if (buffer.length === 0) {
+      return charStr;
+    }
+    break;
+  }
+
+  // determine and set charLength / charReceived
+  this.detectIncompleteChar(buffer);
+
+  var end = buffer.length;
+  if (this.charLength) {
+    // buffer the incomplete character bytes we got
+    buffer.copy(this.charBuffer, 0, buffer.length - this.charReceived, end);
+    end -= this.charReceived;
+  }
+
+  charStr += buffer.toString(this.encoding, 0, end);
+
+  var end = charStr.length - 1;
+  var charCode = charStr.charCodeAt(end);
+  // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
+  if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+    var size = this.surrogateSize;
+    this.charLength += size;
+    this.charReceived += size;
+    this.charBuffer.copy(this.charBuffer, size, 0, size);
+    buffer.copy(this.charBuffer, 0, 0, size);
+    return charStr.substring(0, end);
+  }
+
+  // or just emit the charStr
+  return charStr;
+};
+
+// detectIncompleteChar determines if there is an incomplete UTF-8 character at
+// the end of the given buffer. If so, it sets this.charLength to the byte
+// length that character, and sets this.charReceived to the number of bytes
+// that are available for this character.
+StringDecoder.prototype.detectIncompleteChar = function(buffer) {
+  // determine how many bytes we have to check at the end of this buffer
+  var i = (buffer.length >= 3) ? 3 : buffer.length;
+
+  // Figure out if one of the last i bytes of our buffer announces an
+  // incomplete char.
+  for (; i > 0; i--) {
+    var c = buffer[buffer.length - i];
+
+    // See http://en.wikipedia.org/wiki/UTF-8#Description
+
+    // 110XXXXX
+    if (i == 1 && c >> 5 == 0x06) {
+      this.charLength = 2;
+      break;
+    }
+
+    // 1110XXXX
+    if (i <= 2 && c >> 4 == 0x0E) {
+      this.charLength = 3;
+      break;
+    }
+
+    // 11110XXX
+    if (i <= 3 && c >> 3 == 0x1E) {
+      this.charLength = 4;
+      break;
+    }
+  }
+  this.charReceived = i;
+};
+
+StringDecoder.prototype.end = function(buffer) {
+  var res = '';
+  if (buffer && buffer.length)
+    res = this.write(buffer);
+
+  if (this.charReceived) {
+    var cr = this.charReceived;
+    var buf = this.charBuffer;
+    var enc = this.encoding;
+    res += buf.slice(0, cr).toString(enc);
+  }
+
+  return res;
+};
+
+function passThroughWrite(buffer) {
+  return buffer.toString(this.encoding);
+}
+
+function utf16DetectIncompleteChar(buffer) {
+  this.charReceived = buffer.length % 2;
+  this.charLength = this.charReceived ? 2 : 0;
+}
+
+function base64DetectIncompleteChar(buffer) {
+  this.charReceived = buffer.length % 3;
+  this.charLength = this.charReceived ? 3 : 0;
+}
+
+},{"buffer":5}],165:[function(_dereq_,module,exports){
 // Top level file is just a mixin of submodules & constants
 'use strict';
 
@@ -14353,7 +14498,7 @@ assign(pako, deflate, inflate, constants);
 
 module.exports = pako;
 
-},{"./lib/deflate":165,"./lib/inflate":166,"./lib/utils/common":167,"./lib/zlib/constants":170}],165:[function(_dereq_,module,exports){
+},{"./lib/deflate":166,"./lib/inflate":167,"./lib/utils/common":168,"./lib/zlib/constants":171}],166:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -14714,7 +14859,7 @@ function deflate(input, options) {
   deflator.push(input, true);
 
   // That will never happens, if you don't cheat with options :)
-  if (deflator.err) { throw deflator.msg; }
+  if (deflator.err) { throw deflator.msg || msg[deflator.err]; }
 
   return deflator.result;
 }
@@ -14755,7 +14900,7 @@ exports.deflate = deflate;
 exports.deflateRaw = deflateRaw;
 exports.gzip = gzip;
 
-},{"./utils/common":167,"./utils/strings":168,"./zlib/deflate":172,"./zlib/messages":177,"./zlib/zstream":179}],166:[function(_dereq_,module,exports){
+},{"./utils/common":168,"./utils/strings":169,"./zlib/deflate":173,"./zlib/messages":178,"./zlib/zstream":180}],167:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -15139,7 +15284,7 @@ function inflate(input, options) {
   inflator.push(input, true);
 
   // That will never happens, if you don't cheat with options :)
-  if (inflator.err) { throw inflator.msg; }
+  if (inflator.err) { throw inflator.msg || msg[inflator.err]; }
 
   return inflator.result;
 }
@@ -15175,7 +15320,7 @@ exports.inflate = inflate;
 exports.inflateRaw = inflateRaw;
 exports.ungzip  = inflate;
 
-},{"./utils/common":167,"./utils/strings":168,"./zlib/constants":170,"./zlib/gzheader":173,"./zlib/inflate":175,"./zlib/messages":177,"./zlib/zstream":179}],167:[function(_dereq_,module,exports){
+},{"./utils/common":168,"./utils/strings":169,"./zlib/constants":171,"./zlib/gzheader":174,"./zlib/inflate":176,"./zlib/messages":178,"./zlib/zstream":180}],168:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -15279,7 +15424,7 @@ exports.setTyped = function (on) {
 
 exports.setTyped(TYPED_OK);
 
-},{}],168:[function(_dereq_,module,exports){
+},{}],169:[function(_dereq_,module,exports){
 // String encode/decode helpers
 'use strict';
 
@@ -15466,12 +15611,31 @@ exports.utf8border = function (buf, max) {
   return (pos + _utf8len[buf[pos]] > max) ? pos : max;
 };
 
-},{"./common":167}],169:[function(_dereq_,module,exports){
+},{"./common":168}],170:[function(_dereq_,module,exports){
 'use strict';
 
 // Note: adler32 takes 12% for level 0 and 2% for level 6.
 // It doesn't worth to make additional optimizationa as in original.
 // Small size is preferable.
+
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 function adler32(adler, buf, len, pos) {
   var s1 = (adler & 0xffff) |0,
@@ -15500,9 +15664,27 @@ function adler32(adler, buf, len, pos) {
 
 module.exports = adler32;
 
-},{}],170:[function(_dereq_,module,exports){
+},{}],171:[function(_dereq_,module,exports){
 'use strict';
 
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 module.exports = {
 
@@ -15552,13 +15734,31 @@ module.exports = {
   //Z_NULL:                 null // Use -1 or null inline, depending on var type
 };
 
-},{}],171:[function(_dereq_,module,exports){
+},{}],172:[function(_dereq_,module,exports){
 'use strict';
 
 // Note: we can't get significant speed boost here.
 // So write code to minimize size - no pregenerated tables
 // and array tools dependencies.
 
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 // Use ordinary array, since untyped makes no boost here
 function makeTable() {
@@ -15595,8 +15795,27 @@ function crc32(crc, buf, len, pos) {
 
 module.exports = crc32;
 
-},{}],172:[function(_dereq_,module,exports){
+},{}],173:[function(_dereq_,module,exports){
 'use strict';
+
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 var utils   = _dereq_('../utils/common');
 var trees   = _dereq_('./trees');
@@ -17452,9 +17671,27 @@ exports.deflatePrime = deflatePrime;
 exports.deflateTune = deflateTune;
 */
 
-},{"../utils/common":167,"./adler32":169,"./crc32":171,"./messages":177,"./trees":178}],173:[function(_dereq_,module,exports){
+},{"../utils/common":168,"./adler32":170,"./crc32":172,"./messages":178,"./trees":179}],174:[function(_dereq_,module,exports){
 'use strict';
 
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 function GZheader() {
   /* true if compressed data believed to be text */
@@ -17494,8 +17731,27 @@ function GZheader() {
 
 module.exports = GZheader;
 
-},{}],174:[function(_dereq_,module,exports){
+},{}],175:[function(_dereq_,module,exports){
 'use strict';
+
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 // See state defs from inflate.js
 var BAD = 30;       /* got a data error -- remain here until reset */
@@ -17822,9 +18078,27 @@ module.exports = function inflate_fast(strm, start) {
   return;
 };
 
-},{}],175:[function(_dereq_,module,exports){
+},{}],176:[function(_dereq_,module,exports){
 'use strict';
 
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 var utils         = _dereq_('../utils/common');
 var adler32       = _dereq_('./adler32');
@@ -19362,9 +19636,27 @@ exports.inflateSyncPoint = inflateSyncPoint;
 exports.inflateUndermine = inflateUndermine;
 */
 
-},{"../utils/common":167,"./adler32":169,"./crc32":171,"./inffast":174,"./inftrees":176}],176:[function(_dereq_,module,exports){
+},{"../utils/common":168,"./adler32":170,"./crc32":172,"./inffast":175,"./inftrees":177}],177:[function(_dereq_,module,exports){
 'use strict';
 
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 var utils = _dereq_('../utils/common');
 
@@ -19592,10 +19884,8 @@ module.exports = function inflate_table(type, lens, lens_index, codes, table, ta
     return 1;
   }
 
-  var i = 0;
   /* process all codes and make table entries */
   for (;;) {
-    i++;
     /* create table entry */
     here_bits = len - drop;
     if (work[sym] < end) {
@@ -19691,8 +19981,27 @@ module.exports = function inflate_table(type, lens, lens_index, codes, table, ta
   return 0;
 };
 
-},{"../utils/common":167}],177:[function(_dereq_,module,exports){
+},{"../utils/common":168}],178:[function(_dereq_,module,exports){
 'use strict';
+
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 module.exports = {
   2:      'need dictionary',     /* Z_NEED_DICT       2  */
@@ -19706,9 +20015,27 @@ module.exports = {
   '-6':   'incompatible version' /* Z_VERSION_ERROR (-6) */
 };
 
-},{}],178:[function(_dereq_,module,exports){
+},{}],179:[function(_dereq_,module,exports){
 'use strict';
 
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 var utils = _dereq_('../utils/common');
 
@@ -20910,9 +21237,27 @@ exports._tr_flush_block  = _tr_flush_block;
 exports._tr_tally = _tr_tally;
 exports._tr_align = _tr_align;
 
-},{"../utils/common":167}],179:[function(_dereq_,module,exports){
+},{"../utils/common":168}],180:[function(_dereq_,module,exports){
 'use strict';
 
+// (C) 1995-2013 Jean-loup Gailly and Mark Adler
+// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//   claim that you wrote the original software. If you use this software
+//   in a product, an acknowledgment in the product documentation would be
+//   appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//   misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
 
 function ZStream() {
   /* next input byte */
@@ -20941,7 +21286,7 @@ function ZStream() {
 
 module.exports = ZStream;
 
-},{}],180:[function(_dereq_,module,exports){
+},{}],181:[function(_dereq_,module,exports){
 'use strict';
 
 // lightweight Buffer shim for pbf browser build
@@ -21102,7 +21447,7 @@ function encodeString(str) {
     return bytes;
 }
 
-},{"ieee754":93}],181:[function(_dereq_,module,exports){
+},{"ieee754":93}],182:[function(_dereq_,module,exports){
 (function (global){
 'use strict';
 
@@ -21529,7 +21874,7 @@ function writePackedSFixed64(arr, pbf) { for (var i = 0; i < arr.length; i++) pb
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./buffer":180}],182:[function(_dereq_,module,exports){
+},{"./buffer":181}],183:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = Point;
@@ -21662,7 +22007,7 @@ Point.convert = function (a) {
     return a;
 };
 
-},{}],183:[function(_dereq_,module,exports){
+},{}],184:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 
@@ -21710,7 +22055,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 
 }).call(this,_dereq_('_process'))
 
-},{"_process":184}],184:[function(_dereq_,module,exports){
+},{"_process":185}],185:[function(_dereq_,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -21881,6 +22226,10 @@ process.off = noop;
 process.removeListener = noop;
 process.removeAllListeners = noop;
 process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
 
 process.binding = function (name) {
     throw new Error('process.binding is not supported');
@@ -21892,230 +22241,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],185:[function(_dereq_,module,exports){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var Buffer = _dereq_('buffer').Buffer;
-
-var isBufferEncoding = Buffer.isEncoding
-  || function(encoding) {
-       switch (encoding && encoding.toLowerCase()) {
-         case 'hex': case 'utf8': case 'utf-8': case 'ascii': case 'binary': case 'base64': case 'ucs2': case 'ucs-2': case 'utf16le': case 'utf-16le': case 'raw': return true;
-         default: return false;
-       }
-     }
-
-
-function assertEncoding(encoding) {
-  if (encoding && !isBufferEncoding(encoding)) {
-    throw new Error('Unknown encoding: ' + encoding);
-  }
-}
-
-// StringDecoder provides an interface for efficiently splitting a series of
-// buffers into a series of JS strings without breaking apart multi-byte
-// characters. CESU-8 is handled as part of the UTF-8 encoding.
-//
-// @TODO Handling all encodings inside a single object makes it very difficult
-// to reason about this code, so it should be split up in the future.
-// @TODO There should be a utf8-strict encoding that rejects invalid UTF-8 code
-// points as used by CESU-8.
-var StringDecoder = exports.StringDecoder = function(encoding) {
-  this.encoding = (encoding || 'utf8').toLowerCase().replace(/[-_]/, '');
-  assertEncoding(encoding);
-  switch (this.encoding) {
-    case 'utf8':
-      // CESU-8 represents each of Surrogate Pair by 3-bytes
-      this.surrogateSize = 3;
-      break;
-    case 'ucs2':
-    case 'utf16le':
-      // UTF-16 represents each of Surrogate Pair by 2-bytes
-      this.surrogateSize = 2;
-      this.detectIncompleteChar = utf16DetectIncompleteChar;
-      break;
-    case 'base64':
-      // Base-64 stores 3 bytes in 4 chars, and pads the remainder.
-      this.surrogateSize = 3;
-      this.detectIncompleteChar = base64DetectIncompleteChar;
-      break;
-    default:
-      this.write = passThroughWrite;
-      return;
-  }
-
-  // Enough space to store all bytes of a single character. UTF-8 needs 4
-  // bytes, but CESU-8 may require up to 6 (3 bytes per surrogate).
-  this.charBuffer = new Buffer(6);
-  // Number of bytes received for the current incomplete multi-byte character.
-  this.charReceived = 0;
-  // Number of bytes expected for the current incomplete multi-byte character.
-  this.charLength = 0;
-};
-
-
-// write decodes the given buffer and returns it as JS string that is
-// guaranteed to not contain any partial multi-byte characters. Any partial
-// character found at the end of the buffer is buffered up, and will be
-// returned when calling write again with the remaining bytes.
-//
-// Note: Converting a Buffer containing an orphan surrogate to a String
-// currently works, but converting a String to a Buffer (via `new Buffer`, or
-// Buffer#write) will replace incomplete surrogates with the unicode
-// replacement character. See https://codereview.chromium.org/121173009/ .
-StringDecoder.prototype.write = function(buffer) {
-  var charStr = '';
-  // if our last write ended with an incomplete multibyte character
-  while (this.charLength) {
-    // determine how many remaining bytes this buffer has to offer for this char
-    var available = (buffer.length >= this.charLength - this.charReceived) ?
-        this.charLength - this.charReceived :
-        buffer.length;
-
-    // add the new bytes to the char buffer
-    buffer.copy(this.charBuffer, this.charReceived, 0, available);
-    this.charReceived += available;
-
-    if (this.charReceived < this.charLength) {
-      // still not enough chars in this buffer? wait for more ...
-      return '';
-    }
-
-    // remove bytes belonging to the current character from the buffer
-    buffer = buffer.slice(available, buffer.length);
-
-    // get the character that was split
-    charStr = this.charBuffer.slice(0, this.charLength).toString(this.encoding);
-
-    // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
-    var charCode = charStr.charCodeAt(charStr.length - 1);
-    if (charCode >= 0xD800 && charCode <= 0xDBFF) {
-      this.charLength += this.surrogateSize;
-      charStr = '';
-      continue;
-    }
-    this.charReceived = this.charLength = 0;
-
-    // if there are no more bytes in this buffer, just emit our char
-    if (buffer.length === 0) {
-      return charStr;
-    }
-    break;
-  }
-
-  // determine and set charLength / charReceived
-  this.detectIncompleteChar(buffer);
-
-  var end = buffer.length;
-  if (this.charLength) {
-    // buffer the incomplete character bytes we got
-    buffer.copy(this.charBuffer, 0, buffer.length - this.charReceived, end);
-    end -= this.charReceived;
-  }
-
-  charStr += buffer.toString(this.encoding, 0, end);
-
-  var end = charStr.length - 1;
-  var charCode = charStr.charCodeAt(end);
-  // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
-  if (charCode >= 0xD800 && charCode <= 0xDBFF) {
-    var size = this.surrogateSize;
-    this.charLength += size;
-    this.charReceived += size;
-    this.charBuffer.copy(this.charBuffer, size, 0, size);
-    buffer.copy(this.charBuffer, 0, 0, size);
-    return charStr.substring(0, end);
-  }
-
-  // or just emit the charStr
-  return charStr;
-};
-
-// detectIncompleteChar determines if there is an incomplete UTF-8 character at
-// the end of the given buffer. If so, it sets this.charLength to the byte
-// length that character, and sets this.charReceived to the number of bytes
-// that are available for this character.
-StringDecoder.prototype.detectIncompleteChar = function(buffer) {
-  // determine how many bytes we have to check at the end of this buffer
-  var i = (buffer.length >= 3) ? 3 : buffer.length;
-
-  // Figure out if one of the last i bytes of our buffer announces an
-  // incomplete char.
-  for (; i > 0; i--) {
-    var c = buffer[buffer.length - i];
-
-    // See http://en.wikipedia.org/wiki/UTF-8#Description
-
-    // 110XXXXX
-    if (i == 1 && c >> 5 == 0x06) {
-      this.charLength = 2;
-      break;
-    }
-
-    // 1110XXXX
-    if (i <= 2 && c >> 4 == 0x0E) {
-      this.charLength = 3;
-      break;
-    }
-
-    // 11110XXX
-    if (i <= 3 && c >> 3 == 0x1E) {
-      this.charLength = 4;
-      break;
-    }
-  }
-  this.charReceived = i;
-};
-
-StringDecoder.prototype.end = function(buffer) {
-  var res = '';
-  if (buffer && buffer.length)
-    res = this.write(buffer);
-
-  if (this.charReceived) {
-    var cr = this.charReceived;
-    var buf = this.charBuffer;
-    var enc = this.encoding;
-    res += buf.slice(0, cr).toString(enc);
-  }
-
-  return res;
-};
-
-function passThroughWrite(buffer) {
-  return buffer.toString(this.encoding);
-}
-
-function utf16DetectIncompleteChar(buffer) {
-  this.charReceived = buffer.length % 2;
-  this.charLength = this.charReceived ? 2 : 0;
-}
-
-function base64DetectIncompleteChar(buffer) {
-  this.charReceived = buffer.length % 3;
-  this.charLength = this.charReceived ? 3 : 0;
-}
-
-},{"buffer":5}],186:[function(_dereq_,module,exports){
+},{}],186:[function(_dereq_,module,exports){
 /*!
  * strip-comments <https://github.com/jonschlinkert/strip-comments>
  *
@@ -22978,7 +23104,7 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,_dereq_('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./support/isBuffer":190,"_process":184,"inherits":189}],192:[function(_dereq_,module,exports){
+},{"./support/isBuffer":190,"_process":185,"inherits":189}],192:[function(_dereq_,module,exports){
 module.exports.VectorTile = _dereq_('./lib/vectortile.js');
 module.exports.VectorTileFeature = _dereq_('./lib/vectortilefeature.js');
 module.exports.VectorTileLayer = _dereq_('./lib/vectortilelayer.js');
@@ -23237,7 +23363,7 @@ function signedArea(ring) {
     return sum;
 }
 
-},{"point-geometry":182}],195:[function(_dereq_,module,exports){
+},{"point-geometry":183}],195:[function(_dereq_,module,exports){
 'use strict';
 
 var VectorTileFeature = _dereq_('./vectortilefeature.js');
@@ -23316,8 +23442,8 @@ var _geo2 = _interopRequireDefault(_geo);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var tile_bounds = exports.tile_bounds = [{ x: 0, y: 0 }, { x: _geo2.default.tile_scale, y: -_geo2.default.tile_scale } // TODO: correct for flipped y-axis?
-]; // Geometry building functions
+var tile_bounds = exports.tile_bounds = [{ x: 0, y: 0 }, { x: _geo2.default.tile_scale, y: -_geo2.default.tile_scale // TODO: correct for flipped y-axis?
+}]; // Geometry building functions
 var default_uvs = exports.default_uvs = [0, 0, 1, 1];
 
 // Tests if a line segment (from point A to B) is outside the tile bounds
@@ -23374,7 +23500,6 @@ function buildQuadsForPoints(points, vertex_data, vertex_template, _ref, _ref2) 
         pre_angles = _ref2.pre_angles,
         angle = _ref2.angle,
         angles = _ref2.angles,
-        shape_w = _ref2.shape_w,
         curve = _ref2.curve,
         texcoord_scale = _ref2.texcoord_scale,
         texcoord_normalize = _ref2.texcoord_normalize,
@@ -23422,7 +23547,6 @@ function buildQuadsForPoints(points, vertex_data, vertex_template, _ref, _ref2) 
             vertex_template[shape_index + 0] = scaling[pos][0];
             vertex_template[shape_index + 1] = scaling[pos][1];
             vertex_template[shape_index + 2] = angle;
-            vertex_template[shape_index + 3] = shape_w;
 
             vertex_template[offset_index + 0] = offset[0];
             vertex_template[offset_index + 1] = offset[1];
@@ -23675,7 +23799,7 @@ function triangulatePolygon(data) {
     return (0, _earcut2.default)(data.vertices, data.holes, data.dimensions);
 }
 
-},{"../geo":201,"../vector":271,"./common":196,"earcut":72}],199:[function(_dereq_,module,exports){
+},{"../geo":201,"../vector":272,"./common":196,"earcut":72}],199:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -24295,7 +24419,7 @@ function permuteLine(line, startIndex) {
     return newLine;
 }
 
-},{"../geo":201,"../vector":271,"./common":196}],200:[function(_dereq_,module,exports){
+},{"../geo":201,"../vector":272,"./common":196}],200:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -24662,7 +24786,7 @@ var FlatCamera = function (_IsometricCamera) {
     return FlatCamera;
 }(IsometricCamera);
 
-},{"./gl/shader_program":207,"./utils/gl-matrix":257,"./utils/utils":268}],201:[function(_dereq_,module,exports){
+},{"./gl/shader_program":207,"./utils/gl-matrix":257,"./utils/utils":269}],201:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -26898,7 +27022,7 @@ Texture.activeUnit = null;
 _worker_broker2.default.addTarget('Texture', Texture);
 (0, _subscribe2.default)(Texture);
 
-},{"../utils/log":259,"../utils/subscribe":265,"../utils/utils":268,"../utils/worker_broker":270}],209:[function(_dereq_,module,exports){
+},{"../utils/log":259,"../utils/subscribe":265,"../utils/utils":269,"../utils/worker_broker":271}],209:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27616,13 +27740,21 @@ exports.default = Collision = {
         };
 
         // Promise resolved when all registered styles have added objects
-        state.complete = new Promise(function (resolve, reject) {
-            state.resolve = resolve;
-            state.reject = reject;
-        });
+        if (state.complete == null) {
+            state.complete = new Promise(function (resolve, reject) {
+                state.resolve = resolve;
+                state.reject = reject;
+            });
+        }
     },
     resetTile: function resetTile(tile) {
         delete this.tiles[tile];
+    },
+    abortTile: function abortTile(tile) {
+        if (this.tiles[tile] && this.tiles[tile].resolve) {
+            this.tiles[tile].resolve([]);
+        }
+        this.resetTile(tile);
     },
 
 
@@ -27658,6 +27790,7 @@ exports.default = Collision = {
 
         // Wait for objects to be added from all styles
         return state.complete.then(function () {
+            state.resolve = null;
             return state.keep[style] || [];
         });
     },
@@ -27934,7 +28067,7 @@ exports.default = Label;
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
 
-},{"../utils/obb":262,"../utils/utils":268,"./intersect":215,"./point_anchor":219}],217:[function(_dereq_,module,exports){
+},{"../utils/obb":262,"../utils/utils":269,"./intersect":215,"./point_anchor":219}],217:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -28888,7 +29021,7 @@ function getAbsAngleDiff(angle1, angle2) {
     return Math.abs(big - small);
 }
 
-},{"../utils/obb":262,"../vector":271,"./label":216}],218:[function(_dereq_,module,exports){
+},{"../utils/obb":262,"../vector":272,"./label":216}],218:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29610,22 +29743,16 @@ function extendLeaflet(options) {
                 };
                 map.on('move', this.hooks.move);
 
-                this.hooks.zoomstart = function () {
-                    if (_this._updating_tangram) {
-                        return;
-                    }
-
-                    _this._updating_tangram = true;
-                    _this.scene.view.startZoom();
-                    _this._updating_tangram = false;
-                };
-                map.on('zoomstart', this.hooks.zoomstart);
-
                 this.hooks.moveend = function () {
                     _this.scene.view.setPanning(false);
                     _this.scene.requestRedraw();
                 };
                 map.on('moveend', this.hooks.moveend);
+
+                this.hooks.drag = function () {
+                    _this.scene.view.markUserInput();
+                };
+                map.on('drag', this.hooks.drag);
 
                 // Modify default Leaflet behaviors
                 this.modifyScrollWheelBehavior(map);
@@ -29679,8 +29806,8 @@ function extendLeaflet(options) {
                 map.off('layeradd layerremove overlayadd overlayremove', this._updateMapLayerCount);
                 map.off('resize', this.hooks.resize);
                 map.off('move', this.hooks.move);
-                map.off('zoomstart', this.hooks.zoomstart);
                 map.off('moveend', this.hooks.moveend);
+                map.off('drag', this.hooks.drag);
                 map.off('click', this.hooks.click);
                 map.off('mousemove', this.hooks.mousemove);
                 map.off('mouseout', this.hooks.mouseout);
@@ -29744,6 +29871,7 @@ function extendLeaflet(options) {
                         map.options.wheelDebounceTime = 20; // better default for FF and Edge/IE
                     }
 
+                    var layer = this;
                     map.scrollWheelZoom._performZoom = function () {
                         var map = this._map,
                             zoom = map.getZoom();
@@ -29764,9 +29892,9 @@ function extendLeaflet(options) {
                         }
 
                         if (map.options.scrollWheelZoom === 'center') {
-                            setZoomAroundNoMoveEnd(map, map.getCenter(), zoom + delta);
+                            setZoomAroundNoMoveEnd(layer, map.getCenter(), zoom + delta);
                         } else {
-                            setZoomAroundNoMoveEnd(map, this._lastMousePos, zoom + delta);
+                            setZoomAroundNoMoveEnd(layer, this._lastMousePos, zoom + delta);
                         }
                         debounceMoveEnd(map);
                     };
@@ -29783,7 +29911,7 @@ function extendLeaflet(options) {
                 if (this.scene.view.continuous_zoom && map.doubleClickZoom && this.options.modifyDoubleClickZoom !== false) {
 
                     // Simplified version of Leaflet's flyTo, for short animations zooming around a point
-                    var flyAround = function flyAround(map, targetCenter, targetZoom, options) {
+                    var flyAround = function flyAround(layer, targetCenter, targetZoom, options) {
                         options = options || {};
                         if (options.animate === false || !L.Browser.any3d) {
                             return map.setView(targetCenter, targetZoom, options);
@@ -29813,9 +29941,9 @@ function extendLeaflet(options) {
                                 var center = from.add(to.subtract(from).multiplyBy(t));
                                 center = [center.x, center.y];
                                 center = _geo2.default.metersToLatLng(center);
-                                setZoomAroundNoMoveEnd(map, targetCenter, startZoom + (targetZoom - startZoom) * t);
+                                setZoomAroundNoMoveEnd(layer, targetCenter, startZoom + (targetZoom - startZoom) * t);
                             } else {
-                                setZoomAroundNoMoveEnd(map, targetCenter, targetZoom)._moveEnd(true);
+                                setZoomAroundNoMoveEnd(layer, targetCenter, targetZoom)._moveEnd(true);
                             }
                         }
 
@@ -29829,6 +29957,7 @@ function extendLeaflet(options) {
                     var enabled = map.doubleClickZoom.enabled();
                     map.doubleClickZoom.disable();
 
+                    var layer = this;
                     map.doubleClickZoom._onDoubleClick = function (e) {
                         var map = this._map,
                             oldZoom = map.getZoom(),
@@ -29836,9 +29965,9 @@ function extendLeaflet(options) {
                             zoom = e.originalEvent.shiftKey ? oldZoom - delta : oldZoom + delta;
 
                         if (map.options.doubleClickZoom === 'center') {
-                            flyAround(map, map.getCenter(), zoom);
+                            flyAround(layer, map.getCenter(), zoom);
                         } else {
-                            flyAround(map, map.containerPointToLatLng(e.containerPoint), zoom);
+                            flyAround(layer, map.containerPointToLatLng(e.containerPoint), zoom);
                         }
                     };
 
@@ -29977,13 +30106,18 @@ function extendLeaflet(options) {
         });
 
         // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
-        setZoomAroundNoMoveEnd = function setZoomAroundNoMoveEnd(map, latlng, zoom) {
-            var scale = map.getZoomScale(zoom),
+        setZoomAroundNoMoveEnd = function setZoomAroundNoMoveEnd(layer, latlng, zoom) {
+            var map = layer._map,
+                scene = layer.scene,
+                scale = map.getZoomScale(zoom),
                 viewHalf = map.getSize().divideBy(2),
                 containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
                 centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
                 newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
 
+            if (scene) {
+                scene.view.markUserInput();
+            }
             return map._move(newCenter, zoom, { flyTo: true });
         };
 
@@ -30007,7 +30141,7 @@ function extendLeaflet(options) {
     }
 }
 
-},{"./geo":201,"./scene":226,"./utils/debounce":254,"./utils/debug_settings":255,"./utils/thread":266}],223:[function(_dereq_,module,exports){
+},{"./geo":201,"./scene":226,"./utils/debounce":254,"./utils/debug_settings":255,"./utils/thread":267}],223:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30440,7 +30574,7 @@ var SpotLight = function (_PointLight) {
 
 Light.types['spotlight'] = SpotLight;
 
-},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./styles/style_parser":245,"./vector":271}],224:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./styles/style_parser":245,"./vector":272}],224:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30763,7 +30897,7 @@ module.exports = {
     version: _version2.default
 };
 
-},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./gl/texture":208,"./gl/vertex_data":211,"./labels/collision":214,"./leaflet_layer":222,"./light":223,"./material":224,"./scene":226,"./scene_worker":229,"./selection":230,"./sources/data_source":231,"./sources/geojson":232,"./sources/mvt":233,"./sources/raster":234,"./sources/topojson":235,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./utils/debug_settings":255,"./utils/log":259,"./utils/polyfills":263,"./utils/thread":266,"./utils/utils":268,"./utils/version":269,"./utils/worker_broker":270,"./vector":271,"js-yaml":97,"jszip":133}],226:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./gl/texture":208,"./gl/vertex_data":211,"./labels/collision":214,"./leaflet_layer":222,"./light":223,"./material":224,"./scene":226,"./scene_worker":229,"./selection":230,"./sources/data_source":231,"./sources/geojson":232,"./sources/mvt":233,"./sources/raster":234,"./sources/topojson":235,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./utils/debug_settings":255,"./utils/log":259,"./utils/polyfills":263,"./utils/thread":267,"./utils/utils":269,"./utils/version":270,"./utils/worker_broker":271,"./vector":272,"js-yaml":97,"jszip":133}],226:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30793,6 +30927,10 @@ var URLs = _interopRequireWildcard(_urls);
 var _worker_broker = _dereq_('./utils/worker_broker');
 
 var _worker_broker2 = _interopRequireDefault(_worker_broker);
+
+var _task = _dereq_('./utils/task');
+
+var _task2 = _interopRequireDefault(_task);
 
 var _subscribe = _dereq_('./utils/subscribe');
 
@@ -30909,7 +31047,6 @@ var Scene = function () {
 
         this.building = null; // tracks current scene building state (tiles being built, etc.)
         this.dirty = true; // request a redraw
-        this.animated = false; // request redraw every frame
 
         if (options.preUpdate) {
             // optional pre-render loop hook
@@ -30983,6 +31120,10 @@ var Scene = function () {
             // Should rendering block on load (not desirable for initial load, often desired for live style-switching)
             options.blocking = options.blocking !== undefined ? options.blocking : true;
 
+            if (this.render_loop !== false) {
+                this.setupRenderLoop();
+            }
+
             // Load scene definition (sources, styles, etc.), then create styles & workers
             this.createCanvas();
             this.initializing = this.loadScene(config_source, options).then(function () {
@@ -31005,9 +31146,6 @@ var Scene = function () {
                 _this.last_valid_config_source = _this.config_source;
                 _this.last_valid_options = { base_path: options.base_path, file_type: options.file_type };
 
-                if (_this.render_loop !== false) {
-                    _this.setupRenderLoop();
-                }
                 _this.requestRedraw();
             }).catch(function (error) {
                 _this.initializing = null;
@@ -31242,26 +31380,6 @@ var Scene = function () {
             }
         }
 
-        // Assign tile to worker thread based on data source
-
-    }, {
-        key: 'getWorkerForDataSource',
-        value: function getWorkerForDataSource(source) {
-            var worker = void 0;
-
-            if (source.tiled) {
-                // Round robin tiled sources across all workers
-                worker = this.workers[this.next_worker];
-                this.next_worker = (this.next_worker + 1) % this.workers.length;
-            } else {
-                // Pin all tiles from each non-tiled source to a single worker
-                // Prevents data for these sources from being loaded more than once
-                worker = this.workers[source.id % this.workers.length];
-            }
-
-            return worker;
-        }
-
         // Scene is ready for rendering
 
     }, {
@@ -31330,6 +31448,10 @@ var Scene = function () {
                 this.update();
             }
 
+            // Pending background tasks
+            _task2.default.setState({ user_moving_view: this.view.user_input_active });
+            _task2.default.processAll();
+
             // Request the next frame if not scheduled to stop
             if (!this.render_loop_stop) {
                 window.requestAnimationFrame(this.renderLoop.bind(this));
@@ -31362,6 +31484,9 @@ var Scene = function () {
 
             // Pre-render loop hook
             this.trigger('preUpdate', will_render);
+
+            // Update view (needs to update user input timer even if no render will occur)
+            this.view.update();
 
             // Bail if no need to render
             if (!will_render) {
@@ -31401,7 +31526,6 @@ var Scene = function () {
             var gl = this.gl;
 
             // Update styles, camera, lights
-            this.view.update();
             Object.keys(this.lights).forEach(function (i) {
                 return _this6.lights[i].update();
             });
@@ -31414,7 +31538,7 @@ var Scene = function () {
 
             // Render selection pass (if needed)
             if (selection) {
-                if (this.view.panning || this.view.zooming) {
+                if (this.view.panning || this.view.user_input_active) {
                     this.selection.clearPendingRequests();
                     return;
                 }
@@ -31487,8 +31611,8 @@ var Scene = function () {
                 // Only update render state when blend mode changes
                 if (style.blend !== last_blend) {
                     var state = Object.assign({}, _style.Style.render_states[style.blend], // render state for blend mode
-                    { blend: allow_blend && style.blend } // enable/disable blending (e.g. no blend for selection)
-                    );
+                    { blend: allow_blend && style.blend // enable/disable blending (e.g. no blend for selection)
+                    });
                     this.setRenderState(state);
                 }
                 count += this.renderStyle(style.name, program_key);
@@ -31500,6 +31624,8 @@ var Scene = function () {
     }, {
         key: 'renderStyle',
         value: function renderStyle(style_name, program_key) {
+            var _this8 = this;
+
             var style = this.styles[style_name];
             var first_for_style = true;
             var render_count = 0;
@@ -31535,14 +31661,12 @@ var Scene = function () {
                 this.view.setupTile(tile, program);
 
                 // Render tile
-                var mesh = tile.meshes[style_name];
-                if (style.render(mesh)) {
-                    // Don't incur additional renders while viewport is moving
-                    if (!(this.view.panning || this.view.zooming)) {
-                        this.requestRedraw();
+                tile.meshes[style_name].forEach(function (mesh) {
+                    if (style.render(mesh)) {
+                        _this8.requestRedraw();
                     }
-                }
-                render_count += mesh.geometry_count;
+                    render_count += mesh.geometry_count;
+                });
             }
 
             return render_count;
@@ -31771,7 +31895,7 @@ var Scene = function () {
     }, {
         key: 'rebuild',
         value: function rebuild() {
-            var _this8 = this;
+            var _this9 = this;
 
             var _ref8 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
                 _ref8$new_generation = _ref8.new_generation,
@@ -31786,56 +31910,56 @@ var Scene = function () {
 
             return new Promise(function (resolve, reject) {
                 // Skip rebuild if already in progress
-                if (_this8.building) {
+                if (_this9.building) {
                     // Queue up to one rebuild call at a time, only save last request
-                    if (_this8.building.queued && _this8.building.queued.reject) {
+                    if (_this9.building.queued && _this9.building.queued.reject) {
                         // notify previous request that it did not complete
                         (0, _log2.default)('debug', 'Scene.rebuild: request superceded by a newer call');
-                        _this8.building.queued.resolve(false); // false flag indicates rebuild request was superceded
+                        _this9.building.queued.resolve(false); // false flag indicates rebuild request was superceded
                     }
 
                     // Save queued request
                     var options = { new_generation: new_generation, sources: sources, serialize_funcs: serialize_funcs, profile: profile, fade_in: fade_in };
-                    _this8.building.queued = { resolve: resolve, reject: reject, options: options };
+                    _this9.building.queued = { resolve: resolve, reject: reject, options: options };
                     (0, _log2.default)('trace', 'Scene.rebuild(): queuing request');
                     return;
                 }
 
                 // Track tile build state
-                _this8.building = { resolve: resolve, reject: reject };
+                _this9.building = { resolve: resolve, reject: reject };
 
                 // Profiling
                 if (profile) {
-                    _this8._profile('Scene.rebuild');
+                    _this9._profile('Scene.rebuild');
                 }
 
                 // Increment generation to ensure style/tile building stay in sync
                 // (skipped if calling function already incremented)
                 if (new_generation) {
-                    _this8.generation = ++Scene.generation;
-                    for (var style in _this8.styles) {
-                        _this8.styles[style].setGeneration(_this8.generation);
+                    _this9.generation = ++Scene.generation;
+                    for (var style in _this9.styles) {
+                        _this9.styles[style].setGeneration(_this9.generation);
                     }
                 }
 
                 // Update config (in case JS objects were manipulated directly)
-                _this8.syncConfigToWorker({ serialize_funcs: serialize_funcs });
-                _this8.resetFeatureSelection(sources);
-                _this8.resetTime();
+                _this9.syncConfigToWorker({ serialize_funcs: serialize_funcs });
+                _this9.resetFeatureSelection(sources);
+                _this9.resetTime();
 
                 // Rebuild visible tiles
-                _this8.tile_manager.pruneToVisibleTiles();
-                _this8.tile_manager.forEachTile(function (tile) {
+                _this9.tile_manager.pruneToVisibleTiles();
+                _this9.tile_manager.forEachTile(function (tile) {
                     if (!sources || sources.indexOf(tile.source.name) > -1) {
-                        _this8.tile_manager.buildTile(tile, { fade_in: fade_in });
+                        _this9.tile_manager.buildTile(tile, { fade_in: fade_in });
                     }
                 });
-                _this8.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
-                _this8.tile_manager.checkBuildQueue(); // resolve immediately if no tiles to build
+                _this9.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
+                _this9.tile_manager.checkBuildQueue(); // resolve immediately if no tiles to build
             }).then(function () {
                 // Profiling
                 if (profile) {
-                    _this8._profileEnd('Scene.rebuild');
+                    _this9._profileEnd('Scene.rebuild');
                 }
             });
         }
@@ -31846,6 +31970,8 @@ var Scene = function () {
     }, {
         key: 'tileManagerBuildDone',
         value: function tileManagerBuildDone() {
+            _canvas_text2.default.pruneTextCache();
+
             if (this.building) {
                 (0, _log2.default)('info', 'Scene: build geometry finished');
                 if (this.building.resolve) {
@@ -31874,7 +32000,7 @@ var Scene = function () {
     }, {
         key: 'loadScene',
         value: function loadScene() {
-            var _this9 = this;
+            var _this10 = this;
 
             var config_source = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
 
@@ -31899,9 +32025,9 @@ var Scene = function () {
                 var config = _ref10.config,
                     bundle = _ref10.bundle;
 
-                _this9.config = config;
-                _this9.config_bundle = bundle;
-                return _this9.config;
+                _this10.config = config;
+                _this10.config_bundle = bundle;
+                return _this10.config;
             });
         }
 
@@ -31945,7 +32071,7 @@ var Scene = function () {
     }, {
         key: 'createDataSources',
         value: function createDataSources() {
-            var _this10 = this;
+            var _this11 = this;
 
             var reset = []; // sources to reset
             var prev_source_names = Object.keys(this.sources);
@@ -31976,8 +32102,8 @@ var Scene = function () {
 
             // Sources that were removed
             prev_source_names.forEach(function (s) {
-                if (!_this10.config.sources[s]) {
-                    delete _this10.sources[s]; // TODO: remove from workers too?
+                if (!_this11.config.sources[s]) {
+                    delete _this11.sources[s]; // TODO: remove from workers too?
                     reset.push(s);
                 }
             });
@@ -32004,10 +32130,10 @@ var Scene = function () {
     }, {
         key: 'loadTextures',
         value: function loadTextures() {
-            var _this11 = this;
+            var _this12 = this;
 
             return _texture2.default.createFromObject(this.gl, this.config.textures).then(function () {
-                return _texture2.default.createDefault(_this11.gl);
+                return _texture2.default.createDefault(_this12.gl);
             }); // create a 'default' texture for placeholders
         }
 
@@ -32016,8 +32142,6 @@ var Scene = function () {
     }, {
         key: 'updateStyles',
         value: function updateStyles() {
-            var _this12 = this;
-
             if (!this.initialized && !this.initializing) {
                 throw new Error('Scene.updateStyles() called before scene was initialized');
             }
@@ -32031,18 +32155,16 @@ var Scene = function () {
                 this.styles[style].setGL(this.gl);
             }
 
-            // Use explicitly set scene animation flag if defined, otherwise turn on animation if there are any animated styles
-            this.animated = this.config.scene.animated !== undefined ? this.config.scene.animated : Object.keys(this.styles).some(function (s) {
-                return _this12.styles[s].animated;
-            });
-
             this.dirty = true;
         }
 
-        // Get active camera - for public API
+        // Is scene currently animating?
 
     }, {
         key: 'getActiveCamera',
+
+
+        // Get active camera - for public API
         value: function getActiveCamera() {
             return this.view.getActiveCamera();
         }
@@ -32277,7 +32399,6 @@ var Scene = function () {
         value: function updateViewComplete() {
             if ((this.render_count_changed || this.generation !== this.last_complete_generation) && !this.tile_manager.isLoadingVisibleTiles()) {
                 this.last_complete_generation = this.generation;
-                _canvas_text2.default.pruneTextCache();
                 this.trigger('view_complete');
             }
         }
@@ -32366,9 +32487,15 @@ var Scene = function () {
                 geometryCountByStyle: function geometryCountByStyle() {
                     var counts = {};
                     scene.tile_manager.getRenderableTiles().forEach(function (tile) {
-                        for (var style in tile.meshes) {
+                        var _loop2 = function _loop2(style) {
                             counts[style] = counts[style] || 0;
-                            counts[style] += tile.meshes[style].geometry_count;
+                            tile.meshes[style].forEach(function (mesh) {
+                                counts[style] += mesh.geometry_count;
+                            });
+                        };
+
+                        for (var style in tile.meshes) {
+                            _loop2(style);
                         }
                     });
                     return counts;
@@ -32386,9 +32513,15 @@ var Scene = function () {
                 geometrySizeByStyle: function geometrySizeByStyle() {
                     var sizes = {};
                     scene.tile_manager.getRenderableTiles().forEach(function (tile) {
-                        for (var style in tile.meshes) {
+                        var _loop3 = function _loop3(style) {
                             sizes[style] = sizes[style] || 0;
-                            sizes[style] += tile.meshes[style].buffer_size;
+                            tile.meshes[style].forEach(function (mesh) {
+                                sizes[style] += mesh.buffer_size;
+                            });
+                        };
+
+                        for (var style in tile.meshes) {
+                            _loop3(style);
                         }
                     });
                     return sizes;
@@ -32416,6 +32549,16 @@ var Scene = function () {
                 }
             };
         }
+    }, {
+        key: 'animated',
+        get: function get() {
+            var _this17 = this;
+
+            // Use explicitly set scene animation flag if defined, otherwise enabled animation if any animated styles are in view
+            return this.config.scene.animated !== undefined ? this.config.scene.animated : this.tile_manager.getActiveStyles().some(function (s) {
+                return _this17.styles[s].animated;
+            });
+        }
     }], [{
         key: 'create',
         value: function create(config) {
@@ -32434,7 +32577,7 @@ exports.default = Scene;
 Scene.id = 0; // unique id for a scene instance
 Scene.generation = 0; // id that is incremented each time a scene config is re-parsed
 
-},{"./gl/context":203,"./gl/render_state":206,"./gl/shader_program":207,"./gl/texture":208,"./gl/vao":209,"./light":223,"./scene_loader":228,"./selection":230,"./sources/data_source":231,"./styles/style":243,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./styles/text/font_manager":247,"./tile":251,"./tile_manager":252,"./utils/debug_settings":255,"./utils/log":259,"./utils/media_capture":260,"./utils/slice":264,"./utils/subscribe":265,"./utils/urls":267,"./utils/utils":268,"./utils/worker_broker":270,"./view":272}],227:[function(_dereq_,module,exports){
+},{"./gl/context":203,"./gl/render_state":206,"./gl/shader_program":207,"./gl/texture":208,"./gl/vao":209,"./light":223,"./scene_loader":228,"./selection":230,"./sources/data_source":231,"./styles/style":243,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./styles/text/font_manager":247,"./tile":251,"./tile_manager":252,"./utils/debug_settings":255,"./utils/log":259,"./utils/media_capture":260,"./utils/slice":264,"./utils/subscribe":265,"./utils/task":266,"./utils/urls":268,"./utils/utils":269,"./utils/worker_broker":271,"./view":273}],227:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -32758,7 +32901,7 @@ function loadResource(source) {
     });
 }
 
-},{"./utils/urls":267,"./utils/utils":268,"js-yaml":97,"jszip":133}],228:[function(_dereq_,module,exports){
+},{"./utils/urls":268,"./utils/utils":269,"js-yaml":97,"jszip":133}],228:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33067,10 +33210,14 @@ exports.default = SceneLoader = {
                     obj = val;
                 }
             }
-            // Loop through object properties
-            else if ((typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) === 'object') {
-                    for (var p in obj) {
+            // Loop through object keys or array indices
+            else if (Array.isArray(obj)) {
+                    for (var p = 0; p < obj.length; p++) {
                         obj[p] = applyGlobals(obj[p], obj, p);
+                    }
+                } else if ((typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) === 'object') {
+                    for (var _p in obj) {
+                        obj[_p] = applyGlobals(obj[_p], obj, _p);
                     }
                 }
             return obj;
@@ -33202,7 +33349,7 @@ function flattenProperties(obj) {
 
 (0, _subscribe2.default)(SceneLoader);
 
-},{"./gl/glsl":205,"./scene_bundle":227,"./utils/log":259,"./utils/merge":261,"./utils/subscribe":265,"./utils/urls":267}],229:[function(_dereq_,module,exports){
+},{"./gl/glsl":205,"./scene_bundle":227,"./utils/log":259,"./utils/merge":261,"./utils/subscribe":265,"./utils/urls":268}],229:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33612,7 +33759,7 @@ if (_thread2.default.is_worker) {
     _worker_broker2.default.addTarget('self', self);
 }
 
-},{"./geo":201,"./gl/texture":208,"./gl/vertex_elements":212,"./selection":230,"./sources/data_source":231,"./styles/filter":236,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":266,"./utils/utils":268,"./utils/worker_broker":270}],230:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/texture":208,"./gl/vertex_elements":212,"./selection":230,"./sources/data_source":231,"./styles/filter":236,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":267,"./utils/utils":269,"./utils/worker_broker":271}],230:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -34034,7 +34181,7 @@ FeatureSelection.map_entry = 0;
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];
 
-},{"./gl/texture":208,"./utils/log":259,"./utils/worker_broker":270}],231:[function(_dereq_,module,exports){
+},{"./gl/texture":208,"./utils/log":259,"./utils/worker_broker":271}],231:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -34535,7 +34682,7 @@ var NetworkTileSource = exports.NetworkTileSource = function (_NetworkSource) {
     return NetworkTileSource;
 }(NetworkSource);
 
-},{"../geo":201,"../utils/errors":256,"../utils/log":259,"../utils/urls":267,"../utils/utils":268}],232:[function(_dereq_,module,exports){
+},{"../geo":201,"../utils/errors":256,"../utils/log":259,"../utils/urls":268,"../utils/utils":269}],232:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -34592,6 +34739,7 @@ var GeoJSONSource = exports.GeoJSONSource = function (_NetworkSource) {
         _this.load_data = null;
         _this.tile_indexes = {}; // geojson-vt tile indices, by layer name
         _this.max_zoom = Math.max(_this.max_zoom || 0, 15); // TODO: max zoom < 15 causes artifacts/no-draw at 20, investigate
+        _this.setTileSize(512); // auto-tile to 512px tiles for better labelling
         _this.pad_scale = 0; // we don't want padding on auto-tiled sources
         return _this;
     }
@@ -34612,7 +34760,7 @@ var GeoJSONSource = exports.GeoJSONSource = function (_NetworkSource) {
                     for (var layer_name in layers) {
                         _this2.tile_indexes[layer_name] = (0, _geojsonVt2.default)(layers[layer_name], {
                             maxZoom: _this2.max_zoom, // max zoom to preserve detail on
-                            tolerance: 3, // simplification tolerance (higher means simpler)
+                            tolerance: 1.5, // simplification tolerance (higher means simpler) NB: half the default to accomodate 512px tiles
                             extent: _geo2.default.tile_scale, // tile extent (both width and height)
                             buffer: 0.0001 // tile buffer on each side
                         });
@@ -35052,7 +35200,7 @@ function decodeMultiPolygon(geom) {
 
 _data_source2.default.register(MVTSource, 'MVT');
 
-},{"../geo":201,"./data_source":231,"pbf":181,"vector-tile":192}],234:[function(_dereq_,module,exports){
+},{"../geo":201,"./data_source":231,"pbf":182,"vector-tile":192}],234:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35522,7 +35670,8 @@ function mergeTrees(matchingTrees, group) {
 
     // Merged draw group object
     var draw = {
-        visible: true };
+        visible: true // visible by default
+    };
 
     // Iterate trees in parallel
 
@@ -36041,7 +36190,7 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
     return matched;
 }
 
-},{"../utils/log":259,"../utils/merge":261,"../utils/utils":268,"./filter":236,"./style_parser":245}],238:[function(_dereq_,module,exports){
+},{"../utils/log":259,"../utils/merge":261,"../utils/utils":269,"./filter":236,"./style_parser":245}],238:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -36511,9 +36660,11 @@ var _debug_settings2 = _interopRequireDefault(_debug_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
-var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute float a_outline_edge;\nattribute vec4 a_outline_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_factor;\n#endif\n\n#ifdef TANGRAM_MULTI_SAMPLER\n    varying float v_sampler;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n#define TANGRAM_PX_FADE_RANGE 2.\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n// Assumes stops are [0, 0.33, 0.66, 0.99];\nfloat mix4linear(float a, float b, float c, float d, float x) {\n    return mix(mix(a, b, 3. * x),\n               mix(b,\n                   mix(c, d, 3. * (max(x, .66) - .66)),\n                   3. * (clamp(x, .33, .66) - .33)),\n               step(0.33, x)\n            );\n}\n\n// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)\nbool isShaderPoint() {\n    #ifdef TANGRAM_SHADER_POINT\n        #ifdef TANGRAM_MULTI_SAMPLER\n            if (v_sampler == 0.) { // sprite sampler\n                return true;\n            }\n        #else\n            return true;\n        #endif\n    #endif\n    return false;\n}\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord;\n\n    #ifdef TANGRAM_SHADER_POINT\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    #ifdef TANGRAM_MULTI_SAMPLER\n        v_sampler = a_shape.w; // texture sampler\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
-var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\n\nuniform sampler2D u_label_texture;\nvarying float v_sampler;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_factor;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_SHADER_POINT\n    // Draw an SDF-style point\n    void drawPoint (inout vec4 color) {\n        vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge\n        float point_dist = length(uv);\n        color = mix(\n            color,\n            v_outline_color,\n            (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)\n        );\n        color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    if (v_sampler == 0.) { // sprite sampler\n        #ifdef TANGRAM_TEXTURE_POINT\n            color *= texture2D(u_texture, v_texcoord); // draw sprite\n        #else\n            drawPoint(color); // draw a point\n        #endif\n\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n    else { // label sampler\n        color = texture2D(u_label_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+
+var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute float a_outline_edge;\nattribute vec4 a_outline_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_factor;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n#define TANGRAM_PX_FADE_RANGE 2.\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n// Assumes stops are [0, 0.33, 0.66, 0.99];\nfloat mix4linear(float a, float b, float c, float d, float x) {\n    return mix(mix(a, b, 3. * x),\n               mix(b,\n                   mix(c, d, 3. * (max(x, .66) - .66)),\n                   3. * (clamp(x, .33, .66) - .33)),\n               step(0.33, x)\n            );\n}\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord;\n\n    #ifdef TANGRAM_SHADER_POINT\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_factor;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_SHADER_POINT\n    // Draw an SDF-style point\n    void drawPoint (inout vec4 color) {\n        vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge\n        float point_dist = length(uv);\n        color = mix(\n            color,\n            v_outline_color,\n            (1. - smoothstep(v_outline_edge - v_aa_factor, v_outline_edge + v_aa_factor, 1.-point_dist)) * step(.000001, v_outline_edge)\n        );\n        color.a = mix(color.a, 0., (smoothstep(1. - v_aa_factor, 1., point_dist)));\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n        color *= texture2D(u_texture, v_texcoord);\n    }\n    else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    }\n    #ifdef TANGRAM_SHADER_POINT\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            drawPoint(color); // draw a point\n        }\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var PLACEMENT = _label_point2.default.PLACEMENT;
 
@@ -36523,6 +36674,11 @@ var offsets_normalize = 64;
 var texcoord_normalize = 65535;
 
 var Points = exports.Points = Object.create(_style.Style);
+
+// texture types
+var TANGRAM_POINT_TYPE_TEXTURE = 1; // style texture/sprites (assigned by user)
+var TANGRAM_POINT_TYPE_LABEL = 2; // labels (generated by rendering labels to canvas)
+var TANGRAM_POINT_TYPE_SHADER = 3; // point (drawn in shader)
 
 // Mixin text label methods
 Object.assign(Points, _text_labels.TextLabels);
@@ -36556,23 +36712,19 @@ Object.assign(Points, {
             this.defines.TANGRAM_LAYER_ORDER = true;
         }
 
-        // ensure a label texture is always bound (avoid Chrome 'no texture bound to unit' warnings)
-        this.shaders.uniforms = this.shaders.uniforms || {};
-        this.shaders.uniforms.u_label_texture = _texture2.default.default;
+        // texture types
+        this.defines.TANGRAM_POINT_TYPE_TEXTURE = TANGRAM_POINT_TYPE_TEXTURE;
+        this.defines.TANGRAM_POINT_TYPE_LABEL = TANGRAM_POINT_TYPE_LABEL;
+        this.defines.TANGRAM_POINT_TYPE_SHADER = TANGRAM_POINT_TYPE_SHADER;
 
-        if (this.texture) {
-            this.defines.TANGRAM_TEXTURE_POINT = true;
-            this.shaders.uniforms.u_texture = this.texture;
-        } else {
+        // if no texture defined, use a shader-drawn point
+        if (!this.texture) {
             this.defines.TANGRAM_SHADER_POINT = true;
             attribs.push({ name: 'a_outline_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true });
             attribs.push({ name: 'a_outline_edge', size: 1, type: _constants2.default.FLOAT, normalized: false });
         }
 
         this.vertex_layout = new _vertex_layout2.default(attribs);
-
-        // Enable dual point/text mode
-        this.defines.TANGRAM_MULTI_SAMPLER = true;
 
         // Fade out when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
@@ -36680,7 +36832,7 @@ Object.assign(Points, {
 
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
-        style.sampler = 0; // 0 = sprites
+        style.label_texture = null; // clear out label texture assignment
 
         this.computeLayout(style, feature, draw, context, tile);
 
@@ -36704,13 +36856,13 @@ Object.assign(Points, {
             // (they should stay fixed relative to the point)
             tf.layout.move_into_tile = false;
 
-            _collision2.default.addStyle(this.collision_group_text, tile.key);
+            _collision2.default.addStyle(this.collision_group_text, tile.id);
         }
 
         this.queueFeature({ feature: feature, draw: draw, context: context, style: style, text_feature: tf }, tile); // queue the feature for later processing
 
         // Register with collision manager
-        _collision2.default.addStyle(this.collision_group_points, tile.key);
+        _collision2.default.addStyle(this.collision_group_points, tile.id);
     },
     hasSprites: function hasSprites() {
         return this.texture && _texture2.default.textures[this.texture] && _texture2.default.textures[this.texture].sprites;
@@ -36735,17 +36887,11 @@ Object.assign(Points, {
 
     // Queue features for deferred processing (collect all features first so we can do collision on the whole group)
     queueFeature: function queueFeature(q, tile) {
-        if (!this.tile_data[tile.key] || !this.queues[tile.key]) {
+        if (!this.tile_data[tile.id] || !this.queues[tile.id]) {
             this.startData(tile);
         }
-        this.queues[tile.key].push(q);
-    },
-
-
-    // Override
-    startData: function startData(tile) {
-        this.queues[tile.key] = [];
-        return _style.Style.startData.call(this, tile);
+        this.queues[tile.id] = this.queues[tile.id] || [];
+        this.queues[tile.id].push(q);
     },
 
 
@@ -36758,8 +36904,8 @@ Object.assign(Points, {
             return Promise.resolve();
         }
 
-        var queue = this.queues[tile.key];
-        delete this.queues[tile.key];
+        var queue = this.queues[tile.id];
+        delete this.queues[tile.id];
 
         // For each point feature, create one or more labels
         var text_objs = [];
@@ -36807,7 +36953,7 @@ Object.assign(Points, {
         // Collide both points and text, then build features
         return Promise.all([
         // Points
-        _collision2.default.collide(point_objs, this.collision_group_points, tile.key).then(function (point_objs) {
+        _collision2.default.collide(point_objs, this.collision_group_points, tile.id).then(function (point_objs) {
             point_objs.forEach(function (q) {
                 _this.feature_style = q.style;
                 _this.feature_style.label = q.label;
@@ -36815,14 +36961,12 @@ Object.assign(Points, {
             });
         }),
         // Labels
-        this.prepareTextLabels(tile, this.collision_group_text, text_objs).then(function (labels) {
-            return _this.collideAndRenderTextLabels(tile, _this.collision_group_text, labels);
-        })]).then(function (_ref) {
+        this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)]).then(function (_ref) {
             var _ref2 = _slicedToArray(_ref, 2),
                 _ref2$ = _ref2[1],
                 labels = _ref2$.labels,
                 texts = _ref2$.texts,
-                texture = _ref2$.texture;
+                textures = _ref2$.textures;
 
             // Process labels
             if (labels && texts) {
@@ -36837,7 +36981,7 @@ Object.assign(Points, {
                     style.size = text_info.size.logical_size;
                     style.angle = 0; // text attached to point is always upright
                     style.texcoords = text_info.align[q.label.align].texcoords;
-                    style.sampler = 1; // non-0 = labels
+                    style.label_texture = textures[text_info.align[q.label.align].texture_id];
 
                     _style.Style.addFeature.call(_this, q.feature, q.draw, q.context);
                 });
@@ -36847,12 +36991,11 @@ Object.assign(Points, {
             // Finish tile mesh
             return _style.Style.endData.call(_this, tile).then(function (tile_data) {
                 // Attach tile-specific label atlas to mesh as a texture uniform
-                if (texture && tile_data) {
-                    tile_data.uniforms = tile_data.uniforms || {};
-                    tile_data.textures = tile_data.textures || [];
+                if (textures && textures.length) {
+                    var _tile_data$textures;
 
-                    tile_data.uniforms.u_label_texture = texture;
-                    tile_data.textures.push(texture); // assign texture ownership to tile
+                    tile_data.textures = tile_data.textures || [];
+                    (_tile_data$textures = tile_data.textures).push.apply(_tile_data$textures, _toConsumableArray(textures)); // assign texture ownership to tile
                 }
                 return tile_data;
             });
@@ -36977,11 +37120,11 @@ Object.assign(Points, {
 
 
     // Implements label building for TextLabels mixin
-    buildTextLabels: function buildTextLabels(tile_key, feature_queue) {
+    buildTextLabels: function buildTextLabels(tile, feature_queue) {
         var labels = [];
         for (var f = 0; f < feature_queue.length; f++) {
             var fq = feature_queue[f];
-            var text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            var text_info = this.texts[tile.id][fq.text_settings_key][fq.text];
             var size = text_info.size.collision_size;
             fq.label = new _label_point2.default(fq.point_label.position, size, fq.layout);
             labels.push(fq);
@@ -37068,8 +37211,8 @@ Object.assign(Points, {
         // layer order - w coord of 'position' attribute (for packing efficiency)
         this.fillVertexTemplate('a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
 
-        // scaling vector - (x, y) components per pixel, z = angle, w = scaling factor
-        this.fillVertexTemplate('a_shape', 0, { size: 4 });
+        // scaling vector - (x, y) components per pixel, z = angle
+        this.fillVertexTemplate('a_shape', 0, { size: 3 }); // NB: w coord is currently unused, change size: 4 if needed
 
         // texture coords
         this.fillVertexTemplate('a_texcoord', 0, { size: 2 });
@@ -37094,7 +37237,7 @@ Object.assign(Points, {
 
         return this.vertex_template;
     },
-    buildQuad: function buildQuad(points, size, angle, angles, pre_angles, sampler, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+    buildQuad: function buildQuad(points, size, angle, angles, pre_angles, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
         return (0, _points.buildQuadsForPoints)(points, vertex_data, vertex_template, {
             texcoord_index: this.vertex_layout.index.a_texcoord,
             position_index: this.vertex_layout.index.a_position,
@@ -37102,8 +37245,7 @@ Object.assign(Points, {
             offset_index: this.vertex_layout.index.a_offset,
             offsets_index: this.vertex_layout.index.a_offsets,
             pre_angles_index: this.vertex_layout.index.a_pre_angles,
-            angles_index: this.vertex_layout.index.a_angles,
-            outline_edge_index: sampler ? null : this.vertex_layout.index.a_outline_edge
+            angles_index: this.vertex_layout.index.a_angles
         }, {
             quad: size,
             quad_normalize: 256, // values have an 8-bit fraction
@@ -37112,7 +37254,6 @@ Object.assign(Points, {
             pre_angles: pre_angles,
             angle: angle * 4096, // values have a 12-bit fraction
             angles: angles,
-            shape_w: sampler,
             curve: curve,
             texcoord_scale: texcoord_scale,
             texcoord_normalize: texcoord_normalize,
@@ -37124,15 +37265,15 @@ Object.assign(Points, {
 
 
     // Build quad for point sprite
-    build: function build(style, vertex_data) {
+    build: function build(style, vertex_data, context) {
         var label = style.label;
         if (label.type === 'curved') {
-            return this.buildArticulatedLabel(label, style, vertex_data);
+            return this.buildArticulatedLabel(label, style, vertex_data, context);
         } else {
-            return this.buildLabel(label, style, vertex_data);
+            return this.buildLabel(label, style, vertex_data, context);
         }
     },
-    buildLabel: function buildLabel(label, style, vertex_data) {
+    buildLabel: function buildLabel(label, style, vertex_data, context) {
         var vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle || style.angle;
 
@@ -37140,10 +37281,30 @@ Object.assign(Points, {
             texcoords = void 0;
         if (label.type) {
             size = style.size[label.type];
-            texcoords = style.texcoords[label.type];
+            texcoords = style.texcoords[label.type].texcoord;
         } else {
             size = style.size;
             texcoords = style.texcoords;
+        }
+
+        // re-point to correct label texture
+        var mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+        vertex_data = mesh_data.vertex_data;
+
+        // setup style or label texture if applicable
+        mesh_data.uniforms = mesh_data.uniforms || {};
+        if (style.label_texture) {
+            mesh_data.uniforms.u_texture = style.label_texture;
+            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh_data.uniforms.u_apply_color_blocks = false;
+        } else if (this.texture) {
+            mesh_data.uniforms.u_texture = this.texture;
+            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_TEXTURE;
+            mesh_data.uniforms.u_apply_color_blocks = true;
+        } else {
+            mesh_data.uniforms.u_texture = _texture2.default.default; // ensure a tetxure is always bound to avoid GL warnings ('no texture bound to unit' in Chrome)
+            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_SHADER;
+            mesh_data.uniforms.u_apply_color_blocks = true;
         }
 
         var offset = label.offset;
@@ -37155,7 +37316,6 @@ Object.assign(Points, {
         angle, // angle in radians
         null, // placeholder for multiple angles
         null, // placeholder for multiple pre_angles
-        style.sampler, // texture sampler to use
         offset, // offset from center in pixels
         null, // placeholder for multiple offsets
         texcoords, // texture UVs
@@ -37163,7 +37323,7 @@ Object.assign(Points, {
         vertex_data, vertex_template // VBO and data for current vertex
         );
     },
-    buildArticulatedLabel: function buildArticulatedLabel(label, style, vertex_data) {
+    buildArticulatedLabel: function buildArticulatedLabel(label, style, vertex_data, context) {
         var vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle;
         var geom_count = 0;
@@ -37175,6 +37335,17 @@ Object.assign(Points, {
         for (var i = 0; i < label.num_segments; i++) {
             var size = style.size[label.type][i];
             var texcoord_stroke = style.texcoords_stroke[i];
+
+            // re-point to correct label texture
+            style.label_texture = style.label_textures[i];
+            var mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            vertex_data = mesh_data.vertex_data;
+
+            // add label texture uniform if needed
+            mesh_data.uniforms = mesh_data.uniforms || {};
+            mesh_data.uniforms.u_texture = style.label_texture;
+            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh_data.uniforms.u_apply_color_blocks = false;
 
             var offset = label.offset || [0, 0];
             var position = label.position;
@@ -37188,7 +37359,6 @@ Object.assign(Points, {
             angle, // angle in degrees
             angles, // angles per segment
             pre_angles, // pre_angle array (rotation applied before offseting)
-            style.sampler, // texture sampler to use
             offset, // offset from center in pixels
             offsets, // offsets per segment
             texcoord_stroke, // texture UVs for stroked text
@@ -37200,7 +37370,18 @@ Object.assign(Points, {
         // pass for fill
         for (var _i5 = 0; _i5 < label.num_segments; _i5++) {
             var _size = style.size[label.type][_i5];
-            var texcoord = style.texcoords[label.type][_i5];
+            var texcoord = style.texcoords[label.type][_i5].texcoord;
+
+            // re-point to correct label texture
+            style.label_texture = style.label_textures[_i5];
+            var _mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            vertex_data = _mesh_data.vertex_data;
+
+            // add label texture uniform if needed
+            _mesh_data.uniforms = _mesh_data.uniforms || {};
+            _mesh_data.uniforms.u_texture = style.label_texture;
+            _mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            _mesh_data.uniforms.u_apply_color_blocks = false;
 
             var _offset = label.offset || [0, 0];
             var _position = label.position;
@@ -37214,7 +37395,6 @@ Object.assign(Points, {
             angle, // angle in degrees
             _angles, // angles per segment
             _pre_angles, // pre_angle array (rotation applied before offseting)
-            style.sampler, // texture sampler to use
             _offset, // offset from center in pixels
             _offsets, // offsets per segment
             texcoord, // texture UVs for fill text
@@ -37229,13 +37409,23 @@ Object.assign(Points, {
 
     // Override to pass-through to generic point builder
     buildLines: function buildLines(lines, style, vertex_data, context) {
-        return this.build(style, vertex_data);
+        return this.build(style, vertex_data, context);
     },
     buildPoints: function buildPoints(points, style, vertex_data, context) {
-        return this.build(style, vertex_data);
+        return this.build(style, vertex_data, context);
     },
     buildPolygons: function buildPolygons(points, style, vertex_data, context) {
-        return this.build(style, vertex_data);
+        return this.build(style, vertex_data, context);
+    },
+
+
+    // Override
+    meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
+        // TODO: restore support for varying sprite textures too (?)
+        if (draw.label_texture) {
+            return draw.label_texture;
+        }
+        return this.default_mesh_variant;
     },
     makeMesh: function makeMesh(vertex_data, vertex_elements) {
         var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
@@ -37246,7 +37436,7 @@ Object.assign(Points, {
     }
 });
 
-},{"../../builders/points":197,"../../geo":201,"../../gl/constants":202,"../../gl/texture":208,"../../gl/vertex_layout":213,"../../labels/collision":214,"../../labels/label_point":218,"../../labels/point_placement":220,"../../utils/debug_settings":255,"../../utils/log":259,"../../vector":271,"../../view":272,"../style":243,"../style_parser":245,"../text/text_labels":249}],241:[function(_dereq_,module,exports){
+},{"../../builders/points":197,"../../geo":201,"../../gl/constants":202,"../../gl/texture":208,"../../gl/vertex_layout":213,"../../labels/collision":214,"../../labels/label_point":218,"../../labels/point_placement":220,"../../utils/debug_settings":255,"../../utils/log":259,"../../vector":272,"../../view":273,"../style":243,"../style_parser":245,"../text/text_labels":249}],241:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37634,25 +37824,34 @@ var Style = exports.Style = {
 
     // Returns an object to hold feature data (for a tile or other object)
     startData: function startData(tile) {
-        this.tile_data[tile.key] = {
-            vertex_data: null,
+        this.tile_data[tile.id] = this.tile_data[tile.id] || {
+            meshes: {},
             uniforms: {},
             textures: []
         };
-        return this.tile_data[tile.key];
     },
 
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData: function endData(tile) {
-        var tile_data = this.tile_data[tile.key];
-        this.tile_data[tile.key] = null;
+        var tile_data = this.tile_data[tile.id];
+        this.tile_data[tile.id] = null;
 
-        if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
-            // Only keep final byte buffer
-            tile_data.vertex_data.end();
-            tile_data.vertex_elements = tile_data.vertex_data.element_buffer;
-            tile_data.vertex_data = tile_data.vertex_data.vertex_buffer; // convert from instance to raw typed array
+        if (tile_data && Object.keys(tile_data.meshes).length > 0) {
+            for (var variant in tile_data.meshes) {
+                var mesh = tile_data.meshes[variant];
+
+                // Remove empty mesh variants
+                if (mesh.vertex_data.vertex_count === 0) {
+                    delete tile_data.meshes[variant];
+                    continue;
+                }
+
+                // Only keep final byte buffer
+                mesh.vertex_data.end();
+                mesh.vertex_elements = mesh.vertex_data.element_buffer;
+                mesh.vertex_data = mesh.vertex_data.vertex_buffer; // convert from instance to raw typed array
+            }
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
@@ -37666,8 +37865,27 @@ var Style = exports.Style = {
 
 
     // Has mesh data for a given tile?
-    hasDataForTile: function hasDataForTile(tile_key) {
-        return this.tile_data[tile_key] != null;
+    hasDataForTile: function hasDataForTile(tile) {
+        return this.tile_data[tile.id] != null;
+    },
+    getTileMesh: function getTileMesh(tile, variant) {
+        var meshes = this.tile_data[tile.id].meshes;
+        if (meshes[variant] == null) {
+            meshes[variant] = {
+                variant: variant,
+                vertex_data: this.vertexLayoutForMeshVariant(variant).createVertexData()
+            };
+        }
+        return meshes[variant];
+    },
+    vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
+        return this.vertex_layout;
+    },
+
+
+    default_mesh_variant: 0,
+    meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
+        return this.default_mesh_variant;
     },
     addFeature: function addFeature(feature, draw, context) {
         var tile = context.tile;
@@ -37675,7 +37893,7 @@ var Style = exports.Style = {
             return;
         }
 
-        if (!this.tile_data[tile.key]) {
+        if (!this.tile_data[tile.id]) {
             this.startData(tile);
         }
 
@@ -37684,14 +37902,8 @@ var Style = exports.Style = {
             return; // skip feature
         }
 
-        // First feature in this render style?
-        if (!this.tile_data[tile.key].vertex_data) {
-            this.tile_data[tile.key].vertex_data = this.vertex_layout.createVertexData();
-        }
-
-        if (this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context) > 0) {
-            feature.generation = this.generation; // track scene generation that feature was rendered for
-        }
+        var vertex_data = this.getTileMesh(tile, this.meshVariantTypeForDraw(style)).vertex_data;
+        this.buildGeometry(feature.geometry, style, vertex_data, context);
     },
     buildGeometry: function buildGeometry(geometry, style, vertex_data, context) {
         var _this = this;
@@ -37871,7 +38083,8 @@ var Style = exports.Style = {
     makeMesh: function makeMesh(vertex_data, vertex_elements) {
         var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-        return new _vbo_mesh2.default(this.gl, vertex_data, vertex_elements, this.vertex_layout, options);
+        var vertex_layout = this.vertexLayoutForMeshVariant(options.variant);
+        return new _vbo_mesh2.default(this.gl, vertex_data, vertex_elements, vertex_layout, options);
     },
     render: function render(mesh) {
         return mesh.render();
@@ -38242,7 +38455,7 @@ function addLayerDebugEntry(target, layer, faeture_count, geom_count, styles, ba
     }
 }
 
-},{"../gl/shader_program":207,"../gl/texture":208,"../gl/vbo_mesh":210,"../light":223,"../material":224,"../selection":230,"../sources/raster":234,"../utils/debug_settings":255,"../utils/log":259,"../utils/merge":261,"../utils/thread":266,"../utils/worker_broker":270,"./style_parser":245}],244:[function(_dereq_,module,exports){
+},{"../gl/shader_program":207,"../gl/texture":208,"../gl/vbo_mesh":210,"../light":223,"../material":224,"../selection":230,"../sources/raster":234,"../utils/debug_settings":255,"../utils/log":259,"../utils/merge":261,"../utils/thread":267,"../utils/worker_broker":271,"./style_parser":245}],244:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39178,7 +39391,7 @@ StyleParser.evalProperty = function (prop, context) {
     return prop;
 };
 
-},{"../geo":201,"../utils/utils":268,"csscolorparser":71}],246:[function(_dereq_,module,exports){
+},{"../geo":201,"../utils/utils":269,"csscolorparser":71}],246:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39205,11 +39418,17 @@ var _font_manager = _dereq_('./font_manager');
 
 var _font_manager2 = _interopRequireDefault(_font_manager);
 
+var _task = _dereq_('../../utils/task');
+
+var _task2 = _interopRequireDefault(_task);
+
 var _debug_settings = _dereq_('../../utils/debug_settings');
 
 var _debug_settings2 = _interopRequireDefault(_debug_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -39217,14 +39436,19 @@ var CanvasText = function () {
     function CanvasText() {
         _classCallCheck(this, CanvasText);
 
-        this.canvas = document.createElement('canvas');
-        this.canvas.style.backgroundColor = 'transparent'; // render text on transparent background
-        this.context = this.canvas.getContext('2d');
+        this.createCanvas(); // create initial canvas and context
         this.vertical_text_buffer = 8; // vertical pixel padding around text
         this.horizontal_text_buffer = 4; // text styling such as italic emphasis is not measured by the Canvas API, so padding is necessary
     }
 
     _createClass(CanvasText, [{
+        key: 'createCanvas',
+        value: function createCanvas() {
+            this.canvas = document.createElement('canvas');
+            this.canvas.style.backgroundColor = 'transparent'; // render text on transparent background
+            this.context = this.canvas.getContext('2d');
+        }
+    }, {
         key: 'resize',
         value: function resize(width, height) {
             this.canvas.width = width;
@@ -39259,63 +39483,97 @@ var CanvasText = function () {
         }
     }, {
         key: 'textSizes',
-        value: function textSizes(texts) {
+        value: function textSizes(tile_id, texts) {
             var _this = this;
 
-            var dpr = void 0;
             return _font_manager2.default.loadFonts().then(function () {
-                for (var style in texts) {
-                    CanvasText.initTextCache(style);
-
-                    var text_infos = texts[style];
-                    var first = true;
-
-                    for (var text in text_infos) {
-                        var text_info = text_infos[text];
-                        var text_settings = text_info.text_settings;
-
-                        if (first) {
-                            _this.setFont(text_settings);
-                            dpr = _utils2.default.device_pixel_ratio * text_settings.supersample;
-                            first = false;
-                        }
-
-                        if (text_settings.can_articulate) {
-                            var rtl = false;
-                            var bidi = false;
-                            if (isTextRTL(text)) {
-                                if (!isTextNeutral(text)) {
-                                    bidi = true;
-                                } else {
-                                    rtl = true;
-                                }
-                            }
-
-                            text_info.isRTL = rtl;
-                            text_info.no_curving = bidi || isTextCurveBlacklisted(text); // used in LabelLine to prevent curved labels
-                            text_info.vertical_buffer = _this.vertical_text_buffer;
-                            text_info.size = [];
-
-                            if (!text_info.no_curving) {
-                                var segments = splitLabelText(text, rtl);
-                                text_info.segments = segments;
-                                for (var i = 0; i < segments.length; i++) {
-                                    text_info.size.push(_this.textSize(style, segments[i], text_settings).size);
-                                }
-                            }
-
-                            // add full text as well
-                            text_info.total_size = _this.textSize(style, text, text_settings).size;
-                        } else {
-                            // Only send text sizes back to worker (keep computed text line info
-                            // on main thread, for future rendering)
-                            text_info.size = _this.textSize(style, text, text_settings).size;
-                        }
+                return _task2.default.add({
+                    type: 'textSizes',
+                    target: _this,
+                    method: 'processTextSizesTask',
+                    texts: texts,
+                    tile_id: tile_id,
+                    cursor: {
+                        styles: Object.keys(texts),
+                        texts: null,
+                        style_idx: null,
+                        text_idx: null
                     }
+                });
+            });
+        }
+    }, {
+        key: 'processTextSizesTask',
+        value: function processTextSizesTask(task) {
+            var cursor = task.cursor,
+                texts = task.texts;
+
+            cursor.style_idx = cursor.style_idx || 0;
+
+            while (cursor.style_idx < cursor.styles.length) {
+                var style = cursor.styles[cursor.style_idx];
+                if (cursor.text_idx == null) {
+                    cursor.text_idx = 0;
+                    cursor.texts = Object.keys(texts[style]);
                 }
 
-                return texts;
-            });
+                var text_infos = texts[style];
+                var first = true;
+
+                while (cursor.text_idx < cursor.texts.length) {
+                    var text = cursor.texts[cursor.text_idx];
+                    var text_info = text_infos[text];
+                    var text_settings = text_info.text_settings;
+
+                    if (first) {
+                        this.setFont(text_settings);
+                        first = false;
+                    }
+
+                    if (text_settings.can_articulate) {
+                        var rtl = false;
+                        var bidi = false;
+                        if (isTextRTL(text)) {
+                            if (!isTextNeutral(text)) {
+                                bidi = true;
+                            } else {
+                                rtl = true;
+                            }
+                        }
+
+                        text_info.isRTL = rtl;
+                        text_info.no_curving = bidi || isTextCurveBlacklisted(text); // used in LabelLine to prevent curved labels
+                        text_info.vertical_buffer = this.vertical_text_buffer;
+                        text_info.size = [];
+
+                        if (!text_info.no_curving) {
+                            var segments = splitLabelText(text, rtl);
+                            text_info.segments = segments;
+                            for (var i = 0; i < segments.length; i++) {
+                                text_info.size.push(this.textSize(style, segments[i], text_settings).size);
+                            }
+                        }
+
+                        // add full text as well
+                        text_info.total_size = this.textSize(style, text, text_settings).size;
+                    } else {
+                        // Only send text sizes back to worker (keep computed text line info
+                        // on main thread, for future rendering)
+                        text_info.size = this.textSize(style, text, text_settings).size;
+                    }
+
+                    cursor.text_idx++;
+
+                    if (!_task2.default.shouldContinue(task)) {
+                        return false;
+                    }
+                }
+                cursor.text_idx = null;
+                cursor.style_idx++;
+            }
+
+            _task2.default.finish(task, { texts: texts });
+            return true;
         }
 
         // Computes width and height of text based on current font style
@@ -39332,12 +39590,13 @@ var CanvasText = function () {
                 supersample = _ref2.supersample;
 
             // Check cache first
-            if (CanvasText.text_cache[style][text]) {
-                CanvasText.cache_stats.text_hits++;
-                return CanvasText.text_cache[style][text];
+            CanvasText.cache.text[style] = CanvasText.cache.text[style] || {};
+            if (CanvasText.cache.text[style][text]) {
+                CanvasText.cache.stats.text_hits++;
+                return CanvasText.cache.text[style][text];
             }
-            CanvasText.cache_stats.text_misses++;
-            CanvasText.text_cache_count++;
+            CanvasText.cache.stats.text_misses++;
+            CanvasText.cache.text_count++;
 
             // Calc and store in cache
             var dpr = _utils2.default.device_pixel_ratio * supersample;
@@ -39363,11 +39622,11 @@ var CanvasText = function () {
             var logical_size = [texture_size[0] / dpr, texture_size[1] / dpr];
 
             // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
-            CanvasText.text_cache[style][text] = {
+            CanvasText.cache.text[style][text] = {
                 lines: lines,
                 size: { collision_size: collision_size, texture_size: texture_size, logical_size: logical_size, line_height: line_height }
             };
-            return CanvasText.text_cache[style][text];
+            return CanvasText.cache.text[style][text];
         }
 
         // Draw multiple lines of text
@@ -39482,224 +39741,363 @@ var CanvasText = function () {
         }
     }, {
         key: 'rasterize',
-        value: function rasterize(texts, texture_size, tile_key) {
-            for (var style in texts) {
-                var text_infos = texts[style];
-                var first = true;
+        value: function rasterize(texts, textures, tile_id, texture_prefix, gl) {
+            return _task2.default.add({
+                type: 'rasterizeLabels',
+                target: this,
+                method: 'processRasterizeTask',
+                cancel: 'cancelRasterizeTask',
+                pause_factor: 2, // pause 2 frames when task run past allowed time
+                user_moving_view: false, // don't run task when user is moving view
+                texts: texts,
+                textures: textures,
+                texture_prefix: texture_prefix,
+                gl: gl,
+                tile_id: tile_id,
+                cursor: {
+                    styles: Object.keys(texts),
+                    texts: null,
+                    style_idx: 0,
+                    text_idx: null,
+                    texture_idx: 0,
+                    texture_resize: true,
+                    texture_names: []
+                }
+            });
+        }
+    }, {
+        key: 'processRasterizeTask',
+        value: function processRasterizeTask(task) {
+            var cursor = task.cursor,
+                texts = task.texts,
+                textures = task.textures;
 
-                for (var text in text_infos) {
-                    var text_info = text_infos[text];
-                    var text_settings = text_info.text_settings;
+            var texture = void 0;
 
-                    // set font on first occurence of new font style
-                    if (first) {
-                        this.setFont(text_settings);
-                        first = false;
+            // Rasterize one texture at a time, so we only have to keep one canvas in memory (they can be large)
+            while (cursor.texture_idx < task.textures.length) {
+                texture = textures[cursor.texture_idx];
+
+                if (cursor.texture_resize) {
+                    cursor.texture_resize = false;
+                    this.resize.apply(this, _toConsumableArray(texture.texture_size));
+                }
+
+                while (cursor.style_idx < cursor.styles.length) {
+                    var style = cursor.styles[cursor.style_idx];
+                    if (cursor.text_idx == null) {
+                        cursor.text_idx = 0;
+                        cursor.texts = Object.keys(texts[style]);
                     }
 
-                    if (text_settings.can_articulate) {
-                        var words = text_info.segments;
+                    var text_infos = texts[style];
+                    var first = true;
 
-                        text_info.texcoords = {};
-                        for (var i = 0; i < text_info.type.length; i++) {
+                    while (cursor.text_idx < cursor.texts.length) {
+                        var text = cursor.texts[cursor.text_idx];
+                        var text_info = text_infos[text];
+                        var text_settings = text_info.text_settings;
 
-                            var type = text_info.type[i];
-                            switch (type) {
-                                case 'straight':
-                                    var word = text_info.isRTL ? text.split().reverse().join() : text;
-                                    var texcoord = void 0;
+                        // set font on first occurence of new font style
+                        if (first) {
+                            this.setFont(text_settings);
+                            first = false;
+                        }
 
-                                    if (CanvasText.texcoord_cache[tile_key][style][word].texcoord) {
-                                        texcoord = CanvasText.texcoord_cache[tile_key][style][word].texcoord;
-                                    } else {
-                                        var texture_position = CanvasText.texcoord_cache[tile_key][style][word].texture_position;
-                                        var size = CanvasText.text_cache[style][word].size;
-                                        var line = CanvasText.text_cache[style][word].lines;
+                        if (text_settings.can_articulate) {
+                            text_info.texcoords = text_info.texcoords || {};
+                            for (var t = 0; t < text_info.type.length; t++) {
 
-                                        this.drawTextMultiLine(line, texture_position, size, text_settings, type);
-
-                                        texcoord = _texture2.default.getTexcoordsForSprite(texture_position, size.texture_size, texture_size);
-
-                                        CanvasText.texcoord_cache[tile_key][style][word].texcoord = texcoord;
-                                    }
-
-                                    text_info.texcoords[type] = texcoord;
-                                    break;
-                                case 'curved':
-                                    text_info.texcoords.curved = [];
-                                    text_info.texcoords_stroke = [];
-                                    for (var _i = 0; _i < words.length; _i++) {
-                                        var _word = words[_i];
-                                        var _texcoord = void 0;
-                                        var texcoord_stroke = void 0;
-
-                                        if (CanvasText.texcoord_cache[tile_key][style][_word].texcoord) {
-                                            _texcoord = CanvasText.texcoord_cache[tile_key][style][_word].texcoord;
-                                            texcoord_stroke = CanvasText.texcoord_cache[tile_key][style][_word].texcoord_stroke;
-
-                                            text_info.texcoords_stroke.push(texcoord_stroke);
-                                        } else {
-                                            var _texture_position = CanvasText.texcoord_cache[tile_key][style][_word].texture_position;
-                                            var _size = CanvasText.text_cache[style][_word].size;
-                                            var _line = CanvasText.text_cache[style][_word].lines;
-
-                                            this.drawTextMultiLine(_line, _texture_position, _size, text_settings, type);
-
-                                            _texcoord = _texture2.default.getTexcoordsForSprite(_texture_position, _size.texture_size, texture_size);
-
-                                            var texture_position_stroke = [_texture_position[0] + _size.texture_size[0], _texture_position[1]];
-
-                                            texcoord_stroke = _texture2.default.getTexcoordsForSprite(texture_position_stroke, _size.texture_size, texture_size);
-
-                                            CanvasText.texcoord_cache[tile_key][style][_word].texcoord = _texcoord;
-                                            CanvasText.texcoord_cache[tile_key][style][_word].texcoord_stroke = texcoord_stroke;
-
-                                            text_info.texcoords_stroke.push(texcoord_stroke);
+                                var type = text_info.type[t];
+                                switch (type) {
+                                    case 'straight':
+                                        // Only render for current texture
+                                        if (text_info.textures[t] !== cursor.texture_idx) {
+                                            continue;
                                         }
 
-                                        text_info.texcoords.curved.push(_texcoord);
-                                    }
-                                    break;
+                                        var word = text_info.isRTL ? text.split().reverse().join() : text;
+                                        var cache = texture.texcoord_cache[style][word];
+
+                                        var texcoord = void 0;
+                                        if (cache.texcoord) {
+                                            texcoord = cache.texcoord;
+                                        } else {
+                                            var texture_position = cache.texture_position;
+
+                                            var _textSize = this.textSize(style, word, text_settings),
+                                                size = _textSize.size,
+                                                lines = _textSize.lines;
+
+                                            this.drawTextMultiLine(lines, texture_position, size, text_settings, type);
+
+                                            texcoord = _texture2.default.getTexcoordsForSprite(texture_position, size.texture_size, texture.texture_size);
+
+                                            cache.texcoord = texcoord;
+                                        }
+
+                                        text_info.texcoords[type] = {
+                                            texcoord: texcoord,
+                                            texture_id: cache.texture_id
+                                        };
+
+                                        break;
+
+                                    case 'curved':
+                                        var words = text_info.segments;
+                                        text_info.texcoords.curved = text_info.texcoords.curved || [];
+                                        text_info.texcoords_stroke = text_info.texcoords_stroke || [];
+
+                                        for (var w = 0; w < words.length; w++) {
+                                            // Only render for current texture
+                                            if (text_info.textures[t][w] !== cursor.texture_idx) {
+                                                continue;
+                                            }
+
+                                            var _word = words[w];
+                                            var _cache = texture.texcoord_cache[style][_word];
+
+                                            var _texcoord = void 0;
+                                            var texcoord_stroke = void 0;
+                                            if (_cache.texcoord) {
+                                                _texcoord = _cache.texcoord;
+                                                texcoord_stroke = _cache.texcoord_stroke;
+                                                text_info.texcoords_stroke.push(texcoord_stroke);
+                                            } else {
+                                                var _texture_position = _cache.texture_position;
+
+                                                var _textSize2 = this.textSize(style, _word, text_settings),
+                                                    _size = _textSize2.size,
+                                                    _lines = _textSize2.lines;
+
+                                                this.drawTextMultiLine(_lines, _texture_position, _size, text_settings, type);
+
+                                                _texcoord = _texture2.default.getTexcoordsForSprite(_texture_position, _size.texture_size, texture.texture_size);
+
+                                                var texture_position_stroke = [_texture_position[0] + _size.texture_size[0], _texture_position[1]];
+
+                                                texcoord_stroke = _texture2.default.getTexcoordsForSprite(texture_position_stroke, _size.texture_size, texture.texture_size);
+
+                                                _cache.texcoord = _texcoord;
+                                                _cache.texcoord_stroke = texcoord_stroke;
+
+                                                // NB: texture_id is the same between stroke and fill, so it's not duplicated here
+                                                text_info.texcoords_stroke.push(texcoord_stroke);
+                                            }
+
+                                            text_info.texcoords.curved.push({
+                                                texcoord: _texcoord,
+                                                texture_id: _cache.texture_id
+                                            });
+                                        }
+                                        break;
+                                }
+                            }
+                        } else {
+                            var _lines2 = this.textSize(style, text, text_settings).lines;
+
+                            for (var align in text_info.align) {
+                                // Only render for current texture
+                                if (text_info.align[align].texture_id !== cursor.texture_idx) {
+                                    continue;
+                                }
+
+                                this.drawTextMultiLine(_lines2, text_info.align[align].texture_position, text_info.size, {
+                                    stroke: text_settings.stroke,
+                                    stroke_width: text_settings.stroke_width,
+                                    transform: text_settings.transform,
+                                    supersample: text_settings.supersample,
+                                    align: align
+                                });
+
+                                text_info.align[align].texcoords = _texture2.default.getTexcoordsForSprite(text_info.align[align].texture_position, text_info.size.texture_size, texture.texture_size);
                             }
                         }
-                    } else {
-                        var lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
-                        for (var align in text_info.align) {
-                            this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, {
-                                stroke: text_settings.stroke,
-                                stroke_width: text_settings.stroke_width,
-                                transform: text_settings.transform,
-                                supersample: text_settings.supersample,
-                                align: align
-                            });
 
-                            text_info.align[align].texcoords = _texture2.default.getTexcoordsForSprite(text_info.align[align].texture_position, text_info.size.texture_size, texture_size);
+                        cursor.text_idx++;
+
+                        if (!_task2.default.shouldContinue(task)) {
+                            return false;
                         }
                     }
+                    cursor.text_idx = null;
+                    cursor.style_idx++;
                 }
+
+                // Create GL texture (canvas element will be reused for next texture)
+                var tname = task.texture_prefix + cursor.texture_idx;
+                _texture2.default.create(task.gl, tname, {
+                    element: this.canvas,
+                    filtering: 'linear',
+                    UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+                });
+                _texture2.default.retain(tname);
+                cursor.texture_names.push(tname);
+
+                cursor.texture_idx++;
+                cursor.texture_resize = true;
+                cursor.style_idx = 0;
             }
-            CanvasText.clearTexcoordCache(tile_key);
+
+            _task2.default.finish(task, { textures: cursor.texture_names });
+            return true;
+        }
+
+        // Free any textures that have been allocated part-way through label rasterization for a tile
+
+    }, {
+        key: 'cancelRasterizeTask',
+        value: function cancelRasterizeTask(task) {
+            (0, _log2.default)('trace', 'RasterizeTask: release textures [' + task.cursor.texture_names.join(', ') + ']');
+            task.cursor.texture_names.forEach(function (t) {
+                return _texture2.default.release(t);
+            });
         }
 
         // Place text labels within an atlas of the given max size
 
     }, {
         key: 'setTextureTextPositions',
-        value: function setTextureTextPositions(texts, max_texture_size, tile_key) {
-            CanvasText.clearTexcoordCache(tile_key);
-            CanvasText.texcoord_cache[tile_key] = {};
+        value: function setTextureTextPositions(texts, max_texture_size) {
+            var texture = {
+                cx: 0,
+                cy: 0,
+                width: 0,
+                height: 0,
+                column_width: 0,
+                texture_id: 0,
+                texcoord_cache: {}
+            },
+                textures = [];
+            var texcoord_cache = texture.texcoord_cache;
 
-            // Keep track of column width
-            var column_width = 0;
-
-            // Layout labels, stacked in columns
-            var cx = 0,
-                cy = 0; // current x/y position in atlas
-            var height = 0; // overall atlas height
             for (var style in texts) {
-                if (!CanvasText.texcoord_cache[tile_key][style]) {
-                    CanvasText.texcoord_cache[tile_key][style] = {};
-                }
-
                 var text_infos = texts[style];
 
                 for (var text in text_infos) {
                     var text_info = text_infos[text];
+                    var texture_position = void 0;
 
                     if (text_info.text_settings.can_articulate) {
-                        var texture_position = void 0;
+                        text_info.textures = [];
+                        texcoord_cache[style] = texcoord_cache[style] || {};
 
-                        for (var i = 0; i < text_info.type.length; i++) {
-                            var type = text_info.type[i];
+                        for (var t = 0; t < text_info.type.length; t++) {
+                            var type = text_info.type[t];
+
                             switch (type) {
                                 case 'straight':
-                                    var size = text_info.total_size.texture_size;
                                     var word = text_info.isRTL ? text.split().reverse().join() : text;
 
-                                    if (size[0] > column_width) {
-                                        column_width = size[0];
-                                    }
-                                    if (cy + size[1] < max_texture_size) {
-                                        texture_position = [cx, cy];
-
-                                        cy += size[1];
-                                        if (cy > height) {
-                                            height = cy;
-                                        }
-                                    } else {
-                                        // start new column if taller than texture
-                                        cx += column_width;
-                                        column_width = 0;
-                                        cy = 0;
-                                        texture_position = [cx, cy];
+                                    if (!texcoord_cache[style][word]) {
+                                        var size = text_info.total_size.texture_size;
+                                        texture_position = this.placeText(size[0], size[1], style, texture, textures, max_texture_size);
+                                        texcoord_cache[style][word] = {
+                                            texture_id: texture.texture_id,
+                                            texture_position: texture_position
+                                        };
                                     }
 
-                                    CanvasText.texcoord_cache[tile_key][style][word] = {
-                                        texture_position: texture_position
-                                    };
+                                    text_info.textures[t] = texture.texture_id;
+
                                     break;
+
                                 case 'curved':
-                                    for (var _i2 = 0; _i2 < text_info.size.length; _i2++) {
-                                        var _word2 = text_info.segments[_i2];
+                                    text_info.textures[t] = [];
 
-                                        if (!CanvasText.texcoord_cache[tile_key][style][_word2]) {
+                                    for (var w = 0; w < text_info.size.length; w++) {
+                                        var _word2 = text_info.segments[w];
 
-                                            var _size2 = text_info.size[_i2].texture_size;
-                                            var width = 2 * _size2[0];
-                                            if (width > column_width) {
-                                                column_width = width;
-                                            }
-                                            if (cy + _size2[1] < max_texture_size) {
-                                                texture_position = [cx, cy];
-
-                                                cy += _size2[1];
-                                                if (cy > height) {
-                                                    height = cy;
-                                                }
-                                            } else {
-                                                // start new column if taller than texture
-                                                cx += column_width;
-                                                column_width = 0;
-                                                cy = 0;
-                                                texture_position = [cx, cy];
-                                            }
-
-                                            CanvasText.texcoord_cache[tile_key][style][_word2] = {
+                                        if (!texcoord_cache[style][_word2]) {
+                                            var _size2 = text_info.size[w].texture_size;
+                                            var width = 2 * _size2[0]; // doubled to account for side-by-side rendering of fill and stroke
+                                            texture_position = this.placeText(width, _size2[1], style, texture, textures, max_texture_size);
+                                            texcoord_cache[style][_word2] = {
+                                                texture_id: texture.texture_id,
                                                 texture_position: texture_position
                                             };
                                         }
+
+                                        text_info.textures[t].push(texture.texture_id);
                                     }
+
                                     break;
                             }
                         }
                     } else {
                         // rendered size is same for all alignments
                         var _size3 = text_info.size.texture_size;
-                        if (_size3[0] > column_width) {
-                            column_width = _size3[0];
-                        }
 
                         // but each alignment needs to be rendered separately
                         for (var align in text_info.align) {
-                            if (cy + _size3[1] < max_texture_size) {
-                                text_info.align[align].texture_position = [cx, cy]; // add label to current column
-                                cy += _size3[1];
-                                if (cy > height) {
-                                    height = cy;
-                                }
-                            } else {
-                                // start new column if taller than texture
-                                cx += column_width;
-                                column_width = 0;
-                                cy = 0;
-                                text_info.align[align].texture_position = [cx, cy];
-                            }
+                            texture_position = this.placeText(_size3[0], _size3[1], style, texture, textures, max_texture_size);
+                            text_info.align[align].texture_id = texture.texture_id;
+                            text_info.align[align].texture_position = texture_position;
                         }
                     }
                 }
             }
 
-            return [cx + column_width, height]; // overall atlas size
+            // save final texture
+            if (texture.column_width > 0 && texture.height > 0) {
+                textures[texture.texture_id] = {
+                    texture_size: [texture.width, texture.height],
+                    texcoord_cache: texture.texcoord_cache
+                };
+            }
+
+            // return computed texture sizes and UV cache
+            return Promise.resolve({ textures: textures });
+        }
+
+        // Place text sprite in texture atlas, enlarging current texture, or starting new one if max texture size reached
+
+    }, {
+        key: 'placeText',
+        value: function placeText(text_width, text_height, style, texture, textures, max_texture_size) {
+            var texture_position = void 0;
+
+            // TODO: what if first label is wider than entire max texture?
+
+            if (texture.cy + text_height > max_texture_size) {
+                // start new column
+                texture.cx += texture.column_width;
+                texture.cy = 0;
+                texture.column_width = text_width;
+            } else {
+                // expand current column
+                texture.column_width = Math.max(texture.column_width, text_width);
+            }
+
+            if (texture.cx + texture.column_width <= max_texture_size) {
+                // add label to current texture
+                texture_position = [texture.cx, texture.cy];
+
+                texture.cy += text_height;
+
+                // expand texture if needed
+                texture.height = Math.max(texture.height, texture.cy);
+                texture.width = Math.max(texture.width, texture.cx + texture.column_width);
+            } else {
+                // start new texture
+                // save size and cache of last texture
+                textures[texture.texture_id] = {
+                    texture_size: [texture.width, texture.height],
+                    texcoord_cache: texture.texcoord_cache
+                };
+                texture.texcoord_cache = {}; // reset cache
+                texture.texcoord_cache[style] = {};
+
+                texture.texture_id++;
+                texture.cx = 0;
+                texture.cy = text_height;
+                texture.column_width = text_width;
+                texture.width = text_width;
+                texture.height = text_height;
+                texture_position = [0, 0]; // TODO: allocate zero array once
+            }
+
+            return texture_position;
         }
 
         // Called before rasterization
@@ -39750,26 +40148,16 @@ var CanvasText = function () {
             return px_size;
         }
     }, {
-        key: 'clearTexcoordCache',
-        value: function clearTexcoordCache(tile_key) {
-            delete CanvasText.texcoord_cache[tile_key];
-        }
-    }, {
-        key: 'initTextCache',
-        value: function initTextCache(style) {
-            CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
-        }
-    }, {
         key: 'pruneTextCache',
         value: function pruneTextCache() {
-            if (CanvasText.text_cache_count > CanvasText.text_cache_count_max) {
-                CanvasText.text_cache = {};
-                CanvasText.text_cache_count = 0;
+            if (CanvasText.cache.text_count > CanvasText.cache.text_count_max) {
+                CanvasText.cache.text = {};
+                CanvasText.cache.text_count = 0;
                 (0, _log2.default)('debug', 'CanvasText: pruning text cache');
             }
 
-            if (Object.keys(CanvasText.segment_cache).length > CanvasText.segment_cache_count_max) {
-                CanvasText.segment_cache = {};
+            if (Object.keys(CanvasText.cache.segment).length > CanvasText.cache.segment_count_max) {
+                CanvasText.cache.segment = {};
                 (0, _log2.default)('debug', 'CanvasText: pruning segment cache');
             }
         }
@@ -39785,13 +40173,14 @@ exports.default = CanvasText;
 CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 
 // Cache sizes of rendered text
-CanvasText.text_cache = {}; // by text style, then text string
-CanvasText.text_cache_count = 0; // current size of cache (measured as # of entries)
-CanvasText.text_cache_count_max = 4000; // prune cache when it exceeds this size
-CanvasText.texcoord_cache = {};
-CanvasText.segment_cache = {};
-CanvasText.segment_cache_count_max = 1000;
-CanvasText.cache_stats = { text_hits: 0, text_misses: 0, segment_hits: 0, segment_misses: 0 };
+CanvasText.cache = {
+    text: {}, // size and line parsing, by text style, then text string
+    text_count: 0, // current size of cache (measured as # of entries)
+    text_count_max: 2000, // prune cache when it exceeds this size
+    segment: {}, // segmentation of text (by run of characters or grapheme clusters), by text string
+    segment_count_max: 2000, // prune cache when it exceeds this size
+    stats: { text_hits: 0, text_misses: 0, segment_hits: 0, segment_misses: 0 }
+};
 
 // Right-to-left / bi-directional text handling
 // Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
@@ -39862,9 +40251,9 @@ function splitLabelText(text, rtl) {
     }
 
     var key = text;
-    if (CanvasText.segment_cache[key]) {
-        CanvasText.cache_stats.segment_hits++;
-        return CanvasText.segment_cache[key];
+    if (CanvasText.cache.segment[key]) {
+        CanvasText.cache.stats.segment_hits++;
+        return CanvasText.cache.segment[key];
     }
 
     var segments = [];
@@ -39906,8 +40295,8 @@ function splitLabelText(text, rtl) {
         segments.reverse();
     }
 
-    CanvasText.cache_stats.segment_misses++;
-    CanvasText.segment_cache[key] = segments;
+    CanvasText.cache.stats.segment_misses++;
+    CanvasText.cache.segment[key] = segments;
     return segments;
 }
 
@@ -40097,7 +40486,7 @@ var Line = function () {
     return Line;
 }();
 
-},{"../../gl/texture":208,"../../utils/debug_settings":255,"../../utils/log":259,"../../utils/utils":268,"./font_manager":247}],247:[function(_dereq_,module,exports){
+},{"../../gl/texture":208,"../../utils/debug_settings":255,"../../utils/log":259,"../../utils/task":266,"../../utils/utils":269,"./font_manager":247}],247:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40270,7 +40659,7 @@ var FontManager = {
 
 exports.default = FontManager;
 
-},{"../../utils/log":259,"../../utils/utils":268,"fontfaceobserver":74}],248:[function(_dereq_,module,exports){
+},{"../../utils/log":259,"../../utils/utils":269,"fontfaceobserver":74}],248:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40304,11 +40693,9 @@ var _constants2 = _interopRequireDefault(_constants);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } // Text rendering style
+
 // web workers don't have access to GL context, so import all GL constants
-
- // Text rendering style
-
-var shaderSrc_textFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    color *= texture2D(u_texture, v_texcoord);\n    color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n\n    #pragma tangram: color\n    #pragma tangram: filter\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var TextStyle = exports.TextStyle = Object.create(_points.Points);
 
@@ -40316,7 +40703,6 @@ Object.assign(TextStyle, {
     name: 'text',
     super: _points.Points,
     built_in: true,
-    fragment_shader_src: shaderSrc_textFragment,
 
     init: function init() {
         var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -40326,14 +40712,10 @@ Object.assign(TextStyle, {
         this.super.init.call(this, options, extra_attributes);
 
         // Set texture/point config (override parent Point class)
-        this.defines.TANGRAM_TEXTURE_POINT = true; // standalone text is always sampled from a texture
         this.defines.TANGRAM_SHADER_POINT = false; // standalone text never draws a shader point
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;
-
-        // Disable dual point/text mode
-        this.defines.TANGRAM_MULTI_SAMPLER = false;
 
         // Fade out text when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
@@ -40403,14 +40785,7 @@ Object.assign(TextStyle, {
         }
 
         // Register with collision manager
-        _collision2.default.addStyle(this.name, tile.key);
-    },
-
-
-    // Override
-    startData: function startData(tile) {
-        this.queues[tile.key] = [];
-        return _style.Style.startData.call(this, tile);
+        _collision2.default.addStyle(this.name, tile.id);
     },
 
 
@@ -40418,23 +40793,21 @@ Object.assign(TextStyle, {
     endData: function endData(tile) {
         var _this2 = this;
 
-        var queue = this.queues[tile.key];
-        delete this.queues[tile.key];
+        var queue = this.queues[tile.id];
+        delete this.queues[tile.id];
 
-        return this.prepareTextLabels(tile, this.name, queue).then(function (labels) {
-            return _this2.collideAndRenderTextLabels(tile, _this2.name, labels);
-        }).then(function (_ref) {
+        return this.collideAndRenderTextLabels(tile, this.name, queue).then(function (_ref) {
             var labels = _ref.labels,
                 texts = _ref.texts,
-                texture = _ref.texture;
+                textures = _ref.textures;
 
-            if (texts) {
-                _this2.texts[tile.key] = texts;
+            if (labels && texts) {
+                _this2.texts[tile.id] = texts;
 
                 // Build queued features
                 labels.forEach(function (q) {
                     var text_settings_key = q.text_settings_key;
-                    var text_info = _this2.texts[tile.key][text_settings_key] && _this2.texts[tile.key][text_settings_key][q.text];
+                    var text_info = _this2.texts[tile.id][text_settings_key] && _this2.texts[tile.id][text_settings_key][q.text];
 
                     // setup styling object expected by Style class
                     var style = _this2.feature_style;
@@ -40448,16 +40821,21 @@ Object.assign(TextStyle, {
                         if (q.label.type === 'straight') {
                             style.size.straight = text_info.total_size.logical_size;
                             style.texcoords.straight = text_info.texcoords.straight;
+                            style.label_texture = textures[text_info.texcoords.straight.texture_id];
                         } else {
                             style.size.curved = text_info.size.map(function (size) {
                                 return size.logical_size;
                             });
                             style.texcoords_stroke = text_info.texcoords_stroke;
                             style.texcoords.curved = text_info.texcoords.curved;
+                            style.label_textures = text_info.texcoords.curved.map(function (t) {
+                                return textures[t.texture_id];
+                            });
                         }
                     } else {
                         style.size = text_info.size.logical_size;
                         style.texcoords = text_info.align[q.label.align].texcoords;
+                        style.label_texture = textures[text_info.align[q.label.align].texture_id];
                     }
 
                     _style.Style.addFeature.call(_this2, q.feature, q.draw, q.context);
@@ -40467,12 +40845,21 @@ Object.assign(TextStyle, {
 
             // Finish tile mesh
             return _style.Style.endData.call(_this2, tile).then(function (tile_data) {
-                // Attach tile-specific label atlas to mesh as a texture uniform
-                if (texture && tile_data) {
-                    tile_data.uniforms.u_texture = texture;
-                    tile_data.textures.push(texture); // assign texture ownership to tile
-                    return tile_data;
+                if (tile_data) {
+                    // Attach tile-specific label atlas to mesh as a texture uniform
+                    if (textures && textures.length) {
+                        var _tile_data$textures;
+
+                        (_tile_data$textures = tile_data.textures).push.apply(_tile_data$textures, _toConsumableArray(textures)); // assign texture ownership to tile
+                    }
+
+                    // Always apply shader blocks to standalone text
+                    for (var m in tile_data.meshes) {
+                        tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
+                    }
                 }
+
+                return tile_data;
             });
         });
     },
@@ -40485,11 +40872,11 @@ Object.assign(TextStyle, {
 
 
     // Implements label building for TextLabels mixin
-    buildTextLabels: function buildTextLabels(tile_key, feature_queue) {
+    buildTextLabels: function buildTextLabels(tile, feature_queue) {
         var labels = [];
         for (var f = 0; f < feature_queue.length; f++) {
             var fq = feature_queue[f];
-            var text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            var text_info = this.texts[tile.id][fq.text_settings_key][fq.text];
             var feature_labels = void 0;
 
             fq.layout.vertical_buffer = text_info.vertical_buffer;
@@ -40585,10 +40972,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 var _style_parser = _dereq_('../style_parser');
 
-var _texture = _dereq_('../../gl/texture');
-
-var _texture2 = _interopRequireDefault(_texture);
-
 var _geo = _dereq_('../../geo');
 
 var _geo2 = _interopRequireDefault(_geo);
@@ -40619,8 +41002,6 @@ var _canvas_text2 = _interopRequireDefault(_canvas_text);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
 // namespaces label textures (ensures new texture name when a tile is built multiple times)
 var text_texture_id = 0;
 
@@ -40633,7 +41014,7 @@ var TextLabels = exports.TextLabels = {
         }
     },
     freeText: function freeText(tile) {
-        delete this.texts[tile.key];
+        delete this.texts[tile.id];
     },
     parseTextFeature: function parseTextFeature(feature, draw, context, tile) {
         // Compute label text
@@ -40648,8 +41029,8 @@ var TextLabels = exports.TextLabels = {
         var text_settings_key = _text_settings2.default.key(text_settings);
 
         // first label in tile, or with this style?
-        this.texts[tile.key] = this.texts[tile.key] || {};
-        var sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
+        this.texts[tile.id] = this.texts[tile.id] || {};
+        var sizes = this.texts[tile.id][text_settings_key] = this.texts[tile.id][text_settings_key] || {};
 
         if (text instanceof Object) {
             var results = [];
@@ -40679,7 +41060,7 @@ var TextLabels = exports.TextLabels = {
                 });
             }
 
-            return results;
+            return results.length > 0 && results; // return null if no boundary labels found
         } else {
             // unique text strings, grouped by text drawing style
             var _layout = this.computeTextLayout({}, feature, draw, context, tile, text, text_settings);
@@ -40746,77 +41127,81 @@ var TextLabels = exports.TextLabels = {
     prepareTextLabels: function prepareTextLabels(tile, collision_group, queue) {
         var _this = this;
 
-        if (Object.keys(this.texts[tile.key] || {}).length === 0) {
-            return Promise.resolve({});
+        if (Object.keys(this.texts[tile.id] || {}).length === 0) {
+            return Promise.resolve([]);
         }
 
         // first call to main thread, ask for text pixel sizes
-        return _worker_broker2.default.postMessage(this.main_thread_target + '.calcTextSizes', this.texts[tile.key]).then(function (texts) {
+        return _worker_broker2.default.postMessage(this.main_thread_target + '.calcTextSizes', tile.id, this.texts[tile.id]).then(function (_ref) {
+            var texts = _ref.texts;
 
             if (tile.canceled) {
                 (0, _log2.default)('trace', 'Style ' + _this.name + ': stop tile build because tile was canceled: ' + tile.key + ', post-calcTextSizes()');
-                return;
+                return [];
             }
 
-            _this.texts[tile.key] = texts;
+            _this.texts[tile.id] = texts || [];
             if (!texts) {
-                return;
+                _collision2.default.abortTile(tile.id);
+                return [];
             }
 
-            return _this.buildTextLabels(tile.key, queue);
+            return _this.buildTextLabels(tile, queue);
         });
     },
-    collideAndRenderTextLabels: function collideAndRenderTextLabels(tile, collision_group, labels) {
+    collideAndRenderTextLabels: function collideAndRenderTextLabels(tile, collision_group, queue) {
         var _this2 = this;
 
-        if (!labels) {
-            _collision2.default.collide({}, collision_group, tile.key);
-            return Promise.resolve({});
-        }
-
-        return _collision2.default.collide(labels, collision_group, tile.key).then(function (labels) {
-            if (tile.canceled) {
-                (0, _log2.default)('trace', 'stop tile build because tile was canceled: ' + tile.key + ', post-collide()');
-                return {};
-            }
-
+        return this.prepareTextLabels(tile, collision_group, queue).then(function (labels) {
             if (labels.length === 0) {
-                return {};
+                _collision2.default.collide([], collision_group, tile.id);
+                return Promise.resolve({});
             }
 
-            var texts = _this2.texts[tile.key];
-            _this2.cullTextStyles(texts, labels);
-
-            // set alignments
-            labels.forEach(function (q) {
-                var text_settings_key = q.text_settings_key;
-                var text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-                if (!text_info.text_settings.can_articulate) {
-                    text_info.align = text_info.align || {};
-                    text_info.align[q.label.align] = {};
-                } else {
-                    // consider making it a set
-                    if (!text_info.type) {
-                        text_info.type = [];
-                    }
-
-                    if (text_info.type.indexOf(q.label.type) === -1) {
-                        text_info.type.push(q.label.type);
-                    }
-                }
-            });
-
-            // second call to main thread, for rasterizing the set of texts
-            return _worker_broker2.default.postMessage(_this2.main_thread_target + '.rasterizeTexts', tile.key, texts).then(function (_ref) {
-                var texts = _ref.texts,
-                    texture = _ref.texture;
-
+            return _collision2.default.collide(labels, collision_group, tile.id).then(function (labels) {
                 if (tile.canceled) {
-                    (0, _log2.default)('trace', 'stop tile build because tile was canceled: ' + tile.key + ', post-rasterizeTexts()');
+                    (0, _log2.default)('trace', 'stop tile build because tile was canceled: ' + tile.key + ', post-collide()');
                     return {};
                 }
 
-                return { labels: labels, texts: texts, texture: texture };
+                var texts = _this2.texts[tile.id];
+                if (texts == null || labels.length === 0) {
+                    return {};
+                }
+
+                _this2.cullTextStyles(texts, labels);
+
+                // set alignments
+                labels.forEach(function (q) {
+                    var text_settings_key = q.text_settings_key;
+                    var text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+                    if (!text_info.text_settings.can_articulate) {
+                        text_info.align = text_info.align || {};
+                        text_info.align[q.label.align] = {};
+                    } else {
+                        // consider making it a set
+                        if (!text_info.type) {
+                            text_info.type = [];
+                        }
+
+                        if (text_info.type.indexOf(q.label.type) === -1) {
+                            text_info.type.push(q.label.type);
+                        }
+                    }
+                });
+
+                // second call to main thread, for rasterizing the set of texts
+                return _worker_broker2.default.postMessage(_this2.main_thread_target + '.rasterizeTexts', tile.id, tile.key, texts).then(function (_ref2) {
+                    var texts = _ref2.texts,
+                        textures = _ref2.textures;
+
+                    if (tile.canceled) {
+                        (0, _log2.default)('trace', 'stop tile build because tile was canceled: ' + tile.key + ', post-rasterizeTexts()');
+                        return {};
+                    }
+
+                    return { labels: labels, texts: texts, textures: textures };
+                });
             });
         });
     },
@@ -40852,36 +41237,37 @@ var TextLabels = exports.TextLabels = {
     // Called on main thread from worker, to compute the size of each text string,
     // were it to be rendered. This info is then used to perform initial label culling, *before*
     // labels are actually rendered.
-    calcTextSizes: function calcTextSizes(texts) {
-        return this.canvas.textSizes(texts);
+    calcTextSizes: function calcTextSizes(tile_id, texts) {
+        return this.canvas.textSizes(tile_id, texts);
     },
 
 
     // Called on main thread from worker, to create atlas of labels for a tile
-    rasterizeTexts: function rasterizeTexts(tile_key, texts) {
-        var canvas = this.canvas;
-        var texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size, tile_key);
-        (0, _log2.default)('trace', 'text summary for tile ' + tile_key + ': fits in ' + texture_size[0] + 'x' + texture_size[1] + 'px');
+    rasterizeTexts: function rasterizeTexts(tile_id, tile_key, texts) {
+        var _this3 = this;
 
-        // fits in max texture size?
-        if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
-            // update canvas size & rasterize all the text strings we need
-            canvas.resize.apply(canvas, _toConsumableArray(texture_size));
-            canvas.rasterize(texts, texture_size, tile_key);
-        } else {
-            (0, _log2.default)('error', ['Label atlas for tile ' + tile_key + ' is ' + texture_size[0] + 'x' + texture_size[1] + 'px, ', 'but max GL texture size is ' + this.max_texture_size + 'x' + this.max_texture_size + 'px'].join(''));
-        }
+        var canvas = new _canvas_text2.default(); // one per style per tile (style may be rendering multiple tiles at once)
+        var max_texture_size = Math.min(this.max_texture_size, 2048); // cap each label texture at 2048x2048
 
-        // create a texture
-        var t = 'labels-' + tile_key + '-' + text_texture_id++;
-        _texture2.default.create(this.gl, t, {
-            element: canvas.canvas,
-            filtering: 'linear',
-            UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+        return canvas.setTextureTextPositions(texts, max_texture_size).then(function (_ref3) {
+            var textures = _ref3.textures;
+
+            if (!textures) {
+                return {};
+            }
+
+            var texture_prefix = ['labels', _this3.name, tile_key, tile_id, text_texture_id, ''].join('-');
+            text_texture_id++;
+
+            return canvas.rasterize(texts, textures, tile_id, texture_prefix, _this3.gl).then(function (_ref4) {
+                var textures = _ref4.textures;
+
+                if (!textures) {
+                    return {};
+                }
+                return { texts: texts, textures: textures };
+            });
         });
-        _texture2.default.retain(t);
-
-        return { texts: texts, texture: t }; // texture is returned by name (not instance)
     },
     preprocessText: function preprocessText(draw) {
         // Font settings are required
@@ -40958,7 +41344,7 @@ var TextLabels = exports.TextLabels = {
     }
 };
 
-},{"../../geo":201,"../../gl/texture":208,"../../labels/collision":214,"../../utils/log":259,"../../utils/thread":266,"../../utils/worker_broker":270,"../style_parser":245,"../text/canvas_text":246,"../text/text_settings":250}],250:[function(_dereq_,module,exports){
+},{"../../geo":201,"../../labels/collision":214,"../../utils/log":259,"../../utils/thread":267,"../../utils/worker_broker":271,"../style_parser":245,"../text/canvas_text":246,"../text/text_settings":250}],250:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41083,7 +41469,7 @@ exports.default = TextSettings = {
     }
 };
 
-},{"../../geo":201,"../../utils/utils":268,"../style_parser":245}],251:[function(_dereq_,module,exports){
+},{"../../geo":201,"../../utils/utils":269,"../style_parser":245}],251:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41120,6 +41506,10 @@ var _worker_broker = _dereq_('./utils/worker_broker');
 
 var _worker_broker2 = _interopRequireDefault(_worker_broker);
 
+var _task = _dereq_('./utils/task');
+
+var _task2 = _interopRequireDefault(_task);
+
 var _texture = _dereq_('./gl/texture');
 
 var _texture2 = _interopRequireDefault(_texture);
@@ -41131,6 +41521,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var id = 0; // unique tile id
 
 var Tile = function () {
 
@@ -41150,6 +41542,7 @@ var Tile = function () {
 
         _classCallCheck(this, Tile);
 
+        this.id = id++;
         this.worker = worker;
         this.view = view;
         this.source = source;
@@ -41194,7 +41587,9 @@ var Tile = function () {
         // Free resources owned by tile
         value: function freeResources() {
             for (var m in this.meshes) {
-                this.meshes[m].destroy();
+                this.meshes[m].forEach(function (m) {
+                    return m.destroy();
+                });
             }
             this.meshes = {};
 
@@ -41211,6 +41606,7 @@ var Tile = function () {
     }, {
         key: 'destroy',
         value: function destroy() {
+            _task2.default.removeForTile(this.id);
             this.workerMessage('self.removeTile', this.key);
             this.freeResources();
             this.worker = null;
@@ -41219,6 +41615,7 @@ var Tile = function () {
         key: 'buildAsMessage',
         value: function buildAsMessage() {
             return {
+                id: this.id,
                 key: this.key,
                 source: this.source.name,
                 coords: this.coords,
@@ -41295,14 +41692,25 @@ var Tile = function () {
             var mesh_data = this.mesh_data;
             if (mesh_data) {
                 for (var s in mesh_data) {
-                    if (mesh_data[s].vertex_data) {
-                        if (!styles[s]) {
-                            (0, _log2.default)('warn', 'Could not create mesh because style \'' + s + '\' not found, for tile ' + this.key + ', aborting tile');
-                            break;
+                    for (var variant in mesh_data[s].meshes) {
+                        var mesh_variant = mesh_data[s].meshes[variant];
+                        if (mesh_variant.vertex_data) {
+                            if (!styles[s]) {
+                                (0, _log2.default)('warn', 'Could not create mesh because style \'' + s + '\' not found, for tile ' + this.key + ', aborting tile');
+                                break;
+                            }
+
+                            // first add style-level uniforms, then add any mesh-specific ones
+                            var mesh_options = Object.assign({}, mesh_data[s]);
+                            mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
+                            mesh_options.variant = mesh_variant.variant;
+
+                            var mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
+                            meshes[s] = meshes[s] || [];
+                            meshes[s].push(mesh);
+                            this.debug.buffer_size += mesh.buffer_size;
+                            this.debug.geometry_count += mesh.geometry_count;
                         }
-                        meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s].vertex_elements, mesh_data[s]);
-                        this.debug.buffer_size += meshes[s].buffer_size;
-                        this.debug.geometry_count += meshes[s].geometry_count;
                     }
 
                     // Assign texture ownership to tiles
@@ -41319,7 +41727,6 @@ var Tile = function () {
 
             // Initialize tracking for this tile generation
             if (progress.start) {
-                this.new_mesh_styles = []; // keep track of which meshes were built as part of current generation
                 this.previous_textures = [].concat(_toConsumableArray(this.textures)); // copy old list of textures
                 this.textures = [];
             }
@@ -41327,7 +41734,9 @@ var Tile = function () {
             // New meshes
             for (var m in meshes) {
                 if (this.meshes[m]) {
-                    this.meshes[m].destroy(); // free old mesh
+                    this.meshes[m].forEach(function (m) {
+                        return m.destroy();
+                    }); // free old meshes
                 }
                 this.meshes[m] = meshes[m]; // set new mesh
                 this.new_mesh_styles.push(m);
@@ -41340,7 +41749,9 @@ var Tile = function () {
                 // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
                 for (var _m in this.meshes) {
                     if (this.new_mesh_styles.indexOf(_m) === -1) {
-                        this.meshes[_m].destroy();
+                        this.meshes[_m].forEach(function (m) {
+                            return m.destroy();
+                        });
                         delete this.meshes[_m];
                     }
                 }
@@ -41549,6 +41960,7 @@ var Tile = function () {
                     _utils2.default.cancelRequest(tile.source_data.request_id); // cancel pending tile network request
                     tile.source_data.request_id = null;
                 }
+
                 Tile.abortBuild(tile);
             }
         }
@@ -41570,7 +41982,7 @@ var Tile = function () {
             tile.debug.feature_count = 0;
             tile.debug.layers = null;
 
-            _collision2.default.startTile(tile.key);
+            _collision2.default.startTile(tile.id);
 
             // Process each top-level layer
             for (var layer_name in layers) {
@@ -41644,7 +42056,7 @@ var Tile = function () {
             tile.debug.rendering = +new Date() - tile.debug.rendering;
 
             // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
-            var tile_styles = this.stylesForTile(tile.key, styles).map(function (s) {
+            var tile_styles = this.stylesForTile(tile, styles).map(function (s) {
                 return styles[s];
             });
             Tile.sendStyleGroups(tile, tile_styles, { scene_id: scene_id }, function (style) {
@@ -41655,10 +42067,10 @@ var Tile = function () {
         }
     }, {
         key: 'stylesForTile',
-        value: function stylesForTile(tile_key, styles) {
+        value: function stylesForTile(tile, styles) {
             var tile_styles = [];
             for (var s in styles) {
-                if (styles[s].hasDataForTile(tile_key)) {
+                if (styles[s].hasDataForTile(tile)) {
                     tile_styles.push(s);
                 }
             }
@@ -41692,12 +42104,7 @@ var Tile = function () {
                         Promise.all(group.map(function (style) {
                             return style.endData(tile).then(function (style_data) {
                                 if (style_data) {
-                                    tile.mesh_data[style.name] = {
-                                        vertex_data: style_data.vertex_data,
-                                        vertex_elements: style_data.vertex_elements,
-                                        uniforms: style_data.uniforms,
-                                        textures: style_data.textures
-                                    };
+                                    tile.mesh_data[style.name] = style_data;
                                 }
                             });
                         })).then(function () {
@@ -41717,8 +42124,10 @@ var Tile = function () {
                             tile.mesh_data = {}; // reset so each group sends separate set of style meshes
 
                             if (progress.done) {
-                                _collision2.default.resetTile(tile.key); // clear collision if we're done with the tile
+                                _collision2.default.resetTile(tile.id); // clear collision if we're done with the tile
                             }
+                        }).catch(function (e) {
+                            (0, _log2.default)('error', 'Error for style group \'' + group_name + '\' for tile ' + tile.key, e.stack);
                         });
                     };
 
@@ -41729,7 +42138,7 @@ var Tile = function () {
             } else {
                 // Nothing to build, return empty tile to main thread
                 _worker_broker2.default.postMessage('TileManager_' + scene_id + '.buildTileStylesCompleted', _worker_broker2.default.withTransferables({ tile: Tile.slice(tile), progress: { start: true, done: true } }));
-                _collision2.default.resetTile(tile.key); // clear collision if we're done with the tile
+                _collision2.default.resetTile(tile.id); // clear collision if we're done with the tile
             }
         }
 
@@ -41786,6 +42195,9 @@ var Tile = function () {
     }, {
         key: 'abortBuild',
         value: function abortBuild(tile) {
+            _task2.default.removeForTile(tile.id);
+            _collision2.default.abortTile(tile.id);
+
             // Releases meshes
             if (tile.mesh_data) {
                 for (var s in tile.mesh_data) {
@@ -41805,7 +42217,7 @@ var Tile = function () {
     }, {
         key: 'slice',
         value: function slice(tile, keys) {
-            var keep = ['key', 'loading', 'loaded', 'generation', 'error', 'debug'];
+            var keep = ['id', 'key', 'loading', 'loaded', 'generation', 'error', 'debug'];
             if (Array.isArray(keys)) {
                 keep.push.apply(keep, _toConsumableArray(keys));
             }
@@ -41862,7 +42274,7 @@ function addDebugLayers(node, tree) {
     }
 }
 
-},{"./geo":201,"./gl/texture":208,"./labels/collision":214,"./styles/style":243,"./styles/style_parser":245,"./utils/gl-matrix":257,"./utils/log":259,"./utils/merge":261,"./utils/utils":268,"./utils/worker_broker":270}],252:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/texture":208,"./labels/collision":214,"./styles/style":243,"./styles/style_parser":245,"./utils/gl-matrix":257,"./utils/log":259,"./utils/merge":261,"./utils/task":266,"./utils/utils":269,"./utils/worker_broker":271}],252:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42110,6 +42522,25 @@ var TileManager = function () {
             }
             return this.renderable_tiles;
         }
+
+        // Assign tile to worker thread based on coordinates and data source
+
+    }, {
+        key: 'getWorkerForTile',
+        value: function getWorkerForTile(coords, source) {
+            var worker = void 0;
+
+            if (source.tiled) {
+                // Pin tile to a worker thread based on its coordinates
+                worker = this.scene.workers[Math.abs(coords.x + coords.y + coords.z) % this.scene.workers.length];
+            } else {
+                // Pin all tiles from each non-tiled source to a single worker
+                // Prevents data for these sources from being loaded more than once
+                worker = this.scene.workers[source.id % this.scene.workers.length];
+            }
+
+            return worker;
+        }
     }, {
         key: 'getActiveStyles',
         value: function getActiveStyles() {
@@ -42209,7 +42640,7 @@ var TileManager = function () {
                     var tile = new _tile2.default({
                         source: source,
                         coords: coords,
-                        worker: this.scene.getWorkerForDataSource(source),
+                        worker: this.getWorkerForTile(coords, source),
                         style_zoom: this.view.baseZoom(coords.z),
                         view: this.view
                     });
@@ -42252,6 +42683,13 @@ var TileManager = function () {
                 } else {
                     // Update tile with properties from worker
                     if (this.tiles[tile.key]) {
+                        // Ignore if from a previously discarded tile
+                        if (tile.id < this.tiles[tile.key].id) {
+                            (0, _log2.default)('trace', 'discarded tile ' + tile.key + ' for id ' + tile.id + ' in TileManager.buildTileStylesCompleted because built for discarded tile id');
+                            _tile2.default.abortBuild(tile);
+                            return;
+                        }
+
                         tile = this.tiles[tile.key].merge(tile);
                     }
 
@@ -42352,7 +42790,7 @@ var TileManager = function () {
 
 exports.default = TileManager;
 
-},{"./geo":201,"./tile":251,"./tile_pyramid":253,"./utils/log":259,"./utils/worker_broker":270}],253:[function(_dereq_,module,exports){
+},{"./geo":201,"./tile":251,"./tile_pyramid":253,"./utils/log":259,"./utils/worker_broker":271}],253:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42833,7 +43271,7 @@ if (_thread2.default.is_main) {
 _worker_broker2.default.addTarget('_logProxy', log); // proxy log messages from worker to main thread
 _worker_broker2.default.addTarget('_logSetLevelProxy', log.setLevel); // proxy log level setting from main to worker thread
 
-},{"./thread":266,"./version":269,"./worker_broker":270}],260:[function(_dereq_,module,exports){
+},{"./thread":267,"./version":270,"./worker_broker":271}],260:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43061,7 +43499,7 @@ var MediaCapture = function () {
 
 exports.default = MediaCapture;
 
-},{"../styles/style_parser":245,"./log":259,"./urls":267}],261:[function(_dereq_,module,exports){
+},{"../styles/style_parser":245,"./log":259,"./urls":268}],261:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43222,7 +43660,7 @@ var OBB = function () {
 
 exports.default = OBB;
 
-},{"../vector":271}],263:[function(_dereq_,module,exports){
+},{"../vector":272}],263:[function(_dereq_,module,exports){
 'use strict';
 
 _dereq_('core-js/es6/promise');
@@ -43257,6 +43695,8 @@ if (typeof Object.assign !== 'function') {
 
 // Math.hypot polyfill
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/hypot
+/* global self, WorkerGlobalScope */
+
 // Promises polyfill
 Math.hypot = Math.hypot || function () {
     var y = 0;
@@ -43275,6 +43715,27 @@ Math.hypot = Math.hypot || function () {
 Math.log2 = Math.log2 || function (x) {
     return Math.log(x) * Math.LOG2E;
 };
+
+// performance.now() polyfill
+var perf = void 0;
+if (typeof window !== 'undefined') {
+    if ('performance' in window === false) {
+        window.performance = {};
+    }
+    perf = window.performance;
+} else if (typeof self !== 'undefined' && typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope) {
+    if ('performance' in self === false) {
+        self.performance = {};
+    }
+    perf = self.performance;
+}
+
+if (perf && typeof perf.now !== 'function') {
+    var start = +new Date();
+    perf.now = function () {
+        return +new Date() - start;
+    };
+}
 
 },{"core-js/es6/promise":6}],264:[function(_dereq_,module,exports){
 "use strict";
@@ -43357,6 +43818,130 @@ function subscribeMixin(target) {
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+// import log from './log';
+
+var Task = {
+    id: 0, // unique id per task
+    queue: [], // current queue of outstanding tasks
+    max_time: 20, // default time in which all tasks should complete per frame
+    start_time: null, // start time for tasks in current frame
+    state: {}, // track flags about environment state (ex: whether user is currently moving the view)
+
+    add: function add(task) {
+        task.id = Task.id++;
+        task.max_time = task.max_time || Task.max_time; // allow task to run for this much time (tasks have a global collective limit per frame, too)
+        task.pause_factor = task.pause_factor || 1; // pause tasks by this many frames when they run too long
+        var promise = new Promise(function (resolve, reject) {
+            task.resolve = resolve;
+            task.reject = reject;
+        });
+        task.promise = promise;
+        task.total_elapsed = 0;
+        task.stats = { calls: 0 };
+        this.queue.push(task);
+
+        // Run task immediately if under total frame time
+        this.start_time = this.start_time || performance.now(); // start frame timer if necessary
+        this.elapsed = performance.now() - this.start_time;
+        if (this.elapsed < Task.max_time) {
+            this.process(task);
+        }
+
+        return task.promise;
+    },
+    remove: function remove(task) {
+        var idx = this.queue.indexOf(task);
+        if (idx > -1) {
+            this.queue.splice(idx, 1);
+        }
+    },
+    process: function process(task) {
+        // Skip task while user is moving the view, if the task requests it
+        // (for intensive tasks that lock the UI, like canvas rasterization)
+        if (this.state.user_moving_view && task.user_moving_view === false) {
+            // log('debug', `*** SKIPPING task id ${task.id}, ${task.type} while user is moving view`);
+            return;
+        }
+
+        // Skip task if it's currently paused
+        if (task.pause) {
+            // log('debug', `*** PAUSING task id ${task.id}, ${task.type} (${task.pause})`);
+            task.pause--;
+            return true;
+        }
+
+        task.stats.calls++;
+        task.start_time = performance.now(); // start task timer
+        return task.target[task.method](task);
+    },
+    processAll: function processAll() {
+        this.start_time = this.start_time || performance.now(); // start frame timer if necessary
+        for (var i = 0; i < this.queue.length; i++) {
+            // Exceeded either total task time, or total frame time
+            var task = this.queue[i];
+
+            if (this.process(task) !== true) {
+                // If the task didn't complete, pause it for a task-specific number of frames
+                // (can be disabled by setting pause_factor to 0)
+                if (!task.pause) {
+                    task.pause = task.elapsed > task.max_time ? task.pause_factor : 0;
+                }
+                task.total_elapsed += task.elapsed;
+            }
+
+            // Check total frame time
+            this.elapsed = performance.now() - this.start_time;
+            if (this.elapsed >= Task.max_time) {
+                this.start_time = null; // reset frame timer
+                break;
+            }
+        }
+    },
+    finish: function finish(task, value) {
+        task.elapsed = performance.now() - task.start_time;
+        task.total_elapsed += task.elapsed;
+        // log('debug', `task type ${task.type}, tile ${task.id}, finish after ${task.stats.calls} calls, ${task.total_elapsed.toFixed(2)} elapsed`);
+        this.remove(task);
+        task.resolve(value);
+        return task.promise;
+    },
+    cancel: function cancel(task) {
+        var val = void 0;
+
+        if (task.cancel && task.target[task.cancel] instanceof Function) {
+            val = task.target[task.cancel](task); // optional cancel function
+        }
+
+        task.resolve(val || {}); // resolve with result of cancel function, or empty object
+    },
+    shouldContinue: function shouldContinue(task) {
+        // Suspend task if it runs over its specific per-frame limit, or the global limit
+        task.elapsed = performance.now() - task.start_time;
+        this.elapsed = performance.now() - this.start_time;
+        return task.elapsed < task.max_time && this.elapsed < Task.max_time;
+    },
+    removeForTile: function removeForTile(tile_id) {
+        for (var idx = this.queue.length - 1; idx >= 0; idx--) {
+            if (this.queue[idx].tile_id === tile_id) {
+                // log('trace', `Task: remove tasks for tile ${tile_id}`);
+                this.cancel(this.queue[idx]);
+                this.queue.splice(idx, 1);
+            }
+        }
+    },
+    setState: function setState(state) {
+        this.state = state;
+    }
+};
+
+exports.default = Task;
+
+},{}],267:[function(_dereq_,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
 /*jshint worker: true*/
 
 // Mark thread as main or worker
@@ -43383,7 +43968,7 @@ try {
     }
 }
 
-},{}],267:[function(_dereq_,module,exports){
+},{}],268:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43603,7 +44188,7 @@ function getURLParameter(name, url) {
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
 
-},{"./log":259}],268:[function(_dereq_,module,exports){
+},{"./log":259}],269:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43919,18 +44504,18 @@ Utils.pointInTile = function (point) {
     return point[0] >= 0 && point[1] > -_geo2.default.tile_scale && point[0] < _geo2.default.tile_scale && point[1] <= 0;
 };
 
-},{"../geo":201,"./log":259,"./thread":266,"./worker_broker":270}],269:[function(_dereq_,module,exports){
+},{"../geo":201,"./log":259,"./thread":267,"./worker_broker":271}],270:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.13.0\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"13.0.1\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.0\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.13.2\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
-},{}],270:[function(_dereq_,module,exports){
+},{}],271:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44126,7 +44711,6 @@ function setupMainThread() {
             message: message // message payload
         };
 
-        payload = maybeEncode(payload, transferables);
         worker.postMessage(payload, transferables.map(function (t) {
             return t.object;
         }));
@@ -44146,7 +44730,7 @@ function setupMainThread() {
         }
 
         worker.addEventListener('message', function WorkerBrokerMainThreadHandler(event) {
-            var data = maybeDecode(event.data);
+            var data = event.data;
             var id = data.message_id;
 
             // Listen for messages coming back from the worker, and fulfill that message's promise
@@ -44205,7 +44789,6 @@ function setupMainThread() {
                                 message_id: id,
                                 message: value
                             };
-                            payload = maybeEncode(payload, transferables);
                             worker.postMessage(payload, transferables.map(function (t) {
                                 return t.object;
                             }));
@@ -44234,7 +44817,6 @@ function setupMainThread() {
                                 message: result,
                                 error: error instanceof Error ? error.message + ': ' + error.stack : error
                             };
-                            payload = maybeEncode(payload, transferables);
                             worker.postMessage(payload, transferables.map(function (t) {
                                 return t.object;
                             }));
@@ -44294,7 +44876,6 @@ function setupWorkerThread() {
             message: message // message payload
         };
 
-        payload = maybeEncode(payload, transferables);
         self.postMessage(payload, transferables.map(function (t) {
             return t.object;
         }));
@@ -44308,7 +44889,7 @@ function setupWorkerThread() {
     };
 
     self.addEventListener('message', function WorkerBrokerWorkerThreadHandler(event) {
-        var data = maybeDecode(event.data);
+        var data = event.data;
         var id = data.message_id;
 
         // Listen for messages coming back from the main thread, and fulfill that message's promise
@@ -44367,7 +44948,6 @@ function setupWorkerThread() {
                             message_id: id,
                             message: value
                         };
-                        payload = maybeEncode(payload, transferables);
                         self.postMessage(payload, transferables.map(function (t) {
                             return t.object;
                         }));
@@ -44396,7 +44976,6 @@ function setupWorkerThread() {
                             message: result,
                             error: error instanceof Error ? error.message + ': ' + error.stack : error
                         };
-                        payload = maybeEncode(payload, transferables);
                         self.postMessage(payload, transferables.map(function (t) {
                             return t.object;
                         }));
@@ -44474,19 +45053,6 @@ function freeTransferables(transferables) {
     });
 }
 
-// Message payload can be stringified for faster transfer, if it does not include transferable objects
-function maybeEncode(payload, transferables) {
-    if (transferables.length === 0) {
-        payload = JSON.stringify(payload);
-    }
-    return payload;
-}
-
-// Parse stringified message payload
-function maybeDecode(data) {
-    return typeof data === 'string' ? JSON.parse(data) : data;
-}
-
 // Setup this thread as appropriate
 if (_thread2.default.is_main) {
     setupMainThread();
@@ -44496,7 +45062,7 @@ if (_thread2.default.is_worker) {
     setupWorkerThread();
 }
 
-},{"./log":259,"./thread":266}],271:[function(_dereq_,module,exports){
+},{"./log":259,"./thread":267}],272:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44703,7 +45269,7 @@ Vector.dot = function (v1, v2) {
     return n;
 };
 
-},{}],272:[function(_dereq_,module,exports){
+},{}],273:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44762,8 +45328,11 @@ var View = function () {
         this.panning = false;
         this.panning_stop_at = 0;
         this.pan_snap_timer = 0;
-        this.zooming = false;
         this.zoom_direction = 0;
+
+        this.user_input_at = 0;
+        this.user_input_timeout = 50;
+        this.user_input_active = false;
 
         // Size of viewport in CSS pixels, device pixels, and mercator meters
         this.size = {
@@ -44844,8 +45413,11 @@ var View = function () {
     }, {
         key: 'update',
         value: function update() {
-            this.camera.update();
+            if (this.camera != null && this.ready()) {
+                this.camera.update();
+            }
             this.pan_snap_timer = (+new Date() - this.panning_stop_at) / 1000;
+            this.user_input_active = +new Date() - this.user_input_at < this.user_input_timeout;
         }
 
         // Set logical pixel size of viewport
@@ -44896,12 +45468,6 @@ var View = function () {
     }, {
         key: 'setZoom',
         value: function setZoom(zoom) {
-            if (this.zooming) {
-                this.zooming = false;
-            } else {
-                this.last_zoom = this.zoom;
-            }
-
             var last_tile_zoom = this.tile_zoom;
             var tile_zoom = this.baseZoom(zoom);
             if (!this.continuous_zoom) {
@@ -44912,18 +45478,11 @@ var View = function () {
                 this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1;
             }
 
-            this.last_zoom = this.zoom;
             this.zoom = zoom;
             this.tile_zoom = tile_zoom;
 
             this.updateBounds();
             this.scene.requestRedraw();
-        }
-    }, {
-        key: 'startZoom',
-        value: function startZoom() {
-            this.last_zoom = this.zoom;
-            this.zooming = true;
         }
 
         // Choose the base zoom level to use for a given fractional zoom
@@ -44940,6 +45499,11 @@ var View = function () {
             if (!this.panning) {
                 this.panning_stop_at = +new Date();
             }
+        }
+    }, {
+        key: 'markUserInput',
+        value: function markUserInput() {
+            this.user_input_at = +new Date();
         }
     }, {
         key: 'ready',
@@ -45134,6 +45698,6 @@ var View = function () {
 
 exports.default = View;
 
-},{"./camera":200,"./geo":201,"./tile":251,"./utils/log":259,"./utils/subscribe":265,"./utils/utils":268}]},{},[225])(225)
+},{"./camera":200,"./geo":201,"./tile":251,"./utils/log":259,"./utils/subscribe":265,"./utils/utils":269}]},{},[225])(225)
 });})();
 //# sourceMappingURL=tangram.debug.js.map
