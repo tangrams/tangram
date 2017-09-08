@@ -500,7 +500,6 @@ export default class CanvasText {
                 texcoord_cache: {}
             },
             textures = [];
-        let texcoord_cache = texture.texcoord_cache;
 
         for (let style in texts) {
             let text_infos = texts[style];
@@ -511,7 +510,7 @@ export default class CanvasText {
 
                 if (text_info.text_settings.can_articulate){
                     text_info.textures = [];
-                    texcoord_cache[style] = texcoord_cache[style] || {};
+                    texture.texcoord_cache[style] = texture.texcoord_cache[style] || {};
 
                     for (let t = 0; t < text_info.type.length; t++){
                         let type = text_info.type[t];
@@ -520,10 +519,10 @@ export default class CanvasText {
                             case 'straight':
                                 let word = (text_info.isRTL) ? text.split().reverse().join() : text;
 
-                                if (!texcoord_cache[style][word]) {
+                                if (!texture.texcoord_cache[style][word]) {
                                     let size = text_info.total_size.texture_size;
                                     texture_position = this.placeText(size[0], size[1], style, texture, textures, max_texture_size);
-                                    texcoord_cache[style][word] = {
+                                    texture.texcoord_cache[style][word] = {
                                         texture_id: texture.texture_id,
                                         texture_position
                                     };
@@ -539,11 +538,11 @@ export default class CanvasText {
                                 for (let w = 0; w < text_info.size.length; w++) {
                                     let word = text_info.segments[w];
 
-                                    if (!texcoord_cache[style][word]) {
+                                    if (!texture.texcoord_cache[style][word]) {
                                         let size = text_info.size[w].texture_size;
                                         let width = 2 * size[0]; // doubled to account for side-by-side rendering of fill and stroke
                                         texture_position = this.placeText(width, size[1], style, texture, textures, max_texture_size);
-                                        texcoord_cache[style][word] = {
+                                        texture.texcoord_cache[style][word] = {
                                             texture_id: texture.texture_id,
                                             texture_position
                                         };
