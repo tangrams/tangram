@@ -1,3 +1,5 @@
+#define TANGRAM_BLEND_SRCOVER
+
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_map_position;
@@ -65,8 +67,15 @@ void main (void) {
             float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
             float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
             // Apply alpha compositing with stroke 'over' fill.
-            color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
-            color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
+
+            #if (TANGRAM_BLEND==0)
+                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
+                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
+            #else
+            //TANGRAM_BLEND_SRCOVER
+                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
+                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
+            #endif
         }
     #endif
 
