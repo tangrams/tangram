@@ -86,5 +86,12 @@ void main (void) {
 
     color.a *= v_alpha_factor;
 
+    // If blending is off, use alpha discard as a lower-quality substitute
+    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)
+        if (color.a < TANGRAM_ALPHA_TEST) {
+            discard;
+        }
+    #endif
+
     gl_FragColor = color;
 }
