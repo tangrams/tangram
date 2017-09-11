@@ -68,16 +68,7 @@ Object.assign(Points, {
         if (this.blend !== 'overlay') {
             this.defines.TANGRAM_LAYER_ORDER = true;
         }
-        if (blend === 'opaque') {
-            this.defines.TANGRAM_BLEND = 0;
-        }else if (blend === 'overlay' || blend === 'inlay') {
-            this.defines.TANGRAM_BLEND = 1;            
-        } else if (blend === 'add') {
-            this.defines.TANGRAM_BLEND = 2;
-        }else if (blend === 'multiply') {
-            this.defines.TANGRAM_BLEND = 3;            
-        }
-        
+
         // texture types
         this.defines.TANGRAM_POINT_TYPE_TEXTURE = TANGRAM_POINT_TYPE_TEXTURE;
         this.defines.TANGRAM_POINT_TYPE_LABEL = TANGRAM_POINT_TYPE_LABEL;

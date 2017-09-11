@@ -1,5 +1,3 @@
-#define TANGRAM_BLEND_SRCOVER
-
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_map_position;
@@ -68,11 +66,11 @@ void main (void) {
             float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
             // Apply alpha compositing with stroke 'over' fill.
 
-            #if (TANGRAM_BLEND==0)
-                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
-                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
+            #ifdef TANGRAM_BLEND_ADD
+                color.a = stroke_alpha + fill_alpha;
+                color.rgb = color.rgb * fill_alpha + outlineColor.rgb* stroke_alpha;
             #else
-            //TANGRAM_BLEND_SRCOVER
+            //TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)
                 color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
                 color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
             #endif
@@ -87,13 +85,6 @@ void main (void) {
     }
 
     color.a *= v_alpha_factor;
-
-    // If blending is off, use alpha discard as a lower-quality substitute
-    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
-        if (color.a < TANGRAM_ALPHA_TEST) {
-            discard;
-        }
-    #endif
 
     gl_FragColor = color;
 }
