@@ -1070,9 +1070,12 @@ export default class Scene {
 
     // Turn introspection mode on/off
     setIntrospection (val) {
-        this.introspection = val || false;
-        this.updating++;
-        return this.updateConfig({ normalize: false }).then(() => this.updating--);
+        if (val !== this.introspection) {
+            this.introspection = val || false;
+            this.updating++;
+            return this.updateConfig({ normalize: false }).then(() => this.updating--);
+        }
+        return Promise.resolve();
     }
 
     // Update scene config, and optionally rebuild geometry
