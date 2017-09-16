@@ -83,7 +83,11 @@ export default class CanvasText {
                     first = false;
                 }
 
-                if (text_settings.can_articulate){
+                // add size of full text string
+                text_info.size = this.textSize(style, text, text_settings).size;
+
+                // if text may curve, calculate per-segment as well
+                if (text_settings.can_articulate) {
                     let rtl = false;
                     let bidi = false;
                     if (isTextRTL(text)) {
@@ -98,23 +102,15 @@ export default class CanvasText {
                     text_info.isRTL = rtl;
                     text_info.no_curving = bidi || isTextCurveBlacklisted(text); // used in LabelLine to prevent curved labels
                     text_info.vertical_buffer = this.vertical_text_buffer;
-                    text_info.size = [];
+                    text_info.segment_sizes = [];
 
                     if (!text_info.no_curving) {
                         let segments = splitLabelText(text, rtl);
                         text_info.segments = segments;
                         for (let i = 0; i < segments.length; i++){
-                            text_info.size.push(this.textSize(style, segments[i], text_settings).size);
+                            text_info.segment_sizes.push(this.textSize(style, segments[i], text_settings).size);
                         }
                     }
-
-                    // add full text as well
-                    text_info.total_size = this.textSize(style, text, text_settings).size;
-                }
-                else {
-                    // Only send text sizes back to worker (keep computed text line info
-                    // on main thread, for future rendering)
-                    text_info.size = this.textSize(style, text, text_settings).size;
                 }
 
                 cursor.text_idx++;
@@ -520,7 +516,7 @@ export default class CanvasText {
                                 let word = (text_info.isRTL) ? text.split().reverse().join() : text;
 
                                 if (!texture.texcoord_cache[style][word]) {
-                                    let size = text_info.total_size.texture_size;
+                                    let size = text_info.size.texture_size;
                                     texture_position = this.placeText(size[0], size[1], style, texture, textures, max_texture_size);
                                     texture.texcoord_cache[style][word] = {
                                         texture_id: texture.texture_id,
@@ -535,11 +531,11 @@ export default class CanvasText {
                             case 'curved':
                                 text_info.textures[t] = [];
 
-                                for (let w = 0; w < text_info.size.length; w++) {
+                                for (let w = 0; w < text_info.segment_sizes.length; w++) {
                                     let word = text_info.segments[w];
 
                                     if (!texture.texcoord_cache[style][word]) {
-                                        let size = text_info.size[w].texture_size;
+                                        let size = text_info.segment_sizes[w].texture_size;
                                         let width = 2 * size[0]; // doubled to account for side-by-side rendering of fill and stroke
                                         texture_position = this.placeText(width, size[1], style, texture, textures, max_texture_size);
                                         texture.texcoord_cache[style][word] = {
