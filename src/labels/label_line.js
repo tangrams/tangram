@@ -357,12 +357,15 @@ class LabelLineCurved extends LabelLineBase {
         let upp = layout.units_per_pixel;
         let flipped; // boolean determining if the line orientation is reversed
 
+        let height_px = Math.max(...size.map(s => s[1])); // use max segment height
+        let height = height_px * upp;
+
         // Make new copy of line, with consistent orientation
         [line, flipped] = LabelLineBase.splitLineByOrientation(line);
 
         // matches for "left" or "right" labels where the offset angle is dependent on the geometry
         if (typeof layout.orientation === 'number'){
-            this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
+            this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (height_px - layout.vertical_buffer);
 
             // if line is flipped, or the orientation is "left" (-1), flip the offset's y-axis
             if (flipped){
@@ -384,8 +387,6 @@ class LabelLineCurved extends LabelLineBase {
         if (total_label_length > total_line_length){
             return false;
         }
-
-        let height = size[0][1] * upp;
 
         // find start and end indices that the label can fit on without overlapping tile boundaries
         // TODO: there is a small probability of a tile boundary crossing on an internal line segment
@@ -445,16 +446,6 @@ class LabelLineCurved extends LabelLineBase {
                         let width = label_lengths[i];
                         let angle_curve = pre_angle + angles[i];
                         let angle_offset = this.angle;
-
-                        if (typeof layout.orientation === 'number'){
-                            if (flipped){
-                                angle_offset += Math.PI;
-                            }
-
-                            if (layout.orientation === -1){
-                                angle_offset += Math.PI;
-                            }
-                        }
 
                         let obb = LabelLineCurved.createOBB(position, width, height, this.offset, angle_offset, angle_curve, upp);
                         let aabb = obb.getExtent();
