@@ -65,8 +65,15 @@ void main (void) {
             float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
             float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
             // Apply alpha compositing with stroke 'over' fill.
-            color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
-            color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
+
+            #ifdef TANGRAM_BLEND_ADD
+                color.a = stroke_alpha + fill_alpha;
+                color.rgb = color.rgb * fill_alpha + outlineColor.rgb* stroke_alpha;
+            #else
+            //TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)
+                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
+                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
+            #endif
         }
     #endif
 
@@ -80,7 +87,7 @@ void main (void) {
     color.a *= v_alpha_factor;
 
     // If blending is off, use alpha discard as a lower-quality substitute
-    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
+    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)
         if (color.a < TANGRAM_ALPHA_TEST) {
             discard;
         }
