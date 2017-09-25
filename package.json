@@ -1,6 +1,6 @@
 {
   "name": "tangram",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "description": "WebGL Maps for Vector Tiles",
   "repository": {
     "type": "git",
@@ -63,6 +63,12 @@
     },
     {
       "name": "Nick Doiron"
+    },
+    {
+      "name": "Francisco López"
+    },
+    {
+      "name": "David Manzanares"
     }
   ],
   "license": "MIT",
