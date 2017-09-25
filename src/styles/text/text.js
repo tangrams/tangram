@@ -247,7 +247,11 @@ Object.assign(TextStyle, {
                 }
             }
         }
-        else {
+
+        // Consider full line for label placement if no subdivisions requested, or as last resort if not enough
+        // labels placed (e.g. fewer than requested subdivisions)
+        // TODO: refactor multiple label placements per line / move into label placement class for better effectiveness
+        if (labels.length < subdiv) {
             let label = LabelLine.create(size, total_size, line, layout);
             if (label){
                 labels.push(label);
