@@ -55,6 +55,8 @@ varying vec4 v_world_position;
     varying vec4 v_lighting;
 #endif
 
+#define UNPACK_SCALING(x) (x / 1024.)
+
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
@@ -93,17 +95,15 @@ void main() {
         float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);
         dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
 
-        // Interpolate line width to next zoom
-        float dwdz = a_scaling.x / 1024.;
-        float sdwdz = sign(step(0., dwdz) - 0.5);
-        dwdz = abs(dwdz);
-        extrude -= extrude * dwdz * ((1.-step(0., sdwdz)) - (dz * -sdwdz));
+        // Interpolate line width between zooms
+        float mdz = (dz - 0.5) * 2.; // zoom from mid-point
+        extrude -= extrude * UNPACK_SCALING(a_scaling.x) * mdz;
 
-        // Interpolate line offset to next zoom
-        dwdz = a_scaling.y / 1024.;
-        sdwdz = sign(step(0., dwdz) - 0.5);
-        dwdz = abs(dwdz);
-        offset -= offset * dwdz * ((1.-step(0., sdwdz)) - (dz * -sdwdz));
+        // Interpolate line offset between zooms
+        // Scales from the larger value to the smaller one
+        float dwdz = UNPACK_SCALING(a_scaling.y);
+        float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates "direction" of scaling
+        offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale "up" or "down"
 
         // Scale line width and offset to be consistent in screen space
         float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));

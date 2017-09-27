@@ -166,18 +166,13 @@ Object.assign(Lines, {
         style.width_unscaled = width;
         style.next_width_unscaled = next_width;
 
-        // calculate relative change in line width to next zoom
-        // scale from the larger width to the smaller width (this enables line widths to scale up from or to a zero width)
+        // calculate relative change in line width between zooms
+        // interpolate from the line width at the zoom mid-point, towards/away from the previous/next integer zoom
         if (draw.next_width) {
             next_width *= 2; // NB: a given width is twice as big in screen space at the next zoom
-            if (width >= next_width) {
-                style.width = width * context.units_per_meter_overzoom;
-                style.width_scale = 1 - (next_width / width);
-            }
-            else {
-                style.width = next_width * context.units_per_meter_overzoom;
-                style.width_scale = (1 - (width / next_width)) * -1;
-            }
+            let mid_width = (width + next_width) * 0.5;
+            style.width = mid_width * context.units_per_meter_overzoom; // width at zoom mid-point
+            style.width_scale = 1 - (next_width / mid_width);
         }
         else {
             style.width = width * context.units_per_meter_overzoom;
