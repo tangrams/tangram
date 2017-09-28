@@ -29,6 +29,7 @@ export default class Texture {
         // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
         // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
         this.setData(1, 1, new Uint8Array([0, 0, 0, 255]), { filtering: 'nearest' });
+        this.loaded = false; // don't consider loaded when only placeholder data is present
 
         // Destroy previous texture if present
         if (Texture.textures[this.name]) {
