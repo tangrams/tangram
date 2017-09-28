@@ -41,12 +41,14 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         texcoord_normalize,
         scaling_index,
         scaling_normalize,
+        offset_index,
         join, cap,
-        miter_limit
+        miter_limit,
+        offset
     }) {
-
     var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
     var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter;
+    offset = offset || 0.0;
 
     // Configure miter limit
     if (join_type === JOIN_TYPE.miter) {
@@ -75,10 +77,12 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         half_width: width / 2,
         scaling_index,
         scaling_normalize,
+        offset_index,
         v_scale,
         texcoord_index,
         texcoord_width,
         texcoord_normalize,
+        offset,
         geom_count: 0
     };
 
@@ -104,7 +108,9 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
+    var coordCurr, coordNext, normPrev, normNext;
     var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq} = context;
+    var v = 0; // Texture v-coordinate
 
     // Loop backwards through line to a tile boundary if found
     // since you need to draw lines that are only partially inside the tile,
@@ -118,9 +124,6 @@ function buildPolyline(line, context, extra_lines){
             return;
         }
     }
-
-    var coordCurr, coordNext, normPrev, normNext;
-    var v = 0; // Texture v-coordinate
 
     var index_start = 0;
     var index_end = line.length - 1;
@@ -179,8 +182,8 @@ function buildPolyline(line, context, extra_lines){
         }
 
         // Add first pair of points for the line strip
-        addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+        addVertex(coordCurr, normNext, normNext, [1, v], context, 1);
+        addVertex(coordCurr, normNext, normNext, [0, v], context, -1);
     }
 
     // INTERMEDIARY POINTS
@@ -198,8 +201,10 @@ function buildPolyline(line, context, extra_lines){
 
         // Remove tile boundaries
         if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
-            addVertex(coordCurr, normNext, [1, v], context);
-            addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+
+            addVertex(coordCurr, normNext, normNext, [1, v], context, 1);
+            addVertex(coordCurr, normNext, normNext, [0, v], context, -1);
+
             indexPairs(1, context);
 
             var nonBoundaryLines = getNextNonBoundarySegment(line, currIndex + 1, tile_edge_tolerance);
@@ -234,8 +239,9 @@ function buildPolyline(line, context, extra_lines){
     }
     else {
         // Finish the line strip
-        addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+        addVertex(coordCurr, normPrev, normNext, [1, v], context, 1);
+        addVertex(coordCurr, normPrev, normNext, [0, v], context, -1);
+
         indexPairs(1, context);
 
         // If line ends at edge, don't add a cap
@@ -243,6 +249,7 @@ function buildPolyline(line, context, extra_lines){
             addCap(coordCurr, v, normPrev, cap_type, false, context);
         }
     }
+
 }
 
 function getTileBoundaryIndex(line){
@@ -275,8 +282,8 @@ function getNextNonBoundarySegment (line, startIndex, tolerance) {
 function startPolygon(coordCurr, normPrev, normNext, join_type, context){
     // If polygon starts on a tile boundary, don't add a join
     if (join_type === undefined || isCoordOutsideTile(coordCurr)) {
-        addVertex(coordCurr, normNext, [1, 0], context);
-        addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
+        addVertex(coordCurr, normNext, normNext, [1, 0], context, 1);
+        addVertex(coordCurr, normNext, normNext, [0, 0], context, -1);
     }
     else {
         // If polygon starts within a tile, add a join
@@ -294,8 +301,8 @@ function startPolygon(coordCurr, normPrev, normNext, join_type, context){
 function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
     // If polygon ends on a tile boundary, don't add a join
     if (isCoordOutsideTile(coordCurr)) {
-        addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+        addVertex(coordCurr, normPrev, normPrev, [1, v], context, 1);
+        addVertex(coordCurr, normPrev, normPrev, [0, v], context, -1);
         indexPairs(1, context);
     }
     else {
@@ -307,13 +314,13 @@ function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
         }
 
         if (join_type === JOIN_TYPE.miter) {
-            addVertex(coordCurr, miterVec, [1, v], context);
-            addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+            addVertex(coordCurr, miterVec, normPrev, [1, v], context, 1);
+            addVertex(coordCurr, miterVec, normPrev, [0, v], context, -1);
             indexPairs(1, context);
         }
         else {
-            addVertex(coordCurr, normPrev, [1, v], context);
-            addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+            addVertex(coordCurr, normPrev, normPrev, [1, v], context, 1);
+            addVertex(coordCurr, normPrev, normPrev, [0, v], context, -1);
             indexPairs(1, context);
         }
     }
@@ -334,8 +341,8 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
         addJoin(JOIN_TYPE.bevel, v, coordCurr, normPrev, normNext, isBeginning, context);
     }
     else {
-        addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, miterVec, miterVec, [1, v], context, 1);
+        addVertex(coordCurr, miterVec, miterVec, [0, v], context, -1);
         if (!isBeginning) {
             indexPairs(1, context);
         }
@@ -348,56 +355,53 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     var isClockwise = (normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0);
 
     if (isClockwise){
-        addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+        addVertex(coordCurr, miterVec, miterVec, [1, v], context, 1);
+        addVertex(coordCurr, normPrev, miterVec, [0, v], context, -1);
 
         if (!isBeginning) {
             indexPairs(1, context);
         }
 
-        if (join_type === JOIN_TYPE.bevel) {
-            addBevel(coordCurr,
-                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
-                [0, v], [1, v], [0, v],
-                context
-            );
-        }
-        else if (join_type === JOIN_TYPE.round) {
-            addFan(coordCurr,
-                Vector.neg(normPrev), miterVec, Vector.neg(normNext),
-                [0, v], [1, v], [0, v],
-                false, context
-            );
-        }
+        addFan(coordCurr,
+            // extrusion vector of first vertex
+            Vector.neg(normPrev),
+            // controls extrude distance of pivot vertex
+            miterVec,
+            // extrusion vector of last vertex
+            Vector.neg(normNext),
+            // line normal (unused here)
+            miterVec,
+            // uv coordinates
+            [0, v], [1, v], [0, v],
+            false, (join_type === JOIN_TYPE.bevel), context
+        );
 
-        addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
-    }
-    else {
-        addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, miterVec, miterVec, [1, v], context, 1);
+        addVertex(coordCurr, normNext, miterVec, [0, v], context, -1);
+    } else {
+        addVertex(coordCurr, normPrev, miterVec, [1, v], context, 1);
+        addVertex(coordCurr, miterVec, miterVec, [0, v], context, -1);
 
         if (!isBeginning) {
             indexPairs(1, context);
         }
 
-        if (join_type === JOIN_TYPE.bevel) {
-            addBevel(coordCurr,
-                normPrev, Vector.neg(miterVec), normNext,
-                [1, v], [0, v], [1, v],
-                context
-            );
-        }
-        else if (join_type === JOIN_TYPE.round) {
-            addFan(coordCurr,
-                normPrev, Vector.neg(miterVec), normNext,
-                [1, v], [0, v], [1, v],
-                false, context
-            );
-        }
+        addFan(coordCurr,
+            // extrusion vector of first vertex
+            normPrev,
+            // extrusion vector of pivot vertex
+            Vector.neg(miterVec),
+            // extrusion vector of last vertex
+            normNext,
+            // line normal for offset
+            miterVec,
+            // uv coordinates
+            [1, v], [0, v], [1, v],
+            false, (join_type === JOIN_TYPE.bevel), context
+        );
 
-        addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, normNext, miterVec, [1, v], context, 1);
+        addVertex(coordCurr, miterVec, miterVec, [0, v], context, -1);
     }
 }
 
@@ -418,15 +422,15 @@ function indexPairs(num_pairs, context){
     }
 }
 
-function addVertex(coordinate, normal, uv, context) {
+function addVertex(coordinate, extrude, normal, uv, context, flip) {
     var vertex_template = context.vertex_template;
     var vertex_data = context.vertex_data;
 
-    buildVertexTemplate(vertex_template, coordinate, uv, normal, context);
+    buildVertexTemplate(vertex_template, coordinate, extrude, normal, uv, context, flip);
     vertex_data.addVertex(vertex_template);
 }
 
-function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, context) {
+function buildVertexTemplate (vertex_template, vertex, scale, normal, texture_coord, context, flip) {
     // set vertex position
     vertex_template[0] = vertex[0];
     vertex_template[1] = vertex[1];
@@ -437,39 +441,62 @@ function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, con
         vertex_template[context.texcoord_index + 1] = texture_coord[1] * context.texcoord_normalize;
     }
 
-    // set Scaling vertex (X, Y normal direction + Z half_width as attribute)
+    // set Scaling vertex (X, Y extrusion direction + Z half_width as attribute)
     if (context.scaling_index) {
-        vertex_template[context.scaling_index + 0] = scale[0] * context.scaling_normalize;
-        vertex_template[context.scaling_index + 1] = scale[1] * context.scaling_normalize;
+        vertex_template[context.scaling_index + 0] = scale[0] * context.scaling_normalize * flip;
+        vertex_template[context.scaling_index + 1] = scale[1] * context.scaling_normalize * flip;
         vertex_template[context.scaling_index + 2] = context.half_width;
+    }
+
+    // set Normal value (X, Y line normal direction, Z isCap toggle, W offset value)
+    if (context.offset_index && context.offset) {
+        vertex_template[context.offset_index + 0] = normal[0] * context.offset;
+        vertex_template[context.offset_index + 1] = normal[1] * context.offset;
     }
 }
 
-//  Tessalate a FAN geometry between points A       B
-//  using their normals from a center        \ . . /
+//  Tesselate a fan geometry between points A ----- B
+//  using their normals from a center p      \ . . /
 //  and interpolating their UVs               \ p /
 //                                             \./
-function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
-    var cross = nA[0] * nB[1] - nA[1] * nB[0];
-    var dot = Vector.dot(nA, nB);
+//                                              C
+function addFan (coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, isBevel, context) {
+    // eA = extrusion vector of first outer vertex
+    // eC = extrusion vector of inner vertex
+    // eA, eC, eB = extrusion vectors
+    // normal = line normal for calculating cap offsets
+    // coord = center point p - vertex connecting two line segments
+
+    var cross = eA[0] * eB[1] - eA[1] * eB[0];
+    var dot = Vector.dot(eA, eB);
 
     var angle = Math.atan2(cross, dot);
+
     while (angle >= Math.PI) {
         angle -= 2*Math.PI;
     }
 
-    var numTriangles = trianglesPerArc(angle, context.half_width);
-    if (numTriangles < 1) {
-        return;
+    if (isBevel) {
+        numTriangles = 1;
+    } else {
+        // vary number of triangles in fan with angle (based on MIN_FAN_WIDTH)
+        var numTriangles = trianglesPerArc(angle, context.half_width);
+        if (numTriangles < 1) {
+            return;
+        }
     }
 
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
+    if (angle < 0) { // cw
+        addVertex(coord, eC, normal, uvC, context, 1);
+        addVertex(coord, eA, normal, uvA, context, 1);
+    } else { // ccw
+        addVertex(coord, eC, normal, uvC, context, 1);
+        addVertex(coord, eA, normal, uvA, context, 1);
+    }
 
-    addVertex(coord, nC, uvC, context);
-    addVertex(coord, nA, uvA, context);
-
-    var blade = nA;
+    var blade = eA;
 
     if (context.texcoord_index !== undefined) {
         var uvCurr;
@@ -484,7 +511,13 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     }
 
     var angle_step = angle / numTriangles;
+
     for (var i = 0; i < numTriangles; i++) {
+        if (i === 0 && angle < 0) {
+            // if ccw, flip the extrusion vector so offsets work properly
+            blade = Vector.neg(blade);
+        }
+
         blade = Vector.rot(blade, angle_step);
 
         if (context.texcoord_index !== undefined) {
@@ -500,79 +533,58 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
             }
         }
 
-        addVertex(coord, blade, uvCurr, context);
+        // if angle < 0, is cw - set 'flip' flag
+        addVertex(coord, blade, normal, uvCurr, context, ((angle < 0) ? -1 : 1));
 
+        // add outside vertices in reverse order depending on sign of angle
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 2 : 1));
         vertex_elements.push(pivotIndex);
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 1 : 2));
     }
 }
 
-//  addBevel    A ----- B
-//             / \     / \
-//           /   /\   /\  \
-//              /  \ /  \  \
-//                / C \
-function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
-    var pivotIndex = context.vertex_data.vertex_count;
-
-    addVertex(coord, nC, uC, context);
-    addVertex(coord, nA, uA, context);
-    addVertex(coord, nB, uB, context);
-
-    var orientation = nA[0] * nB[1] - nA[1] * nB[0] > 0;
-
-    var vertex_elements = context.vertex_data.vertex_elements;
-
-    if (orientation) {
-        vertex_elements.push(pivotIndex + 2);
-        vertex_elements.push(pivotIndex + 0);
-        vertex_elements.push(pivotIndex + 1);
-    } else {
-        vertex_elements.push(pivotIndex + 1);
-        vertex_elements.push(pivotIndex + 0);
-        vertex_elements.push(pivotIndex + 2);
-    }
-}
-
-//  Function to add the vertex need for line caps,
-//  because re-use the buffers needs to be at the end
+//  Function to add the vertices needed for line caps,
+//  because to re-use the buffers they need to be at the end
 function addCap (coord, v, normal, type, isBeginning, context) {
     var neg_normal = Vector.neg(normal);
 
     switch (type){
         case CAP_TYPE.square:
             var tangent;
+            // first vertex on the lineString
             if (isBeginning){
                 tangent = [normal[1], -normal[0]];
 
-                addVertex(coord, Vector.add(normal, tangent), [1, v], context);
-                addVertex(coord, Vector.add(neg_normal, tangent), [0, v], context);
+                addVertex(coord, Vector.add(normal, tangent), normal, [1, v], context, 1);
+                addVertex(coord, Vector.add(neg_normal, tangent), normal, [0, v], context, 1);
 
                 // Add length of square cap to texture coordinate
                 v += 0.5 * context.texcoord_width * context.v_scale;
 
-                addVertex(coord, normal, [1, v], context);
-                addVertex(coord, neg_normal, [0, v], context);
+                addVertex(coord, normal, normal, [1, v], context, 1);
+                addVertex(coord, neg_normal, normal, [0, v], context, 1);
             }
+            // last vertex on the lineString
             else {
                 tangent = [-normal[1], normal[0]];
 
-                addVertex(coord, normal, [1, v], context);
-                addVertex(coord, neg_normal, [0, v], context);
+                addVertex(coord, normal, normal, [1, v], context, 1);
+                addVertex(coord, neg_normal, normal, [0, v], context, 1);
 
                 // Add length of square cap to texture coordinate
                 v += 0.5 * context.texcoord_width * context.v_scale;
 
-                addVertex(coord, Vector.add(normal, tangent), [1, v], context);
-                addVertex(coord, Vector.add(neg_normal, tangent), [0, v], context);
+                addVertex(coord, Vector.add(normal, tangent), normal, [1, v], context, 1);
+                addVertex(coord, Vector.add(neg_normal, tangent), normal, [0, v], context, 1);
             }
 
             indexPairs(1, context);
             break;
         case CAP_TYPE.round:
             var nA, nB, uvA, uvB, uvC;
+            // first vertex on the lineString
             if (isBeginning) {
+
                 nA = normal;
                 nB = neg_normal;
 
@@ -583,6 +595,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                     uvC = [0.5, v];
                 }
             }
+            // last vertex on the lineString - flip the direction of the cap
             else {
                 nA = neg_normal;
                 nB = normal;
@@ -593,11 +606,13 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                     uvC = [0.5, v];
                 }
             }
-
             addFan(coord,
+                // extrusion normal
                 nA, zero_vec2, nB,
+                // line normal, for offsets
+                normal,
                 uvA, uvC, uvB,
-                true, context
+                true, false, context
             );
 
             break;

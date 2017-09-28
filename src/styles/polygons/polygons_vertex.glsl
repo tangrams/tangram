@@ -28,6 +28,8 @@ attribute vec4 a_color;
     // z:  half-width of line (amount to extrude)
     // w:  scaling factor for interpolating width between zooms
     attribute vec4 a_extrude;
+    // xy: direction of line, for getting perpendicular offset
+    attribute vec2 a_offset;
 #endif
 
 varying vec4 v_position;
@@ -80,10 +82,13 @@ void main() {
         vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         float width = a_extrude.z;
         float dwdz = a_extrude.w;
+        vec2 offset = a_offset.xy;
 
-        // Adjust line width based on zoom level, to prevent proxied lines from being either too small or too big.
-        // "Flattens" the zoom between 1-2 to peg it to 1 (keeps lines from prematurely shrinking), then interpolate
-        // and clamp to 4 (keeps lines from becoming too small when far away).
+        // Adjust line width based on zoom level, to prevent proxied lines
+        // from being either too small or too big.
+        // "Flattens" the zoom between 1-2 to peg it to 1 (keeps lines from
+        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines
+        // from becoming too small when far away).
         float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);
         dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
 
@@ -94,10 +99,14 @@ void main() {
         // Scale from style zoom units back to tile zoom
         width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
+        // Scale pixel dimensions to be consistent in screen space
+        // Scale from style zoom units back to tile zoom
+        offset *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
+
         // Modify line width before extrusion
         #pragma tangram: width
 
-        position.xy += extrude * width;
+        position.xy += extrude * width + offset;
     #endif
 
     // World coordinates for 3d procedural textures
