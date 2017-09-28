@@ -149,7 +149,7 @@ export var Style = {
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
-            return this.buildRasterTextures(tile, tile_data).then(() => tile_data);
+            return this.buildRasterTextures(tile, tile_data).then(tile_data => tile_data);
         }
         else {
             return Promise.resolve(null); // don't send tile data back if doesn't have geometry
@@ -589,9 +589,12 @@ export var Style = {
         // to avoid flickering while loading (texture will render as black)
         return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
             .then(textures => {
-                if (!textures || textures.length < 1) {
+                if (!textures || textures.length < 1) { // no textures found (unexpected)
                     // TODO: warning
                     return tile_data;
+                }
+                else if (textures.some(t => !t.loaded)) { // some textures failed, throw out style for this tile
+                    return null;
                 }
 
                 // Set texture uniforms (returned after loading from main thread)
@@ -602,14 +605,14 @@ export var Style = {
                 let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
                 let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
 
-                textures.forEach(([tname, twidth, theight]) => {
-                    let i = index[tname];
-                    let raster_coords = configs[tname].coords; // tile coords of raster tile
+                textures.forEach(t => {
+                    let i = index[t.name];
+                    let raster_coords = configs[t.name].coords; // tile coords of raster tile
 
-                    u_samplers[i] = tname;
-                    tile_data.textures.push(tname);
+                    u_samplers[i] = t.name;
+                    tile_data.textures.push(t.name);
 
-                    u_sizes[i] = [twidth, theight];
+                    u_sizes[i] = [t.width, t.height];
 
                     // Tile geometry may be at a higher zoom than the raster tile texture,
                     // (e.g. an overzoomed raster tile), in which case we need to adjust the
@@ -645,7 +648,7 @@ export var Style = {
             })
             .then(textures => {
                 textures.forEach(t => t.retain());
-                return textures.map(t => [t.name, t.width, t.height]);
+                return textures.map(t => ({ name: t.name, width: t.width, height: t.height, loaded: t.loaded }));
             });
     },
 
