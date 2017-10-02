@@ -92,7 +92,7 @@ Object.assign(self, {
         self.last_config_sources = self.config_sources || {};
         self.config_sources = config.sources;
         let last_sources = self.sources;
-        let changed = false;
+        let changed = [];
 
         // Parse new sources
         config.sources = Utils.stringsToFunctions(config.sources);
@@ -115,13 +115,17 @@ Object.assign(self, {
                 continue;
             }
             self.sources[name] = source;
-            changed = true;
+            changed.push(name);
         }
 
-        // Clear tile cache if any data sources changed
-        if (changed) {
-            self.tiles = {};
-        }
+        // Clear tile cache for data sources that changed
+        changed.forEach(source => {
+            for (let t in self.tiles) {
+                if (self.tiles[t].source === source) {
+                    delete self.tiles[t];
+                }
+            }
+        });
     },
 
     // Returns a promise that fulfills when config refresh is finished
