@@ -52,7 +52,7 @@ void main (void) {
     }
     else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture
         color = texture2D(u_texture, v_texcoord);
-        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
+        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture, avoid divide by zero
     }
     #ifdef TANGRAM_SHADER_POINT
         else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
@@ -64,15 +64,14 @@ void main (void) {
             float outer_alpha  = _tangram_antialias(l, 1.);
             float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
             float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
-            // Apply alpha compositing with stroke 'over' fill.
 
+            // Apply alpha compositing with stroke 'over' fill.
             #ifdef TANGRAM_BLEND_ADD
                 color.a = stroke_alpha + fill_alpha;
-                color.rgb = color.rgb * fill_alpha + outlineColor.rgb* stroke_alpha;
-            #else
-            //TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)
+                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;
+            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)
                 color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
-                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / color.a;
+                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero
             #endif
         }
     #endif
