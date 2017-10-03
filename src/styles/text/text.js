@@ -264,15 +264,9 @@ Object.assign(TextStyle, {
         return labels;
     },
 
-    // Override
-    vertexLayoutForMeshVariant (variant) {
-        return this.vertex_layout;
-    },
-
-    // Override
-    meshVariantTypeForDraw (draw) {
-        return this.default_mesh_variant;
-    },
+    // Override to restore base class default implementations
+    vertexLayoutForMeshVariant: Style.vertexLayoutForMeshVariant,
+    meshVariantTypeForDraw: Style.meshVariantTypeForDraw
 
 });
 
