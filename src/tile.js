@@ -438,11 +438,21 @@ export default class Tile {
                         mesh_options.variant = mesh_variant.variant;
 
                         let mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
+                        mesh.variant = mesh_options.variant;
                         meshes[s] = meshes[s] || [];
                         meshes[s].push(mesh);
                         this.debug.buffer_size += mesh.buffer_size;
                         this.debug.geometry_count += mesh.geometry_count;
                     }
+                }
+
+                // Sort mesh variants by explicit render order (if present)
+                if (meshes[s]) {
+                    meshes[s].sort((a, b) => {
+                        // Sort variant order ascending if present, then all null values (where order is unspecified)
+                        let ao = a.variant.order, bo = b.variant.order;
+                        return (ao == null ? 1 : (bo == null ? -1 : (ao < bo ? -1 : 1)));
+                    });
                 }
 
                 // Assign texture ownership to tiles

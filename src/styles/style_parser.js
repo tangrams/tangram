@@ -92,20 +92,31 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
 // Build a style param cache object
 // `value` is raw value, cache methods will add other properties as needed
 // `transform` is optional transform function to run on values (except function values)
+const CACHE_TYPE = {
+    STATIC: 0,
+    DYNAMIC: 1,
+    ZOOM: 2
+};
+StyleParser.CACHE_TYPE = CACHE_TYPE;
+
 StyleParser.createPropertyCache = function (obj, transform = null) {
     if (obj == null) {
         return;
     }
 
     if (obj.value) {
-        return { value: obj.value, zoom: (obj.zoom ? {} : null) }; // clone existing cache object
+        return { value: obj.value, zoom: (obj.zoom ? {} : null), type: obj.type }; // clone existing cache object
     }
 
-    let c = { value: obj };
+    let c = { value: obj, type: CACHE_TYPE.STATIC };
 
     // does value contain zoom stops to be interpolated?
     if (Array.isArray(c.value) && Array.isArray(c.value[0])) {
         c.zoom = {}; // will hold values interpolated by zoom
+        c.type = CACHE_TYPE.ZOOM;
+    }
+    else if (typeof c.value === 'function') {
+        c.type = CACHE_TYPE.DYNAMIC;
     }
 
     // apply optional transform function

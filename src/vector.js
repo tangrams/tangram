@@ -3,7 +3,7 @@
 var Vector;
 export default Vector = {};
 
-Vector.set = function (v) {
+Vector.copy = function (v) {
     var V = [];
     var lim = v.length;
     for (var i = 0; i < lim; i++) {
@@ -115,8 +115,8 @@ Vector.angle = function ([x, y]) {
 // Get angle between two vectors
 Vector.angleBetween = function(A, B){
     var delta = Vector.dot(
-        Vector.normalize(A),
-        Vector.normalize(B)
+        Vector.normalize(Vector.copy(A)),
+        Vector.normalize(Vector.copy(B))
     );
     if (delta > 1) {delta = 1;} // protect against floating point error
     return Math.acos(delta);
@@ -149,7 +149,7 @@ Vector.length = function (v) {
     return Math.sqrt(Vector.lengthSq(v));
 };
 
-// Normalize a vector
+// Normalize a vector *in place* (use Vector.copy() if you need a new vector instance)
 Vector.normalize = function (v) {
     var d;
     if (v.length === 2) {
@@ -162,9 +162,12 @@ Vector.normalize = function (v) {
         d = Math.sqrt(d);
 
         if (d !== 0) {
-            return [v[0] / d, v[1] / d];
+            v[0] /= d;
+            v[1] /= d;
         }
-        return [0, 0];
+        else {
+            v[0] = 0, v[1] = 0;
+        }
     } else if (v.length >= 3) {
         d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
 
@@ -175,10 +178,15 @@ Vector.normalize = function (v) {
         d = Math.sqrt(d);
 
         if (d !== 0) {
-            return [v[0] / d, v[1] / d, v[2] / d];
+            v[0] /= d;
+            v[1] /= d;
+            v[2] /= d;
+        }
+        else {
+            v[0] = 0, v[1] = 0, v[2] = 0;
         }
     }
-    return [0, 0, 0];
+    return v;
 };
 
 // Cross product of two vectors

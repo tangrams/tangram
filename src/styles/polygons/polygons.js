@@ -134,7 +134,7 @@ Object.assign(Polygons, {
         return this.vertex_template;
     },
 
-    buildPolygons(polygons, style, vertex_data, context) {
+    buildPolygons(polygons, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style);
         let options = {
             texcoord_index: this.vertex_layout.index.a_texcoord,
@@ -149,7 +149,7 @@ Object.assign(Polygons, {
             return buildExtrudedPolygons(
                 polygons,
                 style.z, style.height, style.min_height,
-                vertex_data, vertex_template,
+                mesh.vertex_data, vertex_template,
                 this.vertex_layout.index.a_normal,
                 127, // scale normals to signed bytes
                 options
@@ -159,7 +159,7 @@ Object.assign(Polygons, {
         else {
             return buildPolygons(
                 polygons,
-                vertex_data, vertex_template,
+                mesh.vertex_data, vertex_template,
                 options
             );
         }

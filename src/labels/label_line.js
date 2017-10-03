@@ -16,7 +16,7 @@ const VERTICAL_ANGLE_TOLERANCE = 0.01;      // nearly vertical lines considered 
 let LabelLine = {
     // Given a label's bounding box size and size of broken up individual segments
     // return a label that fits along the line geometry that is either straight (preferred) or curved (if straight tolerances aren't met)
-    create : function(segment_size, total_size, line, layout){
+    create : function(segment_sizes, total_size, line, layout){
         // The passes done for fitting a label, and provided tolerances for each pass
         // First straight is chosen with a low tolerance. Then curved. Then straight with a higher tolerance.
         const passes = [
@@ -33,7 +33,7 @@ let LabelLine = {
                 label = new LabelLineStraight(total_size, line, layout, check.tolerance);
             }
             else if (check.type === 'curved' && !layout.no_curving && line.length > 2){
-                label = new LabelLineCurved(segment_size, line, layout);
+                label = new LabelLineCurved(segment_sizes, line, layout);
             }
 
             if (label && !label.throw_away) {
@@ -56,7 +56,7 @@ class LabelLineBase {
         this.offset = layout.offset.slice();
         this.obbs = [];
         this.aabbs = [];
-        this.type = ''; // "curved" or "straight" to be set by parent class
+        this.type = ''; // "curved" or "straight" to be set by child class
         this.throw_away = false; // boolean that determines if label should be discarded
     }
 
@@ -188,8 +188,8 @@ class LabelLineBase {
     }
 
     // Method to calculate oriented bounding box
-    // "angle" is the angle of the text, "angle_offset" is the angle applied to the offset.
-    // This distinction is necessary for labels with "left" (inner) or "right" (outer) offsets
+    // "angle" is the angle of the text segment, "angle_offset" is the angle applied to the offset.
+    // Offset angle is constant for the entire label, while segment angles are not.
     static createOBB (position, width, height, angle, angle_offset, offset, upp) {
         let p0 = position[0];
         let p1 = position[1];
@@ -338,7 +338,7 @@ class LabelLineStraight extends LabelLineBase {
 // Class for curved labels
 // Extends base LabelLine class to support angles, pre_angles, offsets as arrays for each segment
 class LabelLineCurved extends LabelLineBase {
-    constructor (size, line, layout) {
+    constructor (segment_sizes, line, layout) {
         super(layout);
         this.type = 'curved';
 
@@ -346,9 +346,9 @@ class LabelLineCurved extends LabelLineBase {
         this.angles = [];
         this.pre_angles = [];
         this.offsets = [];
-        this.num_segments = size.length;
+        this.num_segments = segment_sizes.length;
 
-        this.throw_away = !this.fit(size, line, layout);
+        this.throw_away = !this.fit(segment_sizes, line, layout);
     }
 
     // Determine if the curved label can fit the geometry.
@@ -357,12 +357,15 @@ class LabelLineCurved extends LabelLineBase {
         let upp = layout.units_per_pixel;
         let flipped; // boolean determining if the line orientation is reversed
 
+        let height_px = Math.max(...size.map(s => s[1])); // use max segment height
+        let height = height_px * upp;
+
         // Make new copy of line, with consistent orientation
         [line, flipped] = LabelLineBase.splitLineByOrientation(line);
 
         // matches for "left" or "right" labels where the offset angle is dependent on the geometry
         if (typeof layout.orientation === 'number'){
-            this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer);
+            this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (height_px - layout.vertical_buffer);
 
             // if line is flipped, or the orientation is "left" (-1), flip the offset's y-axis
             if (flipped){
@@ -375,17 +378,15 @@ class LabelLineCurved extends LabelLineBase {
         }
 
         let line_lengths = getLineLengths(line);
-        let label_lengths = size.map(function(size){ return size[0] * upp; });
+        let label_lengths = size.map(size => size[0] * upp);
 
-        let total_line_length = line_lengths.reduce(function(prev, next){ return prev + next; }, 0);
-        let total_label_length = label_lengths.reduce(function(prev, next){ return prev + next; }, 0);
+        let total_line_length = line_lengths.reduce((prev, next) => prev + next, 0);
+        let total_label_length = label_lengths.reduce((prev, next) => prev + next, 0);
 
         // if label displacement is longer than the line, no fit can be possible
         if (total_label_length > total_line_length){
             return false;
         }
-
-        let height = size[0][1] * upp;
 
         // find start and end indices that the label can fit on without overlapping tile boundaries
         // TODO: there is a small probability of a tile boundary crossing on an internal line segment
@@ -429,34 +430,24 @@ class LabelLineCurved extends LabelLineBase {
                 let {positions, offsets, angles, pre_angles} = LabelLineCurved.placeAtIndex(anchor_index, new_line, line_lengths, label_lengths);
 
                 // translate 2D offsets into "polar coordinates"" (1D distances with angles)
-                let offsets1d = offsets.map(function(offset){
+                let offsets1d = offsets.map(offset => {
                     return Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp;
                 });
 
                 // Calculate everything that is independent of zoom level (angle for offset, bounding boxes, etc)
                 if (stop === 0){
                     // use average angle for a global label offset (if offset is specified)
-                    this.angle = 1 / angles.length * angles.reduce(function(prev, next){ return prev + next; });
+                    this.angle = 1 / angles.length * angles.reduce((prev, next) => prev + next);
 
-                    // calculate bounding boxes for zollision at zoom level 0
+                    // calculate bounding boxes for collision at zoom level 0
                     for (let i = 0; i < positions.length; i++){
                         let position = positions[i];
                         let pre_angle = pre_angles[i];
                         let width = label_lengths[i];
-                        let angle_curve = pre_angle + angles[i];
+                        let angle_segment = pre_angle + angles[i];
                         let angle_offset = this.angle;
 
-                        if (typeof layout.orientation === 'number'){
-                            if (flipped){
-                                angle_offset += Math.PI;
-                            }
-
-                            if (layout.orientation === -1){
-                                angle_offset += Math.PI;
-                            }
-                        }
-
-                        let obb = LabelLineCurved.createOBB(position, width, height, this.offset, angle_offset, angle_curve, upp);
+                        let obb = LabelLineBase.createOBB(position, width, height, angle_segment, angle_offset, this.offset, upp);
                         let aabb = obb.getExtent();
 
                         this.obbs.push(obb);
@@ -616,13 +607,13 @@ class LabelLineCurved extends LabelLineBase {
         }
     }
 
-    // Scale the line by a scale factor (used for computing the angles and offsets are fractional zoom levels)
+    // Scale the line by a scale factor (used for computing the angles and offsets at fractional zoom levels)
     // Return the new line positions and their lengths
     static scaleLine(scale, line){
         var new_line = [line[0]];
         var line_lengths = [];
 
-        line.forEach(function(pt, i){
+        line.forEach((pt, i) => {
             if (i === line.length - 1) {
                 return;
             }
@@ -745,23 +736,6 @@ class LabelLineCurved extends LabelLineBase {
         }
 
         return [offsets, angles, pre_angles];
-    }
-
-    // Modify the LabelLineStraight method to include a distiction between an offset angle, and rotation angle
-    // as these may be different. (Offset angle is constant for the entire label, while rotation angles are not.)
-    static createOBB (position, width, height, offset, angle_offset, angle_curve, upp) {
-        let p0 = position[0];
-        let p1 = position[1];
-
-        // apply offset, x positive, y pointing down
-        if (offset && (offset[0] !== 0 || offset[1] !== 0)) {
-            offset = Vector.rot(offset, angle_offset);
-            p0 += offset[0] * upp;
-            p1 -= offset[1] * upp;
-        }
-
-        // the angle of the obb is negative since it's the tile system y axis is pointing down
-        return new OBB(p0, p1, -angle_curve, width, height);
     }
 }
 

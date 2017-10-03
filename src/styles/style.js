@@ -149,7 +149,7 @@ export var Style = {
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
-            return this.buildRasterTextures(tile, tile_data).then(() => tile_data);
+            return this.buildRasterTextures(tile, tile_data).then(tile_data => tile_data);
         }
         else {
             return Promise.resolve(null); // don't send tile data back if doesn't have geometry
@@ -163,20 +163,20 @@ export var Style = {
 
     getTileMesh (tile, variant) {
         let meshes = this.tile_data[tile.id].meshes;
-        if (meshes[variant] == null) {
-            meshes[variant] = {
+        if (meshes[variant.key] == null) {
+            meshes[variant.key] = {
                 variant,
                 vertex_data: this.vertexLayoutForMeshVariant(variant).createVertexData()
             };
         }
-        return meshes[variant];
+        return meshes[variant.key];
     },
 
     vertexLayoutForMeshVariant (variant) {
         return this.vertex_layout;
     },
 
-    default_mesh_variant: 0,
+    default_mesh_variant: { key: 0 },
     meshVariantTypeForDraw (draw) {
         return this.default_mesh_variant;
     },
@@ -196,29 +196,31 @@ export var Style = {
             return; // skip feature
         }
 
-        let vertex_data = this.getTileMesh(tile, this.meshVariantTypeForDraw(style)).vertex_data;
-        this.buildGeometry(feature.geometry, style, vertex_data, context);
+        let mesh = this.getTileMesh(tile, this.meshVariantTypeForDraw(style));
+        if (this.buildGeometry(feature.geometry, style, mesh, context) > 0) {
+            feature.generation = this.generation; // track scene generation that feature was rendered for
+        }
     },
 
-    buildGeometry (geometry, style, vertex_data, context) {
+    buildGeometry (geometry, style, mesh, context) {
         let geom_count;
         if (geometry.type === 'Polygon') {
-            geom_count = this.buildPolygons([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPolygons([geometry.coordinates], style, mesh, context);
         }
         else if (geometry.type === 'MultiPolygon') {
-            geom_count = this.buildPolygons(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPolygons(geometry.coordinates, style, mesh, context);
         }
         else if (geometry.type === 'LineString') {
-            geom_count = this.buildLines([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildLines([geometry.coordinates], style, mesh, context);
         }
         else if (geometry.type === 'MultiLineString') {
-            geom_count = this.buildLines(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildLines(geometry.coordinates, style, mesh, context);
         }
         else if (geometry.type === 'Point') {
-            geom_count = this.buildPoints([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPoints([geometry.coordinates], style, mesh, context);
         }
         else if (geometry.type === 'MultiPoint') {
-            geom_count = this.buildPoints(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPoints(geometry.coordinates, style, mesh, context);
         }
 
         // Optionally collect per-layer stats
@@ -587,9 +589,12 @@ export var Style = {
         // to avoid flickering while loading (texture will render as black)
         return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
             .then(textures => {
-                if (!textures || textures.length < 1) {
+                if (!textures || textures.length < 1) { // no textures found (unexpected)
                     // TODO: warning
                     return tile_data;
+                }
+                else if (textures.some(t => !t.loaded)) { // some textures failed, throw out style for this tile
+                    return null;
                 }
 
                 // Set texture uniforms (returned after loading from main thread)
@@ -600,14 +605,14 @@ export var Style = {
                 let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
                 let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
 
-                textures.forEach(([tname, twidth, theight]) => {
-                    let i = index[tname];
-                    let raster_coords = configs[tname].coords; // tile coords of raster tile
+                textures.forEach(t => {
+                    let i = index[t.name];
+                    let raster_coords = configs[t.name].coords; // tile coords of raster tile
 
-                    u_samplers[i] = tname;
-                    tile_data.textures.push(tname);
+                    u_samplers[i] = t.name;
+                    tile_data.textures.push(t.name);
 
-                    u_sizes[i] = [twidth, theight];
+                    u_sizes[i] = [t.width, t.height];
 
                     // Tile geometry may be at a higher zoom than the raster tile texture,
                     // (e.g. an overzoomed raster tile), in which case we need to adjust the
@@ -643,7 +648,7 @@ export var Style = {
             })
             .then(textures => {
                 textures.forEach(t => t.retain());
-                return textures.map(t => [t.name, t.width, t.height]);
+                return textures.map(t => ({ name: t.name, width: t.width, height: t.height, loaded: t.loaded }));
             });
     },
 
@@ -666,6 +671,7 @@ export var Style = {
     // Render state settings by blend mode
     render_states: {
         opaque: { depth_test: true, depth_write: true },
+        translucent: { depth_test: true, depth_write: true },
         add: { depth_test: true, depth_write: false },
         multiply: { depth_test: true, depth_write: false },
         inlay: { depth_test: true, depth_write: false },
@@ -678,7 +684,8 @@ export var Style = {
         add: 1,
         multiply: 2,
         inlay: 3,
-        overlay: 4
+        translucent: 4,
+        overlay: 5
     },
 
     // Comparison function for sorting styles by blend

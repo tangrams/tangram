@@ -62,19 +62,15 @@ textures:
 styles:
     buildings:
         base: polygons
+        blend: translucent
         shaders:
             blocks:
                 color: |
-                    // Modify lighting
-                    material.ambient.rgb = vec3(2.);
-                    material.diffuse.rgb = vec3(.5);
-
                     // Shade by building height
-                    color.rgb = vec3(min((worldPosition().z*.0005 + .65), .8));
+                    color.rgb *= vec3((worldPosition().z*.0005 + .9));
 
-    dashed:
-        base: lines
-        dash: [2, 1]
+                    // Add translucency at higher zoom
+                    color.a = clamp(mix(1., 0., (u_map_position.z - 15.) * .25), .5, 1.);
 
     transit-lines:
         base: lines
@@ -84,9 +80,9 @@ styles:
             blocks:
                 filter: |
                     color.rgb *= 1.25; // pump up the colors
-                    color.a = 0.5;     // translucent
+                    color.a *= 0.5;     // translucent
         draw: # default draw parameters
-            color: function() { return feature.colour || 'gray'; }
+            color: function() { return feature.colour_name; }
             width: 6px
             outline:
                 color: [.8, .8, .8]
@@ -288,18 +284,26 @@ layers:
             lines:
                 color: white
                 # color: function() { return [Math.random(), Math.random(), Math.random()] }
-                width: 12
+                # width: 20px
+                # width: [[14, 20], [16, 5], [17, 1], [20, 5]]
+                # width: [[16, 0px], [18, 10px], [20, 0px]]
+                width: [[16, 0px], [17, 10px], [18, 15px], [19, 15px], [20, 0px]]
+                # width: 10px
                 order: global.feature_order
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
-                    width: [[15, 0], [16, 2]]
+                    # width: [[15, 0], [16, 2]]
+                    width: [[17, 0], [18, 2px], [19, 3px]]
+                    # width: 3px
                     order: 352 # put all outlines below all roads
+                # offset: [[18, 0], [19, -30px], [20, 30px]]
 
         rounded:
             filter: { $zoom: { min: 18 } }
             draw:
                 lines:
                     cap: round
+                    join: round
 
         highway:
             filter: { kind: highway }
@@ -333,7 +337,7 @@ layers:
             filter: { kind: path }
             draw:
                 lines:
-                    style: dashed
+                    dash: [2, 1]
                     color: white
                     width: [[15, 0px], [18, 3px]]
                     outline:
@@ -353,7 +357,7 @@ layers:
             filter: { kind: ferry }
             draw:
                 lines:
-                    style: dashed
+                    dash: [2, 1]
                     color: '#8db3ce'
                     width: [[14, 1px], [18, 2px]]
                     outline:
@@ -645,8 +649,9 @@ layers:
             lines:
                 visible: false
                 order: global.feature_order
-                width: 2px
+                width: 2.5px
                 color: wheat
+                dash: [1, 1, 3, 1]
 
         country:
             filter: { kind: country }
@@ -676,6 +681,7 @@ layers:
                 draw:
                     text:
                         priority: 1
+                        offset: [0, 2px]
                         text_source:
                             left: ['name:left:en', 'name:left']
                             right: ['name:right:en', 'name:right']
@@ -779,14 +785,31 @@ layers:
                             style: italic
                             fill: rgba(136, 45, 23, 0.9)
 
-
     transit:
         data: { source: mapzen }
-        filter: { $zoom: { min: 16 } }
+        filter: { $zoom: { min: 15 } }
         draw:
             lines:
                 style: transit-lines
                 order: 400
+                width: [[15, 6px], [16, 12px]]
+
+        NYC:
+            filter: { network: 'NYC Subway' }
+
+            F:
+                filter: { ref: F }
+                draw:
+                    lines:
+                        offset: [[15, 3.5px], [16, 6.5px]]
+
+            G:
+                filter: { ref: G }
+                draw:
+                    lines:
+                        offset: [[15, -3.5px], [16, -6.5px]]
+                        order: function () { return feature.sort_rank + 1; }
+
 
     # schools:
     #     data: { source: schools }

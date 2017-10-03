@@ -239,6 +239,7 @@ export default class Scene {
         try {
             this.gl = Context.getContext(this.canvas, Object.assign({
                 alpha: true, premultipliedAlpha: true,
+                stencil: true,
                 device_pixel_ratio: Utils.device_pixel_ratio
             }, this.contextOptions));
         }
@@ -553,7 +554,32 @@ export default class Scene {
                 );
                 this.setRenderState(state);
             }
+
+            // Depth pre-pass for translucency
+            let translucent = (style.blend === 'translucent' && program_key === 'program'); // skip for selection buffer render pass
+            if (translucent) {
+                this.gl.colorMask(false, false, false, false);
+                this.renderStyle(style.name, program_key);
+
+                this.gl.colorMask(true, true, true, true);
+                this.gl.depthFunc(this.gl.EQUAL);
+
+                // stencil buffer prevents compounding alpha from overlapping polys
+                this.gl.enable(this.gl.STENCIL_TEST);
+                this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
+                this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
+                this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
+            }
+
+            // Main render pass
             count += this.renderStyle(style.name, program_key);
+
+            if (translucent) {
+                // disable translucency-specific settings
+                this.gl.disable(this.gl.STENCIL_TEST);
+                this.gl.depthFunc(this.gl.LESS);
+            }
+
             last_blend = style.blend;
         }
 
@@ -688,7 +714,7 @@ export default class Scene {
                 });
             }
             // Traditional alpha blending
-            else if (blend === 'overlay' || blend === 'inlay') {
+            else if (blend === 'overlay' || blend === 'inlay' || blend === 'translucent') {
                 render_states.blending.set({
                     blend: true,
                     src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
@@ -1070,9 +1096,12 @@ export default class Scene {
 
     // Turn introspection mode on/off
     setIntrospection (val) {
-        this.introspection = val || false;
-        this.updating++;
-        return this.updateConfig({ normalize: false }).then(() => this.updating--);
+        if (val !== this.introspection) {
+            this.introspection = val || false;
+            this.updating++;
+            return this.updateConfig({ normalize: false }).then(() => this.updating--);
+        }
+        return Promise.resolve();
     }
 
     // Update scene config, and optionally rebuild geometry
@@ -1083,11 +1112,15 @@ export default class Scene {
 
         this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
         if (normalize) {
+            // normalize whole scene
             SceneLoader.normalize(this.config, this.config_bundle);
+        }
+        else {
+            // just normalize top-level textures - necessary for adding base path to globals
+            SceneLoader.normalizeTextures(this.config, this.config_bundle);
         }
         this.trigger(load_event ? 'load' : 'update', { config: this.config });
 
-        SceneLoader.hoistTextures(this.config); // move inline textures into global texture set
         this.style_manager.init();
         this.view.reset();
         this.createLights();

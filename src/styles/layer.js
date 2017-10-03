@@ -5,7 +5,7 @@ import mergeObjects from '../utils/merge';
 import {buildFilter} from './filter';
 
 // N.B.: 'visible' is legacy compatibility for 'enabled'
-export const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
+const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
 
 let layer_cache = {};
 export function layerCache () {
@@ -375,7 +375,7 @@ export const FilterOptions = {
     }
 };
 
-function isReserved(key) {
+export function isReserved(key) {
     return reserved.indexOf(key) > -1;
 }
 

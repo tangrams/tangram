@@ -45,15 +45,13 @@ export default class VertexData {
     setBufferViews () {
         this.views = {};
         this.views[gl.UNSIGNED_BYTE] = this.vertex_buffer;
-        for (let a=0; a < this.vertex_layout.attribs.length; a++) {
-            const attrib = this.vertex_layout.attribs[a];
-
+        this.vertex_layout.dynamic_attribs.forEach(attrib => {
             // Need view for this type?
             if (this.views[attrib.type] == null) {
                 var array_type = array_types[attrib.type];
                 this.views[attrib.type] = new array_type(this.vertex_buffer.buffer);
             }
-        }
+        });
     }
 
     // Check allocated buffer size, expand/realloc buffer if needed

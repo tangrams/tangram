@@ -40,12 +40,11 @@ varying float v_alpha_factor;
 
     varying float v_outline_edge;
     varying vec4 v_outline_color;
-    varying float v_aa_factor;
+    varying float v_aa_offset;
 #endif
 
 #define PI 3.14159265359
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
-#define TANGRAM_PX_FADE_RANGE 2.
 
 #pragma tangram: camera
 #pragma tangram: material
@@ -76,12 +75,19 @@ void main() {
 
     v_alpha_factor = 1.0;
     v_color = a_color;
-    v_texcoord = a_texcoord;
+    v_texcoord = a_texcoord; // UV from vertex
 
     #ifdef TANGRAM_HAS_SHADER_POINTS
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
-        v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;
+        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
+            v_outline_color = a_outline_color;
+            v_outline_edge = a_outline_edge;
+            float size = abs(a_shape.x/128.); // radius in pixels
+            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);
+            size+=2.;
+            v_aa_offset=2./size;
+        }
     #endif
 
     // Position
@@ -156,6 +162,12 @@ void main() {
     // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
+    #ifdef TANGRAM_SHADER_POINT
+        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
+            // enlarge by 1px to catch missed MSAA fragments
+            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;
+        }
+    #endif
 
     // Snap to pixel grid
     // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active

@@ -130,12 +130,12 @@ Object.assign(TextStyle, {
                             style.texcoords = {};
 
                             if (q.label.type === 'straight'){
-                                style.size.straight = text_info.total_size.logical_size;
+                                style.size.straight = text_info.size.logical_size;
                                 style.texcoords.straight = text_info.texcoords.straight;
                                 style.label_texture = textures[text_info.texcoords.straight.texture_id];
                             }
                             else{
-                                style.size.curved = text_info.size.map(function(size){ return size.logical_size; });
+                                style.size.curved = text_info.segment_sizes.map(function(size){ return size.logical_size; });
                                 style.texcoords_stroke = text_info.texcoords_stroke;
                                 style.texcoords.curved = text_info.texcoords.curved;
                                 style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
@@ -187,9 +187,9 @@ Object.assign(TextStyle, {
             fq.layout.vertical_buffer = text_info.vertical_buffer;
 
             if (text_info.text_settings.can_articulate){
-                var sizes = text_info.size.map(function(size){ return size.collision_size; });
+                var sizes = text_info.segment_sizes.map(size => size.collision_size);
                 fq.layout.no_curving = text_info.no_curving;
-                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout, text_info.total_size.collision_size);
+                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout, text_info.size.collision_size);
             }
             else {
                 feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
@@ -251,7 +251,11 @@ Object.assign(TextStyle, {
                 }
             }
         }
-        else {
+
+        // Consider full line for label placement if no subdivisions requested, or as last resort if not enough
+        // labels placed (e.g. fewer than requested subdivisions)
+        // TODO: refactor multiple label placements per line / move into label placement class for better effectiveness
+        if (labels.length < subdiv) {
             let label = LabelLine.create(size, total_size, line, layout);
             if (label){
                 labels.push(label);
