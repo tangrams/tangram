@@ -102,6 +102,10 @@ WorkerBroker.addTarget = function (name, target) {
     targets[name] = target;
 };
 
+WorkerBroker.removeTarget = function (name) {
+    delete targets[name];
+};
+
 // Given a dot-notation-style method name, e.g. 'Object.object.method',
 // find the object to call the method on from the list of registered targets
 function findTarget (method) {
@@ -166,7 +170,6 @@ function setupMainThread () {
             message                 // message payload
         };
 
-        payload = maybeEncode(payload, transferables);
         worker.postMessage(payload, transferables.map(t => t.object));
         freeTransferables(transferables);
         if (transferables.length > 0) {
@@ -184,7 +187,7 @@ function setupMainThread () {
         }
 
         worker.addEventListener('message', function WorkerBrokerMainThreadHandler(event) {
-            let data = maybeDecode(event.data);
+            let data = event.data;
             let id = data.message_id;
 
             // Listen for messages coming back from the worker, and fulfill that message's promise
@@ -240,7 +243,6 @@ function setupMainThread () {
                             message_id: id,
                             message: value
                         };
-                        payload = maybeEncode(payload, transferables);
                         worker.postMessage(payload, transferables.map(t => t.object));
                         freeTransferables(transferables);
                         if (transferables.length > 0) {
@@ -268,7 +270,6 @@ function setupMainThread () {
                         message: result,
                         error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
                     };
-                    payload = maybeEncode(payload, transferables);
                     worker.postMessage(payload, transferables.map(t => t.object));
                     freeTransferables(transferables);
                     if (transferables.length > 0) {
@@ -323,7 +324,6 @@ function setupWorkerThread () {
             message                 // message payload
         };
 
-        payload = maybeEncode(payload, transferables);
         self.postMessage(payload, transferables.map(t => t.object));
         freeTransferables(transferables);
         if (transferables.length > 0) {
@@ -335,7 +335,7 @@ function setupWorkerThread () {
     };
 
     self.addEventListener('message', function WorkerBrokerWorkerThreadHandler(event) {
-        let data = maybeDecode(event.data);
+        let data = event.data;
         let id = data.message_id;
 
         // Listen for messages coming back from the main thread, and fulfill that message's promise
@@ -391,7 +391,6 @@ function setupWorkerThread () {
                         message_id: id,
                         message: value
                     };
-                    payload = maybeEncode(payload, transferables);
                     self.postMessage(payload, transferables.map(t => t.object));
                     freeTransferables(transferables);
                     if (transferables.length > 0) {
@@ -418,7 +417,6 @@ function setupWorkerThread () {
                     message: result,
                     error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
                 };
-                payload = maybeEncode(payload, transferables);
                 self.postMessage(payload, transferables.map(t => t.object));
                 freeTransferables(transferables);
                 if (transferables.length > 0) {
@@ -480,19 +478,6 @@ function freeTransferables(transferables) {
         return;
     }
     transferables.filter(t => t.parent && t.property).forEach(t => delete t.parent[t.property]);
-}
-
-// Message payload can be stringified for faster transfer, if it does not include transferable objects
-function maybeEncode (payload, transferables) {
-    if (transferables.length === 0) {
-        payload = JSON.stringify(payload);
-    }
-    return payload;
-}
-
-// Parse stringified message payload
-function maybeDecode (data) {
-    return (typeof data === 'string' ? JSON.parse(data) : data);
 }
 
 // Setup this thread as appropriate

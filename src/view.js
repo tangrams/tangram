@@ -23,8 +23,11 @@ export default class View {
         this.panning = false;
         this.panning_stop_at = 0;
         this.pan_snap_timer = 0;
-        this.zooming = false;
         this.zoom_direction = 0;
+
+        this.user_input_at = 0;
+        this.user_input_timeout = 50;
+        this.user_input_active = false;
 
         // Size of viewport in CSS pixels, device pixels, and mercator meters
         this.size = {
@@ -37,7 +40,6 @@ export default class View {
         this.buffer = 0;
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
         this.wrap = (options.wrapView === false) ? false : true;
-        this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.preserve_tiles_within_zoom = 1;
 
         this.reset();
@@ -84,14 +86,17 @@ export default class View {
             }
         }
 
-        this.scene.updateConfig({ rebuild: false });
+        this.scene.updateConfig({ rebuild: false, normalize: false });
         return this.getActiveCamera();
     }
 
     // Update method called once per frame
     update () {
-        this.camera.update();
+        if (this.camera != null && this.ready()) {
+            this.camera.update();
+        }
         this.pan_snap_timer = ((+new Date()) - this.panning_stop_at) / 1000;
+        this.user_input_active = ((+new Date() - this.user_input_at) < this.user_input_timeout);
     }
 
     // Set logical pixel size of viewport
@@ -130,15 +135,8 @@ export default class View {
     }
 
     setZoom (zoom) {
-        if (this.zooming) {
-            this.zooming = false;
-        }
-        else {
-            this.last_zoom = this.zoom;
-        }
-
         let last_tile_zoom = this.tile_zoom;
-        let tile_zoom = this.tileZoom(zoom);
+        let tile_zoom = this.baseZoom(zoom);
         if (!this.continuous_zoom) {
             zoom = tile_zoom;
         }
@@ -147,7 +145,6 @@ export default class View {
             this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1;
         }
 
-        this.last_zoom = this.zoom;
         this.zoom = zoom;
         this.tile_zoom = tile_zoom;
 
@@ -155,24 +152,9 @@ export default class View {
         this.scene.requestRedraw();
     }
 
-    startZoom () {
-        this.last_zoom = this.zoom;
-        this.zooming = true;
-    }
-
     // Choose the base zoom level to use for a given fractional zoom
     baseZoom (zoom) {
         return Math.floor(zoom);
-    }
-
-    // For a given view zoom, what tile zoom should be loaded?
-    tileZoom (view_zoom) {
-        return Math.max(this.baseZoom(view_zoom) - this.tile_simplification_level, 0);
-    }
-
-    // For a given tile zoom, what style zoom should be used?
-    styleZoom (tile_zoom) {
-        return this.baseZoom(tile_zoom) + this.tile_simplification_level;
     }
 
     setPanning (panning) {
@@ -182,13 +164,17 @@ export default class View {
         }
     }
 
+    markUserInput () {
+        this.user_input_at = (+new Date());
+    }
+
     ready () {
         // TODO: better concept of "readiness" state?
         if (typeof this.size.css.width !== 'number' ||
             typeof this.size.css.height !== 'number' ||
             this.center == null ||
             typeof this.zoom !== 'number') {
-             return false;
+            return false;
         }
         return true;
     }

@@ -5,12 +5,15 @@ import {mergeDebugSettings} from './utils/debug_settings';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Tile from './tile';
+import Geo from './geo';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
-import {parseLayers} from './styles/layer';
+import {parseLayers, FilterOptions} from './styles/layer';
+import {buildFilter} from './styles/filter';
 import Texture from './gl/texture';
+import VertexElements from './gl/vertex_elements';
 
 export var SceneWorker = self;
 
@@ -27,12 +30,13 @@ Object.assign(self, {
     tiles: {},
 
     // Initialize worker
-    init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio) {
+    init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio, has_element_index_unit) {
         self.scene_id = scene_id;
         self._worker_id = worker_id;
         self.num_workers = num_workers;
         log.setLevel(log_level);
         Utils.device_pixel_ratio = device_pixel_ratio;
+        VertexElements.setElementIndexUint(has_element_index_unit);
         FeatureSelection.setPrefix(self._worker_id);
         self.style_manager = new StyleManager();
         return worker_id;
@@ -88,7 +92,7 @@ Object.assign(self, {
         self.last_config_sources = self.config_sources || {};
         self.config_sources = config.sources;
         let last_sources = self.sources;
-        let changed = false;
+        let changed = [];
 
         // Parse new sources
         config.sources = Utils.stringsToFunctions(config.sources);
@@ -111,13 +115,17 @@ Object.assign(self, {
                 continue;
             }
             self.sources[name] = source;
-            changed = true;
+            changed.push(name);
         }
 
-        // Clear tile cache if any data sources changed
-        if (changed) {
-            self.tiles = {};
-        }
+        // Clear tile cache for data sources that changed
+        changed.forEach(source => {
+            for (let t in self.tiles) {
+                if (self.tiles[t].source === source) {
+                    delete self.tiles[t];
+                }
+            }
+        });
     },
 
     // Returns a promise that fulfills when config refresh is finished
@@ -222,6 +230,57 @@ Object.assign(self, {
         }
     },
 
+    // Query features within visible tiles, with optional filter conditions
+    queryFeatures ({ filter, visible, geometry, tile_keys }) {
+        let features = [];
+        let tiles = tile_keys.map(t => self.tiles[t]).filter(t => t);
+
+        // Compile feature filter
+        if (filter != null) {
+            filter = ['{', '['].indexOf(filter[0]) > -1 ? JSON.parse(filter) : filter; // de-serialize if looks like an object
+            filter = Utils.stringsToFunctions(filter, StyleParser.wrapFunction);
+        }
+        filter = buildFilter(filter, FilterOptions);
+
+        tiles.forEach(tile => {
+            for (let layer in tile.source_data.layers) {
+                let data = tile.source_data.layers[layer];
+                data.features.forEach(feature => {
+                    // Optionally check if feature is visible (e.g. was rendered for current generation)
+                    if ((visible === true && feature.generation !== self.generation) ||
+                        (visible === false && feature.generation === self.generation)) {
+                        return;
+                    }
+
+                    // Apply feature filter
+                    let context = StyleParser.getFeatureParseContext(feature, tile, self.global);
+                    context.source = tile.source;  // add data source name
+                    context.layer = layer;         // add data source layer name
+
+                    if (!filter(context)) {
+                       return;
+                    }
+
+                    // Info to return with each feature
+                    let subset = {
+                        type: feature.type,
+                        properties: feature.properties
+                    };
+
+                    // Optionally include geometry in response
+                    if (geometry === true) {
+                        // Transform back to lat lng (copy geometry to avoid local modification)
+                        subset.geometry = Geo.copyGeometry(feature.geometry);
+                        Geo.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min, tile.max);
+                    }
+
+                    features.push(subset);
+                });
+            }
+        });
+        return features;
+    },
+
     // Get a feature from the selection map
     getFeatureSelection ({ id, key } = {}) {
         let selection = FeatureSelection.map[key];
@@ -237,8 +296,8 @@ Object.assign(self, {
     },
 
     // Resets the feature selection state
-    resetFeatureSelection () {
-        FeatureSelection.reset();
+    resetFeatureSelection (sources = null) {
+        FeatureSelection.reset(sources);
     },
 
     // Selection map size for this worker

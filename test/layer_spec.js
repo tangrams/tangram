@@ -119,7 +119,7 @@ describe('.mergeTrees()', () => {
 describe('.parseLayer(layers)', () => {
 
     const {parseLayers}= require('../src/styles/layer');
-    const LayerTree   = require('./fixtures/sample-style');
+    const LayerTree   = require('./fixtures/sample-layers');
 
     describe('when given a raw LayerTree', () => {
 

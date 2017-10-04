@@ -1,6 +1,6 @@
 {
   "name": "tangram",
-  "version": "0.12.2",
+  "version": "0.13.4",
   "description": "WebGL Maps for Vector Tiles",
   "repository": {
     "type": "git",
@@ -31,7 +31,7 @@
     "lint": "$(npm bin)/jshint src/ && jshint test/",
     "build": "npm run build-bundle && npm run build-minify",
     "build-bundle": "$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js",
-    "build-minify": "$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size",
+    "build-minify": "$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size",
     "build-size": "gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'",
     "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]"
   },
@@ -60,6 +60,15 @@
     },
     {
       "name": "David Valdman"
+    },
+    {
+      "name": "Nick Doiron"
+    },
+    {
+      "name": "Francisco López"
+    },
+    {
+      "name": "David Manzanares"
     }
   ],
   "license": "MIT",
@@ -82,16 +91,16 @@
   "devDependencies": {
     "babelify": "7.3.0",
     "babel-preset-es2015": "6.16.0",
-    "browserify": "13.0.1",
+    "browserify": "14.4.0",
     "browserify-derequire": "0.9.4",
     "budo": "10.0.3",
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
     "core-js": "2.4.1",
     "glob": "4.0.6",
-    "jshint": "jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad",
+    "jshint": "2.9.4",
     "karma": "1.5.0",
-    "karma-browserify": "5.1.0",
+    "karma-browserify": "5.1.1",
     "karma-chrome-launcher": "2.0.0",
     "karma-mocha": "0.1.9",
     "karma-mocha-reporter": "1.0.0",

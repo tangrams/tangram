@@ -41,13 +41,4 @@ describe('VertexLayout', () => {
         });
     });
 
-    // describe('.enable(gl, program)', () => {
-    //     // TODO: what is the right way to test GL context creation and programs?
-
-    //     it('enables the expected GL program attributes', () => {
-    //         assert.instanceOf(subject, VertexLayout);
-    //     });
-
-    // });
-
 });

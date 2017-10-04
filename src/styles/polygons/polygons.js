@@ -18,7 +18,7 @@ Object.assign(Polygons, {
     built_in: true,
     vertex_shader_src: shaderSrc_polygonsVertex,
     fragment_shader_src: shaderSrc_polygonsFragment,
-    selection: true, // turn feature selection on
+    selection: true, // enable feature selection
 
     init() {
         Style.init.apply(this, arguments);
@@ -27,20 +27,14 @@ Object.assign(Polygons, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // gets padded to 4-bytes
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_selection_group', size: 4, type: gl.UNSIGNED_BYTE, normalized: false }
         ];
 
         // Tell the shader we have a normal and order attributes
         this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
         this.defines.TANGRAM_LAYER_ORDER = true;
-
-        // Feature selection
-        if (this.selection) {
-            attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-            attribs.push({ name: 'a_selection_group', size: 4, type: gl.UNSIGNED_BYTE, normalized: false });
-            // attribs.push({ name: 'a_selection_hover_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-            // attribs.push({ name: 'a_selection_click_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
-        }
 
         // Optional texture UVs
         if (this.texcoords) {
@@ -156,7 +150,7 @@ Object.assign(Polygons, {
         return this.vertex_template;
     },
 
-    buildPolygons(polygons, style, vertex_data, context) {
+    buildPolygons(polygons, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style);
         let options = {
             texcoord_index: this.vertex_layout.index.a_texcoord,
@@ -171,7 +165,7 @@ Object.assign(Polygons, {
             return buildExtrudedPolygons(
                 polygons,
                 style.z, style.height, style.min_height,
-                vertex_data, vertex_template,
+                mesh.vertex_data, vertex_template,
                 this.vertex_layout.index.a_normal,
                 127, // scale normals to signed bytes
                 options
@@ -181,7 +175,7 @@ Object.assign(Polygons, {
         else {
             return buildPolygons(
                 polygons,
-                vertex_data, vertex_template,
+                mesh.vertex_data, vertex_template,
                 options
             );
         }

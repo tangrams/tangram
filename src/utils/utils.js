@@ -118,7 +118,11 @@ Utils.requestAnimationFramePolyfill = function () {
 
 // Stringify an object into JSON, but convert functions to strings
 Utils.serializeWithFunctions = function (obj) {
-    var serialized = JSON.stringify(obj, function(k, v) {
+    if (typeof obj === 'function') {
+        return obj.toString();
+    }
+
+    let serialized = JSON.stringify(obj, function(k, v) {
         // Convert functions to strings
         if (typeof v === 'function') {
             return v.toString();
@@ -158,10 +162,10 @@ Utils.stringToFunction = function(val, wrap) {
             args = args.length > 0 ? args : ['context']; // default to single 'context' argument
 
             if (typeof wrap === 'function') {
-                return new Function(...args, wrap(src)); // jshint ignore:line
+                return new Function(args.toString(), wrap(src)); // jshint ignore:line
             }
             else {
-                return new Function(...args, src); // jshint ignore:line
+                return new Function(args.toString(), src); // jshint ignore:line
             }
         }
         catch (e) {

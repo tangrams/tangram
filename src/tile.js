@@ -6,10 +6,12 @@ import {addLayerDebugEntry} from './styles/style';
 import {StyleParser} from './styles/style_parser';
 import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
+import Task from './utils/task';
 import Texture from './gl/texture';
 
 import {mat4, vec3} from './utils/gl-matrix';
 
+let id = 0; // unique tile id
 let selection = {}; // resuable selection object
 
 export default class Tile {
@@ -22,6 +24,7 @@ export default class Tile {
         worker: web worker to handle tile construction
     */
     constructor({ coords, style_zoom, source, worker, view }) {
+        this.id = id++;
         this.worker = worker;
         this.worker_id = worker._tangram_id;
         this.view = view;
@@ -39,11 +42,11 @@ export default class Tile {
         this.error = null;
         this.debug = {};
 
-        this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
         this.style_zoom = style_zoom; // zoom level to be used for styling
+        this.coords = Tile.normalizedCoordinate(coords, this.source, this.style_zoom);
+        this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
         this.overzoom2 = Math.pow(2, this.overzoom);
-        this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
@@ -61,10 +64,6 @@ export default class Tile {
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
     }
 
-    static create(spec) {
-        return new Tile(spec);
-    }
-
     static coord(c) {
         return {x: c.x, y: c.y, z: c.z, key: Tile.coordKey(c)};
     }
@@ -74,14 +73,24 @@ export default class Tile {
     }
 
     static key (coords, source, style_zoom) {
-        coords = Tile.coordinateWithMaxZoom(coords, source.max_zoom);
         if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
             return; // cull tiles out of range (x will wrap)
         }
         return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
     }
 
-    static coordinateAtZoom({x, y, z, key}, zoom) {
+    static normalizedKey (coords, source, style_zoom) {
+        return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source, style_zoom);
+    }
+
+    static normalizedCoordinate (coords, source, style_zoom) {
+        if (source.zoom_bias) {
+            coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
+        }
+        return Tile.coordinateWithMaxZoom(coords, source.max_zoom);
+    }
+
+    static coordinateAtZoom({x, y, z}, zoom) {
         if (z !== zoom) {
             let zscale = Math.pow(2, z - zoom);
             x = Math.floor(x / zscale);
@@ -122,7 +131,7 @@ export default class Tile {
     // Free resources owned by tile
     freeResources () {
         for (let m in this.meshes) {
-            this.meshes[m].destroy();
+            this.meshes[m].forEach(m => m.destroy());
         }
         this.meshes = {};
 
@@ -134,6 +143,7 @@ export default class Tile {
     }
 
     destroy() {
+        Task.removeForTile(this.id);
         this.workerMessage('self.removeTile', this.key);
         this.freeResources();
         this.worker = null;
@@ -141,6 +151,7 @@ export default class Tile {
 
     buildAsMessage() {
         return {
+            id: this.id,
             key: this.key,
             source: this.source.name,
             coords: this.coords,
@@ -184,6 +195,7 @@ export default class Tile {
                 Utils.cancelRequest(tile.source_data.request_id); // cancel pending tile network request
                 tile.source_data.request_id = null;
             }
+
             Tile.abortBuild(tile);
         }
     }
@@ -197,7 +209,7 @@ export default class Tile {
         tile.debug.feature_count = 0;
         tile.debug.layers = null;
 
-        Collision.startTile(tile.key);
+        Collision.startTile(tile.id);
 
         // Process each top-level layer
         for (let layer_name in layers) {
@@ -275,16 +287,16 @@ export default class Tile {
         tile.debug.rendering = +new Date() - tile.debug.rendering;
 
         // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
-        let tile_styles = this.stylesForTile(tile.key, styles).map(s => styles[s]);
+        let tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]);
         Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.collision ? 'collision' : 'non-collision');
         // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.name); // call for each style
         // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => 'styles'); // all styles in single call (previous behavior)
     }
 
-    static stylesForTile (tile_key, styles) {
+    static stylesForTile (tile, styles) {
         let tile_styles = [];
         for (let s in styles) {
-            if (styles[s].hasDataForTile(tile_key)) {
+            if (styles[s].hasDataForTile(tile)) {
                 tile_styles.push(s);
             }
         }
@@ -312,12 +324,7 @@ export default class Tile {
                 Promise.all(group.map(style => {
                     return style.endData(tile).then(style_data => {
                         if (style_data) {
-                            tile.mesh_data[style.name] = {
-                                vertex_data: style_data.vertex_data,
-                                vertex_elements: style_data.vertex_elements,
-                                uniforms: style_data.uniforms,
-                                textures: style_data.textures
-                            };
+                            tile.mesh_data[style.name] = style_data;
                         }
                     });
                 }))
@@ -339,8 +346,11 @@ export default class Tile {
                     tile.mesh_data = {}; // reset so each group sends separate set of style meshes
 
                     if (progress.done) {
-                        Collision.resetTile(tile.key); // clear collision if we're done with the tile
+                        Collision.resetTile(tile.id); // clear collision if we're done with the tile
                     }
+                })
+                .catch((e) => {
+                    log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e.stack);
                 });
             }
         }
@@ -350,7 +360,7 @@ export default class Tile {
                 `TileManager_${scene_id}.buildTileStylesCompleted`,
                 WorkerBroker.withTransferables({ tile: Tile.slice(tile), progress: { start: true, done: true } })
             );
-            Collision.resetTile(tile.key); // clear collision if we're done with the tile
+            Collision.resetTile(tile.id); // clear collision if we're done with the tile
         }
     }
 
@@ -419,15 +429,36 @@ export default class Tile {
         let meshes = {}, textures = []; // new data to be added to tile
         let mesh_data = this.mesh_data;
         if (mesh_data) {
-            for (var s in mesh_data) {
-                if (mesh_data[s].vertex_data) {
-                    if (!styles[s]) {
-                        log('warn', `Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
-                        break;
+            for (let s in mesh_data) {
+                for (let variant in mesh_data[s].meshes) {
+                    let mesh_variant = mesh_data[s].meshes[variant];
+                    if (mesh_variant.vertex_data) {
+                        if (!styles[s]) {
+                            log('warn', `Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
+                            break;
+                        }
+
+                        // first add style-level uniforms, then add any mesh-specific ones
+                        let mesh_options = Object.assign({}, mesh_data[s]);
+                        mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
+                        mesh_options.variant = mesh_variant.variant;
+
+                        let mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
+                        mesh.variant = mesh_options.variant;
+                        meshes[s] = meshes[s] || [];
+                        meshes[s].push(mesh);
+                        this.debug.buffer_size += mesh.buffer_size;
+                        this.debug.geometry_count += mesh.geometry_count;
                     }
-                    meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s].vertex_elements, mesh_data[s]);
-                    this.debug.buffer_size += meshes[s].buffer_size;
-                    this.debug.geometry_count += meshes[s].geometry_count;
+                }
+
+                // Sort mesh variants by explicit render order (if present)
+                if (meshes[s]) {
+                    meshes[s].sort((a, b) => {
+                        // Sort variant order ascending if present, then all null values (where order is unspecified)
+                        let ao = a.variant.order, bo = b.variant.order;
+                        return (ao == null ? 1 : (bo == null ? -1 : (ao < bo ? -1 : 1)));
+                    });
                 }
 
                 // Assign texture ownership to tiles
@@ -444,7 +475,6 @@ export default class Tile {
 
         // Initialize tracking for this tile generation
         if (progress.start) {
-            this.new_mesh_styles = []; // keep track of which meshes were built as part of current generation
             this.previous_textures = [...this.textures]; // copy old list of textures
             this.textures = [];
         }
@@ -452,7 +482,7 @@ export default class Tile {
         // New meshes
         for (let m in meshes) {
             if (this.meshes[m]) {
-                this.meshes[m].destroy(); // free old mesh
+                this.meshes[m].forEach(m => m.destroy()); // free old meshes
             }
             this.meshes[m] = meshes[m]; // set new mesh
             this.new_mesh_styles.push(m);
@@ -465,7 +495,7 @@ export default class Tile {
             // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
             for (let m in this.meshes) {
                 if (this.new_mesh_styles.indexOf(m) === -1) {
-                    this.meshes[m].destroy();
+                    this.meshes[m].forEach(m => m.destroy());
                     delete this.meshes[m];
                 }
             }
@@ -486,6 +516,9 @@ export default class Tile {
         Static method because the tile object no longer exists (the tile data returned by the worker is passed instead).
     */
     static abortBuild (tile) {
+        Task.removeForTile(tile.id);
+        Collision.abortTile(tile.id);
+
         // Releases meshes
         if (tile.mesh_data) {
             for (let s in tile.mesh_data) {
@@ -549,6 +582,7 @@ export default class Tile {
     // (e.g. very large items like feature geometry are not needed on the main thread)
     static slice (tile, keys) {
         let keep = [
+            'id',
             'key',
             'loading',
             'loaded',

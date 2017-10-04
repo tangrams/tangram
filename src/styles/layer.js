@@ -5,7 +5,7 @@ import mergeObjects from '../utils/merge';
 import {buildFilter} from './filter';
 
 // N.B.: 'visible' is legacy compatibility for 'enabled'
-export const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
+const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
 
 let layer_cache = {};
 export function layerCache () {
@@ -365,7 +365,7 @@ export class LayerTree extends Layer {
 
 }
 
-const FilterOptions = {
+export const FilterOptions = {
     // Handle unit conversions on filter ranges
     rangeTransform(val) {
         if (typeof val === 'string' && val.trim().slice(-3) === 'px2') {
@@ -375,7 +375,7 @@ const FilterOptions = {
     }
 };
 
-function isReserved(key) {
+export function isReserved(key) {
     return reserved.indexOf(key) > -1;
 }
 

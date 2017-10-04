@@ -1,7 +1,5 @@
-import WorkerBroker from '../utils/worker_broker';
-
 let MAX_VALUE = Math.pow(2, 16) - 1;
-let Uint32_flag = false;
+let has_element_index_uint = false;
 
 export default class VertexElements {
     constructor () {
@@ -10,14 +8,14 @@ export default class VertexElements {
     }
     push (value) {
         // If values have overflown and no Uint32 option is available, do not push values
-        if (this.has_overflown && !Uint32_flag) {
+        if (this.has_overflown && !has_element_index_uint) {
             return;
         }
 
         // Trigger overflow if value is greater than Uint16 max
         if (value > MAX_VALUE) {
             this.has_overflown = true;
-            if (!Uint32_flag) {
+            if (!has_element_index_uint) {
                 return;
             }
         }
@@ -37,13 +35,11 @@ export default class VertexElements {
     }
 }
 
-VertexElements.setUint32Flag = function(flag) {
-    Uint32_flag = flag;
+VertexElements.setElementIndexUint = function(flag) {
+    has_element_index_uint = flag;
 };
 
 function createBuffer(array, overflown) {
-    var typedArray = (overflown && Uint32_flag) ? Uint32Array : Uint16Array;
+    var typedArray = (overflown && has_element_index_uint) ? Uint32Array : Uint16Array;
     return new typedArray(array);
 }
-
-WorkerBroker.addTarget('VertexElements', VertexElements);

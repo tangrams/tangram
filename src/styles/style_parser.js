@@ -17,6 +17,7 @@ StyleParser.wrapFunction = function (func) {
         var global = context.global;
         var $zoom = context.zoom;
         var $layer = context.layer;
+        var $source = context.source;
         var $geometry = context.geometry;
         var $meters_per_pixel = context.meters_per_pixel;
 
@@ -91,20 +92,31 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
 // Build a style param cache object
 // `value` is raw value, cache methods will add other properties as needed
 // `transform` is optional transform function to run on values (except function values)
+const CACHE_TYPE = {
+    STATIC: 0,
+    DYNAMIC: 1,
+    ZOOM: 2
+};
+StyleParser.CACHE_TYPE = CACHE_TYPE;
+
 StyleParser.createPropertyCache = function (obj, transform = null) {
     if (obj == null) {
         return;
     }
 
     if (obj.value) {
-        return { value: obj.value, zoom: (obj.zoom ? {} : null) }; // clone existing cache object
+        return { value: obj.value, zoom: (obj.zoom ? {} : null), type: obj.type }; // clone existing cache object
     }
 
-    let c = { value: obj };
+    let c = { value: obj, type: CACHE_TYPE.STATIC };
 
     // does value contain zoom stops to be interpolated?
     if (Array.isArray(c.value) && Array.isArray(c.value[0])) {
         c.zoom = {}; // will hold values interpolated by zoom
+        c.type = CACHE_TYPE.ZOOM;
+    }
+    else if (typeof c.value === 'function') {
+        c.type = CACHE_TYPE.DYNAMIC;
     }
 
     // apply optional transform function
@@ -184,14 +196,12 @@ StyleParser.convertUnits = function(val, context) {
     }
     // un-parsed unit string
     else if (typeof val === 'string') {
-        var units = val.match(/([0-9.-]+)([a-z]+)/);
-        if (units && units.length === 3) {
-            val = parseFloat(units[1]);
-            units = units[2];
+        if (val.trim().slice(-2) === 'px') {
+            val = parseFloat(val);
+            val *= Geo.metersPerPixel(context.zoom); // convert from pixels
         }
-
-        if (units === 'px') { // convert from pixels
-            val *= Geo.metersPerPixel(context.zoom);
+        else {
+            val = parseFloat(val);
         }
     }
     // multiple values or stops
@@ -340,7 +350,7 @@ StyleParser.evalCachedColorProperty = function(val, context = {}) {
         }
         // Single array color
         else {
-            val.static = val.value;
+            val.static = val.value.map(x => x); // copy to avoid modifying
             if (val.static && val.static[3] == null) {
                 val.static[3] = 1; // default alpha
             }
@@ -374,7 +384,8 @@ StyleParser.parseColor = function(val, context = {}) {
     }
 
     // Defaults
-    if (val) {
+    if (Array.isArray(val)) {
+        val = val.map(x => x); // copy to avoid modifying
         // alpha
         if (val[3] == null) {
             val[3] = 1;

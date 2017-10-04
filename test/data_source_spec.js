@@ -130,13 +130,6 @@ describe('DataSource', () => {
             assert.strictEqual(Geo.transformGeometry.callCount, 3);
         });
 
-        // This test seems flaky
-        it.skip('scales the coordinates', () => {
-            let subject = DataSource.scaleData(sampleTile, sampleTile.layers);
-            let firstFeature = subject.layers.water.features[0];
-
-            assert.deepEqual(firstFeature.geometry.coordinates, [-0.006075396068253094,-0.006075396068253094]);
-        });
     });
 
     describe('NetworkSource', () => {
@@ -245,7 +238,6 @@ describe('DataSource', () => {
 
     describe('MVTSource', () => {
         let subject;
-//            tile   = getMockTile();
 
         beforeEach(() => {
             subject = new MVTSource(options);
@@ -257,20 +249,5 @@ describe('DataSource', () => {
             });
         });
 
-        // this is failing because of an isssue with either the mapbox
-        // example tile, or the protobuffer library
-        describe.skip('.parseSourceData(dest, source, reponse)', (done) => {
-            it('attaches the response to the tile object', () => {
-
-                // getMockMapboxResponse((body) => {
-                //     subject.parseTile(tile, body);
-                //     assert.property(tile, 'layers');
-                //     assert.deepProperty(tile, 'layers.buildings');
-                //     assert.deepProperty(tile, 'layers.water');
-                //     done();
-                // });
-
-            });
-        });
     });
 });

@@ -9,9 +9,9 @@ We're glad you're interested in how Tangram can be used to make amazing maps!
 
 This demo is meant to show off various visual styles, but it has a really complex setup - we had to jump through a lot of hoops to implement the style-switcher and rebuild the dat.gui interface on the fly, which are things you would probably never have to do in a real-world use case.
 
-So instead of rummaging through this rather confusing example, we recommend you check out our documentation, which is chock-full of specific, targeted demos highlighting all of the nifty features of the Tangram library:
+If you're looking for examples, we recommend you check out our documentation, which is chock-full of specific, targeted demos highlighting all of the nifty features of the Tangram library:
 
-https://github.com/tangrams/tangram/wiki/
+https://mapzen.com/documentation/tangram/
 
 Enjoy!
 - The Mapzen Tangram team
@@ -82,7 +82,7 @@ Enjoy!
         else {
             for (var name in config.sources) {
                 var source = config.sources[name];
-                if (source.url.search('mapzen.com')) {
+                if (source.url.search('mapzen.com') > -1) {
                     source.url_params = source.url_params || {};
                     source.url_params.api_key = 'mapzen-T3tPjn7';
                 }
@@ -132,7 +132,7 @@ Enjoy!
         clearTimeout(update_url_timeout);
         update_url_timeout = setTimeout(function() {
             var center = map.getCenter();
-            var url_options = [map.getZoom(), center.lat, center.lng];
+            var url_options = [map.getZoom(), center.lat, center.lng].map(function(v) { return v.toFixed(5); });
 
             if (rS) {
                 url_options.push('rstats');
@@ -382,8 +382,8 @@ Enjoy!
             'Spanish': 'es'
         };
         gui.language = 'en';
-        gui.add(gui, 'language', langs).onChange(function(value) {
-            scene.config.global.language = value;
+        gui.add(gui, 'language', langs).onChange(function(value, key) {
+            scene.config.global.language = (value == 'null') ? null  : value; // dat.gui coerces null to string 'null'
             scene.updateConfig();
         });
 
@@ -512,9 +512,11 @@ Enjoy!
         // Input
         if (key.isPressed('up')) {
             map._move(map.getCenter(), map.getZoom() + zoom_step);
+            map._moveEnd(true);
         }
         else if (key.isPressed('down')) {
             map._move(map.getCenter(), map.getZoom() - zoom_step);
+            map._moveEnd(true);
         }
 
         // Profiling

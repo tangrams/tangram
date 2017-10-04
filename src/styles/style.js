@@ -24,7 +24,7 @@ const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.gl
 
 export var Style = {
     init ({ generation, styles, sources = {}, introspection } = {}) {
-        this.generation = generation;               // scene generation id this style was created for
+        this.setGeneration(generation);
         this.styles = styles;                       // styles for scene
         this.sources = sources;                     // data sources for scene
         this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
@@ -37,12 +37,6 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
-
-        // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = ['Style', this.name, this.generation].join('/');
-        if (Thread.is_main) {
-            WorkerBroker.addTarget(this.main_thread_target, this);
-        }
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
@@ -85,6 +79,7 @@ export var Style = {
             this.selection_program = null;
         }
 
+        WorkerBroker.removeTarget(this.main_thread_target);
         this.gl = null;
         this.initialized = false;
     },
@@ -94,6 +89,17 @@ export var Style = {
 
     baseStyle () {
         return this.base || this.name;
+    },
+
+    setGeneration (generation) {
+        // Scene generation id this style was created for
+        this.generation = generation;
+
+        // Provide a hook for this object to be called from worker threads
+        this.main_thread_target = ['Style', this.name, this.generation].join('/');
+        if (Thread.is_main) {
+            WorkerBroker.addTarget(this.main_thread_target, this);
+        }
     },
 
     fillVertexTemplate(attribute, value, { size, offset }) {
@@ -115,31 +121,40 @@ export var Style = {
 
     // Returns an object to hold feature data (for a tile or other object)
     startData (tile) {
-        this.tile_data[tile.key] = {
-            vertex_data: null,
+        this.tile_data[tile.id] = this.tile_data[tile.id] || {
+            meshes: {},
             uniforms: {
                 u_selection_has_group: false,
                 u_selection_has_instances: false
             },
             textures: []
         };
-        return this.tile_data[tile.key];
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
-        var tile_data = this.tile_data[tile.key];
-        this.tile_data[tile.key] = null;
+        var tile_data = this.tile_data[tile.id];
+        this.tile_data[tile.id] = null;
 
-        if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
-            // Only keep final byte buffer
-            tile_data.vertex_data.end();
-            tile_data.vertex_elements = tile_data.vertex_data.element_buffer;
-            tile_data.vertex_data = tile_data.vertex_data.vertex_buffer; // convert from instance to raw typed array
+        if (tile_data && Object.keys(tile_data.meshes).length > 0) {
+            for (let variant in tile_data.meshes) {
+                let mesh = tile_data.meshes[variant];
+
+                // Remove empty mesh variants
+                if (mesh.vertex_data.vertex_count === 0) {
+                    delete tile_data.meshes[variant];
+                    continue;
+                }
+
+                // Only keep final byte buffer
+                mesh.vertex_data.end();
+                mesh.vertex_elements = mesh.vertex_data.element_buffer;
+                mesh.vertex_data = mesh.vertex_data.vertex_buffer; // convert from instance to raw typed array
+            }
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
-            return this.buildRasterTextures(tile, tile_data);
+            return this.buildRasterTextures(tile, tile_data).then(tile_data => tile_data);
         }
         else {
             return Promise.resolve(null); // don't send tile data back if doesn't have geometry
@@ -147,8 +162,28 @@ export var Style = {
     },
 
     // Has mesh data for a given tile?
-    hasDataForTile (tile_key) {
-        return this.tile_data[tile_key] != null;
+    hasDataForTile (tile) {
+        return this.tile_data[tile.id] != null;
+    },
+
+    getTileMesh (tile, variant) {
+        let meshes = this.tile_data[tile.id].meshes;
+        if (meshes[variant.key] == null) {
+            meshes[variant.key] = {
+                variant,
+                vertex_data: this.vertexLayoutForMeshVariant(variant).createVertexData()
+            };
+        }
+        return meshes[variant.key];
+    },
+
+    vertexLayoutForMeshVariant (variant) {
+        return this.vertex_layout;
+    },
+
+    default_mesh_variant: { key: 0 },
+    meshVariantTypeForDraw (draw) {
+        return this.default_mesh_variant;
     },
 
     addFeature (feature, draw, context) {
@@ -157,7 +192,7 @@ export var Style = {
             return;
         }
 
-        if (!this.tile_data[tile.key]) {
+        if (!this.tile_data[tile.id]) {
             this.startData(tile);
         }
         let tile_data = this.tile_data[tile.key];
@@ -180,16 +215,18 @@ export var Style = {
         style = this.parseFeature(feature, draw, context);
 
         // Skip feature?
+        // TODO: is this supposed to be skipped in shader instances branch?
         if (!style) {
-            return;
+            return; // skip feature
         }
 
-        // First feature in this render style?
-        if (!tile_data.vertex_data) {
-            tile_data.vertex_data = this.vertex_layout.createVertexData();
+        let mesh = this.getTileMesh(tile, this.meshVariantTypeForDraw(style));
+        let count = this.buildGeometry(feature.geometry, style, mesh, context);
+        if (count > 0) {
+            feature.generation = this.generation; // track scene generation that feature was rendered for
         }
 
-        return this.buildGeometry(feature.geometry, style, tile_data.vertex_data, context);
+        return count;
     },
 
     // Process selection-state-specific feature instances
@@ -255,25 +292,25 @@ export var Style = {
         }
     },
 
-    buildGeometry (geometry, style, vertex_data, context) {
+    buildGeometry (geometry, style, mesh, context) {
         let geom_count;
         if (geometry.type === 'Polygon') {
-            geom_count = this.buildPolygons([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPolygons([geometry.coordinates], style, mesh, context);
         }
         else if (geometry.type === 'MultiPolygon') {
-            geom_count = this.buildPolygons(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPolygons(geometry.coordinates, style, mesh, context);
         }
         else if (geometry.type === 'LineString') {
-            geom_count = this.buildLines([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildLines([geometry.coordinates], style, mesh, context);
         }
         else if (geometry.type === 'MultiLineString') {
-            geom_count = this.buildLines(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildLines(geometry.coordinates, style, mesh, context);
         }
         else if (geometry.type === 'Point') {
-            geom_count = this.buildPoints([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPoints([geometry.coordinates], style, mesh, context);
         }
         else if (geometry.type === 'MultiPoint') {
-            geom_count = this.buildPoints(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPoints(geometry.coordinates, style, mesh, context);
         }
 
         // Optionally collect per-layer stats
@@ -368,7 +405,16 @@ export var Style = {
         if (!draw.preprocessed) {
             // Apply draw defaults
             if (this.draw) {
-                mergeObjects(draw, this.draw);
+                // Merge each property separately to avoid modifying `draw` instance identity
+                for (let param in this.draw) {
+                    let val = this.draw[param];
+                    if (typeof val === 'object' && !Array.isArray(val)) {  // nested param (e.g. `outline`)
+                        draw[param] = mergeObjects({}, val, draw[param]);
+                    }
+                    else if (draw[param] == null) { // simple param (single scalar value or array)
+                        draw[param] = val;
+                    }
+                }
             }
 
             if (this.introspection || draw.interactive) {
@@ -458,7 +504,8 @@ export var Style = {
     },
 
     makeMesh (vertex_data, vertex_elements, options = {}) {
-        return new VBOMesh(this.gl, vertex_data, vertex_elements, this.vertex_layout, options);
+        let vertex_layout = this.vertexLayoutForMeshVariant(options.variant);
+        return new VBOMesh(this.gl, vertex_data, vertex_elements, vertex_layout, options);
     },
 
     render (mesh) {
@@ -476,7 +523,12 @@ export var Style = {
 
         if (!program.compiled) {
             log('debug', `Compiling style '${this.name}', program key '${key}'`);
-            program.compile();
+            try {
+                program.compile();
+            }
+            catch(e) {
+                log('error', `Style: error compiling program for style '${this.name}' (program key '${key}')`, this, e.stack);
+            }
         }
         return program;
     },
@@ -667,9 +719,12 @@ export var Style = {
         // to avoid flickering while loading (texture will render as black)
         return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
             .then(textures => {
-                if (!textures || textures.length < 1) {
+                if (!textures || textures.length < 1) { // no textures found (unexpected)
                     // TODO: warning
                     return tile_data;
+                }
+                else if (textures.some(t => !t.loaded)) { // some textures failed, throw out style for this tile
+                    return null;
                 }
 
                 // Set texture uniforms (returned after loading from main thread)
@@ -680,14 +735,14 @@ export var Style = {
                 let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
                 let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
 
-                textures.forEach(([tname, twidth, theight]) => {
-                    let i = index[tname];
-                    let raster_coords = configs[tname].coords; // tile coords of raster tile
+                textures.forEach(t => {
+                    let i = index[t.name];
+                    let raster_coords = configs[t.name].coords; // tile coords of raster tile
 
-                    u_samplers[i] = tname;
-                    tile_data.textures.push(tname);
+                    u_samplers[i] = t.name;
+                    tile_data.textures.push(t.name);
 
-                    u_sizes[i] = [twidth, theight];
+                    u_sizes[i] = [t.width, t.height];
 
                     // Tile geometry may be at a higher zoom than the raster tile texture,
                     // (e.g. an overzoomed raster tile), in which case we need to adjust the
@@ -697,7 +752,7 @@ export var Style = {
                         let dz = tile.coords.z - raster_coords.z; // # of levels raster source is overzoomed
                         let dz2 = Math.pow(2, dz);
                         u_offsets[i] = [
-                            (tile.coords.x % dz2) / dz2,
+                            (((tile.coords.x % dz2) + dz2) % dz2) / dz2, // double-modulo to handle negative (wrapped) tile coords
                             (dz2 - 1 - (tile.coords.y % dz2)) / dz2, // GL texture coords are +Y up
                             1 / dz2
                         ];
@@ -723,7 +778,7 @@ export var Style = {
             })
             .then(textures => {
                 textures.forEach(t => t.retain());
-                return textures.map(t => [t.name, t.width, t.height]);
+                return textures.map(t => ({ name: t.name, width: t.width, height: t.height, loaded: t.loaded }));
             });
     },
 
@@ -746,6 +801,7 @@ export var Style = {
     // Render state settings by blend mode
     render_states: {
         opaque: { depth_test: true, depth_write: true },
+        translucent: { depth_test: true, depth_write: true },
         add: { depth_test: true, depth_write: false },
         multiply: { depth_test: true, depth_write: false },
         inlay: { depth_test: true, depth_write: false },
@@ -758,7 +814,8 @@ export var Style = {
         add: 1,
         multiply: 2,
         inlay: 3,
-        overlay: 4
+        translucent: 4,
+        overlay: 5
     },
 
     // Comparison function for sorting styles by blend

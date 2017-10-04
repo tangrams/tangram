@@ -6,12 +6,6 @@ import simplePolygon from './fixtures/simple-polygon.json';
 
 describe('Geo', () => {
 
-    describe('Geo.setTileScale(scale)', () => {});
-    describe('Geo.metersForTile(tile)', () => {});
-    describe('Geo.metersToLatLng(meters)', () => {});
-    describe('Geo.latLngToMeters(latlng)', () => {});
-    describe('Geo.transformGeometry(geometry, transformGeometry)', () => {});
-
     describe('Geo.findBoundingBox(polygon)', () => {
         let bbox;
         beforeEach(() => {

@@ -170,22 +170,6 @@ describe('Scene', function () {
         });
     });
 
-    describe('.view.startZoom()', () => {
-
-        beforeEach(() => {
-            subject.view.startZoom();
-        });
-
-        it('sets the last zoom property with the value of the current zoom', () => {
-            assert.equal(subject.view.last_zoom, subject.view.zoom);
-        });
-
-        it('marks the view as zooming', () => {
-            assert.isTrue(subject.view.zooming);
-        });
-
-    });
-
     // TODO this method does a lot of stuff
     describe('.view.setZoom(zoom)', () => {
 

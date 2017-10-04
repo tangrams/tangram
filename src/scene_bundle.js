@@ -192,7 +192,8 @@ export class ZipSceneBundle extends SceneBundle {
 }
 
 export function createSceneBundle(url, path, parent, type = null) {
-    if (type === 'zip' || (typeof url === 'string' && !URLs.isLocalURL(url) && URLs.extensionForURL(url) === 'zip')) {
+    if ((type != null && type === 'zip') ||
+        (typeof url === 'string' && !URLs.isLocalURL(url) && URLs.extensionForURL(url) === 'zip')) {
         return new ZipSceneBundle(url, path, parent);
     }
     return new SceneBundle(url, path, parent);
@@ -233,6 +234,9 @@ function loadResource (source) {
                 }
             }, reject);
         } else {
+            // shallow copy to avoid modifying provided object, allowing a single config object to be loaded multiple times
+            // TODO: address possible modifications to nested properties (mostly harmless / due to data normalization)
+            source = Object.assign({}, source);
             resolve(source);
         }
     });
