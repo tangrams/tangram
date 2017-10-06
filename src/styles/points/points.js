@@ -579,7 +579,7 @@ Object.assign(Points, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate(style) {
+    makeVertexTemplate(style, variant) {
         let color = style.color || StyleParser.defaults.color;
 
         // position - x & y coords will be filled in per-vertex below
@@ -601,7 +601,7 @@ Object.assign(Points, {
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
 
         // outline (can be static or dynamic depending on style)
-        if (this.defines.TANGRAM_HAS_SHADER_POINTS && !style.texture) {
+        if (this.defines.TANGRAM_HAS_SHADER_POINTS && variant === this.default_mesh_variant) {
             let outline_color = style.outline_color || StyleParser.defaults.outline.color;
             this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
             this.fillVertexTemplate('a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, { size: 1 });
@@ -659,7 +659,7 @@ Object.assign(Points, {
     },
 
     buildLabel (label, style, mesh, context) {
-        let vertex_template = this.makeVertexTemplate(style);
+        let vertex_template = this.makeVertexTemplate(style, mesh.variant);
         let angle = label.angle || style.angle;
 
         let size, texcoords;
@@ -672,25 +672,22 @@ Object.assign(Points, {
             texcoords = style.texcoords;
         }
 
-        // re-point to correct label texture
-        let mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
-
         // setup style or label texture if applicable
-        mesh_data.uniforms = mesh_data.uniforms || {};
+        mesh.uniforms = mesh.uniforms || {};
         if (style.label_texture) {
-            mesh_data.uniforms.u_texture = style.label_texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
-            mesh_data.uniforms.u_apply_color_blocks = false;
+            mesh.uniforms.u_texture = style.label_texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh.uniforms.u_apply_color_blocks = false;
         }
         else if (style.texture) {
-            mesh_data.uniforms.u_texture = style.texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_TEXTURE;
-            mesh_data.uniforms.u_apply_color_blocks = true;
+            mesh.uniforms.u_texture = style.texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_TEXTURE;
+            mesh.uniforms.u_apply_color_blocks = true;
         }
         else {
-            mesh_data.uniforms.u_texture = Texture.default; // ensure a tetxure is always bound to avoid GL warnings ('no texture bound to unit' in Chrome)
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_SHADER;
-            mesh_data.uniforms.u_apply_color_blocks = true;
+            mesh.uniforms.u_texture = Texture.default; // ensure a tetxure is always bound to avoid GL warnings ('no texture bound to unit' in Chrome)
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_SHADER;
+            mesh.uniforms.u_apply_color_blocks = true;
         }
 
         let offset = label.offset;
@@ -707,12 +704,12 @@ Object.assign(Points, {
             null,                           // placeholder for multiple offsets
             texcoords,                      // texture UVs
             false,                          // if curved boolean
-            mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
+            mesh.vertex_data, vertex_template    // VBO and data for current vertex
         );
     },
 
     buildArticulatedLabel (label, style, mesh, context) {
-        let vertex_template = this.makeVertexTemplate(style);
+        let vertex_template = this.makeVertexTemplate(style, mesh.variant);
         let angle = label.angle;
         let geom_count = 0;
 
