@@ -195,7 +195,7 @@ export var Style = {
         if (!this.tile_data[tile.id]) {
             this.startData(tile);
         }
-        let tile_data = this.tile_data[tile.key];
+        let tile_data = this.tile_data[tile.id];
 
         let style = this.feature_style;
 
@@ -206,7 +206,7 @@ export var Style = {
 
         if (style.selection_group_index != null && style.selection_group_index !== FeatureSelection.defaultGroup) {
             // TODO: set u_selection_has_group for other selection instance styles (if different)
-            this.tile_data[context.tile.key].uniforms.u_selection_has_group = true;
+            tile_data.uniforms.u_selection_has_group = true;
 
             this.addSelectionFeatures(feature, draw, context);
             style.selection_group_index[3] = draw.selection_state;
@@ -254,10 +254,10 @@ export var Style = {
             let click_style = (draw.click.style && this.styles[draw.click.style]) || this;
             if (click_style.addFeature(feature, draw.click, context)) {
                 if (click_style !== this) {
-                    tile_data = click_style.tile_data[context.tile.key];
+                    tile_data = click_style.tile_data[context.tile.id];
                     tile_data.uniforms.u_selection_has_instances = true;
                 }
-                tile_data = this.tile_data[context.tile.key];
+                tile_data = this.tile_data[context.tile.id];
                 tile_data.uniforms.u_selection_has_instances = true;
             }
             else {
@@ -272,10 +272,10 @@ export var Style = {
             let hover_style = (draw.hover.style && this.styles[draw.hover.style]) || this;
             if (hover_style.addFeature(feature, draw.hover, context)) {
                 if (hover_style !== this) {
-                    tile_data = hover_style.tile_data[context.tile.key];
+                    tile_data = hover_style.tile_data[context.tile.id];
                     tile_data.uniforms.u_selection_has_instances = true;
                 }
-                tile_data = this.tile_data[context.tile.key];
+                tile_data = this.tile_data[context.tile.id];
                 tile_data.uniforms.u_selection_has_instances = true;
             }
             else {

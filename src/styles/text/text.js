@@ -28,7 +28,8 @@ Object.assign(TextStyle, {
             { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
             { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_selection_group', size: 4, type: gl.UNSIGNED_BYTE, normalized: false }
         ];
 
         this.vertex_layout = new VertexLayout(attribs);
