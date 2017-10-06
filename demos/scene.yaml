@@ -552,8 +552,8 @@ layers:
                     selection_group: buildings
                     # hover_color: yellow
                     # click_color: red
-                    hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
-                    click_color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
+                    # hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
+                    # click_color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
                     order: global.feature_order
                     color: [.9, .7, .9]
                     # color: function() { return (feature.height > 50 && [.9, .7, .9]) || [.7, .7, .7]; }
@@ -575,29 +575,30 @@ layers:
                         # extrude: function() { return feature.height + 20; }
                         extrude: true
                 lines:
-                    # color: grey
-                    color: function() { return feature.height > 50 && 'grey'; }
+                    color: grey
+                    # color: function() { return feature.height > 50 && 'grey'; }
                     width: 2px
                     # width: 0px
-                    style: dashed
-                    order: global.feature_order
+                    dash: [2, 1]
+                    order: function() { return feature.sort_rank + 1; }
+                    # order: 1000
                     interactive: true
                     # selection_prop: function() { return feature.height > 50 && (feature.root_id || feature.id); }
                     selection_prop: function() { return (feature.root_id || feature.id); }
                     selection_group: buildings
                     hover:
-                        # style: dashed
-                        style: lines
+                        # dash: [4, 1, 1, 1]
+                        dash: null
                         # z: 50
                         width: 3px
                         # color: grey
                         color: black
                     # click:
-                    #     # visible: false
-                    #     style: lines
-                    #     color: black
-                    #     # color: null
-                    #     width: 5px
+                    #     visible: false # TODO: not workng w/instance flag logic
+                    #     dash: null
+                    #     color: red
+                    #     width: 3px
+                    #     # width: 0px
 
             # tall:
             #     filter: { height: { min: 100 } }
