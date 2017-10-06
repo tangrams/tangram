@@ -293,8 +293,8 @@ Object.assign(Lines, {
         draw.dash_key = draw.dash && this.dashTextureKey(draw.dash);
         draw.dash_background_color = (draw.dash_background_color !== undefined ? draw.dash_background_color : this.dash_background_color);
         draw.dash_background_color = draw.dash_background_color && StyleParser.parseColor(draw.dash_background_color);
-        draw.texture = draw.dash_key || ((draw.texture !== undefined ? draw.texture : this.texture));
-        draw.texcoords = ((this.texcoords || draw.texture) ? 1 : 0);
+        draw.texture_merged = draw.dash_key || ((draw.texture !== undefined ? draw.texture : this.texture));
+        draw.texcoords = ((this.texcoords || draw.texture_merged) ? 1 : 0);
         this.computeVariant(draw);
 
         if (draw.outline) {
@@ -311,18 +311,18 @@ Object.assign(Lines, {
                 // outline explicitly turning off dash
                 draw.outline.dash_key = null;
                 // use outline texture if specified, or inherit *non-dash* texture only from inline
-                draw.outline.texture = (draw.outline.texture !== undefined ? draw.outline.texture : (!draw.dash && draw.texture));
+                draw.outline.texture_merged = (draw.outline.texture !== undefined ? draw.outline.texture : (!draw.dash && draw.texture));
             }
             else {
                 // use outline dash if specified, or inherit from inline
                 draw.outline.dash = draw.outline.dash || draw.dash;
                 draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
                 // use outline OR inherited inline dash if specified, or use explicit outline texture, or inherit inline texture
-                draw.outline.texture = draw.outline.dash_key || (draw.outline.texture !== undefined ? draw.outline.texture : draw.texture);
+                draw.outline.texture_merged = draw.outline.dash_key || (draw.outline.texture !== undefined ? draw.outline.texture : draw.texture);
             }
             draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color);
             draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
-            draw.outline.texcoords = ((this.texcoords || draw.outline.texture) ? 1 : 0);
+            draw.outline.texcoords = ((this.texcoords || draw.outline.texture_merged) ? 1 : 0);
             draw.outline.style = draw.outline.style || this.name;
 
             draw.outline.interactive = this.introspection || (draw.outline.interactive != null ? draw.outline.interactive : draw.interactive);
@@ -428,7 +428,7 @@ Object.assign(Lines, {
                 order: draw.variant_order,
                 offset: (draw.offset ? 1 : 0),
                 texcoords: draw.texcoords,
-                texture: draw.texture,
+                texture: draw.texture_merged,
                 dash: draw.dash,
                 dash_key: draw.dash_key,
                 dash_background_color: draw.dash_background_color
