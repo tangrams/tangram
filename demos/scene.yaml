@@ -79,6 +79,35 @@ styles:
                     }
                     #endif
 
+    solidstate:
+        base: polygons
+        blend: translucent
+        animated: true
+        shaders:
+            blocks:
+                color: |
+                    //color.a = mix(0.5, 1., isFeatureHover());
+                    //color.a = mix(0.5, 1., 1. - step(isFeatureHover() + isFeatureClick(), 0.));
+                    color.a = mix(0.5, 1., isFeatureHoverOrClick());
+                    color.rgb = mix(color.rgb, vec3(1., 0., 0.), (abs(sin(u_time * 1.)) * .6) * isFeatureClick());
+
+    fatline:
+        base: lines
+        animated: true
+        shaders:
+            uniforms:
+                pulse_color: [1, 1, 0]
+                pulse_width: 1.5
+                pulse_speed: 1
+            blocks:
+                width: |
+                    // make line bigger when it's selected
+                    //width *= 1. + isFeatureHoverOrClick();
+                    width *= mix(1., pulse_width, abs(sin(u_time * pulse_speed)) * isFeatureClick());
+                color: |
+                    // make line pulse when it's selected
+                    color.rgb = mix(color.rgb, pulse_color, (abs(sin(u_time * pulse_speed))) * isFeatureClick());
+
     buildings:
         base: polygons
         mix: screendoor
@@ -323,7 +352,8 @@ layers:
                 width: [[16, 0px], [17, 10px], [18, 15px], [19, 15px], [20, 0px]]
                 order: global.feature_order
                 interactive: true
-                # selection_prop: function(){ return feature.kind + ':' + feature.kind_detail; }
+                selection_prop: function(){ return feature.kind + ':' + feature.kind_detail; }
+                style: fatline
                 # selection_group: same
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
@@ -534,6 +564,7 @@ layers:
             draw:
                 polygons:
                     # style: buildings
+                    style: solidstate
                     interactive: true
                     # selection_prop: function() { return feature.name && feature.name[0]; }
                     # selection_prop: function() { return feature.height && feature.height > 25; }
@@ -547,47 +578,47 @@ layers:
                     color: [.9, .7, .9]
                     # color: function() { return (feature.height > 50 && [.9, .7, .9]) || [.7, .7, .7]; }
                     # color: function() { return (feature.height > 50 && [.9, .7, .9]) || null; }
-                    # extrude: true
+                    extrude: true
                     # extrude: function() { return feature.height + 20; }
-                    hover:
-                        color: yellow
-                        # color: null
-                        # extrude: false
-                        # color: function() { return (feature.height > 50 && 'red') || [.7, .7, .7]; }
-                        # color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
-                        # extrude: function() { return feature.height + 10; }
-                    click:
-                        style: buildings
-                        # color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
-                        color: red
-                        # color: function() { return (feature.height > 50 && 'yellow') || [.7, .7, .7]; }
-                        # extrude: function() { return feature.height + 20; }
-                        extrude: true
-                lines:
-                    color: grey
-                    # color: function() { return feature.height > 50 && 'grey'; }
-                    width: 2px
-                    # width: 0px
-                    dash: [2, 1]
-                    order: function() { return feature.sort_rank + 1; }
-                    # order: 1000
-                    interactive: true
-                    # selection_prop: function() { return feature.height > 50 && (feature.root_id || feature.id); }
-                    selection_prop: function() { return (feature.root_id || feature.id); }
-                    selection_group: buildings
-                    hover:
-                        # dash: [4, 1, 1, 1]
-                        dash: null
-                        # z: 50
-                        width: 3px
-                        # color: grey
-                        color: black
+                    # hover:
+                    #     color: yellow
+                    #     # color: null
+                    #     # extrude: false
+                    #     # color: function() { return (feature.height > 50 && 'red') || [.7, .7, .7]; }
+                    #     # color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
+                    #     # extrude: function() { return feature.height + 10; }
                     # click:
-                    #     visible: false # TODO: not workng w/instance flag logic
-                    #     dash: null
+                    #     style: buildings
+                    #     # color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
                     #     color: red
-                    #     width: 3px
-                    #     # width: 0px
+                    #     # color: function() { return (feature.height > 50 && 'yellow') || [.7, .7, .7]; }
+                    #     # extrude: function() { return feature.height + 20; }
+                    #     extrude: true
+                # lines:
+                #     color: grey
+                #     # color: function() { return feature.height > 50 && 'grey'; }
+                #     width: 2px
+                #     # width: 0px
+                #     dash: [2, 1]
+                #     order: function() { return feature.sort_rank + 1; }
+                #     # order: 1000
+                #     interactive: true
+                #     # selection_prop: function() { return feature.height > 50 && (feature.root_id || feature.id); }
+                #     selection_prop: function() { return (feature.root_id || feature.id); }
+                #     selection_group: buildings
+                #     hover:
+                #         # dash: [4, 1, 1, 1]
+                #         dash: null
+                #         # z: 50
+                #         width: 3px
+                #         # color: grey
+                #         color: black
+                #     # click:
+                #     #     visible: false # TODO: not workng w/instance flag logic
+                #     #     dash: null
+                #     #     color: red
+                #     #     width: 3px
+                #     #     # width: 0px
 
             # tall:
             #     filter: { height: { min: 100 } }
