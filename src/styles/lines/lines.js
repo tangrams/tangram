@@ -326,7 +326,7 @@ Object.assign(Lines, {
             draw.outline.interactive = this.introspection || (draw.outline.interactive != null ? draw.outline.interactive : draw.interactive);
             if (draw.outline.interactive) {
                 draw.outline.selection_prop = draw.outline.selection_prop || draw.selection_prop;
-                draw.outline.selection_group = draw.outline.selection_group || (draw.selection_group + '/outline'); // TODO: temp fix to make outlines selectable separate from fill
+                draw.outline.selection_group = draw.outline.selection_group || draw.selection_group;
             }
 
             this.computeVariant(draw.outline);
