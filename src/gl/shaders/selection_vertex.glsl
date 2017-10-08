@@ -13,14 +13,6 @@
     v_selection_color = a_selection_color;
     v_selection_state = 0.;
 
-    // float hover_active = 1. - float(any(notEqual(u_selection_hover_group - a_selection_group, vec4(0.))));
-    // v_selection_state = mix(v_selection_state, TANGRAM_SELECTION_STATE_HOVER, hover_active);
-    // v_color = mix(v_color, a_selection_hover_color, hover_active * float(any(notEqual(a_selection_hover_color, vec4(0.)))));
-
-    // float click_active = 1. - float(any(notEqual(u_selection_click_group - a_selection_group, vec4(0.))));
-    // v_selection_state = mix(v_selection_state, TANGRAM_SELECTION_STATE_CLICK, click_active);
-    // v_color = mix(v_color, a_selection_click_color, click_active * float(any(notEqual(a_selection_click_color, vec4(0.)))));
-
     if (u_selection_has_group == true) {
         float hover_active = 1. - float(any(notEqual(u_selection_hover_group.rgb - a_selection_group.rgb, vec3(0.))));
         v_selection_state = mix(v_selection_state, TANGRAM_SELECTION_STATE_HOVER, hover_active);

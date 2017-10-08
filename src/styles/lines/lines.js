@@ -263,8 +263,6 @@ Object.assign(Lines, {
                 style.outline.interactive = draw.outline.interactive;
                 style.outline.selection_prop = draw.outline.selection_prop;
                 style.outline.selection_group = draw.outline.selection_group;
-                // style.outline.hover_color = draw.outline.hover_color;
-                // style.outline.click_color = draw.outline.click_color;
             }
         }
         else {
@@ -329,8 +327,6 @@ Object.assign(Lines, {
             if (draw.outline.interactive) {
                 draw.outline.selection_prop = draw.outline.selection_prop || draw.selection_prop;
                 draw.outline.selection_group = draw.outline.selection_group || (draw.selection_group + '/outline'); // TODO: temp fix to make outlines selectable separate from fill
-                // draw.outline.hover_color = StyleParser.createColorPropertyCache(draw.outline.hover_color);
-                // draw.outline.click_color = StyleParser.createColorPropertyCache(draw.outline.click_color);
             }
 
             this.computeVariant(draw.outline);
@@ -515,16 +511,6 @@ Object.assign(Lines, {
             this.vertex_template[i++] = style.selection_group_index[1];
             this.vertex_template[i++] = style.selection_group_index[2];
             this.vertex_template[i++] = style.selection_group_index[3];
-
-            // this.vertex_template[i++] = style.hover_color[0] * 255; // TODO: scale to 255 when created?
-            // this.vertex_template[i++] = style.hover_color[1] * 255;
-            // this.vertex_template[i++] = style.hover_color[2] * 255;
-            // this.vertex_template[i++] = style.hover_color[3] * 255;
-
-            // this.vertex_template[i++] = style.click_color[0] * 255; // TODO: scale to 255 when created?
-            // this.vertex_template[i++] = style.click_color[1] * 255;
-            // this.vertex_template[i++] = style.click_color[2] * 255;
-            // this.vertex_template[i++] = style.click_color[3] * 255;
         }
 
         return this.vertex_template;

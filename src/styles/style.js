@@ -20,8 +20,6 @@ const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.gl
 
 // Base class
 
-// const default_selection_prop = 'id'; // use id as default feature property for grouping selection
-
 export var Style = {
     init ({ generation, styles, sources = {}, introspection } = {}) {
         this.setGeneration(generation);
@@ -203,9 +201,7 @@ export var Style = {
 
         style.selection_color = selection.selection_color;
         style.selection_group_index = selection.selection_group_index;
-
         if (style.selection_group_index != null && style.selection_group_index !== FeatureSelection.defaultGroup) {
-            // TODO: set u_selection_has_group for other selection instance styles (if different)
             tile_data.uniforms.u_selection_has_group = true;
 
             this.addSelectionFeatures(feature, draw, context);
@@ -418,7 +414,6 @@ export var Style = {
             }
 
             if (this.introspection || draw.interactive) {
-                // draw.selection_prop = draw.selection_prop || default_selection_prop;
                 draw.selection_group = draw.selection_group || 'default';
             }
 

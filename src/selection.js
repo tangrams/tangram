@@ -338,7 +338,6 @@ export default class FeatureSelection {
         return this.map[key];
     }
 
-    // static makeColor(feature, draw, tile, context) {
     static getSelector(feature, draw, tile, context) {
         let selection_prop = draw.selection_prop;
         let group_value, group_key;
@@ -346,7 +345,7 @@ export default class FeatureSelection {
             group_value = selection_prop(context);
         }
         else {
-            group_value = feature.properties[selection_prop];// || JSON.stringify(feature.properties);
+            group_value = feature.properties[selection_prop];
         }
         group_key = draw.selection_group + ':' + group_value;
 
