@@ -18,7 +18,7 @@ let fs = require('fs');
 const shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
 const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.glsl', 'utf8');
 
-const selection_parse = {}; // reusable object for parsing feature selection
+const selection = {}; // reusable object for parsing feature selection
 
 // Base class
 
@@ -124,8 +124,7 @@ export var Style = {
         this.tile_data[tile.id] = this.tile_data[tile.id] || {
             meshes: {},
             uniforms: {
-                u_selection_has_group: false,
-                u_selection_has_instances: false
+                u_selection_has_group: false
             },
             textures: []
         };
@@ -196,23 +195,13 @@ export var Style = {
             this.startData(tile);
         }
         let tile_data = this.tile_data[tile.id];
-
         let style = this.feature_style;
 
-        // only setup selection values for parent instance, child/selection instances will reuse
-        if (!draw.is_selection_child_instance) {
-            // TODO: avoid parsing multiple times for draw groups with same selection group?
-            this.parseFeatureSelection(feature, draw, context, selection_parse);
-        }
-        let selection = selection_parse;
-
+        this.parseFeatureSelection(feature, draw, context, selection);
         style.selection_color = selection.selection_color;
         style.selection_group_index = selection.selection_group_index;
         if (style.selection_group_index != null && style.selection_group_index !== FeatureSelection.defaultGroup) {
             tile_data.uniforms.u_selection_has_group = true;
-
-            this.addSelectionFeatures(feature, draw, context);
-            style.selection_group_index[3] = draw.selection_state;
         }
 
         style = this.parseFeature(feature, draw, context);
@@ -230,69 +219,6 @@ export var Style = {
         }
 
         return count;
-    },
-
-    // Process selection-state-specific feature instances
-    addSelectionFeatures (feature, draw, context) {
-        if (!draw.has_selection_instances) {
-            return;
-        }
-
-        let tile_data;
-        let has_hover = (draw.hover != null) ? 1 : 0;
-        let has_click = (draw.click != null) ? 1 : 0;
-
-        // Bitfields
-        // 0 (1):  unselected instance
-        // 1 (2):  hover instance
-        // 2 (4):  click instance
-        // 3 (8):  has hover instance
-        // 4 (16): has click instance
-
-        // TODO: also check if feature is interactive/selectable before building
-        if (has_click && draw.selection_prop) {
-            // draw.click.selection_state = 2 * 4 + has_hover + (has_click * 2);
-            draw.click.selection_state = (1 << 2) + (has_hover << 3) + (has_click << 4);
-
-            let click_style = (draw.click.style && this.styles[draw.click.style]) || this;
-            if (click_style.addFeature(feature, draw.click, context)) {
-                if (click_style !== this) {
-                    tile_data = click_style.tile_data[context.tile.id];
-                    tile_data.uniforms.u_selection_has_instances = true;
-                }
-                tile_data = this.tile_data[context.tile.id];
-                tile_data.uniforms.u_selection_has_instances = true;
-            }
-            else {
-                has_click = 0;
-            }
-        }
-
-        if (has_hover && draw.selection_prop) { // draw.selection_group_index
-            // draw.hover.selection_state = 1 * 4 + has_hover + (has_click * 2);
-            draw.hover.selection_state = (1 << 1) + (has_hover << 3) + (has_click << 4);
-
-            let hover_style = (draw.hover.style && this.styles[draw.hover.style]) || this;
-            if (hover_style.addFeature(feature, draw.hover, context)) {
-                if (hover_style !== this) {
-                    tile_data = hover_style.tile_data[context.tile.id];
-                    tile_data.uniforms.u_selection_has_instances = true;
-                }
-                tile_data = this.tile_data[context.tile.id];
-                tile_data.uniforms.u_selection_has_instances = true;
-            }
-            else {
-                has_hover = 0;
-                // NB: click instance has already been built at this time, but it does not
-                // depend on has_hover flag for hide/show logic
-            }
-        }
-
-        // Primary feature instance
-        if (has_hover || has_click) {
-            // draw.selection_state = has_hover + (has_click * 2);
-            draw.selection_state = 1 + (has_hover << 3) + (has_click << 4); // (1 << 0) -> 1
-        }
     },
 
     buildGeometry (geometry, style, mesh, context) {
@@ -427,34 +353,6 @@ export var Style = {
             draw = this._preprocess(draw); // optional subclass implementation
             if (!draw) {
                 return;
-            }
-
-            // selection instances
-            draw.has_selection_instances = false;
-            draw.is_selection_child_instance = false;
-
-            if (draw.hover != null && typeof draw.hover === 'object') {
-                draw.hover = mergeObjects({}, draw, draw.hover); // inherit styling from parent
-                delete draw.hover.hover; // remove nested property
-                delete draw.hover.click; // remove nested property
-                draw.hover = this.preprocess(draw.hover);
-                draw.has_selection_instances = true;
-                draw.hover.has_selection_instances = false;
-                draw.hover.is_selection_child_instance = true;
-            }
-
-            if (draw.click != null && typeof draw.click === 'object') {
-                draw.click = mergeObjects({}, draw, draw.click); // inherit styling from parent
-                delete draw.click.hover; // remove nested property
-                delete draw.click.click; // remove nested property
-                draw.click = this.preprocess(draw.click);
-                draw.has_selection_instances = true;
-                draw.click.has_selection_instances = false;
-                draw.click.is_selection_child_instance = true;
-            }
-
-            if (!draw.has_selection_instances) {
-                draw.selection_state = 255;
             }
 
             draw.preprocessed = true;

@@ -5,7 +5,6 @@
 #endif
 
 #if defined(TANGRAM_FEATURE_SELECTABLE)
-    #define TANGRAM_SELECTION_STATE_NONE 1.
     #define TANGRAM_SELECTION_STATE_HOVER 2.
     #define TANGRAM_SELECTION_STATE_CLICK 4.
 
@@ -15,7 +14,6 @@
     uniform vec4 u_selection_hover_group;
     uniform vec4 u_selection_click_group;
     uniform bool u_selection_has_group;
-    uniform bool u_selection_has_instances;
 
     float isFeatureHover (void) {
         return 1. - step(TANGRAM_EPSILON, abs(TANGRAM_SELECTION_STATE_HOVER - v_selection_state));

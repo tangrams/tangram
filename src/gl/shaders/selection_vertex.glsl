@@ -19,60 +19,6 @@
 
         float click_active = 1. - float(any(notEqual(u_selection_click_group.rgb - a_selection_group.rgb, vec3(0.))));
         v_selection_state = mix(v_selection_state, TANGRAM_SELECTION_STATE_CLICK, click_active);
-
-        // if (a_selection_group.a < 255.) {
-        if (u_selection_has_instances == true && a_selection_group.a < 255.) {
-            // Bitfields
-            // 0 (1):  default instance
-            // 1 (2):  hover instance
-            // 2 (4):  click instance
-            // 3 (8):  has hover instance
-            // 4 (16): has click instance
-
-            // float is_default = mod(a_selection_group.a, 2.);
-            // float is_hover = float(mod(a_selection_group.a, 4.) >= 2.);
-            // float is_click = float(mod(a_selection_group.a, 8.) >= 4.);
-            // float has_hover = float(mod(a_selection_group.a, 16.) >= 8.);
-            // float has_click = float(mod(a_selection_group.a, 32.) >= 16.);
-
-            // if ((((hover_active * has_hover) + (click_active * has_click)) * is_default > 0.) ||
-            //     (((1.-hover_active) + (click_active * has_click)) * is_hover > 0.) ||
-            //     ((1.-click_active) * is_click > 0.)) {
-            //     gl_Position = vec4(0., 0., 0., 1.);
-            //     return;
-            // }
-
-            float instance_type = mod(a_selection_group.a, 8.);
-            float has_hover = float(mod(a_selection_group.a, 16.) >= 8.);
-            float has_click = float(mod(a_selection_group.a, 32.) >= 16.);
-
-            if (((hover_active * has_hover) + (click_active * has_click) > 0. && instance_type == TANGRAM_SELECTION_STATE_NONE) ||
-                ((1.-hover_active) + (click_active * has_click) > 0. && instance_type == TANGRAM_SELECTION_STATE_HOVER) ||
-                (click_active == 0. && instance_type == TANGRAM_SELECTION_STATE_CLICK)) {
-                gl_Position = vec4(0., 0., 0., 1.);
-                return;
-            }
-
-            // if ((((hover_active == 1. && has_hover == 1.) || (click_active == 1. && has_click == 1.)) && is_default == 1.) ||
-            //     ((hover_active == 0. || (click_active == 1. && has_click == 1.)) && is_hover == 1.) ||
-            //     (click_active == 0. && is_click == 1.)) {
-            //     gl_Position = vec4(0., 0., 0., 1.);
-            //     return;
-            // }
-
-            // float has_hover = mod(a_selection_group.a, 2.);
-            // // float has_click = floor(mod(a_selection_group.a, 4.) * .5);
-            // float has_click = float(mod(a_selection_group.a, 4.) >= 2.);
-            // float instance_type = floor(a_selection_group.a * .25);
-
-            // // if ((((hover_active == 1. && has_hover == 1.) || (click_active == 1. && has_click == 1.)) && instance_type == 0.) ||
-            // //     ((hover_active == 0. || (click_active == 1. && has_click == 1.)) && instance_type == 1.) ||
-            // //     (click_active == 0. && instance_type == 2.)) {
-
-            //     gl_Position = vec4(0., 0., 0., 1.);
-            //     return;
-            // }
-        }
     }
 
 #endif
