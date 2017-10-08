@@ -24,4 +24,8 @@
     float isFeatureClick (void) {
         return 1. - step(TANGRAM_EPSILON, abs(TANGRAM_SELECTION_STATE_CLICK - v_selection_state));
     }
+
+    float isFeatureHoverOrClick (void) {
+        return 1. - step(isFeatureHover() + isFeatureClick(), 0.);
+    }
 #endif

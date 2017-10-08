@@ -238,8 +238,6 @@ layers:
                     color: honeydew
                     interactive: true
                     selection_prop: id
-                    # hover_color: yellow
-                    # click_color: red
                     hover:
                         color: lightgreen
                     click:
@@ -326,8 +324,6 @@ layers:
                 order: global.feature_order
                 interactive: true
                 # selection_prop: function(){ return feature.kind + ':' + feature.kind_detail; }
-                # hover_color: yellow
-                # click_color: red
                 # selection_group: same
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
@@ -336,8 +332,6 @@ layers:
                     # width: 3px
                     order: 352 # put all outlines below all roads
                     # interactive: true
-                    # hover_color: purple
-                    # click_color: orange
                     # selection_group: same
                 # hover:
                 #     color: yellow
@@ -369,7 +363,6 @@ layers:
             filter: { kind: major_road, $zoom: { min: 10 } }
             draw:
                 lines:
-                    # hover_color: green
                     width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
                     outline:
                         width: [[16, 0], [17, 1]]
@@ -550,10 +543,6 @@ layers:
                     # selection_prop: function() { return feature.id; }
                     # selection_prop: function() { return Math.ceil(Math.random()*10); }
                     selection_group: buildings
-                    # hover_color: yellow
-                    # click_color: red
-                    # hover_color: function() { return [0, Math.min(((feature.height||0)+20)/170, 1), 0]; }
-                    # click_color: function() { return [Math.min(((feature.height||0)+20)/170, 1), 0, 0]; }
                     order: global.feature_order
                     color: [.9, .7, .9]
                     # color: function() { return (feature.height > 50 && [.9, .7, .9]) || [.7, .7, .7]; }
@@ -662,7 +651,6 @@ layers:
                 interactive: true
                 # selection_prop: id
                 # selection_group: pois
-                # hover_color: yellow
                 # click:
                 #     sprite: sunburst
                 #     collide: false
