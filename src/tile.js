@@ -12,7 +12,6 @@ import Texture from './gl/texture';
 import {mat4, vec3} from './utils/gl-matrix';
 
 let id = 0; // unique tile id
-let selection = {}; // resuable selection object
 
 export default class Tile {
 
@@ -272,11 +271,6 @@ export default class Tile {
                         }
 
                         context.layers = group.layers;  // add matching draw layers
-
-                        // TODO: avoid calling multiple times for multiple draw groups with same selection group?
-                        style.parseFeatureSelection(feature, group, context, selection);
-                        context.selection = selection;
-
                         style.addFeature(feature, group, context);
                     }
 

@@ -18,6 +18,8 @@ let fs = require('fs');
 const shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
 const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.glsl', 'utf8');
 
+const selection_parse = {}; // reusable object for parsing feature selection
+
 // Base class
 
 export var Style = {
@@ -197,7 +199,12 @@ export var Style = {
 
         let style = this.feature_style;
 
-        let selection = context.selection;
+        // only setup selection values for parent instance, child/selection instances will reuse
+        if (!draw.is_selection_child_instance) {
+            // TODO: avoid parsing multiple times for draw groups with same selection group?
+            this.parseFeatureSelection(feature, draw, context, selection_parse);
+        }
+        let selection = selection_parse;
 
         style.selection_color = selection.selection_color;
         style.selection_group_index = selection.selection_group_index;
