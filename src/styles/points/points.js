@@ -426,6 +426,8 @@ Object.assign(Points, {
             draw.text.group = draw.group;
             draw.text.layers = draw.layers;
             draw.text.order = draw.order;
+            draw.text.selection_prop = draw.selection_prop;
+            draw.text.selection_group = draw.selection_group;
             draw.text.repeat_group = draw.text.repeat_group || draw.repeat_group;
             draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
