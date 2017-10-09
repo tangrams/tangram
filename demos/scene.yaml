@@ -91,6 +91,17 @@ styles:
                     color.a = mix(0.5, 1., isFeatureHoverOrClick());
                     color.rgb = mix(color.rgb, vec3(1., 0., 0.), (abs(sin(u_time * 1.)) * .6) * isFeatureClick());
 
+    pulsepoint:
+        base: points
+        animated: true
+        shaders:
+            blocks:
+                color: |
+                    //color.a = mix(0.5, 1., isFeatureHover());
+                    //color.a = mix(0.5, 1., 1. - step(isFeatureHover() + isFeatureClick(), 0.));
+                    //color.a = mix(0.5, 1., isFeatureHoverOrClick());
+                    color.rgb = mix(color.rgb, vec3(1., 0., 0.), (abs(sin(u_time * 1.)) * .6) * isFeatureClick());
+
     fatline:
         base: lines
         animated: true
@@ -680,8 +691,10 @@ layers:
             points:
                 texture: icons
                 interactive: true
-                # selection_prop: id
-                # selection_group: pois
+                selection_prop: id
+                # selection_prop: function() { return feature.id; }
+                selection_group: pois
+                style: pulsepoint
                 # click:
                 #     sprite: sunburst
                 #     collide: false
