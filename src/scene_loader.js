@@ -193,6 +193,12 @@ export default SceneLoader = {
             let stack = [config.layers];
             while (stack.length > 0) {
                 let layer = stack.pop();
+
+                // only recurse into objects
+                if (typeof layer !== 'object' || Array.isArray(layer)) {
+                    continue;
+                }
+
                 for (let prop in layer) {
                     if (prop === 'draw') { // process draw groups for current layer
                         let draws = layer[prop];
