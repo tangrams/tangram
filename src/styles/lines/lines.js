@@ -323,7 +323,8 @@ Object.assign(Lines, {
                 draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
                 draw.outline.texture_merged = draw.outline.dash_key;
             }
-            draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color);
+            draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : outline_style.dash_background_color);
+            draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : this.dash_background_color);
             draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
             draw.outline.texcoords = ((this.texcoords || draw.outline.texture_merged) ? 1 : 0);
             this.computeVariant(draw.outline);
