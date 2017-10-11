@@ -291,6 +291,7 @@ Object.assign(Lines, {
         this.computeVariant(draw);
 
         if (draw.outline) {
+            draw.outline.style = draw.outline.style || this.name;
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
             draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
@@ -300,23 +301,31 @@ Object.assign(Lines, {
             draw.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
             draw.outline.offset = draw.offset;
 
-            if (draw.outline.dash === null) {
-                // outline explicitly turning off dash
-                draw.outline.dash_key = null;
-                // use outline texture if specified, or inherit *non-dash* texture only from inline
-                draw.outline.texture_merged = (draw.outline.texture !== undefined ? draw.outline.texture : (!draw.dash && draw.texture));
-            }
-            else {
-                // use outline dash if specified, or inherit from inline
-                draw.outline.dash = draw.outline.dash || draw.dash;
+            // outline inhertits dash pattern, but NOT explicit texture
+            let outline_style = this.styles[draw.outline.style];
+            draw.outline.dash = (draw.outline.dash !== undefined ? draw.outline.dash : outline_style.dash);
+            draw.outline.texture = (draw.outline.texture !== undefined ? draw.outline.texture : outline_style.texture);
+
+            if (draw.outline.dash != null) {            // dash was defined by outline draw or style
                 draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
-                // use outline OR inherited inline dash if specified, or use explicit outline texture, or inherit inline texture
-                draw.outline.texture_merged = draw.outline.dash_key || (draw.outline.texture !== undefined ? draw.outline.texture : draw.texture);
+                draw.outline.texture_merged = draw.outline.dash_key;
+            }
+            else if (draw.outline.dash === null) {      // dash explicitly disabled by outline draw or style
+                draw.outline.dash_key = null;
+                draw.outline.texture_merged = draw.outline.texture;
+            }
+            else if (draw.outline.texture != null) {    // texture was defined by outline draw or style
+                draw.outline.dash_key = null; // outline explicitly turning off dash
+                draw.outline.texture_merged = draw.outline.texture;
+            }
+            else {                                      // no dash or texture defined for outline, inherit parent dash
+                draw.outline.dash = draw.dash;
+                draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
+                draw.outline.texture_merged = draw.outline.dash_key;
             }
             draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color);
             draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
             draw.outline.texcoords = ((this.texcoords || draw.outline.texture_merged) ? 1 : 0);
-            draw.outline.style = draw.outline.style || this.name;
             this.computeVariant(draw.outline);
         }
         return draw;
@@ -402,6 +411,10 @@ Object.assign(Lines, {
             if (draw.dash_background_color) {
                 key += draw.dash_background_color;
             }
+        }
+
+        if (draw.texture_merged) {
+            key += draw.texture_merged;
         }
         key += '/' + draw.texcoords;
         draw.variant = hashString(key);
