@@ -150,6 +150,13 @@ function setupMainThread () {
             );
         }
 
+        // Parse options
+        let options = {};
+        if (typeof method === 'object') {
+            options = method;
+            method = method.method;
+        }
+
         // Track state of this message
         var promise = new Promise((resolve, reject) => {
             messages[message_id] = { method, message, resolve, reject };
@@ -170,6 +177,10 @@ function setupMainThread () {
             message                 // message payload
         };
 
+        if (options.stringify) {
+            payload = JSON.stringify(payload);
+        }
+
         worker.postMessage(payload, transferables.map(t => t.object));
         freeTransferables(transferables);
         if (transferables.length > 0) {
@@ -187,7 +198,7 @@ function setupMainThread () {
         }
 
         worker.addEventListener('message', function WorkerBrokerMainThreadHandler(event) {
-            let data = event.data;
+            let data = ((typeof event.data === 'string') ? JSON.parse(event.data) : event.data);
             let id = data.message_id;
 
             // Listen for messages coming back from the worker, and fulfill that message's promise
@@ -305,6 +316,13 @@ function setupWorkerThread () {
     //   - a promise that will be fulfilled if the main thread method returns a value (could be immediately, or async)
     //
     WorkerBroker.postMessage = function (method, ...message) {
+        // Parse options
+        let options = {};
+        if (typeof method === 'object') {
+            options = method;
+            method = method.method;
+        }
+
         // Track state of this message
         var promise = new Promise((resolve, reject) => {
             messages[message_id] = { method, message, resolve, reject };
@@ -324,6 +342,10 @@ function setupWorkerThread () {
             message                 // message payload
         };
 
+        if (options.stringify) {
+            payload = JSON.stringify(payload);
+        }
+
         self.postMessage(payload, transferables.map(t => t.object));
         freeTransferables(transferables);
         if (transferables.length > 0) {
@@ -335,7 +357,7 @@ function setupWorkerThread () {
     };
 
     self.addEventListener('message', function WorkerBrokerWorkerThreadHandler(event) {
-        let data = event.data;
+        let data = ((typeof event.data === 'string') ? JSON.parse(event.data) : event.data);
         let id = data.message_id;
 
         // Listen for messages coming back from the main thread, and fulfill that message's promise
