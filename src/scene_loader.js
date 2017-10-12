@@ -177,18 +177,12 @@ export default SceneLoader = {
                         }
                     });
                 }
-
-                // Shader uniforms
-                if (style.shaders && style.shaders.uniforms) {
-                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({type, value, key, uniforms}) => {
-                        // Texture by URL (string-named texture not referencing existing texture definition)
-                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
-                            uniforms[key] = this.hoistTexture(value, config, bundle);
-                        }
-                    });
-                }
             }
         }
+
+        // Special handling for shader uniforms, exclude globals because they are ambiguous:
+        // could later be resolved to a string value indicating a texture, but could also be a vector or other type
+        this.hoistStyleShaderUniformTextures(config, bundle, { include_globals: false });
 
         // Resolve and hoist inline textures in draw blocks
         if (config.layers) {
@@ -228,6 +222,26 @@ export default SceneLoader = {
                     else {
                         stack.push(layer[prop]); // traverse sublayer
                     }
+                }
+            }
+        }
+    },
+
+    hoistStyleShaderUniformTextures (config, bundle, { include_globals }) {
+        // Resolve URLs for inline textures
+        if (config.styles) {
+            for (let sn in config.styles) {
+                let style = config.styles[sn];
+
+                // Shader uniforms
+                if (style.shaders && style.shaders.uniforms) {
+                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({type, value, key, uniforms}) => {
+                        // Texture by URL (string-named texture not referencing existing texture definition)
+                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] &&
+                            (include_globals || !isGlobal(value))) {
+                            uniforms[key] = this.hoistTexture(value, config, bundle);
+                        }
+                    });
                 }
             }
         }

@@ -1105,6 +1105,9 @@ export default class Scene {
             SceneLoader.normalize(this.config, this.config_bundle);
         }
         else {
+            // special handling for shader uniforms that are globals
+            SceneLoader.hoistStyleShaderUniformTextures(this.config, this.config_bundle, { include_globals: true });
+
             // just normalize top-level textures - necessary for adding base path to globals
             SceneLoader.normalizeTextures(this.config, this.config_bundle);
         }
