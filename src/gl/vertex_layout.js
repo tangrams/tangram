@@ -90,7 +90,12 @@ export default class VertexLayout {
                 // Static attribute
                 else {
                     if (gl[attrib.method] instanceof Function) {
-                       gl[attrib.method](location, attrib.static);
+                        // N.B.: Safari appears to require an explicit array enable to set vertex attribute as "active"
+                        // (the static attribute value method does not work without it). So the attribute is temporarily
+                        // enabled as an array, then disabled.
+                        gl.enableVertexAttribArray(location);
+                        gl[attrib.method](location, attrib.static);
+                        gl.disableVertexAttribArray(location);
                     }
                 }
             }
