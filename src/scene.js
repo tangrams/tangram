@@ -532,7 +532,7 @@ export default class Scene {
         // optionally force alpha off (e.g. for selection pass)
         allow_blend = (allow_blend == null) ? true : allow_blend;
 
-        this.clearFrame({ clear_color: true, clear_depth: true });
+        this.clearFrame();
 
         // Sort styles by blend order
         let styles = this.tile_manager.getActiveStyles().
@@ -664,23 +664,12 @@ export default class Scene {
         return program;
     }
 
-    clearFrame({ clear_color, clear_depth } = {}) {
+    clearFrame() {
         if (!this.initialized) {
             return;
         }
-
-        // Defaults
-        clear_color = (clear_color === false) ? false : true; // default true
-        clear_depth = (clear_depth === false) ? false : true; // default true
-
-        // Set GL state
-        this.render_states.depth_write.set({ depth_write: clear_depth });
-
-        let gl = this.gl;
-        if (clear_color || clear_depth) {
-            let mask = (clear_color && gl.COLOR_BUFFER_BIT) | (clear_depth && gl.DEPTH_BUFFER_BIT);
-            gl.clear(mask);
-        }
+        this.render_states.depth_write.set({ depth_write: true });
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
     }
 
     setRenderState({ depth_test, depth_write, cull_face, blend } = {}) {
@@ -699,8 +688,8 @@ export default class Scene {
         // Reset frame state
         let gl = this.gl;
 
-        render_states.depth_test.set({ depth_test: depth_test });
-        render_states.depth_write.set({ depth_write: depth_write });
+        render_states.depth_test.set({ depth_test });
+        render_states.depth_write.set({ depth_write });
         render_states.culling.set({ cull: cull_face, face: render_states.defaults.culling_face });
 
         // Blending of alpha channel is modified to account for WebGL alpha behavior, see:
