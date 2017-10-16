@@ -71,7 +71,7 @@ export default SceneLoader = {
                     then(results => {
                         results.forEach(r => this.normalize(r.config, r.bundle)); // first normalize imports
                         let configs = results.map(r => r.config);
-                        config = mergeObjects({}, ...configs, config);
+                        config = mergeObjects(...configs, config);
                         this.normalize(config, bundle); // last normalize parent, after merge
                         return { config, bundle };
                     });
