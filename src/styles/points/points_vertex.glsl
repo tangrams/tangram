@@ -162,7 +162,7 @@ void main() {
     // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
-    #ifdef TANGRAM_SHADER_POINT
+    #ifdef TANGRAM_HAS_SHADER_POINTS
         if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
             // enlarge by 1px to catch missed MSAA fragments
             position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;
