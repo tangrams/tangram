@@ -462,7 +462,7 @@ Object.assign(Lines, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate(style, variant) {
+    makeVertexTemplate(style, mesh) {
         let i = 0;
 
         // a_position.xyz - vertex position
@@ -478,7 +478,7 @@ Object.assign(Lines, {
 
         // a_offset.xy - normal vector
         // offset can be static or dynamic depending on style
-        if (variant.offset) {
+        if (mesh.variant.offset) {
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
         }
@@ -488,7 +488,7 @@ Object.assign(Lines, {
         this.vertex_template[i++] = style.offset_scale * 1024;   // line offset
 
         // Add texture UVs to template only if needed
-        if (variant.texcoords) {
+        if (mesh.variant.texcoords) {
             // a_texcoord.uv
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
@@ -526,7 +526,7 @@ Object.assign(Lines, {
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
         let vertex_data = mesh.vertex_data;
         let vertex_layout = vertex_data.vertex_layout;
-        let vertex_template = this.makeVertexTemplate(style, mesh.variant);
+        let vertex_template = this.makeVertexTemplate(style, mesh);
         return buildPolylines(
             lines,
             style.width,

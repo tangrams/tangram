@@ -49,12 +49,13 @@ Object.assign(TextStyle, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate(style){
-        this.super.makeVertexTemplate.call(this, style);
+    makeVertexTemplate(style, mesh) {
+        this.super.makeVertexTemplate.apply(this, arguments);
+        let vertex_layout = mesh.vertex_data.vertex_layout;
 
-        this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
-        this.fillVertexTemplate('a_offsets', 0, { size: 4 });
-        this.fillVertexTemplate('a_angles', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_pre_angles', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_offsets', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_angles', 0, { size: 4 });
 
         return this.vertex_template;
     },

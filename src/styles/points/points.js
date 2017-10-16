@@ -579,37 +579,38 @@ Object.assign(Points, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate(style, variant) {
+    makeVertexTemplate(style, mesh) {
         let color = style.color || StyleParser.defaults.color;
+        let vertex_layout = mesh.vertex_data.vertex_layout;
 
         // position - x & y coords will be filled in per-vertex below
-        this.fillVertexTemplate('a_position', 0, { size: 2 });
-        this.fillVertexTemplate('a_position', style.z || 0, { size: 1, offset: 2 });
+        this.fillVertexTemplate(vertex_layout, 'a_position', 0, { size: 2 });
+        this.fillVertexTemplate(vertex_layout, 'a_position', style.z || 0, { size: 1, offset: 2 });
         // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.fillVertexTemplate('a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
+        this.fillVertexTemplate(vertex_layout, 'a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
 
         // scaling vector - (x, y) components per pixel, z = angle
-        this.fillVertexTemplate('a_shape', 0, { size: 3 }); // NB: w coord is currently unused, change size: 4 if needed
+        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 3 }); // NB: w coord is currently unused, change size: 4 if needed
 
         // texture coords
-        this.fillVertexTemplate('a_texcoord', 0, { size: 2 });
+        this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, { size: 2 });
 
         // offsets
-        this.fillVertexTemplate('a_offset', 0, { size: 2 });
+        this.fillVertexTemplate(vertex_layout, 'a_offset', 0, { size: 2 });
 
         // color
-        this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_color', Vector.mult(color, 255), { size: 4 });
 
         // outline (can be static or dynamic depending on style)
-        if (this.defines.TANGRAM_HAS_SHADER_POINTS && variant === this.default_mesh_variant) {
+        if (this.defines.TANGRAM_HAS_SHADER_POINTS && mesh.variant.shader_point) {
             let outline_color = style.outline_color || StyleParser.defaults.outline.color;
-            this.fillVertexTemplate('a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
-            this.fillVertexTemplate('a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, { size: 1 });
+            this.fillVertexTemplate(vertex_layout, 'a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
+            this.fillVertexTemplate(vertex_layout, 'a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, { size: 1 });
         }
 
         // selection color
         if (this.selection) {
-            this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
+            this.fillVertexTemplate(vertex_layout, 'a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
         }
 
         return this.vertex_template;
@@ -659,7 +660,7 @@ Object.assign(Points, {
     },
 
     buildLabel (label, style, mesh, context) {
-        let vertex_template = this.makeVertexTemplate(style, mesh.variant);
+        let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle || style.angle;
 
         let size, texcoords;
@@ -709,7 +710,7 @@ Object.assign(Points, {
     },
 
     buildArticulatedLabel (label, style, mesh, context) {
-        let vertex_template = this.makeVertexTemplate(style, mesh.variant);
+        let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle;
         let geom_count = 0;
 
@@ -806,7 +807,7 @@ Object.assign(Points, {
 
     // Override
     vertexLayoutForMeshVariant (variant) {
-        if (variant === this.default_mesh_variant) {
+        if (variant.shader_point) {
             return this.vertex_layout_shader_point;
         }
         return this.vertex_layout;
@@ -816,8 +817,10 @@ Object.assign(Points, {
     meshVariantTypeForDraw (draw) {
         // TODO: cache variants
         // TODO: possible name collisions with default/numeric mesh variant and texture names
+        let key = draw.label_texture || draw.texture || this.default_mesh_variant.key; // unique key by texture name
         let variant = {
-            key: draw.label_texture || draw.texture || this.default_mesh_variant, // unique key by texture name
+            key,
+            shader_point: (key === this.default_mesh_variant.key), // is shader point
             order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
         };
         return variant;

@@ -100,10 +100,10 @@ export var Style = {
         }
     },
 
-    fillVertexTemplate(attribute, value, { size, offset }) {
+    fillVertexTemplate(vertex_layout, attribute, value, { size, offset }) {
         offset = (offset === undefined) ? 0 : offset;
 
-        let index = this.vertex_layout.index[attribute];
+        let index = vertex_layout.index[attribute];
         if (index === undefined) {
             log('warn', `Style: in style '${this.name}', no index found in vertex layout for attribute '${attribute}'`);
             return;
