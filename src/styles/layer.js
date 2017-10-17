@@ -47,8 +47,13 @@ export function mergeTrees(matchingTrees, group) {
 
     // Iterate trees in parallel
     for (let x=0; x < treeDepth; x++) {
-        // Pull out the requested draw group, for each tree, at this depth
-        draws = matchingTrees.map(tree => tree[x] && tree[x][group]);
+        // Pull out the requested draw group, for each tree, at this depth (avoiding duplicates at the same level in tree)
+        draws = [];
+        matchingTrees.forEach(tree => {
+            if (tree[x] && tree[x][group] && draws.indexOf(tree[x][group]) === -1) {
+                draws.push(tree[x][group]);
+            }
+        });
         if (draws.length === 0) {
             continue;
         }
