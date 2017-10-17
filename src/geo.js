@@ -97,6 +97,46 @@ Geo.latLngToMeters = function([x, y]) {
     return [x, y];
 };
 
+// Transform from local tile coordinats to lat lng
+Geo.tileSpaceToLatlng = function (geometry, z, min, max) {
+    const units_per_meter = Geo.unitsPerMeter(z);
+    Geo.transformGeometry(geometry, coord => {
+        coord[0] = (coord[0] / units_per_meter) + min.x;
+        coord[1] = (coord[1] / units_per_meter) + min.y;
+
+        let [x, y] = Geo.metersToLatLng(coord);
+        coord[0] = x;
+        coord[1] = y;
+    });
+    return geometry;
+};
+
+// Copy GeoJSON geometry
+Geo.copyGeometry = function (geometry) {
+    if (geometry == null) {
+        return; // skip if missing geometry (valid GeoJSON)
+    }
+
+    let copy = { type: geometry.type };
+
+    if (geometry.type === 'Point') {
+        copy.coordinates = [geometry.coordinates[0], geometry.coordinates[1]];
+    }
+    else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
+        copy.coordinates = geometry.coordinates.map(c => [c[0], c[1]]);
+    }
+    else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
+        copy.coordinates = geometry.coordinates.map(ring => ring.map(c => [c[0], c[1]]));
+    }
+    else if (geometry.type === 'MultiPolygon') {
+        copy.coordinates = geometry.coordinates.map(polygon => {
+            return polygon.map(ring => ring.map(c => [c[0], c[1]]));
+        });
+    }
+    // TODO: support GeometryCollection
+    return copy;
+};
+
 // Run an in-place transform function on each cooordinate in a GeoJSON geometry
 Geo.transformGeometry = function (geometry, transform) {
     if (geometry == null) {
@@ -110,11 +150,11 @@ Geo.transformGeometry = function (geometry, transform) {
         geometry.coordinates.forEach(transform);
     }
     else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
-        geometry.coordinates.forEach(coordinates => coordinates.forEach(transform));
+        geometry.coordinates.forEach(ring => ring.forEach(transform));
     }
     else if (geometry.type === 'MultiPolygon') {
         geometry.coordinates.forEach(polygon => {
-            polygon.forEach(coordinates => coordinates.forEach(transform));
+            polygon.forEach(ring => ring.forEach(transform));
         });
     }
     // TODO: support GeometryCollection
@@ -171,15 +211,23 @@ Geo.geometryType = function(type) {
     }
 };
 
-Geo.centroid = function (polygon) {
+// Geometric / weighted centroid of polygon
+// Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
+Geo.centroid = function (polygon, relative = true) {
     if (!polygon || polygon.length === 0) {
         return;
     }
 
-    // Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
     let x = 0, y = 0, area = 0;
     let ring = polygon[0]; // only use first ring for now
     let len = ring.length;
+
+    // optionally calculate relative to first coordinate to avoid precision issues w/small polygons
+    let origin;
+    if (relative) {
+        origin = ring[0];
+        ring = ring.map(v => [v[0] - origin[0], v[1] - origin[1]]);
+    }
 
     for (let i = 0, j = len - 1; i < len; j = i, i++) {
         let p0 = ring[i];
@@ -191,7 +239,12 @@ Geo.centroid = function (polygon) {
         area += f * 3;
     }
 
-    return [x / area, y / area];
+    let c = [x / area, y / area];
+    if (relative) {
+        c[0] += origin[0];
+        c[1] += origin[1];
+    }
+    return c;
 };
 
 Geo.multiCentroid = function (polygons) {

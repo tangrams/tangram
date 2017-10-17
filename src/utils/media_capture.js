@@ -1,26 +1,33 @@
-/* global MediaRecorder */
+/* global MediaRecorder, ImageData */
 import log from './log';
 import {createObjectURL} from './urls';
+import {StyleParser} from '../styles/style_parser';
 
 export default class MediaCapture {
 
     constructor() {
+        this.canvas = null;
+        this.gl = null;
+        this.screenshot_canvas = null;
+        this.screenshot_context = null;
         this.queue_screenshot = null;
         this.video_capture = null;
     }
 
-    setCanvas (canvas) {
+    setCanvas (canvas, gl) {
         this.canvas = canvas;
+        this.gl = gl;
     }
 
     // Take a screenshot, returns a promise that resolves with the screenshot data when available
-    screenshot () {
+    // `background`: optional background color to blend screenshot with
+    screenshot ({ background } = {}) {
         if (this.queue_screenshot != null) {
             return this.queue_screenshot.promise; // only capture one screenshot at a time
         }
 
         // Will resolve once rendering is complete and render buffer is captured
-        this.queue_screenshot = {};
+        this.queue_screenshot = { background };
         this.queue_screenshot.promise = new Promise((resolve, reject) => {
             this.queue_screenshot.resolve = resolve;
             this.queue_screenshot.reject = reject;
@@ -31,10 +38,63 @@ export default class MediaCapture {
     // Called after rendering, captures render buffer and resolves promise with the image data
     completeScreenshot () {
         if (this.queue_screenshot != null) {
-            // Get data URL, convert to blob
+            // Firefox appears to have an issue where its alpha conversion overflows some channels when
+            // the WebGL canvas content is captured. To get around this, we read pixels from the GL buffer
+            // directly, then flip and unmulitply the alpha on each pixel to get the desired RGB values.
+            // See https://github.com/tangrams/tangram/issues/551
+
+            // Get raw pixels from GL
+            let w = this.canvas.width;
+            let h = this.canvas.height;
+            let pixels = new Uint8Array(w * h * 4);
+            this.gl.readPixels(0, 0, w, h, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels);
+
+            // Optional background to blend with (only RGB, alpha is ignored)
+            let background = this.queue_screenshot.background;
+            if (background && background !== 'transparent') {
+                background = StyleParser.parseColor(background).slice(0, 3).map(c => c * 255);
+            }
+            else {
+                background = null; // skip blend if transparent
+            }
+
+            // Flip Y (GL buffer is upside down)
+            let flip = new Uint8ClampedArray(w * h * 4);    // canvas requires 'clamped' array type
+            for (let y=0; y < h; y++) {
+                for (let x=0; x < w; x++) {
+                    let s = ((h - y - 1) * w + x) * 4;      // source offset
+                    let d = (y * w + x) * 4;                // destination offset
+                    let a = pixels[s + 3];                  // unmultiply alpha
+                    flip[d + 0] = pixels[s + 0] * 255 / a;
+                    flip[d + 1] = pixels[s + 1] * 255 / a;
+                    flip[d + 2] = pixels[s + 2] * 255 / a;
+                    flip[d + 3] = a;
+
+                    if (background) {
+                        a /= 255;
+                        flip[d + 0] = (flip[d + 0] * a) + (background[0] * (1 - a));
+                        flip[d + 1] = (flip[d + 1] * a) + (background[1] * (1 - a));
+                        flip[d + 2] = (flip[d + 2] * a) + (background[2] * (1 - a));
+                        flip[d + 3] = 255;
+                    }
+                }
+            }
+
+            // Draw flipped pixels to a canvas
+            this.screenshot_canvas = this.screenshot_canvas || document.createElement('canvas');
+            let canvas = this.screenshot_canvas;
+            canvas.width = w;
+            canvas.height = h;
+
+            this.screenshot_context = this.screenshot_context || canvas.getContext('2d');
+            let ctx = this.screenshot_context;
+            let image = new ImageData(flip, w, h);
+            ctx.putImageData(image, 0, 0);
+
+            // Get data URL from canvas and convert to blob
             // Strip host/mimetype/etc., convert base64 to binary without UTF-8 mangling
             // Adapted from: https://gist.github.com/unconed/4370822
-            const url = this.canvas.toDataURL('image/png');
+            const url = canvas.toDataURL('image/png');
             const data = atob(url.slice(22));
             const buffer = new Uint8Array(data.length);
             for (let i = 0; i < data.length; ++i) {

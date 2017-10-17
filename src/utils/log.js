@@ -26,7 +26,7 @@ export default function log (opts, ...msg) {
     if (LEVELS[level] <= LEVELS[log.level]) {
         if (Thread.is_worker) {
             // Proxy to main thread
-            WorkerBroker.postMessage('_logProxy', opts, ...msg);
+            WorkerBroker.postMessage({ method: '_logProxy', stringify: true }, opts, ...msg);
         }
         else {
             // Only log message once?

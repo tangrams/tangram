@@ -5,7 +5,7 @@ import mergeObjects from '../utils/merge';
 import {buildFilter} from './filter';
 
 // N.B.: 'visible' is legacy compatibility for 'enabled'
-export const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
+const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
 
 let layer_cache = {};
 export function layerCache () {
@@ -47,8 +47,13 @@ export function mergeTrees(matchingTrees, group) {
 
     // Iterate trees in parallel
     for (let x=0; x < treeDepth; x++) {
-        // Pull out the requested draw group, for each tree, at this depth
-        draws = matchingTrees.map(tree => tree[x] && tree[x][group]);
+        // Pull out the requested draw group, for each tree, at this depth (avoiding duplicates at the same level in tree)
+        draws = [];
+        matchingTrees.forEach(tree => {
+            if (tree[x] && tree[x][group] && draws.indexOf(tree[x][group]) === -1) {
+                draws.push(tree[x][group]);
+            }
+        });
         if (draws.length === 0) {
             continue;
         }
@@ -365,7 +370,7 @@ export class LayerTree extends Layer {
 
 }
 
-const FilterOptions = {
+export const FilterOptions = {
     // Handle unit conversions on filter ranges
     rangeTransform(val) {
         if (typeof val === 'string' && val.trim().slice(-3) === 'px2') {
@@ -375,7 +380,7 @@ const FilterOptions = {
     }
 };
 
-function isReserved(key) {
+export function isReserved(key) {
     return reserved.indexOf(key) > -1;
 }
 

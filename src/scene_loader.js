@@ -4,15 +4,16 @@ import * as URLs from './utils/urls';
 import mergeObjects from './utils/merge';
 import subscribeMixin from './utils/subscribe';
 import {createSceneBundle, isGlobal} from './scene_bundle';
+import {isReserved} from './styles/layer';
 
 var SceneLoader;
 
 export default SceneLoader = {
 
     // Load scenes definitions from URL & proprocess
-    loadScene(url, path = null) {
+    loadScene(url, { path, type } = {}) {
         let errors = [];
-        return this.loadSceneRecursive({ url, path }, null, errors).
+        return this.loadSceneRecursive({ url, path, type }, null, errors).
             then(result => this.finalize(result)).
             then(({ config, bundle }) => {
                 if (!config) {
@@ -44,7 +45,8 @@ export default SceneLoader = {
 
         return bundle.load().then(config => {
             if (config.import == null) {
-                return this.normalize(config, bundle);
+                this.normalize(config, bundle);
+                return { config, bundle };
             }
 
             // accept single entry or array
@@ -67,9 +69,11 @@ export default SceneLoader = {
             return Promise.
                 all(imports.map(resource => this.loadSceneRecursive(resource, bundle, errors))).
                     then(results => {
+                        results.forEach(r => this.normalize(r.config, r.bundle)); // first normalize imports
                         let configs = results.map(r => r.config);
-                        config = mergeObjects({}, ...configs, config);
-                        return this.normalize(config, bundle);
+                        config = mergeObjects(...configs, config);
+                        this.normalize(config, bundle); // last normalize parent, after merge
+                        return { config, bundle };
                     });
         }).catch(error => {
             // Collect scene load errors as we go
@@ -84,6 +88,7 @@ export default SceneLoader = {
         this.normalizeDataSources(config, bundle);
         this.normalizeFonts(config, bundle);
         this.normalizeTextures(config, bundle);
+        this.hoistTextures(config, bundle);
         return { config, bundle };
     },
 
@@ -142,7 +147,15 @@ export default SceneLoader = {
                 }
             }
         }
+    },
 
+    // Move inline (URL string) textures to the scene's top-level set of textures (config.textures).
+    // There are 4 such cases of textures:
+    // - in a style's `texture` property
+    // - in a style's `material` properties
+    // - in a style's custom uniforms (`shaders.uniforms`)
+    // - in a draw groups `texture` property
+    hoistTextures (config, bundle) {
         // Resolve URLs for inline textures
         if (config.styles) {
             for (let sn in config.styles) {
@@ -150,8 +163,8 @@ export default SceneLoader = {
 
                 // Style `texture`
                 let tex = style.texture;
-                if (typeof tex === 'string' && !config.textures[tex] && !isGlobal(tex)) {
-                    style.texture = bundle.urlFor(tex);
+                if (typeof tex === 'string' && !config.textures[tex]) {
+                    style.texture = this.hoistTexture(tex, config, bundle);
                 }
 
                 // Material
@@ -159,25 +172,88 @@ export default SceneLoader = {
                     ['emission', 'ambient', 'diffuse', 'specular', 'normal'].forEach(prop => {
                         // Material property has a texture
                         let tex = style.material[prop] != null && style.material[prop].texture;
-                        if (typeof tex === 'string' && !config.textures[tex] && !isGlobal(tex)) {
-                            style.material[prop].texture = bundle.urlFor(tex);
-                        }
-                    });
-                }
-
-                // Shader uniforms
-                if (style.shaders && style.shaders.uniforms) {
-                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({type, value, key, uniforms}) => {
-                        // Texture by URL (string-named texture not referencing existing texture definition)
-                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] && !isGlobal(value)) {
-                            uniforms[key] = bundle.urlFor(value);
+                        if (typeof tex === 'string' && !config.textures[tex]) {
+                            style.material[prop].texture = this.hoistTexture(tex, config, bundle);
                         }
                     });
                 }
             }
         }
 
-        return config;
+        // Special handling for shader uniforms, exclude globals because they are ambiguous:
+        // could later be resolved to a string value indicating a texture, but could also be a vector or other type
+        this.hoistStyleShaderUniformTextures(config, bundle, { include_globals: false });
+
+        // Resolve and hoist inline textures in draw blocks
+        if (config.layers) {
+            let stack = [config.layers];
+            while (stack.length > 0) {
+                let layer = stack.pop();
+
+                // only recurse into objects
+                if (typeof layer !== 'object' || Array.isArray(layer)) {
+                    continue;
+                }
+
+                for (let prop in layer) {
+                    if (prop === 'draw') { // process draw groups for current layer
+                        let draws = layer[prop];
+                        for (let group in draws) {
+                            if (draws[group].texture) {
+                                let tex = draws[group].texture;
+                                if (typeof tex === 'string' && !config.textures[tex]) {
+                                    draws[group].texture = this.hoistTexture(tex, config, bundle);
+                                }
+                            }
+
+                            // special handling for outlines :(
+                            if (draws[group].outline && draws[group].outline.texture) {
+                                let tex = draws[group].outline.texture;
+                                if (typeof tex === 'string' && !config.textures[tex]) {
+                                    draws[group].outline.texture = this.hoistTexture(tex, config, bundle);
+                                }
+                            }
+                        }
+
+                    }
+                    else if (isReserved(prop)) {
+                        continue; // skip reserved keyword
+                    }
+                    else {
+                        stack.push(layer[prop]); // traverse sublayer
+                    }
+                }
+            }
+        }
+    },
+
+    hoistStyleShaderUniformTextures (config, bundle, { include_globals }) {
+        // Resolve URLs for inline textures
+        if (config.styles) {
+            for (let sn in config.styles) {
+                let style = config.styles[sn];
+
+                // Shader uniforms
+                if (style.shaders && style.shaders.uniforms) {
+                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({type, value, key, uniforms}) => {
+                        // Texture by URL (string-named texture not referencing existing texture definition)
+                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] &&
+                            (include_globals || !isGlobal(value))) {
+                            uniforms[key] = this.hoistTexture(value, config, bundle);
+                        }
+                    });
+                }
+            }
+        }
+    },
+
+    // Convert an inline URL texture to a global one, and return the texture's (possibly modified) name
+    hoistTexture (tex, config, bundle) {
+        let global = isGlobal(tex);
+        let url = global ? tex : bundle.urlFor(tex);
+        let name = global ? `texture-${url}` : url;
+        config.textures[name] = { url };
+        return name;
     },
 
     // Substitutes global scene properties (those defined in the `config.global` object) for any style values
@@ -238,7 +314,12 @@ export default SceneLoader = {
                     obj = val;
                 }
             }
-            // Loop through object properties
+            // Loop through object keys or array indices
+            else if (Array.isArray(obj)) {
+                for (let p=0; p < obj.length; p++) {
+                    obj[p] = applyGlobals(obj[p], obj, p);
+                }
+            }
             else if (typeof obj === 'object') {
                 for (let p in obj) {
                     obj[p] = applyGlobals(obj[p], obj, p);
@@ -248,55 +329,6 @@ export default SceneLoader = {
         }
 
         return applyGlobals(config);
-    },
-
-    // Move inline (URL string) textures to the scene's top-level set of textures (config.textures).
-    // There are 3 such cases of textures:
-    // - in a style's `texture` property
-    // - in a style's `material` properties
-    // - in a style's custom uniforms (`shaders.uniforms`)
-    hoistTextures (config) {
-        if (config.styles) {
-            for (let sn in config.styles) {
-                let style = config.styles[sn];
-
-                // Style `texture`
-                let tex = style.texture;
-                if (typeof tex === 'string' && !config.textures[tex]) {
-                    let url = tex;
-                    let name = isGlobal(url) ? `texture-${url}` : url;
-                    config.textures[name] = { url };
-                    style.texture = name;
-                }
-
-                // Material
-                if (style.material) {
-                    ['emission', 'ambient', 'diffuse', 'specular', 'normal'].forEach(prop => {
-                        // Material property has a texture
-                        let tex = style.material[prop] != null && style.material[prop].texture;
-                        if (typeof tex === 'string' && !config.textures[tex]) {
-                            let url = tex;
-                            let name = isGlobal(url) ? `texture-${url}` : url;
-                            config.textures[name] = { url };
-                            style.material[prop].texture = name;
-                        }
-                    });
-                }
-
-                // Shader uniforms
-                if (style.shaders && style.shaders.uniforms) {
-                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({type, value, key, uniforms}) => {
-                        // Texture by URL (string-named texture not referencing existing texture definition)
-                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
-                            let url = value;
-                            let name = isGlobal(url) ? `texture-${url}` : url;
-                            config.textures[name] = { url };
-                            uniforms[key] = name;
-                        }
-                    });
-                }
-            }
-        }
     },
 
     // Normalize some scene-wide settings that apply to the final, merged scene

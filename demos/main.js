@@ -7,33 +7,36 @@
 (function () {
     var scene_url = 'demos/scene.yaml';
 
-    // Instantiate Tangram as a Leaflet layer
+    // Create Tangram as a Leaflet layer
     var layer = Tangram.leafletLayer({
         scene: scene_url,
         events: {
             hover: onHover,     // hover event (defined below)
             click: onClick      // click event (defined below)
         },
+        // debug: {
+        //     layer_stats: true // enable to collect detailed layer stats, access w/`scene.debug.layerStats()`
+        // },
+        logLevel: 'debug',
         attribution: '<a href="https://mapzen.com/tangram" target="_blank">Tangram</a> | &copy; OSM contributors | <a href="https://mapzen.com/" target="_blank">Mapzen</a>'
     });
 
-    // Get a reference to the map from Leaflet
+    // Create a Leaflet map
     var map = L.map('map', {
         maxZoom: 20,
-        zoomSnap: 0
+        zoomSnap: 0,
+        keyboard: false
     });
-
-    // Set the map location (will be overwritten if location URL params present)
-    var map_start_location = [16, 40.70531887544228, -74.00976419448853]; // NYC
-    map.setView(map_start_location);
 
     // Useful events to subscribe to
     layer.scene.subscribe({
         load: function (msg) {
             // scene was loaded
+            injectAPIKey(msg.config);
         },
         update: function (msg) {
             // scene updated
+            injectAPIKey(msg.config);
         },
         preUpdate: function (will_render) {
             // before scene update
@@ -60,10 +63,24 @@
         }
     });
 
+    function injectAPIKey(config) {
+        if (config.global.sdk_mapzen_api_key) {
+            config.global.sdk_mapzen_api_key = 'mapzen-T3tPjn7';
+        }
+        else {
+            for (var name in config.sources) {
+                var source = config.sources[name];
+                if (source.url.search('mapzen.com')) {
+                    source.url_params = source.url_params || {};
+                    source.url_params.api_key = 'mapzen-T3tPjn7';
+                }
+            }
+        }
+    }
+
     // Feature selection
     var el_selection = document.createElement('div'); // DOM element shown on hover
     el_selection.setAttribute('class', 'label');
-
     map.getContainer().appendChild(el_selection); // append to map
 
     function onHover (selection) {
@@ -90,8 +107,11 @@
         }
     };
 
+    /*** Map ***/
+
     window.map = map;
     window.layer = layer;
+    window.scene = layer.scene;
 
     window.addEventListener('load', function() {
         layer.addTo(map);

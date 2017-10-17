@@ -21,6 +21,7 @@ export function buildPolygons (
         var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
+    var geom_count = 0;
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var element_offset = vertex_data.vertex_count;
@@ -59,7 +60,9 @@ export function buildPolygons (
         for (let i = 0; i < indices.length; i++){
             vertex_elements.push(element_offset + indices[i]);
         }
+        geom_count += indices.length/3;
     }
+    return geom_count;
 }
 
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
@@ -82,7 +85,7 @@ export function buildExtrudedPolygons (
     var min_z = z + (min_height || 0);
     var max_z = z + height;
     vertex_template[2] = max_z;
-    buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize });
+    var geom_count = buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize });
 
     var vertex_elements = vertex_data.vertex_elements;
     var element_offset = vertex_data.vertex_count;
@@ -161,9 +164,11 @@ export function buildExtrudedPolygons (
                 vertex_elements.push(element_offset + 0);
 
                 element_offset += 4;
+                geom_count += 2;
             }
         }
     }
+    return geom_count;
 }
 
 // Triangulation using earcut

@@ -18,6 +18,7 @@ export class GeoJSONSource extends NetworkSource {
         this.load_data = null;
         this.tile_indexes = {}; // geojson-vt tile indices, by layer name
         this.max_zoom = Math.max(this.max_zoom || 0, 15); // TODO: max zoom < 15 causes artifacts/no-draw at 20, investigate
+        this.setTileSize(512); // auto-tile to 512px tiles for better labelling
         this.pad_scale = 0; // we don't want padding on auto-tiled sources
     }
 
@@ -33,7 +34,7 @@ export class GeoJSONSource extends NetworkSource {
                 for (let layer_name in layers) {
                     this.tile_indexes[layer_name] = geojsonvt(layers[layer_name], {
                         maxZoom: this.max_zoom,  // max zoom to preserve detail on
-                        tolerance: 3, // simplification tolerance (higher means simpler)
+                        tolerance: 1.5, // simplification tolerance (higher means simpler) NB: half the default to accomodate 512px tiles
                         extent: Geo.tile_scale, // tile extent (both width and height)
                         buffer: 0.0001     // tile buffer on each side
                     });

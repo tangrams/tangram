@@ -27,7 +27,14 @@ attribute vec4 a_color;
     // xy: extrusion direction in xy plane
     // z:  half-width of line (amount to extrude)
     // w:  scaling factor for interpolating width between zooms
-    attribute vec4 a_extrude;
+    attribute vec2 a_extrude;
+    // xy: direction of line, for getting perpendicular offset
+    attribute vec2 a_offset;
+    // x: zoom scaling factor for line width
+    // y: zoom scaling factor for line offset
+    attribute vec2 a_scaling;
+
+    uniform float u_v_scale_adjust;
 #endif
 
 varying vec4 v_position;
@@ -36,7 +43,7 @@ varying vec4 v_color;
 varying vec4 v_world_position;
 
 // Optional texture UVs
-#ifdef TANGRAM_TEXTURE_COORDS
+#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)
     attribute vec2 a_texcoord;
     varying vec2 v_texcoord;
 #endif
@@ -49,6 +56,8 @@ varying vec4 v_world_position;
 #if defined(TANGRAM_LIGHTING_VERTEX)
     varying vec4 v_lighting;
 #endif
+
+#define UNPACK_SCALING(x) (x / 1024.)
 
 #pragma tangram: camera
 #pragma tangram: material
@@ -64,7 +73,7 @@ void main() {
     #ifdef TANGRAM_TEXTURE_COORDS
         v_texcoord = a_texcoord;
         #ifdef TANGRAM_EXTRUDE_LINES
-            v_texcoord.y *= TANGRAM_V_SCALE_ADJUST;
+            v_texcoord.y *= u_v_scale_adjust;
         #endif
     #endif
 
@@ -77,27 +86,40 @@ void main() {
     vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
 
     #ifdef TANGRAM_EXTRUDE_LINES
-        vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
-        float width = a_extrude.z;
-        float dwdz = a_extrude.w;
+        vec2 extrude = a_extrude.xy;
+        vec2 offset = a_offset.xy;
 
-        // Adjust line width based on zoom level, to prevent proxied lines from being either too small or too big.
-        // "Flattens" the zoom between 1-2 to peg it to 1 (keeps lines from prematurely shrinking), then interpolate
-        // and clamp to 4 (keeps lines from becoming too small when far away).
+        // Adjust line width based on zoom level, to prevent proxied lines
+        // from being either too small or too big.
+        // "Flattens" the zoom between 1-2 to peg it to 1 (keeps lines from
+        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines
+        // from becoming too small when far away).
         float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);
         dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
 
-        // Interpolate between zoom levels
-        width += dwdz * dz;
+        // Interpolate line width between zooms
+        float mdz = (dz - 0.5) * 2.; // zoom from mid-point
+        extrude -= extrude * UNPACK_SCALING(a_scaling.x) * mdz;
 
-        // Scale pixel dimensions to be consistent in screen space
-        // Scale from style zoom units back to tile zoom
-        width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
+        // Interpolate line offset between zooms
+        // Scales from the larger value to the smaller one
+        float dwdz = UNPACK_SCALING(a_scaling.y);
+        float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates "direction" of scaling
+        offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale "up" or "down"
+
+        // Scale line width and offset to be consistent in screen space
+        float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
+        extrude *= ssz;
+        offset *= ssz;
 
         // Modify line width before extrusion
-        #pragma tangram: width
+        #ifdef TANGRAM_BLOCK_WIDTH
+            float width = 1.;
+            #pragma tangram: width
+            extrude *= width;
+        #endif
 
-        position.xy += extrude * width;
+        position.xy += extrude + offset;
     #endif
 
     // World coordinates for 3d procedural textures

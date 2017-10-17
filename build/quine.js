@@ -7,10 +7,10 @@ function makePrefix(sourceMapFile) {
 
     // prepend this code - wraps Tangram source in a function and later calls arguments.callee.toString to get source
     var prefix = '(function(){';
-        prefix += 'var target = (typeof module !== "undefined" && module.exports) || (typeof window !== "undefined");';
+        prefix += 'var target = (typeof self === "undefined" || !(typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope)) && ((typeof module !== "undefined" && module.exports) || (typeof window !== "undefined"));';
         prefix += 'if (target) {';
         prefix += 'var ' + source_var + ' = arguments.callee.toString();';
-        prefix += 'var ' + source_origin_var + ' = document.currentScript !== undefined ? document.currentScript.src : \'\';';
+        prefix += 'var ' + source_origin_var + ' = typeof document !== "undefined" && document.currentScript !== undefined ? document.currentScript.src : \'\';';
         prefix += 'var ' + source_map_var + ' = \'' + sourceMapFile + '\';';
         prefix += '};';
     return prefix;

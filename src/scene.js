@@ -1,8 +1,11 @@
 import log from './utils/log';
 import Utils from './utils/utils';
+import debugSettings from './utils/debug_settings';
 import * as URLs from './utils/urls';
 import WorkerBroker from './utils/worker_broker';
+import Task from './utils/task';
 import subscribeMixin from './utils/subscribe';
+import sliceObject from './utils/slice';
 import Context from './gl/context';
 import Texture from './gl/texture';
 import ShaderProgram from './gl/shader_program';
@@ -13,6 +16,7 @@ import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
 import View from './view';
 import Light from './light';
+import Tile from './tile';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
@@ -53,7 +57,6 @@ export default class Scene {
 
         this.building = null;                           // tracks current scene building state (tiles being built, etc.)
         this.dirty = true;                              // request a redraw
-        this.animated = false;                          // request redraw every frame
 
         if (options.preUpdate){
             // optional pre-render loop hook
@@ -76,7 +79,7 @@ export default class Scene {
         this.last_selection_render = -1;    // frame counter for last selection render pass
         this.media_capture = new MediaCapture();
         this.selection = null;
-        this.introspection = false;
+        this.introspection = (options.introspection === true) ? true : false;
         this.resetTime();
 
         this.container = options.container;
@@ -103,7 +106,7 @@ export default class Scene {
 
     // Load scene (or reload existing scene if no new source specified)
     // Options:
-    //   `config_path`: base URL against which roo scene resources should be resolved (useful for Play) (default nulll)
+    //   `base_path`: base URL against which scene resources should be resolved (useful for Play) (default nulll)
     //   `blocking`: should rendering block on scene load completion (default true)
     load(config_source = null, options = {}) {
         if (this.initializing) {
@@ -115,17 +118,20 @@ export default class Scene {
         this.initialized = false;
         this.initial_build_time = null;
 
-        // Backwards compatibilty for passing `config_path` string as second argument
+        // Backwards compatibilty for passing `base_path` string as second argument
         // (since transitioned to using options argument to accept more parameters)
-        options = (typeof options === 'string') ? { config_path: options } : options;
-        let config_path = options.config_path;
+        options = (typeof options === 'string') ? { base_path: options } : options;
 
         // Should rendering block on load (not desirable for initial load, often desired for live style-switching)
         options.blocking = (options.blocking !== undefined) ? options.blocking : true;
 
+        if (this.render_loop !== false) {
+            this.setupRenderLoop();
+        }
+
         // Load scene definition (sources, styles, etc.), then create styles & workers
         this.createCanvas();
-        this.initializing = this.loadScene(config_source, config_path)
+        this.initializing = this.loadScene(config_source, options)
             .then(() => this.createWorkers())
             .then(() => {
                 this.resetFeatureSelection();
@@ -134,7 +140,7 @@ export default class Scene {
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
 
-                const updating = this.updateConfig({ serialize_funcs, load_event: true, fade_in: true });
+                const updating = this.updateConfig({ serialize_funcs, normalize: false, load_event: true, fade_in: true });
                 if (options.blocking === true) {
                     return updating;
                 }
@@ -143,11 +149,8 @@ export default class Scene {
                 this.initializing = null;
                 this.initialized = true;
                 this.last_valid_config_source = this.config_source;
-                this.last_valid_config_path = this.config_path;
+                this.last_valid_options = { base_path: options.base_path, file_type: options.file_type };
 
-                if (this.render_loop !== false) {
-                    this.setupRenderLoop();
-                }
                 this.requestRedraw();
         }).catch(error => {
             this.initializing = null;
@@ -169,7 +172,7 @@ export default class Scene {
             if (this.last_valid_config_source) {
                 log('warn', message, error);
                 log('info', `Scene.load() reverting to last valid configuration`);
-                return this.load(this.last_valid_config_source, this.last_valid_config_path);
+                return this.load(this.last_valid_config_source, this.last_valid_base_path);
             }
             log('error', message, error);
             throw error;
@@ -236,6 +239,7 @@ export default class Scene {
         try {
             this.gl = Context.getContext(this.canvas, Object.assign({
                 alpha: true, premultipliedAlpha: true,
+                stencil: true,
                 device_pixel_ratio: Utils.device_pixel_ratio
             }, this.contextOptions));
         }
@@ -250,7 +254,7 @@ export default class Scene {
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
         this.render_states = new RenderStateManager(this.gl);
-        this.media_capture.setCanvas(this.canvas);
+        this.media_capture.setCanvas(this.canvas, this.gl);
     }
 
     // Get the URL to load the web worker from
@@ -260,7 +264,7 @@ export default class Scene {
         // ignore uninitialized worker src variable (defined in parent scope)
         if (typeof __worker_src__ !== "undefined"){
             let source = '(' + __worker_src__ + ')()';
-            if (__worker_src_origin__) {
+            if (__worker_src_origin__ && __worker_src_map__ !== '') {
                 let origin = __worker_src_origin__.slice(0, __worker_src_origin__.lastIndexOf('/')+1);
                 source += '\n//#' + ' sourceMappingURL=' + origin + __worker_src_map__;
             }
@@ -311,8 +315,11 @@ export default class Scene {
 
     // Instantiate workers from URL, init event handlers
     makeWorkers(url) {
-        var queue = [];
 
+        // Let VertexElements know if 32 bit indices for element arrays are available
+        let has_element_index_uint = this.gl.getExtension("OES_element_index_uint") ? true : false;
+
+        let queue = [];
         this.workers = [];
         for (var id=0; id < this.num_workers; id++) {
             var worker = new Worker(url);
@@ -322,7 +329,7 @@ export default class Scene {
 
             log('debug', `Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio, has_element_index_uint).then(
                 (id) => {
                     log('debug', `Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -338,10 +345,6 @@ export default class Scene {
         return Promise.all(queue).then(() => {
             log.setWorkers(this.workers);
 
-            // Let VertexElements know if 32 bit indices for element arrays are available
-            let Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
-            WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', Uint32_flag);
-
             // Free memory after worker initialization
             URLs.revokeObjectURL(url);
         });
@@ -355,24 +358,6 @@ export default class Scene {
             });
             this.workers = null;
         }
-    }
-
-    // Assign tile to worker thread based on data source
-    getWorkerForDataSource(source) {
-        let worker;
-
-        if (source.tiled) {
-            // Round robin tiled sources across all workers
-            worker = this.workers[this.next_worker];
-            this.next_worker = (this.next_worker + 1) % this.workers.length;
-        }
-        else {
-            // Pin all tiles from each non-tiled source to a single worker
-            // Prevents data for these sources from being loaded more than once
-            worker = this.workers[source.id % this.workers.length];
-        }
-
-        return worker;
     }
 
     // Scene is ready for rendering
@@ -425,6 +410,10 @@ export default class Scene {
             this.update();
         }
 
+        // Pending background tasks
+        Task.setState({ user_moving_view: this.view.user_input_active });
+        Task.processAll();
+
         // Request the next frame if not scheduled to stop
         if (!this.render_loop_stop) {
             window.requestAnimationFrame(this.renderLoop.bind(this));
@@ -456,6 +445,9 @@ export default class Scene {
         // Pre-render loop hook
         this.trigger('preUpdate', will_render);
 
+        // Update view (needs to update user input timer even if no render will occur)
+        this.view.update();
+
         // Bail if no need to render
         if (!will_render) {
             return false;
@@ -486,7 +478,6 @@ export default class Scene {
         var gl = this.gl;
 
         // Update styles, camera, lights
-        this.view.update();
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
         // Render main pass
@@ -497,7 +488,7 @@ export default class Scene {
 
         // Render selection pass (if needed)
         if (selection) {
-            if (this.view.panning || this.view.zooming) {
+            if (this.view.panning || this.view.user_input_active) {
                 this.selection.clearPendingRequests();
                 return;
             }
@@ -513,6 +504,7 @@ export default class Scene {
                 // Reset to screen buffer
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                gl.clearColor(...this.background.color); // restore scene background color
                 this.last_selection_render = this.frame;
             }
 
@@ -540,7 +532,7 @@ export default class Scene {
         // optionally force alpha off (e.g. for selection pass)
         allow_blend = (allow_blend == null) ? true : allow_blend;
 
-        this.clearFrame({ clear_color: true, clear_depth: true });
+        this.clearFrame();
 
         // Sort styles by blend order
         let styles = this.tile_manager.getActiveStyles().
@@ -562,7 +554,32 @@ export default class Scene {
                 );
                 this.setRenderState(state);
             }
+
+            // Depth pre-pass for translucency
+            let translucent = (style.blend === 'translucent' && program_key === 'program'); // skip for selection buffer render pass
+            if (translucent) {
+                this.gl.colorMask(false, false, false, false);
+                this.renderStyle(style.name, program_key);
+
+                this.gl.colorMask(true, true, true, true);
+                this.gl.depthFunc(this.gl.EQUAL);
+
+                // stencil buffer prevents compounding alpha from overlapping polys
+                this.gl.enable(this.gl.STENCIL_TEST);
+                this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
+                this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
+                this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
+            }
+
+            // Main render pass
             count += this.renderStyle(style.name, program_key);
+
+            if (translucent) {
+                // disable translucency-specific settings
+                this.gl.disable(this.gl.STENCIL_TEST);
+                this.gl.depthFunc(this.gl.LESS);
+            }
+
             last_blend = style.blend;
         }
 
@@ -605,14 +622,12 @@ export default class Scene {
             this.view.setupTile(tile, program);
 
             // Render tile
-            let mesh = tile.meshes[style_name];
-            if (style.render(mesh)) {
-                // Don't incur additional renders while viewport is moving
-                if (!(this.view.panning || this.view.zooming)) {
-                   this.requestRedraw();
+            tile.meshes[style_name].forEach(mesh => {
+                if (style.render(mesh)) {
+                    this.requestRedraw();
                 }
-            }
-            render_count += mesh.geometry_count;
+                render_count += mesh.geometry_count;
+            });
         }
 
         return render_count;
@@ -649,23 +664,12 @@ export default class Scene {
         return program;
     }
 
-    clearFrame({ clear_color, clear_depth } = {}) {
+    clearFrame() {
         if (!this.initialized) {
             return;
         }
-
-        // Defaults
-        clear_color = (clear_color === false) ? false : true; // default true
-        clear_depth = (clear_depth === false) ? false : true; // default true
-
-        // Set GL state
-        this.render_states.depth_write.set({ depth_write: clear_depth });
-
-        let gl = this.gl;
-        if (clear_color || clear_depth) {
-            let mask = (clear_color && gl.COLOR_BUFFER_BIT) | (clear_depth && gl.DEPTH_BUFFER_BIT);
-            gl.clear(mask);
-        }
+        this.render_states.depth_write.set({ depth_write: true });
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
     }
 
     setRenderState({ depth_test, depth_write, cull_face, blend } = {}) {
@@ -684,8 +688,8 @@ export default class Scene {
         // Reset frame state
         let gl = this.gl;
 
-        render_states.depth_test.set({ depth_test: depth_test });
-        render_states.depth_write.set({ depth_write: depth_write });
+        render_states.depth_test.set({ depth_test });
+        render_states.depth_write.set({ depth_write });
         render_states.culling.set({ cull: cull_face, face: render_states.defaults.culling_face });
 
         // Blending of alpha channel is modified to account for WebGL alpha behavior, see:
@@ -699,7 +703,7 @@ export default class Scene {
                 });
             }
             // Traditional alpha blending
-            else if (blend === 'overlay' || blend === 'inlay') {
+            else if (blend === 'overlay' || blend === 'inlay' || blend === 'translucent') {
                 render_states.blending.set({
                     blend: true,
                     src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
@@ -727,27 +731,80 @@ export default class Scene {
     }
 
     // Request feature selection at given pixel. Runs async and returns results via a promise.
-    getFeatureAt(pixel) {
+    getFeatureAt(pixel, { radius } = {}) {
         if (!this.initialized) {
             log('debug', "Scene.getFeatureAt() called before scene was initialized");
             return Promise.resolve();
         }
 
-        // Point scaled to [0..1] range
-        var point = {
-            x: pixel.x * Utils.device_pixel_ratio / this.view.size.device.width,
-            y: pixel.y * Utils.device_pixel_ratio / this.view.size.device.height
+        // Scale point and radius to [0..1] range
+        let point = {
+            x: pixel.x / this.view.size.css.width,
+            y: pixel.y / this.view.size.css.height
         };
 
-        return this.selection.getFeatureAt(point).
+        if (radius > 0) {
+            radius  = {
+                x: radius / this.view.size.css.width,
+                y: radius / this.view.size.css.height
+            };
+        }
+        else {
+            radius = null;
+        }
+
+        return this.selection.getFeatureAt(point, { radius }).
             then(selection => Object.assign(selection, { pixel })).
             catch(error => Promise.resolve({ error }));
+    }
+
+    // Query features within visible tiles, with optional filter conditions
+    queryFeatures({ filter, unique = true, group_by = null, visible = null, geometry = false } = {}) {
+        filter = Utils.serializeWithFunctions(filter);
+        let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
+        return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, visible, geometry, tile_keys }).then(results => {
+            let features = [];
+            let keys = {};
+            let groups = {};
+
+            // Optional uniqueify criteria
+            // Valid values: true, false/null, single property name, or array of property names
+            unique = (typeof unique === 'string') ? [unique] : unique;
+            const uniqueify = unique && (obj => JSON.stringify(Array.isArray(unique) ? sliceObject(obj, unique) : obj));
+
+            // Optional grouping criteria
+            // Valid values: false/null, single property name, or array of property names
+            group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
+            const group = group_by && (obj => {
+                return Array.isArray(group_by) ? JSON.stringify(sliceObject(obj, group_by)) : obj[group_by];
+            });
+
+            results.forEach(r => r.forEach(feature => {
+                if (uniqueify) {
+                    let str = uniqueify(feature);
+                    if (keys[str]) {
+                        return;
+                    }
+                    keys[str] = true;
+                }
+
+                if (group) {
+                    let str = group(feature.properties);
+                    groups[str] = groups[str] || [];
+                    groups[str].push(feature);
+                }
+                else {
+                    features.push(feature);
+                }
+            }));
+            return group ? groups : features; // returned grouped results, or all results
+        });
     }
 
     // Rebuild all tiles, without re-parsing the config or re-compiling styles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuild({ sync = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
+    rebuild({ new_generation = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -759,7 +816,7 @@ export default class Scene {
                 }
 
                 // Save queued request
-                let options = { sync, sources, serialize_funcs, profile, fade_in };
+                let options = { new_generation, sources, serialize_funcs, profile, fade_in };
                 this.building.queued = { resolve, reject, options };
                 log('trace', `Scene.rebuild(): queuing request`);
                 return;
@@ -773,11 +830,18 @@ export default class Scene {
                 this._profile('Scene.rebuild');
             }
 
-            // Update config (in case JS objects were manipulated directly)
-            if (sync) {
-                this.syncConfigToWorker({ serialize_funcs });
+            // Increment generation to ensure style/tile building stay in sync
+            // (skipped if calling function already incremented)
+            if (new_generation) {
+                this.generation = ++Scene.generation;
+                for (let style in this.styles) {
+                    this.styles[style].setGeneration(this.generation);
+                }
             }
-            this.resetFeatureSelection();
+
+            // Update config (in case JS objects were manipulated directly)
+            this.syncConfigToWorker({ serialize_funcs });
+            this.resetFeatureSelection(sources);
             this.resetTime();
 
             // Rebuild visible tiles
@@ -800,6 +864,8 @@ export default class Scene {
     // Tile manager finished building tiles
     // TODO move to tile manager
     tileManagerBuildDone() {
+        CanvasText.pruneTextCache();
+
         if (this.building) {
             log('info', `Scene: build geometry finished`);
             if (this.building.resolve) {
@@ -824,18 +890,22 @@ export default class Scene {
        Load (or reload) the scene config
        @return {Promise}
     */
-    loadScene(config_source = null, config_path = null) {
+    loadScene(config_source = null, { base_path, file_type } = {}) {
         this.config_source = config_source || this.config_source;
         this.config_globals_applied = [];
 
         if (typeof this.config_source === 'string') {
-            this.config_path = URLs.pathForURL(config_path || this.config_source);
+            this.base_path = URLs.pathForURL(base_path || this.config_source);
         }
         else {
-            this.config_path = URLs.pathForURL(config_path);
+            this.base_path = URLs.pathForURL(base_path);
         }
 
-        return SceneLoader.loadScene(this.config_source, this.config_path).then(({config, bundle}) => {
+        // backwards compatibility for accessing base path under previous name
+        // TODO: schedule for deprecation
+        this.config_path = this.base_path;
+
+        return SceneLoader.loadScene(this.config_source, { path: this.base_path, type: file_type }).then(({config, bundle}) => {
             this.config = config;
             this.config_bundle = bundle;
             return this.config;
@@ -869,9 +939,6 @@ export default class Scene {
             source.url = URLs.createObjectURL(new Blob([JSON.stringify(source.data)]));
             delete source.data;
         }
-
-        // Resolve paths relative to root scene bundle
-        SceneLoader.normalizeDataSource(source, this.config_bundle);
 
         if (load) {
             return this.updateConfig({ rebuild: { sources: [name] } });
@@ -928,7 +995,7 @@ export default class Scene {
         // (all except those that are only raster sources attached to other sources)
         for (let ln in this.config.layers) {
             let layer = this.config.layers[ln];
-            if (layer.data && this.sources[layer.data.source]) {
+            if (layer.enabled !== false && layer.data && this.sources[layer.data.source]) {
                 this.sources[layer.data.source].builds_geometry_tiles = true;
             }
         }
@@ -955,13 +1022,15 @@ export default class Scene {
             this.styles[style].setGL(this.gl);
         }
 
-        // Use explicitly set scene animation flag if defined, otherwise turn on animation if there are any animated styles
-        this.animated =
-            this.config.scene.animated !== undefined ?
-                this.config.scene.animated :
-                Object.keys(this.styles).some(s => this.styles[s].animated);
-
         this.dirty = true;
+    }
+
+    // Is scene currently animating?
+    get animated () {
+        // Use explicitly set scene animation flag if defined, otherwise enabled animation if any animated styles are in view
+        return (this.config.scene.animated !== undefined ?
+                this.config.scene.animated :
+                this.tile_manager.getActiveStyles().some(s => this.styles[s].animated));
     }
 
     // Get active camera - for public API
@@ -1016,21 +1085,34 @@ export default class Scene {
 
     // Turn introspection mode on/off
     setIntrospection (val) {
-        this.introspection = val || false;
-        this.updating++;
-        return this.updateConfig().then(() => this.updating--);
+        if (val !== this.introspection) {
+            this.introspection = val || false;
+            this.updating++;
+            return this.updateConfig({ normalize: false }).then(() => this.updating--);
+        }
+        return Promise.resolve();
     }
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ load_event = false, rebuild = true, serialize_funcs, fade_in = false } = {}) {
+    updateConfig({ load_event = false, rebuild = true, serialize_funcs, normalize = true, fade_in = false } = {}) {
         this.generation = ++Scene.generation;
         this.updating++;
 
         this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
+        if (normalize) {
+            // normalize whole scene
+            SceneLoader.normalize(this.config, this.config_bundle);
+        }
+        else {
+            // special handling for shader uniforms that are globals
+            SceneLoader.hoistStyleShaderUniformTextures(this.config, this.config_bundle, { include_globals: true });
+
+            // just normalize top-level textures - necessary for adding base path to globals
+            SceneLoader.normalizeTextures(this.config, this.config_bundle);
+        }
         this.trigger(load_event ? 'load' : 'update', { config: this.config });
 
-        SceneLoader.hoistTextures(this.config); // move inline textures into global texture set
         this.style_manager.init();
         this.view.reset();
         this.createLights();
@@ -1044,7 +1126,7 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuild(Object.assign({ serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
+            this.rebuild(Object.assign({ new_generation: false, serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
             this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
@@ -1064,7 +1146,7 @@ export default class Scene {
             config: config_serialized,
             generation: this.generation,
             introspection: this.introspection
-        });
+        }, debugSettings);
     }
 
     // Listen to related objects
@@ -1096,12 +1178,12 @@ export default class Scene {
         this.listeners = null;
     }
 
-    resetFeatureSelection() {
+    resetFeatureSelection(sources = null) {
         if (!this.selection) {
             this.selection = new FeatureSelection(this.gl, this.workers, () => this.building);
         }
         else if (this.workers) {
-            WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection');
+            WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection', sources);
         }
     }
 
@@ -1129,7 +1211,6 @@ export default class Scene {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
             !this.tile_manager.isLoadingVisibleTiles()) {
             this.last_complete_generation = this.generation;
-            CanvasText.pruneTextCache();
             this.trigger('view_complete');
         }
     }
@@ -1141,9 +1222,9 @@ export default class Scene {
     // Take a screenshot
     // Asynchronous because we have to wait for next render to capture buffer
     // Returns a promise
-    screenshot () {
+    screenshot ({ background = 'white' } = {}) {
         this.requestRedraw();
-        return this.media_capture.screenshot();
+        return this.media_capture.screenshot({background});
     }
 
     startVideoCapture () {
@@ -1199,7 +1280,9 @@ export default class Scene {
                 scene.tile_manager.getRenderableTiles().forEach(tile => {
                     for (let style in tile.meshes) {
                         counts[style] = counts[style] || 0;
-                        counts[style] += tile.meshes[style].geometry_count;
+                        tile.meshes[style].forEach(mesh => {
+                            counts[style] += mesh.geometry_count;
+                        });
                     }
                 });
                 return counts;
@@ -1221,7 +1304,9 @@ export default class Scene {
                 scene.tile_manager.getRenderableTiles().forEach(tile => {
                     for (let style in tile.meshes) {
                         sizes[style] = sizes[style] || 0;
-                        sizes[style] += tile.meshes[style].buffer_size;
+                        tile.meshes[style].forEach(mesh => {
+                            sizes[style] += mesh.buffer_size;
+                        });
                     }
                 });
                 return sizes;
@@ -1236,6 +1321,16 @@ export default class Scene {
                     sizes[base] += style_sizes[style];
                 }
                 return sizes;
+            },
+
+            layerStats () {
+                if (debugSettings.layer_stats) {
+                    return Tile.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
+                }
+                else {
+                    log('warn', `Enable the 'layer_stats' debug setting to collect layer stats`);
+                    return {};
+                }
             },
 
             renderableTilesCount () {

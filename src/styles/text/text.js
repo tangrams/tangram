@@ -7,6 +7,7 @@ import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
+import VertexLayout from '../../gl/vertex_layout';
 
 export let TextStyle = Object.create(Points);
 
@@ -16,34 +17,30 @@ Object.assign(TextStyle, {
     built_in: true,
 
     init(options = {}) {
-        let extra_attributes = [
+        Style.init.call(this, options);
+
+        var attribs = [
+            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
+            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
-            { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false }
+            { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
-        this.super.init.call(this, options, extra_attributes);
+        this.vertex_layout = new VertexLayout(attribs);
 
-        // Set texture/point config (override parent Point class)
-        this.defines.TANGRAM_TEXTURE_POINT = true;  // standalone text is always sampled from a texture
-        this.defines.TANGRAM_SHADER_POINT = false;  // standalone text neevr draws a shader point
+        // Shader defines
+        this.setupDefines();
+
+        // Omit some code for SDF-drawn shader points
+        this.defines.TANGRAM_HAS_SHADER_POINTS = false;
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;
-
-        // Disable dual point/text mode
-        this.defines.TANGRAM_MULTI_SAMPLER = false;
-
-        // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
-        this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
-
-        // Fade out text when tile is zooming out, e.g. acting as proxy tiles
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
-
-        // Used to fade out curved labels
-        this.defines.TANGRAM_FADE_ON_ZOOM_IN = true;
-        this.defines.TANGRAM_FADE_ON_ZOOM_IN_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
 
         this.reset();
     },
@@ -52,12 +49,13 @@ Object.assign(TextStyle, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate(style){
-        this.super.makeVertexTemplate.call(this, style);
+    makeVertexTemplate(style, mesh) {
+        this.super.makeVertexTemplate.apply(this, arguments);
+        let vertex_layout = mesh.vertex_data.vertex_layout;
 
-        this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
-        this.fillVertexTemplate('a_offsets', 0, { size: 4 });
-        this.fillVertexTemplate('a_angles', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_pre_angles', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_offsets', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_angles', 0, { size: 4 });
 
         return this.vertex_template;
     },
@@ -71,13 +69,6 @@ Object.assign(TextStyle, {
     addFeature (feature, draw, context) {
         let tile = context.tile;
         if (tile.generation !== this.generation) {
-            return;
-        }
-
-        // Called here because otherwise it will be delayed until the feature queue is parsed,
-        // and we want the preprocessing done before we evaluate text style below
-        draw = this.preprocess(draw);
-        if (!draw) {
             return;
         }
 
@@ -110,32 +101,25 @@ Object.assign(TextStyle, {
         }
 
         // Register with collision manager
-        Collision.addStyle(this.name, tile.key);
-    },
-
-    // Override
-    startData (tile) {
-        this.queues[tile.key] = [];
-        return Style.startData.call(this, tile);
+        Collision.addStyle(this.name, tile.id);
     },
 
     // Override
     endData (tile) {
-        let queue = this.queues[tile.key];
-        delete this.queues[tile.key];
+        let queue = this.queues[tile.id];
+        delete this.queues[tile.id];
 
-        return this.prepareTextLabels(tile, this.name, queue).
-            then(labels => this.collideAndRenderTextLabels(tile, this.name, labels)).
-            then(({ labels, texts, texture }) => {
-                if (texts) {
-                    this.texts[tile.key] = texts;
+        return this.collideAndRenderTextLabels(tile, this.name, queue).
+            then(({ labels, texts, textures }) => {
+                if (labels && texts) {
+                    this.texts[tile.id] = texts;
 
                     // Build queued features
                     labels.forEach(q => {
                         let text_settings_key = q.text_settings_key;
                         let text_info =
-                            this.texts[tile.key][text_settings_key] &&
-                            this.texts[tile.key][text_settings_key][q.text];
+                            this.texts[tile.id][text_settings_key] &&
+                            this.texts[tile.id][text_settings_key][q.text];
 
                         // setup styling object expected by Style class
                         let style = this.feature_style;
@@ -147,18 +131,21 @@ Object.assign(TextStyle, {
                             style.texcoords = {};
 
                             if (q.label.type === 'straight'){
-                                style.size.straight = text_info.total_size.logical_size;
+                                style.size.straight = text_info.size.logical_size;
                                 style.texcoords.straight = text_info.texcoords.straight;
+                                style.label_texture = textures[text_info.texcoords.straight.texture_id];
                             }
                             else{
-                                style.size.curved = text_info.size.map(function(size){ return size.logical_size; });
+                                style.size.curved = text_info.segment_sizes.map(function(size){ return size.logical_size; });
                                 style.texcoords_stroke = text_info.texcoords_stroke;
                                 style.texcoords.curved = text_info.texcoords.curved;
+                                style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
                             }
                         }
                         else {
                             style.size = text_info.size.logical_size;
                             style.texcoords = text_info.align[q.label.align].texcoords;
+                            style.label_texture = textures[text_info.align[q.label.align].texture_id];
                         }
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
@@ -168,12 +155,19 @@ Object.assign(TextStyle, {
 
                 // Finish tile mesh
                 return Style.endData.call(this, tile).then(tile_data => {
-                    // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (texture && tile_data) {
-                        tile_data.uniforms.u_texture = texture;
-                        tile_data.textures.push(texture); // assign texture ownership to tile
-                        return tile_data;
+                    if (tile_data) {
+                        // Attach tile-specific label atlas to mesh as a texture uniform
+                        if (textures && textures.length) {
+                            tile_data.textures.push(...textures); // assign texture ownership to tile
+                        }
+
+                        // Always apply shader blocks to standalone text
+                        for (let m in tile_data.meshes) {
+                            tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
+                        }
                     }
+
+                    return tile_data;
                 });
             });
     },
@@ -184,19 +178,19 @@ Object.assign(TextStyle, {
     },
 
     // Implements label building for TextLabels mixin
-    buildTextLabels (tile_key, feature_queue) {
+    buildTextLabels (tile, feature_queue) {
         let labels = [];
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
-            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            let text_info = this.texts[tile.id][fq.text_settings_key][fq.text];
             let feature_labels;
 
             fq.layout.vertical_buffer = text_info.vertical_buffer;
 
             if (text_info.text_settings.can_articulate){
-                var sizes = text_info.size.map(function(size){ return size.collision_size; });
+                var sizes = text_info.segment_sizes.map(size => size.collision_size);
                 fq.layout.no_curving = text_info.no_curving;
-                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout, text_info.total_size.collision_size);
+                feature_labels = this.buildLabels(sizes, fq.feature.geometry, fq.layout, text_info.size.collision_size);
             }
             else {
                 feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
@@ -258,14 +252,23 @@ Object.assign(TextStyle, {
                 }
             }
         }
-        else {
+
+        // Consider full line for label placement if no subdivisions requested, or as last resort if not enough
+        // labels placed (e.g. fewer than requested subdivisions)
+        // TODO: refactor multiple label placements per line / move into label placement class for better effectiveness
+        if (labels.length < subdiv) {
             let label = LabelLine.create(size, total_size, line, layout);
             if (label){
                 labels.push(label);
             }
         }
         return labels;
-    }
+    },
+
+    // Override to restore base class default implementations
+    vertexLayoutForMeshVariant: Style.vertexLayoutForMeshVariant,
+    meshVariantTypeForDraw: Style.meshVariantTypeForDraw
+
 });
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures

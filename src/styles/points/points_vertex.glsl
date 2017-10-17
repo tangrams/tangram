@@ -18,12 +18,10 @@ uniform mat3 u_inverseNormalMatrix;
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
-attribute float a_outline_edge;
-attribute vec4 a_outline_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
 
-#define PI 3.14159265359
+uniform float u_point_type;
 
 #ifdef TANGRAM_CURVED_LABEL
     attribute vec4 a_offsets;
@@ -31,23 +29,22 @@ attribute vec2 a_offset;
     attribute vec4 a_angles;
 #endif
 
-#define TANGRAM_NORMAL vec3(0., 0., 1.)
-#define TANGRAM_PX_FADE_RANGE 2.
-
 varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 varying float v_alpha_factor;
-varying float v_aa_factor;
 
-#ifdef TANGRAM_SHADER_POINT
+#ifdef TANGRAM_HAS_SHADER_POINTS
+    attribute float a_outline_edge;
+    attribute vec4 a_outline_color;
+
     varying float v_outline_edge;
     varying vec4 v_outline_color;
+    varying float v_aa_offset;
 #endif
 
-#ifdef TANGRAM_MULTI_SAMPLER
-    varying float v_sampler;
-#endif
+#define PI 3.14159265359
+#define TANGRAM_NORMAL vec3(0., 0., 1.)
 
 #pragma tangram: camera
 #pragma tangram: material
@@ -60,29 +57,17 @@ vec2 rotate2D(vec2 _st, float _angle) {
                 sin(_angle),cos(_angle)) * _st;
 }
 
-// Assumes stops are [0, 0.33, 0.66, 0.99];
-float mix4linear(float a, float b, float c, float d, float x) {
-    return mix(mix(a, b, 3. * x),
-               mix(b,
-                   mix(c, d, 3. * (max(x, .66) - .66)),
-                   3. * (clamp(x, .33, .66) - .33)),
-               step(0.33, x)
-            );
-}
-
-// Determines if a shader-drawn point is being rendered (vs. a sprite or text label)
-bool isShaderPoint() {
-    #ifdef TANGRAM_SHADER_POINT
-        #ifdef TANGRAM_MULTI_SAMPLER
-            if (v_sampler == 0.) { // sprite sampler
-                return true;
-            }
-        #else
-            return true;
-        #endif
-    #endif
-    return false;
-}
+#ifdef TANGRAM_CURVED_LABEL
+    // Assumes stops are [0, 0.33, 0.66, 0.99];
+    float mix4linear(float a, float b, float c, float d, float x) {
+        return mix(mix(a, b, 3. * x),
+                   mix(b,
+                       mix(c, d, 3. * (max(x, .66) - .66)),
+                       3. * (clamp(x, .33, .66) - .33)),
+                   step(0.33, x)
+                );
+    }
+#endif
 
 void main() {
     // Initialize globals
@@ -90,12 +75,19 @@ void main() {
 
     v_alpha_factor = 1.0;
     v_color = a_color;
-    v_texcoord = a_texcoord;
-    v_aa_factor = 1. / length(a_shape.xy / 256.) * TANGRAM_PX_FADE_RANGE;
+    v_texcoord = a_texcoord; // UV from vertex
 
-    #ifdef TANGRAM_SHADER_POINT
+    #ifdef TANGRAM_HAS_SHADER_POINTS
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
+        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
+            v_outline_color = a_outline_color;
+            v_outline_edge = a_outline_edge;
+            float size = abs(a_shape.x/128.); // radius in pixels
+            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);
+            size+=2.;
+            v_aa_offset=2./size;
+        }
     #endif
 
     // Position
@@ -109,6 +101,7 @@ void main() {
     float theta = a_shape.z / 4096.;
 
     #ifdef TANGRAM_CURVED_LABEL
+        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
         if (a_offsets[0] != 0.){
             #ifdef TANGRAM_FADE_ON_ZOOM_IN
                 v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);
@@ -132,10 +125,6 @@ void main() {
         }
     #else
         shape = rotate2D(shape + offset, theta);
-    #endif
-
-    #ifdef TANGRAM_MULTI_SAMPLER
-        v_sampler = a_shape.w; // texture sampler
     #endif
 
     // Fade in (if requested) based on time mesh has been visible.
@@ -173,10 +162,20 @@ void main() {
     // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)
     // Device pixel ratio adjustment is because shape is in logical pixels
     position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
+    #ifdef TANGRAM_HAS_SHADER_POINTS
+        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
+            // enlarge by 1px to catch missed MSAA fragments
+            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;
+        }
+    #endif
 
     // Snap to pixel grid
     // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active
-    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && !isShaderPoint()) {
+    #ifdef TANGRAM_HAS_SHADER_POINTS
+    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {
+    #else
+    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {
+    #endif
         vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);
         vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);
 

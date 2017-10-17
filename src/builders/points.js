@@ -6,7 +6,7 @@ import { default_uvs } from './common';
 // of a sprite between two zoom levels.
 export function buildQuadsForPoints (points, vertex_data, vertex_template,
     { texcoord_index, position_index, shape_index, offset_index, offsets_index, pre_angles_index, angles_index },
-    { quad, quad_normalize, offset, offsets, pre_angles, angle, angles, shape_w, curve, texcoord_scale, texcoord_normalize, pre_angles_normalize, angles_normalize, offsets_normalize }) {
+    { quad, quad_normalize, offset, offsets, pre_angles, angle, angles, curve, texcoord_scale, texcoord_normalize, pre_angles_normalize, angles_normalize, offsets_normalize }) {
     quad_normalize = quad_normalize || 1;
     let w2 = quad[0] / 2 * quad_normalize;
     let h2 = quad[1] / 2 * quad_normalize;
@@ -34,6 +34,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
         ];
     }
 
+    var geom_count = 0;
     let num_points = points.length;
     for (let p=0; p < num_points; p++) {
         let point = points[p];
@@ -51,7 +52,6 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
             vertex_template[shape_index + 0] = scaling[pos][0];
             vertex_template[shape_index + 1] = scaling[pos][1];
             vertex_template[shape_index + 2] = angle;
-            vertex_template[shape_index + 3] = shape_w;
 
             vertex_template[offset_index + 0] = offset[0];
             vertex_template[offset_index + 1] = offset[1];
@@ -92,5 +92,8 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
         vertex_elements.push(element_offset + 0);
 
         element_offset += 4;
+        geom_count += 2;
     }
+
+    return geom_count;
 }

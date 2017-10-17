@@ -19,14 +19,23 @@ export default Collision = {
         };
 
         // Promise resolved when all registered styles have added objects
-        state.complete = new Promise((resolve, reject) => {
-            state.resolve = resolve;
-            state.reject = reject;
-        });
+        if (state.complete == null) {
+            state.complete = new Promise((resolve, reject) => {
+                state.resolve = resolve;
+                state.reject = reject;
+            });
+        }
     },
 
     resetTile (tile) {
         delete this.tiles[tile];
+    },
+
+    abortTile (tile) {
+        if (this.tiles[tile] && this.tiles[tile].resolve) {
+            this.tiles[tile].resolve([]);
+        }
+        this.resetTile(tile);
     },
 
     // Add a style to the pending set, collision will block on all styles submitting to collision set
@@ -60,6 +69,7 @@ export default Collision = {
 
         // Wait for objects to be added from all styles
         return state.complete.then(() => {
+            state.resolve = null;
             return state.keep[style] || [];
         });
     },

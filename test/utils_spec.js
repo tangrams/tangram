@@ -37,10 +37,6 @@ describe('Utils', () => {
         });
     });
 
-    // describe('.serializeWithFunctions(obj)', () => {});
-    // describe('.deserializeWithFunctions(serialized)', () => {});
-    // describe('.stringsToFunctions(obj)', () => {});
-
     describe('.isPowerOf2(value)', () => {
         let subject = Utils.isPowerOf2;
         describe('when given a value of that is a power of 2', () => {

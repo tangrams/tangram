@@ -197,8 +197,7 @@ export default class ShaderProgram {
                     e.block = this.block(error.type, e.line);
                 });
             }
-
-            throw(new Error(`ShaderProgram.compile(): program ${this.id} (${this.name}) error:`, error));
+            throw error;
         }
 
         // Discard shader sources after successful compilation
@@ -675,14 +674,8 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
         return ShaderProgram.programs_by_source[key];
     }
 
-    try {
-        var vertex_shader = ShaderProgram.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
-        var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
-    }
-    catch(err) {
-        log('error', err.message);
-        throw err;
-    }
+    var vertex_shader = ShaderProgram.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
+    var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
 
     gl.useProgram(null);
     if (program != null) {
@@ -715,9 +708,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
             --- Fragment Shader ---
             ${fragment_shader_source}`);
 
-        let error = { type: 'program', message };
-        log('error', error.message);
-        throw error;
+        throw Object.assign(new Error(message), { type: 'program' });
     }
 
     ShaderProgram.programs_by_source[key] = program; // cache by exact source
@@ -742,7 +733,7 @@ ShaderProgram.createShader = function (gl, source, stype) {
         let type = (stype === gl.VERTEX_SHADER ? 'vertex' : 'fragment');
         let message = gl.getShaderInfoLog(shader);
         let errors = parseShaderErrors(message);
-        throw { type, message, errors };
+        throw Object.assign(new Error(message), { type, errors });
     }
 
     ShaderProgram.shaders_by_source[key] = shader; // cache by exact source
