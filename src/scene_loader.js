@@ -1,7 +1,7 @@
 import log from './utils/log';
 import GLSL from './gl/glsl';
 import * as URLs from './utils/urls';
-import mergeObjects from './utils/merge';
+import {mergeObjectsWithArrayMergeOp} from './utils/merge';
 import subscribeMixin from './utils/subscribe';
 import {createSceneBundle, isGlobal} from './scene_bundle';
 import {isReserved} from './styles/layer';
@@ -71,7 +71,7 @@ export default SceneLoader = {
                     then(results => {
                         results.forEach(r => this.normalize(r.config, r.bundle)); // first normalize imports
                         let configs = results.map(r => r.config);
-                        config = mergeObjects(...configs, config);
+                        config = mergeObjectsWithArrayMergeOp(...configs, config);
                         this.normalize(config, bundle); // last normalize parent, after merge
                         return { config, bundle };
                     });
