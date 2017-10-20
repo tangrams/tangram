@@ -28,6 +28,10 @@
         keyboard: false
     });
 
+    // Set the map location (will be overwritten if location URL params present)
+    var map_start_location = [16, 40.70531887544228, -74.00976419448853]; // NYC
+    map.setView(map_start_location);
+
     // Useful events to subscribe to
     layer.scene.subscribe({
         load: function (msg) {
@@ -85,27 +89,91 @@
 
     function onHover (selection) {
         var feature = selection.feature;
-        if (feature && feature.properties.name) {
-            var name = feature.properties.name;
+        if (feature) {
+            if (selection.changed) {
+                var info;
+                if (scene.introspection) {
+                    info = getFeaturePropsHTML(feature);
+                }
+                else {
+                    var name = feature.properties.name || (feature.properties.kind && '['+feature.properties.kind+']');
+                    if (name) {
+                        name = '<b>'+name+'</b>';
+                        name += '<br>(click for details)';
+                    }
+                    name = '<span class="labelInner">' + name + '</span>';
+                    info = name;
+                }
 
-            el_selection.style.visibility = 'visible';
-            el_selection.style.left = selection.pixel.x + 'px';
-            el_selection.style.top = selection.pixel.y + 'px';
-            el_selection.innerHTML = '<span class="labelInner">' + name + '</span>';
+                if (info) {
+                    el_selection.style.visibility = 'visible';
+                    el_selection.innerHTML = info;
+                }
+            }
         }
         else {
             el_selection.style.visibility = 'hidden';
         }
+
+        // Update label location
+        if (selection.pixel) {
+            el_selection.style.left = selection.pixel.x + 'px';
+            el_selection.style.top = selection.pixel.y + 'px';
+        }
     }
 
-    // Link to edit in Open Street Map on alt+click (opens popup window)
-    function onClick() {
+    function onClick(selection) {
+        // Link to edit in Open Street Map on alt+click (opens popup window)
         if (key.alt) {
             var center = map.getCenter();
             var url = 'https://www.openstreetmap.org/edit?#map=' + map.getZoom() + '/' + center.lat + '/' + center.lng;
             window.open(url, '_blank');
+            return;
         }
-    };
+
+        if (scene.introspection) {
+            return; // click doesn't show additional details when introspection is on
+        }
+
+        // Show feature details
+        var feature = selection.feature;
+        if (feature) {
+            var info = getFeaturePropsHTML(feature);
+            el_selection.style.visibility = 'visible';
+            el_selection.innerHTML = info;
+        }
+        else {
+            el_selection.style.visibility = 'hidden';
+        }
+
+        // Update label location
+        if (selection.pixel) {
+            el_selection.style.left = selection.pixel.x + 'px';
+            el_selection.style.top = selection.pixel.y + 'px';
+        }
+    }
+
+    // Get an HTML fragment with feature properties
+    function getFeaturePropsHTML (feature) {
+        var props = ['name', 'kind', 'kind_detail', 'id']; // show these properties first if available
+        Object.keys(feature.properties) // show rest of proeprties alphabetized
+            .sort()
+            .forEach(function(p) {
+                if (props.indexOf(p) === -1) {
+                    props.push(p);
+                }
+            });
+
+        var info = '<div class="featureTable">';
+        props.forEach(function(p) {
+            if (feature.properties[p]) {
+                info += '<div class="featureRow"><div class="featureCell"><b>' + p + '</b></div>' +
+                    '<div class="featureCell">' + feature.properties[p] + '</div></div>';
+            }
+        });
+        info += '</div>';
+        return info;
+    }
 
     /*** Map ***/
 

@@ -26,5 +26,21 @@ body {
 .labelInner {
     padding: 2px;
     background: white;
-    opacity: 0.75;
+    opacity: 0.85;
+}
+
+.featureTable {
+    display: table;
+    background: white;
+    opacity: 0.85;
+}
+
+.featureRow {
+    display: table-row;
+    text-align: left;
+}
+
+.featureCell {
+    display: table-cell;
+    padding: 2px 4px;
 }

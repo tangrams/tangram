@@ -3,8 +3,9 @@
     var gui = new dat.GUI({ autoPlace: true });
     gui.domElement.parentNode.style.zIndex = 10000;
 
-    var scene = layer.scene;
+    var scene = window.scene;
 
+    window.gui = gui;
     window.addEventListener('load', function () {
         // Scene initialized
         layer.on('init', function() {
@@ -27,46 +28,100 @@
     function addGUI () {
         setLanguage(gui, scene);
         setCamera(gui, scene);
-        setMediaRecorder(gui, scene);
-        setScreenshot(gui, scene);
-        setLayers(gui, scene);
-        setEffects(gui);
         setScene(gui);
+        setScreenshot(gui, scene);
+        setMediaRecorder(gui, scene);
+        setFeatureDebug(gui);
+        setLayers(gui, scene);
     }
 
-    function url_domain(src) {
-        var a = document.createElement('a');
-        a.href = src;
-        return a.hostname;
-    }
-
-    function setScene(gui){
+    function setScene(gui) {
         var scenes = {
-            default: './demos/scene.yaml',
-            tron: 'https://mapzen.com/carto/tron-style/2/tron-style.zip',
-            bubble_wrap: 'https://mapzen.com/carto/bubble-wrap-style/bubble-wrap.zip',
-            walkabout: 'https://mapzen.com/carto/walkabout-style/walkabout-style.yaml'
-        };
+            // Default style
+            'Simple': 'demos/scene.yaml',
 
-        gui.scene = scenes.default;
-        gui.add(gui, 'scene', scenes).onChange(function(value) {
-            scene.load(value);
-            // TODO: implement `once` so callback isn't fired redundantly
-            scene.subscribe({load : function(){
-                for (var key in scene.config.sources) {
-                    var source = scene.config.sources[key];
-                    var url = source.url;
-                    var domain = url_domain(url);
+            // Mapzen basemaps
+            'Bubble Wrap': {
+                import: [
+                    'https://mapzen.com/carto/bubble-wrap-style/bubble-wrap-style.zip',
+                    'https://mapzen.com/carto/bubble-wrap-style/themes/label-10.zip'
+                ]
+            },
 
-                    if (domain.split('.').indexOf('mapzen') !== -1){
-                        (function(source){
-                            if (!source.url_params) source.url_params = {};
-                            if (!source.url_params.api_key)
-                                source.url_params.api_key = "mapzen-T3tPjn7";
-                        })(source)
+            'Walkabout': {
+                import: [
+                    'https://mapzen.com/carto/walkabout-style/walkabout-style.zip',
+                    'https://mapzen.com/carto/walkabout-style/themes/label-10.zip'
+                ]
+            },
+
+            'Refill': {
+                import: [
+                    'https://mapzen.com/carto/refill-style/refill-style.zip',
+                    'https://mapzen.com/carto/refill-style/themes/label-10.zip'
+                ]
+            },
+
+            'Tron': {
+                import: [
+                    'https://mapzen.com/carto/tron-style/tron-style.zip',
+                    'https://mapzen.com/carto/tron-style/themes/label-10.zip'
+                ]
+            },
+
+            // Default style
+            'Crosshatch': 'demos/styles/crosshatch.zip',
+
+            // Fragment shader example
+            'Rainbow Buildings': {
+                import: [
+                    'demos/scene.yaml',
+                    'demos/styles/rainbow.yaml'
+                ],
+                layers: {
+                    buildings: {
+                        polygons: {
+                            draw: {
+                                polygons: { style: 'rainbow' }
+                            },
+                            extruded: {
+                                draw: {
+                                    polygons: { style: 'rainbow' }
+                                }
+                            }
+                        }
                     }
                 }
-            }});
+            },
+
+            // Vertex shader example
+            'Pop-up Buildings': {
+                import: [
+                    'demos/scene.yaml',
+                    'demos/styles/popup.yaml'
+                ],
+                layers: {
+                    buildings: {
+                        polygons: {
+                            extruded: {
+                                draw: {
+                                    polygons: { style: 'popup' }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        Object.keys(scenes).forEach(s => scenes[s] = JSON.stringify(scenes[s])); // need to stringify JSON for dat.gui :(
+
+        gui.scene = scenes['Simple'];
+        gui.add(gui, 'scene', scenes).onChange(function(value) {
+            value = JSON.parse(value); // need to stringify JSON for dat.gui :(
+            scene.load(value).then(function() {
+                setCamera(gui, scene);
+                setLayers(gui, scene);
+            });
         });
     }
 
@@ -91,16 +146,31 @@
     }
 
     function setCamera(gui, scene){
-        var camera_types = {
-            'Flat': 'flat',
-            'Perspective': 'perspective',
-            'Isometric': 'isometric'
-        };
+        if (gui.camera == null) {
+            var camera_types = {
+                'Flat': 'flat',
+                'Perspective': 'perspective',
+                'Isometric': 'isometric'
+            };
 
-        gui.camera = scene.getActiveCamera();
-        gui.add(gui, 'camera', camera_types).onChange(function(value) {
-            scene.setActiveCamera(value);
-        });
+            gui.camera = scene.getActiveCamera();
+            gui.add(gui, 'camera', camera_types).onChange(function(value) {
+                scene.setActiveCamera(value);
+            });
+        }
+
+        // Check for presence of cameras for selector (not all example scenes have them)
+        var cameras = scene.config.cameras;
+        var disabled = ((cameras.perspective && cameras.isometric && cameras.flat) == null);
+        var controller = gui.__controllers.filter(function(c){ return c.property == 'camera' })[0];
+        var select = controller.domElement.querySelector('select');
+        if ((cameras.perspective && cameras.isometric && cameras.flat) == null) {
+            select.setAttribute('disabled', true);
+        }
+        else {
+            select.removeAttribute('disabled');
+            controller.setValue('perspective'); // reset on scene load
+        }
     }
 
     function setScreenshot(gui, scene){
@@ -139,6 +209,7 @@
     }
 
     function setLayers(gui, scene){
+        gui.removeFolder('Layers');
         var layer_gui = gui.addFolder('Layers');
         var layer_controls = {};
 
@@ -157,180 +228,17 @@
             layer_gui.add(layer_controls, key)
                 .onChange(function(value) {
                     layer.enabled = value;
-                    scene.rebuild();
+                    scene.updateConfig();
                 });
 
         }
     }
 
-    function setEffects(gui){
-        // GUI options for rendering style/effects
-        var style_options = {
-            effect: '',
-            options: {
-                'None': '',
-                'Water animation': 'water',
-                'Elevator': 'elevator',
-                'Pop-up': 'popup',
-                'Halftone': 'halftone',
-                'Windows': 'windows',
-                'Environment Map': 'envmap',
-                'Rainbow': 'rainbow'
-            },
-            saveInitial: function() {
-                this.initial = { config: JSON.stringify(scene.config) };
-            },
-            setup: function (style) {
-                // Restore initial state
-                scene.config = JSON.parse(this.initial.config);
-
-                // Remove existing style-specific controls
-                gui.removeFolder(this.folder);
-
-                // Style-specific settings
-                if (style != '') {
-                    if (this.settings[style] != null) {
-                        var settings = this.settings[style] || {};
-
-                        // Change projection if specified
-                        if (settings.camera) {
-                            scene.setActiveCamera(settings.camera);
-                        }
-
-                        // Style-specific setup function
-                        if (settings.setup) {
-                            settings.uniforms = function() {
-                                return scene.styles[style] && scene.styles[style].shaders.uniforms;
-                            };
-                            settings.state = {}; // dat.gui needs a single object to old state
-
-                            this.folder = style[0].toUpperCase() + style.slice(1); // capitalize first letter
-                            settings.folder = gui.addFolder(this.folder);
-                            settings.folder.open();
-
-                            settings.setup(style);
-
-                            if (settings.folder.__controllers.length === 0) {
-                                gui.removeFolder(this.folder);
-                            }
-                        }
-
-                        scene.config.layers.earth.fill.enabled = true; // some custom shaders may need to render earth
-                    }
-                    else {
-                        scene.config.layers.earth.fill.enabled = false; // don't need earth layer in default style
-                    }
-                }
-
-                // Recompile/rebuild
-                scene.updateConfig();
-                // updateURL();
-
-                // Force-update dat.gui
-                for (var i in gui.__controllers) {
-                    gui.__controllers[i].updateDisplay();
-                }
-            },
-            settings: {
-                'water': {
-                    setup: function (style) {
-                        scene.config.layers.water.draw.polygons.style = style;
-                    }
-                },
-                'rainbow': {
-                    setup: function (style) {
-                        scene.config.layers.earth.fill.draw.polygons.color = '#333';
-                        scene.config.layers.roads.draw.lines.color = '#777';
-                        scene.config.layers.pois.enabled = false;
-                        scene.config.layers.buildings.polygons.draw.polygons.style = style;
-                        scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
-                    }
-                },
-                'popup': {
-                    setup: function (style) {
-                        scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
-                    }
-                },
-                'elevator': {
-                    setup: function (style) {
-                        scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
-                    }
-                },
-                'halftone': {
-                    setup: function (style) {
-                        scene.config.scene.background.color = 'black';
-
-                        var layers = scene.config.layers;
-                        layers.earth.fill.draw.polygons.style = 'halftone_polygons';
-                        layers.water.draw.polygons.style = 'halftone_polygons';
-                        layers.landuse.areas.draw.polygons.style = 'halftone_polygons';
-                        layers.buildings.polygons.draw.polygons.style = 'halftone_polygons';
-                        layers.buildings.polygons.extruded.draw.polygons.style = 'halftone_polygons';
-                        layers.buildings.polygons.draw.polygons.color = 'Style.color.pseudoRandomColor()';
-                        layers.roads.draw.lines.style = 'halftone_lines';
-                        layers.pois.enabled = false;
-
-                        var enabled_layers = ['landuse', 'water', 'roads', 'buildings'];
-                        Object.keys(layers).forEach(function(l) {
-                            if (enabled_layers.indexOf(l) === -1) {
-                                layers[l].enabled = false;
-                            }
-                        });
-                    }
-                },
-                'windows': {
-                    camera: 'isometric', // force isometric
-                    setup: function (style) {
-                        scene.config.layers.earth.fill.draw.polygons.color = '#333';
-                        scene.config.layers.roads.draw.lines.color = '#777';
-                        scene.config.layers.pois.enabled = false;
-
-                        scene.config.layers.buildings.polygons.draw.polygons.style = style;
-                        scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
-                        // scene.config.layers.pois.enabled = false;
-                    }
-                },
-                'envmap': {
-                    setup: function (style) {
-                        scene.config.layers.earth.fill.draw.polygons.color = '#333';
-                        scene.config.layers.roads.draw.lines.color = '#777';
-
-                        scene.config.layers.buildings.polygons.draw.polygons.style = style;
-                        scene.config.layers.buildings.polygons.extruded.draw.polygons.style = style;
-
-                        var envmaps = {
-                            'Sunset': 'demos/images/sunset.jpg',
-                            'Chrome': 'demos/images/LitSphere_test_02.jpg',
-                            'Matte Red': 'demos/images/matball01.jpg',
-                            'Color Wheel': 'demos/images/wheel.png'
-                        };
-
-                        this.state.envmap = envmaps['Sunset'];
-                        this.folder.add(this.state, 'envmap', envmaps).onChange(function(value) {
-                            scene.config.styles.envmap.material.emission.texture = value;
-                            scene.load(scene.config, scene.config_path);
-                        }.bind(this));
-                    }
-                }
-            },
-            scaleColor: function (c, factor) { // convenience for converting between uniforms (0-1) and DAT colors (0-255)
-                if ((typeof c == 'string' || c instanceof String) && c[0].charAt(0) == "#") {
-                    // convert from hex to rgb
-                    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(c);
-                    c = result ? [
-                        parseInt(result[1], 16),
-                        parseInt(result[2], 16),
-                        parseInt(result[3], 16)
-                    ] : null;
-                }
-                return [c[0] * factor, c[1] * factor, c[2] * factor];
-            }
-        };
-
-        gui.add(style_options, 'effect', style_options.options)
-            .onChange(function(value){
-                style_options.saveInitial();
-                style_options.setup(value);
-            });
+    function setFeatureDebug(gui) {
+        gui.debug = false;
+        gui.add(gui, 'debug').onChange(function(value) {
+            scene.setIntrospection(value);
+        });
     }
+
 })()
