@@ -338,6 +338,7 @@ export default SceneLoader = {
         }
 
         // Ensure top-level properties
+        config.global = config.global || {};
         config.scene = config.scene || {};
         config.cameras = config.cameras || {};
         config.lights = config.lights || {};
