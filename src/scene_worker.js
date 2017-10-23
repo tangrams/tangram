@@ -30,7 +30,7 @@ Object.assign(self, {
     tiles: {},
 
     // Initialize worker
-    init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio, has_element_index_unit) {
+    init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio, has_element_index_unit, external_scripts) {
         self.scene_id = scene_id;
         self._worker_id = worker_id;
         self.num_workers = num_workers;
@@ -39,7 +39,29 @@ Object.assign(self, {
         VertexElements.setElementIndexUint(has_element_index_unit);
         FeatureSelection.setPrefix(self._worker_id);
         self.style_manager = new StyleManager();
+        self.importCustomScripts(external_scripts);
         return worker_id;
+    },
+
+    // Import custom scripts
+    importCustomScripts(scripts) {
+        if (scripts.length === 0) {
+            return;
+        }
+        log('debug', 'loading custom data source scripts in worker:', scripts);
+
+        // `window` is already shimmed to allow compatibility with some other libraries (e.g. FontFaceObserver)
+        // So there's an extra dance here to look for any additional `window` properties added by these script imports,
+        // then add them to the worker `self` scope.
+        let prev_names = Object.getOwnPropertyNames(window);
+
+        importScripts(...scripts);
+
+        Object.getOwnPropertyNames(window).forEach(prop => {
+            if (prev_names.indexOf(prop) === -1) {
+                self[prop] = window[prop]; // new property added to window, also add it to self
+            }
+        });
     },
 
     // Starts a config refresh

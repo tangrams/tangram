@@ -275,24 +275,13 @@ export default class Scene {
         if (!worker_url) {
             throw new Error("Couldn't find internal Tangram source variable (may indicate the library did not build correctly)");
         }
-
-        // Import custom data source scripts alongside core library
-        // NOTE: workaround for issue where large libraries intermittently fail to load in web workers,
-        // when multiple importScripts() calls are used. Loading all scripts (including Tangram itself)
-        // in one call at at worker creation time has not exhibited the same issue.
-        let urls = [...this.data_source_scripts];
-        urls.push(worker_url); // load Tangram *last* (has been more reliable, though reason unknown)
-        let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
-        return URLs.createObjectURL(new Blob([body], { type: 'application/javascript' }));
+        return worker_url;
     }
 
     // Update list of any custom data source scripts (if any)
     updateDataSourceScripts () {
         let prev_scripts = [...(this.data_source_scripts||[])]; // save list of previously loaded scripts
         let scripts = Object.keys(this.config.sources).map(s => this.config.sources[s].scripts).filter(x => x);
-        if (scripts.length > 0) {
-            log('debug', 'loading custom data source scripts in worker:', scripts);
-        }
         this.data_source_scripts = [].concat(...scripts).sort();
 
         // Scripts changed?
@@ -321,15 +310,15 @@ export default class Scene {
 
         let queue = [];
         this.workers = [];
-        for (var id=0; id < this.num_workers; id++) {
-            var worker = new Worker(url);
+        for (let id=0; id < this.num_workers; id++) {
+            let worker = new Worker(url);
             this.workers[id] = worker;
 
             WorkerBroker.addWorker(worker);
 
             log('debug', `Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio, has_element_index_uint).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio, has_element_index_uint, this.data_source_scripts).then(
                 (id) => {
                     log('debug', `Scene.makeWorkers: initialized worker ${id}`);
                     return id;
