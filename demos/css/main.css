@@ -14,15 +14,33 @@ body {
 .label {
     width: 200px;
     margin-left: -100px;
+    margin-top: 15px;
     position: absolute;
     z-index: 100001;
     text-align: center;
     font-family: Helvetica, sans-serif;
     font-size: 12px;
+    display: block;
 }
 
 .labelInner {
     padding: 2px;
     background: white;
-    opacity: 0.75;
+    opacity: 0.85;
+}
+
+.featureTable {
+    display: table;
+    background: white;
+    opacity: 0.85;
+}
+
+.featureRow {
+    display: table-row;
+    text-align: left;
+}
+
+.featureCell {
+    display: table-cell;
+    padding: 2px 4px;
 }

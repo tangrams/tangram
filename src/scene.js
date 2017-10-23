@@ -60,12 +60,12 @@ export default class Scene {
 
         if (options.preUpdate){
             // optional pre-render loop hook
-            this.subscribe({'preUpdate': options.preUpdate});
+            this.subscribe({'pre_update': options.preUpdate});
         }
 
         if (options.postUpdate){
             // optional post-render loop hook
-            this.subscribe({'postUpdate': options.postUpdate});
+            this.subscribe({'post_update': options.postUpdate});
         }
 
         this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
@@ -443,7 +443,7 @@ export default class Scene {
         );
 
         // Pre-render loop hook
-        this.trigger('preUpdate', will_render);
+        this.trigger('pre_update', will_render);
 
         // Update view (needs to update user input timer even if no render will occur)
         this.view.update();
@@ -461,7 +461,7 @@ export default class Scene {
         this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
         // Post-render loop hook
-        this.trigger('postUpdate', will_render);
+        this.trigger('post_update', will_render);
 
         // Redraw every frame if animating
         if (this.animated === true || this.view.isAnimating()) {

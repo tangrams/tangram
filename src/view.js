@@ -77,11 +77,15 @@ export default class View {
     // Set active camera and recompile - for public API
     setActiveCamera (name) {
         let prev = this.getActiveCamera();
+        if (prev === name) {
+            return name;
+        }
+
         if (this.scene.config.cameras[name]) {
             this.scene.config.cameras[name].active = true;
 
             // Clear previously active camera
-            if (prev && prev !== name && this.scene.config.cameras[prev]) {
+            if (prev && this.scene.config.cameras[prev]) {
                 delete this.scene.config.cameras[prev].active;
             }
         }
