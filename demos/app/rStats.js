@@ -24,14 +24,14 @@
 
     var scene = layer.scene;
     scene.subscribe({
-        preUpdate: function(will_render){
+        pre_update: function(will_render){
             rStats_debug('fps').frame();
             if (will_render) {
                 rStats_debug('frame').start();
                 glS.start();
             }
         },
-        postUpdate: function(){
+        post_update: function(){
             rStats_debug('frame').end();
             rStats_debug('tiles').set(scene.debug.renderableTilesCount());
             rStats_debug('buffer_size').set((scene.tile_manager.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));

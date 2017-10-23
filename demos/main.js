@@ -40,7 +40,7 @@
         update: function (msg) {
             // scene updated
         },
-        preUpdate: function (will_render) {
+        pre_update: function (will_render) {
             // before scene update
             // zoom in/out if up/down arrows pressed
             var zoom_step = 0.03;
@@ -51,7 +51,7 @@
                 map._move(map.getCenter(), map.getZoom() - zoom_step);
             }
         },
-        postUpdate: function (will_render){
+        post_update: function (will_render){
             // after scene update
         },
         view_complete: function (msg) {
