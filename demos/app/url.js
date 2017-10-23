@@ -33,4 +33,4 @@
         updateURL();
         map.setView(map_start_location.slice(1, 3), map_start_location[0]);
     });
-})()
+})();

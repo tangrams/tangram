@@ -1,31 +1,28 @@
 (function(){
-    // Create dat GUI
-    var gui = new dat.GUI({ autoPlace: true });
-    gui.domElement.parentNode.style.zIndex = 10000;
-
     var scene = window.scene;
+    var scene_key = 'Simple';
 
-    window.gui = gui;
     window.addEventListener('load', function () {
-        // Scene initialized
-        layer.on('init', function() {
-            addGUI();
+        // Add GUI on scene load
+        layer.scene.subscribe({
+            load: function (msg) {
+                addGUI();
+            }
         });
     });
 
-    gui.removeFolder = function(name) {
-        var folder = this.__folders[name];
-        if (folder == null) {
-            return;
+    var gui;
+    function addGUI () {
+        // Remove old GUI
+        if (gui != null) {
+            gui.destroy();
         }
 
-        folder.close();
-        folder.__ul.parentNode.removeChild(folder.__ul);
-        this.__folders[name] = undefined;
-        this.onResize();
-    };
+        // Create GUI
+        gui = new dat.GUI({ autoPlace: true });
+        gui.domElement.parentNode.style.zIndex = 10000;
+        window.gui = gui;
 
-    function addGUI () {
         setLanguage(gui, scene);
         setCamera(gui, scene);
         setScene(gui);
@@ -113,15 +110,13 @@
                 }
             }
         };
-        Object.keys(scenes).forEach(s => scenes[s] = JSON.stringify(scenes[s])); // need to stringify JSON for dat.gui :(
+        Object.keys(scenes).forEach(function(s){ scenes[s] = JSON.stringify(scenes[s]) }); // need to stringify JSON for dat.gui :(
 
-        gui.scene = scenes['Simple'];
+        gui.scene = scenes[scene_key];
         gui.add(gui, 'scene', scenes).onChange(function(value) {
+            scene_key = Object.keys(scenes).filter(function(s){ return scenes[s] === value })[0]; // find scene from sample list
             value = JSON.parse(value); // need to stringify JSON for dat.gui :(
-            scene.load(value).then(function() {
-                setCamera(gui, scene);
-                setLayers(gui, scene);
-            });
+            scene.load(value);
         });
     }
 
@@ -138,15 +133,21 @@
             'Spanish': 'es'
         };
 
-        gui.language = langs.English;
-        gui.add(gui, 'language', langs).onChange(function(value) {
-            scene.config.global.language = value;
-            scene.updateConfig();
-        });
+        // only add if scene supports language
+        if (scene.config.global.language !== undefined || scene.config.global.ux_language !== undefined) {
+            gui.language = null;
+            gui.add(gui, 'language', langs).onChange(function(value) {
+                scene.config.global.language = value;    // for bundled demos
+                scene.config.global.ux_language = value; // for Mapzen basemaps
+                scene.updateConfig();
+            });
+        }
     }
 
     function setCamera(gui, scene){
-        if (gui.camera == null) {
+        // Only add if scene has all camera types
+        var cameras = scene.config.cameras;
+        if (cameras.perspective && cameras.isometric && cameras.flat) {
             var camera_types = {
                 'Flat': 'flat',
                 'Perspective': 'perspective',
@@ -157,19 +158,6 @@
             gui.add(gui, 'camera', camera_types).onChange(function(value) {
                 scene.setActiveCamera(value);
             });
-        }
-
-        // Check for presence of cameras for selector (not all example scenes have them)
-        var cameras = scene.config.cameras;
-        var disabled = ((cameras.perspective && cameras.isometric && cameras.flat) == null);
-        var controller = gui.__controllers.filter(function(c){ return c.property == 'camera' })[0];
-        var select = controller.domElement.querySelector('select');
-        if ((cameras.perspective && cameras.isometric && cameras.flat) == null) {
-            select.setAttribute('disabled', true);
-        }
-        else {
-            select.removeAttribute('disabled');
-            controller.setValue('perspective'); // reset on scene load
         }
     }
 
@@ -209,10 +197,8 @@
     }
 
     function setLayers(gui, scene){
-        gui.removeFolder('Layers');
         var layer_gui = gui.addFolder('Layers');
         var layer_controls = {};
-
         var layers = scene.config.layers;
 
         for (var key in layers){
@@ -235,10 +221,9 @@
     }
 
     function setFeatureDebug(gui) {
-        gui.debug = false;
+        gui.debug = scene.introspection;
         gui.add(gui, 'debug').onChange(function(value) {
             scene.setIntrospection(value);
         });
     }
-
-})()
+})();

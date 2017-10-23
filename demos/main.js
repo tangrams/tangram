@@ -36,11 +36,9 @@
     layer.scene.subscribe({
         load: function (msg) {
             // scene was loaded
-            injectAPIKey(msg.config);
         },
         update: function (msg) {
             // scene updated
-            injectAPIKey(msg.config);
         },
         preUpdate: function (will_render) {
             // before scene update
@@ -66,21 +64,6 @@
             // on warning
         }
     });
-
-    function injectAPIKey(config) {
-        if (config.global.sdk_mapzen_api_key) {
-            config.global.sdk_mapzen_api_key = 'mapzen-T3tPjn7';
-        }
-        else {
-            for (var name in config.sources) {
-                var source = config.sources[name];
-                if (source.url.search('mapzen.com')) {
-                    source.url_params = source.url_params || {};
-                    source.url_params.api_key = 'mapzen-T3tPjn7';
-                }
-            }
-        }
-    }
 
     // Feature selection
     var el_selection = document.createElement('div'); // DOM element shown on hover
