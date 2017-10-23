@@ -66,7 +66,7 @@
                 ]
             },
 
-            // Default style
+            // Crosshatch style (texture/shader demos)
             'Crosshatch': 'demos/styles/crosshatch.zip',
 
             // Fragment shader example
