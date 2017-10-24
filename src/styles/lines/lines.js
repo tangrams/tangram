@@ -418,11 +418,12 @@ Object.assign(Lines, {
             key += draw.texture_merged;
         }
         key += '/' + draw.texcoords;
-        draw.variant = hashString(key);
+        key = hashString(key);
+        draw.variant = key;
 
-        if (Lines.variants[draw.variant] == null) {
-            Lines.variants[draw.variant] = {
-                key: draw.variant,
+        if (Lines.variants[key] == null) {
+            Lines.variants[key] = {
+                key,
                 order: draw.variant_order,
                 offset: (draw.offset ? 1 : 0),
                 texcoords: draw.texcoords,
