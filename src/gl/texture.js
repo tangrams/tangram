@@ -22,9 +22,11 @@ export default class Texture {
         this.loading = null;    // a Promise object to track the loading state of this texture
         this.loaded = false;    // successfully loaded as expected
         this.filtering = options.filtering;
+        this.density = options.density || 1; // native pixel density of texture
         this.sprites = options.sprites;
         this.texcoords = {};    // sprite UVs ([0, 1] range)
         this.sizes = {};        // sprite sizes (pixel size)
+        this.css_sizes = {};    // sprite sizes, adjusted for native texture pixel density
 
         // Default to a 1-pixel transparent black texture so we can safely render while we wait for an image to load
         // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
@@ -309,7 +311,9 @@ export default class Texture {
                 );
 
                 // Pixel size of sprite
+                // Divide by native texture density to get correct CSS pixels
                 this.sizes[s] = [sprite[2], sprite[3]];
+                this.css_sizes[s] = [sprite[2] / this.density, sprite[3] / this.density];
             }
         }
     }
@@ -349,7 +353,11 @@ Texture.destroy = function (gl) {
 // Get sprite pixel size and UVs
 Texture.getSpriteInfo = function (texname, sprite) {
     let texture = Texture.textures[texname];
-    return texture && { size: texture.sizes[sprite], texcoords: texture.texcoords[sprite] };
+    return texture && {
+        size: texture.sizes[sprite],
+        css_size: texture.css_sizes[sprite],
+        texcoords: texture.texcoords[sprite]
+    };
 };
 
 // Re-scale UVs from [0, 1] range to a smaller area within the image
@@ -403,6 +411,7 @@ Texture.sliceOptions = function(options) {
         data: options.data,
         width: options.width,
         height: options.height,
+        density: options.density,
         repeat: options.repeat,
         TEXTURE_WRAP_S: options.TEXTURE_WRAP_S,
         TEXTURE_WRAP_T: options.TEXTURE_WRAP_T,
@@ -455,9 +464,11 @@ Texture.getInfo = function (name) {
                 name: tex.name,
                 width: tex.width,
                 height: tex.height,
+                density: tex.density,
                 sprites: tex.sprites,
                 texcoords: tex.texcoords,
                 sizes: tex.sizes,
+                css_sizes: tex.css_sizes,
                 filtering: tex.filtering,
                 power_of_2: tex.power_of_2,
                 valid: tex.valid

@@ -159,7 +159,7 @@ Object.assign(Points, {
         style.size = draw.size;
         if (!style.size) {
             if (sprite_info) {
-                style.size = sprite_info.size;
+                style.size = sprite_info.css_size;
             }
             else {
                 style.size = [16, 16];
