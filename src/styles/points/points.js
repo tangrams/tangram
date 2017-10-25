@@ -390,10 +390,14 @@ Object.assign(Points, {
         draw.size = StyleParser.createPropertyCache(draw.size, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
 
         // Offset (2d array)
-        draw.offset = StyleParser.createPropertyCache(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+        draw.offset = StyleParser.createPropertyCache(draw.offset,
+            v => (Array.isArray(v) && v.map(parseFloat).map(v => isNaN(v) ? 0 : v)) || [0, 0]
+        );
 
-        // Buffer (1d value or 2d array, expand 1d to 2d)
-        draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
+        // Buffer (1d value or or 2d array) - must be >= 0
+        draw.buffer = StyleParser.createPropertyCache(draw.buffer,
+            v => (Array.isArray(v) ? v : [v, v]).map(v => Math.max(parseFloat(v), 0)).map(v => isNaN(v) ? 0 : v) || [0, 0]
+        );
 
         // Repeat rules - no repeat limitation for points by default
         draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
