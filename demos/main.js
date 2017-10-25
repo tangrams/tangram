@@ -46,9 +46,11 @@
             var zoom_step = 0.03;
             if (key.isPressed('up')) {
                 map._move(map.getCenter(), map.getZoom() + zoom_step);
+                map._moveEnd(true);
             }
             else if (key.isPressed('down')) {
                 map._move(map.getCenter(), map.getZoom() - zoom_step);
+                map._moveEnd(true);
             }
         },
         post_update: function (will_render){
