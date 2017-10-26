@@ -96,6 +96,7 @@ export default class VertexLayout {
                         gl.enableVertexAttribArray(location);
                         gl[attrib.method](location, attrib.static);
                         gl.disableVertexAttribArray(location);
+                        delete VertexLayout.enabled_attribs[location];
                     }
                 }
             }
