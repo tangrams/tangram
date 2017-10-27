@@ -174,7 +174,6 @@ StyleParser.evalCachedProperty = function(val, context) {
         else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
             // Calculate value for current zoom
             val.zoom = val.zoom || {};
-            val.zoom = {};
             val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
             return val.zoom[context.zoom];
         }
