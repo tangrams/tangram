@@ -122,10 +122,10 @@ StyleParser.createPropertyCache = function (obj, transform = null) {
     // apply optional transform function
     if (typeof transform === 'function') {
         if (c.zoom) { // apply to each zoom stop value
-            c.value = c.value.map(v => [v[0], transform(v[1])]);
+            c.value = c.value.map((v, i) => [v[0], transform(v[1], i)]);
         }
         else if (typeof c.value !== 'function') { // don't transform functions
-            c.value = transform(c.value); // single value
+            c.value = transform(c.value, 0); // single value
         }
     }
 
@@ -145,6 +145,75 @@ StyleParser.createColorPropertyCache = function (obj) {
 
         return v;
     });
+};
+
+// Caching for point sizes, which include optional %-based scaling from sprite size
+const isPercent = v => typeof v === 'string' && v[v.length-1] === '%';
+StyleParser.createPointSizePropertyCache = function (obj) {
+    let has_pct = false;
+    if (isPercent(obj)) { // 1D size
+        has_pct = [true];
+    }
+    else if (Array.isArray(obj)) {
+        // track which fields are % vals
+        if (Array.isArray(obj[0])) { // zoom stops
+            if (obj.some(v => isPercent(v[1]))) {
+                has_pct = obj.map(v => isPercent(v[1]));
+            }
+        }
+        else if (obj.some(isPercent)) { // 2D size
+            has_pct = obj.map(isPercent);
+        }
+    }
+
+    if (!has_pct) { // no percentage-based calculation, one cache for all sprites
+        obj = StyleParser.createPropertyCache(obj, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+    }
+    else { // per-sprite based evaluation
+        obj = { value: obj };
+        obj.has_pct = has_pct;
+        obj.sprites = {}; // cache by sprite
+    }
+
+    return obj;
+};
+
+StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, context) {
+    // no percentage-based calculation, one cache for all sprites
+    if (!val.has_pct) {
+        return StyleParser.evalCachedProperty(val, context);
+    }
+
+    // per-sprite based evaluation
+    if (!sprite_info) {
+        return; // trying to apply percentage sizing to a sprite
+    }
+
+    // cache sizes per sprite
+    if (!val.sprites[sprite_info.sprite]) {
+        val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, (v, i) => {
+            if (Array.isArray(v)) {
+                v = v.map(parseFloat);
+                if (val.has_pct[i]) {
+                    v = sprite_info.css_size.map(c => c * v / 100); // set size as % of sprite
+                }
+                else {
+                    v = [v, v];
+                }
+            }
+            else {
+                v = parseFloat(v);
+                if (val.has_pct[i]) {
+                    v = sprite_info.css_size.map(c => c * v / 100); // set size as % of sprite
+                }
+                else {
+                    v = [v, v];
+                }
+            }
+            return v;
+        });
+    }
+    return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
 };
 
 // Interpolation and caching for a generic property (not a color or distance)
