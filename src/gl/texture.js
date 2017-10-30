@@ -27,6 +27,7 @@ export default class Texture {
         this.texcoords = {};    // sprite UVs ([0, 1] range)
         this.sizes = {};        // sprite sizes (pixel size)
         this.css_sizes = {};    // sprite sizes, adjusted for native texture pixel density
+        this.aspects = {};      // sprite aspect ratios
 
         // Default to a 1-pixel transparent black texture so we can safely render while we wait for an image to load
         // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
@@ -314,6 +315,7 @@ export default class Texture {
                 // Divide by native texture density to get correct CSS pixels
                 this.sizes[s] = [sprite[2], sprite[3]];
                 this.css_sizes[s] = [sprite[2] / this.density, sprite[3] / this.density];
+                this.aspects[s] = sprite[2] / sprite[3];
             }
         }
     }
@@ -356,6 +358,7 @@ Texture.getSpriteInfo = function (texname, sprite) {
     return texture && {
         size: texture.sizes[sprite],
         css_size: texture.css_sizes[sprite],
+        aspect: texture.aspects[sprite],
         texcoords: texture.texcoords[sprite]
     };
 };
@@ -469,6 +472,7 @@ Texture.getInfo = function (name) {
                 texcoords: tex.texcoords,
                 sizes: tex.sizes,
                 css_sizes: tex.css_sizes,
+                aspects: tex.aspects,
                 filtering: tex.filtering,
                 power_of_2: tex.power_of_2,
                 valid: tex.valid
