@@ -20,6 +20,9 @@
     "output": "",
     "output_map": ""
   },
+  "engines": {
+    "npm": ">=2.0.0"
+  },
   "scripts": {
     "start": "npm run watch",
     "test": "npm run lint && npm run build-bundle && npm run test-local",
