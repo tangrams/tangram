@@ -165,7 +165,6 @@ Object.assign(Points, {
         }
         else {
             style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, context);
-
             if (style.size == null) {
                 log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
                     `'size' includes %-based scaling ('${JSON.stringify(draw.size.value)}'), but no sprite was specified, skipping features in layer`);
@@ -394,7 +393,14 @@ Object.assign(Points, {
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
 
         // Size (1d value or 2d array)
-        draw.size = StyleParser.createPointSizePropertyCache(draw.size);
+        try {
+            draw.size = StyleParser.createPointSizePropertyCache(draw.size);
+        }
+        catch(e) {
+            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+                `${e} ('${JSON.stringify(draw.size)}'), skipping features in layer`);
+            return null;
+        }
 
         // Offset (2d array)
         draw.offset = StyleParser.createPropertyCache(draw.offset,
