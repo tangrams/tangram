@@ -150,15 +150,18 @@ StyleParser.createColorPropertyCache = function (obj) {
 // Caching for point sizes, which include optional %-based scaling from sprite size
 const isPercent = v => typeof v === 'string' && v[v.length-1] === '%';
 StyleParser.createPointSizePropertyCache = function (obj) {
-    let has_pct = false;
+    // mimics the structure of the size value (at each zoom stop if applicable),
+    // stores flags indicating if each element is a %-based size or not
+    let has_pct = null;
     if (isPercent(obj)) { // 1D size
         has_pct = [true];
     }
     else if (Array.isArray(obj)) {
         // track which fields are % vals
         if (Array.isArray(obj[0])) { // zoom stops
-            if (obj.some(v => isPercent(v[1]))) {
-                has_pct = obj.map(v => isPercent(v[1]));
+            // could be a 1D value (that could be a %), or a 2D value (either width or height or both could be a %)
+            if (obj.some(v => Array.isArray(v[1]) ? v[1].some(w => isPercent(w)) : isPercent(v[1]))) {
+                has_pct = obj.map(v => Array.isArray(v[1]) ? v[1].map(w => isPercent(w)) : isPercent(v[1]));
             }
         }
         else if (obj.some(isPercent)) { // 2D size
@@ -192,16 +195,11 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, context) {
     // cache sizes per sprite
     if (!val.sprites[sprite_info.sprite]) {
         val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, (v, i) => {
-            if (Array.isArray(v)) {
-                v = v.map(parseFloat);
-                if (val.has_pct[i]) {
-                    v = sprite_info.css_size.map(c => c * v / 100); // set size as % of sprite
-                }
-                else {
-                    v = [v, v];
-                }
+            if (Array.isArray(v)) { // 2D size
+                // either width or height or both could be a %
+                v = v.map(parseFloat).map((c, j) => val.has_pct[i][j] ? sprite_info.css_size[j] * c / 100 : c);
             }
-            else {
+            else { // 1D size
                 v = parseFloat(v);
                 if (val.has_pct[i]) {
                     v = sprite_info.css_size.map(c => c * v / 100); // set size as % of sprite
