@@ -71,6 +71,10 @@ For questions, comments, suggestions, or to report a bug, please open a [new iss
 
 You can also find us in the Tangram-chat gitter room: https://gitter.im/tangrams/tangram-chat
 
+## Browser Support
+
+Tangram supports Chrome, Firefox, and Safari on Mac OS, and Chrome, Firefox, Internet Explorer 11, and Edge on Windows.
+
 ## Contributions Welcome
 
 Tangram is open-source, and we eagerly welcome feedback, feature requests, and contributions. We’re especially interested to see your maps, no matter how simple! Send screenshots, links, and any questions to tangram@mapzen.com.
