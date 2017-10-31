@@ -73,7 +73,14 @@ You can also find us in the Tangram-chat gitter room: https://gitter.im/tangrams
 
 ## Browser Support
 
-Tangram supports Chrome, Firefox, and Safari on Mac OS, and Chrome, Firefox, Internet Explorer 11, and Edge on Windows.
+Tangram JS is officially supported and tested on the last two versions of these browsers:
+
+- Mac OS: Chrome, Firefox, and Safari
+- Windows: Chrome, Firefox, IE11, and Edge
+- iOS: Safari
+- Android: Chrome
+
+Tangram JS should also run in any browser with WebGL support.
 
 ## Contributions Welcome
 
