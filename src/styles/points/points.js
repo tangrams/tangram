@@ -167,7 +167,8 @@ Object.assign(Points, {
             style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, context);
             if (style.size == null) {
                 log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-                    `'size' includes %-based scaling ('${JSON.stringify(draw.size.value)}'), but no sprite was specified, skipping features in layer`);
+                    `'size' includes % and/or ratio-based scaling (${JSON.stringify(draw.size.value)}); ` +
+                    `these can only applied to sprites, but no sprite was specified, skipping features in layer`);
                 return;
             }
             else if (typeof style.size === 'number') {
@@ -224,7 +225,7 @@ Object.assign(Points, {
             tf = null; // NB: boundary labels not supported for point label attachments, should log warning
             log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
                 `cannot use boundary labels (e.g. 'text_source: { left: ..., right: ... }') for 'text' labels attached to 'points'; ` +
-                `provided 'text_source' value was '${JSON.stringify(draw.text.text_source)}'`);
+                `provided 'text_source' value was ${JSON.stringify(draw.text.text_source)}`);
         }
 
         if (tf) {
@@ -398,7 +399,7 @@ Object.assign(Points, {
         }
         catch(e) {
             log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-                `${e} ('${JSON.stringify(draw.size)}'), skipping features in layer`);
+                `${e} (${JSON.stringify(draw.size)}), skipping features in layer`);
             return null;
         }
 

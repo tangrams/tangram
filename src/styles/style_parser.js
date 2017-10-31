@@ -203,7 +203,7 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, context) {
 
     // per-sprite based evaluation
     if (!sprite_info) {
-        return; // trying to apply percentage sizing to a sprite
+        return; // trying to apply percentage or ratio sizing to a sprite
     }
 
     // cache sizes per sprite
