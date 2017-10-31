@@ -11,7 +11,7 @@ Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser
 
 Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/simple-demo)) with a basic example of a Tangram map. 
 
-Tangram is instantiated as a [Leaflet](http://leafletjs.com/) plugin for integration with standard web maps. [Tangram-ES](https://github.com/tangrams/tangram-es) is a native mobile version of the Tangram library, written in C++.
+Tangram is instantiated as a [Leaflet](http://leafletjs.com/) plugin for integration with standard web maps. [Tangram ES](https://github.com/tangrams/tangram-es) is a native mobile version of the Tangram library, written in C++.
 
 ## Quickstart
 
