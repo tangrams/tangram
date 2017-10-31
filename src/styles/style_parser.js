@@ -150,7 +150,7 @@ StyleParser.createColorPropertyCache = function (obj) {
 // Caching for point sizes, which include optional %-based or aspect-ratio-constrained scaling from sprite size
 // Returns a cache object if successful, or throws error message
 const isPercent = v => typeof v === 'string' && v[v.length-1] === '%'; // size computed by %
-const isRatio = v => v === '?px'; // size derived from aspect ratio of one dimension
+const isRatio = v => v === 'auto'; // size derived from aspect ratio of one dimension
 const isComputed = v => isPercent(v) || isRatio(v);
 const dualRatioError = `'size' can specify either width or height as derived from aspect ratio, but not both`;
 StyleParser.createPointSizePropertyCache = function (obj) {
