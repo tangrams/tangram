@@ -68,9 +68,9 @@
     });
 
     // Feature selection
-    var el_selection = document.createElement('div'); // DOM element shown on hover
-    el_selection.setAttribute('class', 'label');
-    map.getContainer().appendChild(el_selection); // append to map
+    var tooltip = L.tooltip();
+    layer.bindTooltip(tooltip);
+    map.on('zoom', function(){ layer.closeTooltip() }); // close tooltip when zooming
 
     function onHover (selection) {
         var feature = selection.feature;
@@ -81,7 +81,7 @@
                     info = getFeaturePropsHTML(feature);
                 }
                 else {
-                    var name = feature.properties.name || (feature.properties.kind && '['+feature.properties.kind+']');
+                    var name = feature.properties.name || feature.properties.kind;
                     if (name) {
                         name = '<b>'+name+'</b>';
                         name += '<br>(click for details)';
@@ -91,19 +91,13 @@
                 }
 
                 if (info) {
-                    el_selection.style.visibility = 'visible';
-                    el_selection.innerHTML = info;
+                    tooltip.setContent(info);
                 }
             }
+            layer.openTooltip(selection.leaflet_event.latlng);
         }
         else {
-            el_selection.style.visibility = 'hidden';
-        }
-
-        // Update label location
-        if (selection.pixel) {
-            el_selection.style.left = selection.pixel.x + 'px';
-            el_selection.style.top = selection.pixel.y + 'px';
+            layer.closeTooltip();
         }
     }
 
@@ -124,17 +118,11 @@
         var feature = selection.feature;
         if (feature) {
             var info = getFeaturePropsHTML(feature);
-            el_selection.style.visibility = 'visible';
-            el_selection.innerHTML = info;
+            tooltip.setContent(info);
+            layer.openTooltip(selection.leaflet_event.latlng);
         }
         else {
-            el_selection.style.visibility = 'hidden';
-        }
-
-        // Update label location
-        if (selection.pixel) {
-            el_selection.style.left = selection.pixel.x + 'px';
-            el_selection.style.top = selection.pixel.y + 'px';
+            layer.closeTooltip();
         }
     }
 
