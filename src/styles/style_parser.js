@@ -5,6 +5,12 @@ import parseCSSColor from 'csscolorparser';
 
 export const StyleParser = {};
 
+// Helpers for string converstion / NaN handling
+const clampPositive = v => Math.max(v, 0);
+const noNaN = v => isNaN(v) ? 0 : v;
+const parseNumber = v => Array.isArray(v) ? v.map(parseFloat).map(noNaN) : noNaN(parseFloat(v));
+const parsePositiveNumber = v => Array.isArray(v) ? v.map(parseNumber).map(clampPositive) : clampPositive(parseNumber(v));
+
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
 // - global: user-defined properties on the `global` object in the scene file
@@ -183,7 +189,7 @@ StyleParser.createPointSizePropertyCache = function (obj) {
     }
 
     if (!has_pct) { // no percentage-based calculation, one cache for all sprites
-        obj = StyleParser.createPropertyCache(obj, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+        obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
     }
     else { // per-sprite based evaluation
         obj = { value: obj };
@@ -212,7 +218,7 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, context) {
             if (Array.isArray(v)) { // 2D size
                 // either width or height or both could be a %
                 v = v.
-                    map((c, j) => val.has_ratio[i][j] ? c : parseFloat(c)). // convert non-ratio values to px
+                    map((c, j) => val.has_ratio[i][j] ? c : parsePositiveNumber(c)). // convert non-ratio values to px
                     map((c, j) => val.has_pct[i][j] ? sprite_info.css_size[j] * c / 100 : c); // apply % scaling as needed
 
                 // either width or height could be a ratio
@@ -224,7 +230,7 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, context) {
                 }
             }
             else { // 1D size
-                v = parseFloat(v);
+                v = parsePositiveNumber(v);
                 if (val.has_pct[i]) {
                     v = sprite_info.css_size.map(c => c * v / 100); // set size as % of sprite
                 }
