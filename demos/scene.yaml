@@ -544,10 +544,10 @@ layers:
                 name: true
                 not:
                     kind: [peak, viewpoint, bicycle_rental, car_sharing, park, forest, cemetery, graveyard]
-                $zoom: { min: 15 }
+                $zoom: { min: 13 }
             draw:
                 points:
-                    size: [[13, 12px], [15, 18px]]
+                    size: [[13, [auto, 12px]], [15, [auto, 18px]], [20, 75%]]
                     priority: 6
 
             # add text label at higher zoom
