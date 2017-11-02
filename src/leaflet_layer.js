@@ -105,7 +105,6 @@ function extendLeaflet(options) {
                         // otherwise, wait until next regular animation loop iteration
                         this.scene.immediateRedraw();
                     }
-                    this.reverseTransform();
 
                     this._updating_tangram = false;
                 };
@@ -121,6 +120,12 @@ function extendLeaflet(options) {
                     this.scene.view.markUserInput();
                 };
                 map.on('drag', this.hooks.drag);
+
+                // keep Tangram layer in sync with view via mutation observer
+                this._map_pane_observer = new MutationObserver(mutations => {
+                    mutations.forEach(mutation => this.reverseTransform());
+                });
+                this._map_pane_observer.observe(map.getPanes().mapPane, { attributes: true });
 
                 // Modify default Leaflet behaviors
                 this.modifyScrollWheelBehavior(map);
@@ -158,7 +163,7 @@ function extendLeaflet(options) {
 
                     this.updateSize();
                     this.updateView();
-                    this.reverseTransform();
+                    // this.reverseTransform();
 
                     this._updating_tangram = false;
 
@@ -181,6 +186,8 @@ function extendLeaflet(options) {
                 map.off('mouseout', this.hooks.mouseout);
                 document.removeEventListener('visibilitychange', this.hooks.visibilitychange);
                 this.hooks = {};
+
+                this._map_pane_observer.disconnect();
 
                 if (this.scene) {
                     this.scene.destroy();
@@ -412,7 +419,6 @@ function extendLeaflet(options) {
 
                 this._updating_tangram = true;
                 this._map.setView([this.scene.view.center.lat, this.scene.view.center.lng], this.scene.view.zoom, { animate: false });
-                this.reverseTransform();
                 this._updating_tangram = false;
             },
 
