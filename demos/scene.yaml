@@ -14,7 +14,6 @@
             return (global.language && feature['name:right:'+global.language]) || feature['name:right'];
         }
     feature_order: function () { return feature.sort_rank; }
-    background_color: '#f0ebeb'
 
 cameras:
     perspective:
@@ -33,7 +32,7 @@ cameras:
 
 scene:
     background:
-        color: global.background_color
+        color: '#f0ebeb'
 
 fonts:
     Montserrat:
