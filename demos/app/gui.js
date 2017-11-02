@@ -136,6 +136,8 @@
         // only add if scene supports language
         if (scene.config.global.language !== undefined || scene.config.global.ux_language !== undefined) {
             gui.language = 'en';
+            scene.config.global.language = gui.language;
+            scene.config.global.ux_language = gui.language;
             gui.add(gui, 'language', langs).onChange(function(value) {
                 scene.config.global.language = value;    // for bundled demos
                 scene.config.global.ux_language = value; // for Mapzen basemaps
