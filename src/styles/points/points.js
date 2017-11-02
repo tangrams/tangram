@@ -634,6 +634,10 @@ Object.assign(Points, {
     },
 
     buildQuad(points, size, angle, angles, pre_angles, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+        if (size[0] <= 0 || size[1] <= 0) {
+            return 0; // size must be positive
+        }
+
         return buildQuadsForPoints(
             points,
             vertex_data,
