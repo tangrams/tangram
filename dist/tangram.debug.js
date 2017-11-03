@@ -1,4 +1,640 @@
 (function(){var target = (typeof self === "undefined" || !(typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope)) && ((typeof module !== "undefined" && module.exports) || (typeof window !== "undefined"));if (target) {var __worker_src__ = arguments.callee.toString();var __worker_src_origin__ = typeof document !== "undefined" && document.currentScript !== undefined ? document.currentScript.src : '';var __worker_src_map__ = 'tangram.debug.js.map';};(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Tangram = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+'use strict';
+
+module.exports = Point;
+
+/**
+ * A standalone point geometry with useful accessor, comparison, and
+ * modification methods.
+ *
+ * @class Point
+ * @param {Number} x the x-coordinate. this could be longitude or screen
+ * pixels, or any other sort of unit.
+ * @param {Number} y the y-coordinate. this could be latitude or screen
+ * pixels, or any other sort of unit.
+ * @example
+ * var point = new Point(-77, 38);
+ */
+function Point(x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+Point.prototype = {
+
+    /**
+     * Clone this point, returning a new point that can be modified
+     * without affecting the old one.
+     * @return {Point} the clone
+     */
+    clone: function() { return new Point(this.x, this.y); },
+
+    /**
+     * Add this point's x & y coordinates to another point,
+     * yielding a new point.
+     * @param {Point} p the other point
+     * @return {Point} output point
+     */
+    add:     function(p) { return this.clone()._add(p); },
+
+    /**
+     * Subtract this point's x & y coordinates to from point,
+     * yielding a new point.
+     * @param {Point} p the other point
+     * @return {Point} output point
+     */
+    sub:     function(p) { return this.clone()._sub(p); },
+
+    /**
+     * Multiply this point's x & y coordinates by point,
+     * yielding a new point.
+     * @param {Point} p the other point
+     * @return {Point} output point
+     */
+    multByPoint:    function(p) { return this.clone()._multByPoint(p); },
+
+    /**
+     * Divide this point's x & y coordinates by point,
+     * yielding a new point.
+     * @param {Point} p the other point
+     * @return {Point} output point
+     */
+    divByPoint:     function(p) { return this.clone()._divByPoint(p); },
+
+    /**
+     * Multiply this point's x & y coordinates by a factor,
+     * yielding a new point.
+     * @param {Point} k factor
+     * @return {Point} output point
+     */
+    mult:    function(k) { return this.clone()._mult(k); },
+
+    /**
+     * Divide this point's x & y coordinates by a factor,
+     * yielding a new point.
+     * @param {Point} k factor
+     * @return {Point} output point
+     */
+    div:     function(k) { return this.clone()._div(k); },
+
+    /**
+     * Rotate this point around the 0, 0 origin by an angle a,
+     * given in radians
+     * @param {Number} a angle to rotate around, in radians
+     * @return {Point} output point
+     */
+    rotate:  function(a) { return this.clone()._rotate(a); },
+
+    /**
+     * Rotate this point around p point by an angle a,
+     * given in radians
+     * @param {Number} a angle to rotate around, in radians
+     * @param {Point} p Point to rotate around
+     * @return {Point} output point
+     */
+    rotateAround:  function(a,p) { return this.clone()._rotateAround(a,p); },
+
+    /**
+     * Multiply this point by a 4x1 transformation matrix
+     * @param {Array<Number>} m transformation matrix
+     * @return {Point} output point
+     */
+    matMult: function(m) { return this.clone()._matMult(m); },
+
+    /**
+     * Calculate this point but as a unit vector from 0, 0, meaning
+     * that the distance from the resulting point to the 0, 0
+     * coordinate will be equal to 1 and the angle from the resulting
+     * point to the 0, 0 coordinate will be the same as before.
+     * @return {Point} unit vector point
+     */
+    unit:    function() { return this.clone()._unit(); },
+
+    /**
+     * Compute a perpendicular point, where the new y coordinate
+     * is the old x coordinate and the new x coordinate is the old y
+     * coordinate multiplied by -1
+     * @return {Point} perpendicular point
+     */
+    perp:    function() { return this.clone()._perp(); },
+
+    /**
+     * Return a version of this point with the x & y coordinates
+     * rounded to integers.
+     * @return {Point} rounded point
+     */
+    round:   function() { return this.clone()._round(); },
+
+    /**
+     * Return the magitude of this point: this is the Euclidean
+     * distance from the 0, 0 coordinate to this point's x and y
+     * coordinates.
+     * @return {Number} magnitude
+     */
+    mag: function() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    },
+
+    /**
+     * Judge whether this point is equal to another point, returning
+     * true or false.
+     * @param {Point} other the other point
+     * @return {boolean} whether the points are equal
+     */
+    equals: function(other) {
+        return this.x === other.x &&
+               this.y === other.y;
+    },
+
+    /**
+     * Calculate the distance from this point to another point
+     * @param {Point} p the other point
+     * @return {Number} distance
+     */
+    dist: function(p) {
+        return Math.sqrt(this.distSqr(p));
+    },
+
+    /**
+     * Calculate the distance from this point to another point,
+     * without the square root step. Useful if you're comparing
+     * relative distances.
+     * @param {Point} p the other point
+     * @return {Number} distance
+     */
+    distSqr: function(p) {
+        var dx = p.x - this.x,
+            dy = p.y - this.y;
+        return dx * dx + dy * dy;
+    },
+
+    /**
+     * Get the angle from the 0, 0 coordinate to this point, in radians
+     * coordinates.
+     * @return {Number} angle
+     */
+    angle: function() {
+        return Math.atan2(this.y, this.x);
+    },
+
+    /**
+     * Get the angle from this point to another point, in radians
+     * @param {Point} b the other point
+     * @return {Number} angle
+     */
+    angleTo: function(b) {
+        return Math.atan2(this.y - b.y, this.x - b.x);
+    },
+
+    /**
+     * Get the angle between this point and another point, in radians
+     * @param {Point} b the other point
+     * @return {Number} angle
+     */
+    angleWith: function(b) {
+        return this.angleWithSep(b.x, b.y);
+    },
+
+    /*
+     * Find the angle of the two vectors, solving the formula for
+     * the cross product a x b = |a||b|sin(θ) for θ.
+     * @param {Number} x the x-coordinate
+     * @param {Number} y the y-coordinate
+     * @return {Number} the angle in radians
+     */
+    angleWithSep: function(x, y) {
+        return Math.atan2(
+            this.x * y - this.y * x,
+            this.x * x + this.y * y);
+    },
+
+    _matMult: function(m) {
+        var x = m[0] * this.x + m[1] * this.y,
+            y = m[2] * this.x + m[3] * this.y;
+        this.x = x;
+        this.y = y;
+        return this;
+    },
+
+    _add: function(p) {
+        this.x += p.x;
+        this.y += p.y;
+        return this;
+    },
+
+    _sub: function(p) {
+        this.x -= p.x;
+        this.y -= p.y;
+        return this;
+    },
+
+    _mult: function(k) {
+        this.x *= k;
+        this.y *= k;
+        return this;
+    },
+
+    _div: function(k) {
+        this.x /= k;
+        this.y /= k;
+        return this;
+    },
+
+    _multByPoint: function(p) {
+        this.x *= p.x;
+        this.y *= p.y;
+        return this;
+    },
+
+    _divByPoint: function(p) {
+        this.x /= p.x;
+        this.y /= p.y;
+        return this;
+    },
+
+    _unit: function() {
+        this._div(this.mag());
+        return this;
+    },
+
+    _perp: function() {
+        var y = this.y;
+        this.y = this.x;
+        this.x = -y;
+        return this;
+    },
+
+    _rotate: function(angle) {
+        var cos = Math.cos(angle),
+            sin = Math.sin(angle),
+            x = cos * this.x - sin * this.y,
+            y = sin * this.x + cos * this.y;
+        this.x = x;
+        this.y = y;
+        return this;
+    },
+
+    _rotateAround: function(angle, p) {
+        var cos = Math.cos(angle),
+            sin = Math.sin(angle),
+            x = p.x + cos * (this.x - p.x) - sin * (this.y - p.y),
+            y = p.y + sin * (this.x - p.x) + cos * (this.y - p.y);
+        this.x = x;
+        this.y = y;
+        return this;
+    },
+
+    _round: function() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+        return this;
+    }
+};
+
+/**
+ * Construct a point from an array if necessary, otherwise if the input
+ * is already a Point, or an unknown type, return it unchanged
+ * @param {Array<Number>|Point|*} a any kind of input value
+ * @return {Point} constructed point, or passed-through value.
+ * @example
+ * // this
+ * var point = Point.convert([0, 1]);
+ * // is equivalent to
+ * var point = new Point(0, 1);
+ */
+Point.convert = function (a) {
+    if (a instanceof Point) {
+        return a;
+    }
+    if (Array.isArray(a)) {
+        return new Point(a[0], a[1]);
+    }
+    return a;
+};
+
+},{}],2:[function(_dereq_,module,exports){
+module.exports.VectorTile = _dereq_('./lib/vectortile.js');
+module.exports.VectorTileFeature = _dereq_('./lib/vectortilefeature.js');
+module.exports.VectorTileLayer = _dereq_('./lib/vectortilelayer.js');
+
+},{"./lib/vectortile.js":3,"./lib/vectortilefeature.js":4,"./lib/vectortilelayer.js":5}],3:[function(_dereq_,module,exports){
+'use strict';
+
+var VectorTileLayer = _dereq_('./vectortilelayer');
+
+module.exports = VectorTile;
+
+function VectorTile(pbf, end) {
+    this.layers = pbf.readFields(readTile, {}, end);
+}
+
+function readTile(tag, layers, pbf) {
+    if (tag === 3) {
+        var layer = new VectorTileLayer(pbf, pbf.readVarint() + pbf.pos);
+        if (layer.length) layers[layer.name] = layer;
+    }
+}
+
+
+},{"./vectortilelayer":5}],4:[function(_dereq_,module,exports){
+'use strict';
+
+var Point = _dereq_('@mapbox/point-geometry');
+
+module.exports = VectorTileFeature;
+
+function VectorTileFeature(pbf, end, extent, keys, values) {
+    // Public
+    this.properties = {};
+    this.extent = extent;
+    this.type = 0;
+
+    // Private
+    this._pbf = pbf;
+    this._geometry = -1;
+    this._keys = keys;
+    this._values = values;
+
+    pbf.readFields(readFeature, this, end);
+}
+
+function readFeature(tag, feature, pbf) {
+    if (tag == 1) feature.id = pbf.readVarint();
+    else if (tag == 2) readTag(pbf, feature);
+    else if (tag == 3) feature.type = pbf.readVarint();
+    else if (tag == 4) feature._geometry = pbf.pos;
+}
+
+function readTag(pbf, feature) {
+    var end = pbf.readVarint() + pbf.pos;
+
+    while (pbf.pos < end) {
+        var key = feature._keys[pbf.readVarint()],
+            value = feature._values[pbf.readVarint()];
+        feature.properties[key] = value;
+    }
+}
+
+VectorTileFeature.types = ['Unknown', 'Point', 'LineString', 'Polygon'];
+
+VectorTileFeature.prototype.loadGeometry = function() {
+    var pbf = this._pbf;
+    pbf.pos = this._geometry;
+
+    var end = pbf.readVarint() + pbf.pos,
+        cmd = 1,
+        length = 0,
+        x = 0,
+        y = 0,
+        lines = [],
+        line;
+
+    while (pbf.pos < end) {
+        if (!length) {
+            var cmdLen = pbf.readVarint();
+            cmd = cmdLen & 0x7;
+            length = cmdLen >> 3;
+        }
+
+        length--;
+
+        if (cmd === 1 || cmd === 2) {
+            x += pbf.readSVarint();
+            y += pbf.readSVarint();
+
+            if (cmd === 1) { // moveTo
+                if (line) lines.push(line);
+                line = [];
+            }
+
+            line.push(new Point(x, y));
+
+        } else if (cmd === 7) {
+
+            // Workaround for https://github.com/mapbox/mapnik-vector-tile/issues/90
+            if (line) {
+                line.push(line[0].clone()); // closePolygon
+            }
+
+        } else {
+            throw new Error('unknown command ' + cmd);
+        }
+    }
+
+    if (line) lines.push(line);
+
+    return lines;
+};
+
+VectorTileFeature.prototype.bbox = function() {
+    var pbf = this._pbf;
+    pbf.pos = this._geometry;
+
+    var end = pbf.readVarint() + pbf.pos,
+        cmd = 1,
+        length = 0,
+        x = 0,
+        y = 0,
+        x1 = Infinity,
+        x2 = -Infinity,
+        y1 = Infinity,
+        y2 = -Infinity;
+
+    while (pbf.pos < end) {
+        if (!length) {
+            var cmdLen = pbf.readVarint();
+            cmd = cmdLen & 0x7;
+            length = cmdLen >> 3;
+        }
+
+        length--;
+
+        if (cmd === 1 || cmd === 2) {
+            x += pbf.readSVarint();
+            y += pbf.readSVarint();
+            if (x < x1) x1 = x;
+            if (x > x2) x2 = x;
+            if (y < y1) y1 = y;
+            if (y > y2) y2 = y;
+
+        } else if (cmd !== 7) {
+            throw new Error('unknown command ' + cmd);
+        }
+    }
+
+    return [x1, y1, x2, y2];
+};
+
+VectorTileFeature.prototype.toGeoJSON = function(x, y, z) {
+    var size = this.extent * Math.pow(2, z),
+        x0 = this.extent * x,
+        y0 = this.extent * y,
+        coords = this.loadGeometry(),
+        type = VectorTileFeature.types[this.type],
+        i, j;
+
+    function project(line) {
+        for (var j = 0; j < line.length; j++) {
+            var p = line[j], y2 = 180 - (p.y + y0) * 360 / size;
+            line[j] = [
+                (p.x + x0) * 360 / size - 180,
+                360 / Math.PI * Math.atan(Math.exp(y2 * Math.PI / 180)) - 90
+            ];
+        }
+    }
+
+    switch (this.type) {
+    case 1:
+        var points = [];
+        for (i = 0; i < coords.length; i++) {
+            points[i] = coords[i][0];
+        }
+        coords = points;
+        project(coords);
+        break;
+
+    case 2:
+        for (i = 0; i < coords.length; i++) {
+            project(coords[i]);
+        }
+        break;
+
+    case 3:
+        coords = classifyRings(coords);
+        for (i = 0; i < coords.length; i++) {
+            for (j = 0; j < coords[i].length; j++) {
+                project(coords[i][j]);
+            }
+        }
+        break;
+    }
+
+    if (coords.length === 1) {
+        coords = coords[0];
+    } else {
+        type = 'Multi' + type;
+    }
+
+    var result = {
+        type: "Feature",
+        geometry: {
+            type: type,
+            coordinates: coords
+        },
+        properties: this.properties
+    };
+
+    if ('id' in this) {
+        result.id = this.id;
+    }
+
+    return result;
+};
+
+// classifies an array of rings into polygons with outer rings and holes
+
+function classifyRings(rings) {
+    var len = rings.length;
+
+    if (len <= 1) return [rings];
+
+    var polygons = [],
+        polygon,
+        ccw;
+
+    for (var i = 0; i < len; i++) {
+        var area = signedArea(rings[i]);
+        if (area === 0) continue;
+
+        if (ccw === undefined) ccw = area < 0;
+
+        if (ccw === area < 0) {
+            if (polygon) polygons.push(polygon);
+            polygon = [rings[i]];
+
+        } else {
+            polygon.push(rings[i]);
+        }
+    }
+    if (polygon) polygons.push(polygon);
+
+    return polygons;
+}
+
+function signedArea(ring) {
+    var sum = 0;
+    for (var i = 0, len = ring.length, j = len - 1, p1, p2; i < len; j = i++) {
+        p1 = ring[i];
+        p2 = ring[j];
+        sum += (p2.x - p1.x) * (p1.y + p2.y);
+    }
+    return sum;
+}
+
+},{"@mapbox/point-geometry":1}],5:[function(_dereq_,module,exports){
+'use strict';
+
+var VectorTileFeature = _dereq_('./vectortilefeature.js');
+
+module.exports = VectorTileLayer;
+
+function VectorTileLayer(pbf, end) {
+    // Public
+    this.version = 1;
+    this.name = null;
+    this.extent = 4096;
+    this.length = 0;
+
+    // Private
+    this._pbf = pbf;
+    this._keys = [];
+    this._values = [];
+    this._features = [];
+
+    pbf.readFields(readLayer, this, end);
+
+    this.length = this._features.length;
+}
+
+function readLayer(tag, layer, pbf) {
+    if (tag === 15) layer.version = pbf.readVarint();
+    else if (tag === 1) layer.name = pbf.readString();
+    else if (tag === 5) layer.extent = pbf.readVarint();
+    else if (tag === 2) layer._features.push(pbf.pos);
+    else if (tag === 3) layer._keys.push(pbf.readString());
+    else if (tag === 4) layer._values.push(readValueMessage(pbf));
+}
+
+function readValueMessage(pbf) {
+    var value = null,
+        end = pbf.readVarint() + pbf.pos;
+
+    while (pbf.pos < end) {
+        var tag = pbf.readVarint() >> 3;
+
+        value = tag === 1 ? pbf.readString() :
+            tag === 2 ? pbf.readFloat() :
+            tag === 3 ? pbf.readDouble() :
+            tag === 4 ? pbf.readVarint64() :
+            tag === 5 ? pbf.readVarint() :
+            tag === 6 ? pbf.readSVarint() :
+            tag === 7 ? pbf.readBoolean() : null;
+    }
+
+    return value;
+}
+
+// return feature `i` from this layer as a `VectorTileFeature`
+VectorTileLayer.prototype.feature = function(i) {
+    if (i < 0 || i >= this._features.length) throw new Error('feature index out of bounds');
+
+    this._pbf.pos = this._features[i];
+
+    var end = this._pbf.readVarint() + this._pbf.pos;
+    return new VectorTileFeature(this._pbf, end, this.extent, this._keys, this._values);
+};
+
+},{"./vectortilefeature.js":4}],6:[function(_dereq_,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -66,7 +702,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":2}],2:[function(_dereq_,module,exports){
+},{"./raw":7}],7:[function(_dereq_,module,exports){
 (function (global){
 "use strict";
 
@@ -294,7 +930,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],3:[function(_dereq_,module,exports){
+},{}],8:[function(_dereq_,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -410,13 +1046,13 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],4:[function(_dereq_,module,exports){
+},{}],9:[function(_dereq_,module,exports){
 
-},{}],5:[function(_dereq_,module,exports){
+},{}],10:[function(_dereq_,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
- * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * @author   Feross Aboukhadijeh <https://feross.org>
  * @license  MIT
  */
 /* eslint-disable no-proto */
@@ -2128,18 +2764,18 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":3,"ieee754":93}],6:[function(_dereq_,module,exports){
+},{"base64-js":8,"ieee754":98}],11:[function(_dereq_,module,exports){
 _dereq_('../modules/es6.object.to-string');
 _dereq_('../modules/es6.string.iterator');
 _dereq_('../modules/web.dom.iterable');
 _dereq_('../modules/es6.promise');
 module.exports = _dereq_('../modules/_core').Promise;
-},{"../modules/_core":14,"../modules/es6.object.to-string":66,"../modules/es6.promise":67,"../modules/es6.string.iterator":68,"../modules/web.dom.iterable":69}],7:[function(_dereq_,module,exports){
+},{"../modules/_core":19,"../modules/es6.object.to-string":71,"../modules/es6.promise":72,"../modules/es6.string.iterator":73,"../modules/web.dom.iterable":74}],12:[function(_dereq_,module,exports){
 module.exports = function(it){
   if(typeof it != 'function')throw TypeError(it + ' is not a function!');
   return it;
 };
-},{}],8:[function(_dereq_,module,exports){
+},{}],13:[function(_dereq_,module,exports){
 // 22.1.3.31 Array.prototype[@@unscopables]
 var UNSCOPABLES = _dereq_('./_wks')('unscopables')
   , ArrayProto  = Array.prototype;
@@ -2147,19 +2783,19 @@ if(ArrayProto[UNSCOPABLES] == undefined)_dereq_('./_hide')(ArrayProto, UNSCOPABL
 module.exports = function(key){
   ArrayProto[UNSCOPABLES][key] = true;
 };
-},{"./_hide":25,"./_wks":63}],9:[function(_dereq_,module,exports){
+},{"./_hide":30,"./_wks":68}],14:[function(_dereq_,module,exports){
 module.exports = function(it, Constructor, name, forbiddenField){
   if(!(it instanceof Constructor) || (forbiddenField !== undefined && forbiddenField in it)){
     throw TypeError(name + ': incorrect invocation!');
   } return it;
 };
-},{}],10:[function(_dereq_,module,exports){
+},{}],15:[function(_dereq_,module,exports){
 var isObject = _dereq_('./_is-object');
 module.exports = function(it){
   if(!isObject(it))throw TypeError(it + ' is not an object!');
   return it;
 };
-},{"./_is-object":31}],11:[function(_dereq_,module,exports){
+},{"./_is-object":36}],16:[function(_dereq_,module,exports){
 // false -> Array#indexOf
 // true  -> Array#includes
 var toIObject = _dereq_('./_to-iobject')
@@ -2181,7 +2817,7 @@ module.exports = function(IS_INCLUDES){
     } return !IS_INCLUDES && -1;
   };
 };
-},{"./_to-index":56,"./_to-iobject":58,"./_to-length":59}],12:[function(_dereq_,module,exports){
+},{"./_to-index":61,"./_to-iobject":63,"./_to-length":64}],17:[function(_dereq_,module,exports){
 // getting tag from 19.1.3.6 Object.prototype.toString()
 var cof = _dereq_('./_cof')
   , TAG = _dereq_('./_wks')('toStringTag')
@@ -2205,16 +2841,16 @@ module.exports = function(it){
     // ES3 arguments fallback
     : (B = cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
 };
-},{"./_cof":13,"./_wks":63}],13:[function(_dereq_,module,exports){
+},{"./_cof":18,"./_wks":68}],18:[function(_dereq_,module,exports){
 var toString = {}.toString;
 
 module.exports = function(it){
   return toString.call(it).slice(8, -1);
 };
-},{}],14:[function(_dereq_,module,exports){
+},{}],19:[function(_dereq_,module,exports){
 var core = module.exports = {version: '2.4.0'};
 if(typeof __e == 'number')__e = core; // eslint-disable-line no-undef
-},{}],15:[function(_dereq_,module,exports){
+},{}],20:[function(_dereq_,module,exports){
 // optional / simple context binding
 var aFunction = _dereq_('./_a-function');
 module.exports = function(fn, that, length){
@@ -2235,18 +2871,18 @@ module.exports = function(fn, that, length){
     return fn.apply(that, arguments);
   };
 };
-},{"./_a-function":7}],16:[function(_dereq_,module,exports){
+},{"./_a-function":12}],21:[function(_dereq_,module,exports){
 // 7.2.1 RequireObjectCoercible(argument)
 module.exports = function(it){
   if(it == undefined)throw TypeError("Can't call method on  " + it);
   return it;
 };
-},{}],17:[function(_dereq_,module,exports){
+},{}],22:[function(_dereq_,module,exports){
 // Thank's IE8 for his funny defineProperty
 module.exports = !_dereq_('./_fails')(function(){
   return Object.defineProperty({}, 'a', {get: function(){ return 7; }}).a != 7;
 });
-},{"./_fails":21}],18:[function(_dereq_,module,exports){
+},{"./_fails":26}],23:[function(_dereq_,module,exports){
 var isObject = _dereq_('./_is-object')
   , document = _dereq_('./_global').document
   // in old IE typeof document.createElement is 'object'
@@ -2254,12 +2890,12 @@ var isObject = _dereq_('./_is-object')
 module.exports = function(it){
   return is ? document.createElement(it) : {};
 };
-},{"./_global":23,"./_is-object":31}],19:[function(_dereq_,module,exports){
+},{"./_global":28,"./_is-object":36}],24:[function(_dereq_,module,exports){
 // IE 8- don't enum bug keys
 module.exports = (
   'constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf'
 ).split(',');
-},{}],20:[function(_dereq_,module,exports){
+},{}],25:[function(_dereq_,module,exports){
 var global    = _dereq_('./_global')
   , core      = _dereq_('./_core')
   , hide      = _dereq_('./_hide')
@@ -2303,7 +2939,7 @@ $export.W = 32;  // wrap
 $export.U = 64;  // safe
 $export.R = 128; // real proto method for `library` 
 module.exports = $export;
-},{"./_core":14,"./_ctx":15,"./_global":23,"./_hide":25,"./_redefine":48}],21:[function(_dereq_,module,exports){
+},{"./_core":19,"./_ctx":20,"./_global":28,"./_hide":30,"./_redefine":53}],26:[function(_dereq_,module,exports){
 module.exports = function(exec){
   try {
     return !!exec();
@@ -2311,7 +2947,7 @@ module.exports = function(exec){
     return true;
   }
 };
-},{}],22:[function(_dereq_,module,exports){
+},{}],27:[function(_dereq_,module,exports){
 var ctx         = _dereq_('./_ctx')
   , call        = _dereq_('./_iter-call')
   , isArrayIter = _dereq_('./_is-array-iter')
@@ -2337,17 +2973,17 @@ var exports = module.exports = function(iterable, entries, fn, that, ITERATOR){
 };
 exports.BREAK  = BREAK;
 exports.RETURN = RETURN;
-},{"./_an-object":10,"./_ctx":15,"./_is-array-iter":30,"./_iter-call":32,"./_to-length":59,"./core.get-iterator-method":64}],23:[function(_dereq_,module,exports){
+},{"./_an-object":15,"./_ctx":20,"./_is-array-iter":35,"./_iter-call":37,"./_to-length":64,"./core.get-iterator-method":69}],28:[function(_dereq_,module,exports){
 // https://github.com/zloirock/core-js/issues/86#issuecomment-115759028
 var global = module.exports = typeof window != 'undefined' && window.Math == Math
   ? window : typeof self != 'undefined' && self.Math == Math ? self : Function('return this')();
 if(typeof __g == 'number')__g = global; // eslint-disable-line no-undef
-},{}],24:[function(_dereq_,module,exports){
+},{}],29:[function(_dereq_,module,exports){
 var hasOwnProperty = {}.hasOwnProperty;
 module.exports = function(it, key){
   return hasOwnProperty.call(it, key);
 };
-},{}],25:[function(_dereq_,module,exports){
+},{}],30:[function(_dereq_,module,exports){
 var dP         = _dereq_('./_object-dp')
   , createDesc = _dereq_('./_property-desc');
 module.exports = _dereq_('./_descriptors') ? function(object, key, value){
@@ -2356,13 +2992,13 @@ module.exports = _dereq_('./_descriptors') ? function(object, key, value){
   object[key] = value;
   return object;
 };
-},{"./_descriptors":17,"./_object-dp":41,"./_property-desc":46}],26:[function(_dereq_,module,exports){
+},{"./_descriptors":22,"./_object-dp":46,"./_property-desc":51}],31:[function(_dereq_,module,exports){
 module.exports = _dereq_('./_global').document && document.documentElement;
-},{"./_global":23}],27:[function(_dereq_,module,exports){
+},{"./_global":28}],32:[function(_dereq_,module,exports){
 module.exports = !_dereq_('./_descriptors') && !_dereq_('./_fails')(function(){
   return Object.defineProperty(_dereq_('./_dom-create')('div'), 'a', {get: function(){ return 7; }}).a != 7;
 });
-},{"./_descriptors":17,"./_dom-create":18,"./_fails":21}],28:[function(_dereq_,module,exports){
+},{"./_descriptors":22,"./_dom-create":23,"./_fails":26}],33:[function(_dereq_,module,exports){
 // fast apply, http://jsperf.lnkit.com/fast-apply/5
 module.exports = function(fn, args, that){
   var un = that === undefined;
@@ -2379,13 +3015,13 @@ module.exports = function(fn, args, that){
                       : fn.call(that, args[0], args[1], args[2], args[3]);
   } return              fn.apply(that, args);
 };
-},{}],29:[function(_dereq_,module,exports){
+},{}],34:[function(_dereq_,module,exports){
 // fallback for non-array-like ES3 and non-enumerable old V8 strings
 var cof = _dereq_('./_cof');
 module.exports = Object('z').propertyIsEnumerable(0) ? Object : function(it){
   return cof(it) == 'String' ? it.split('') : Object(it);
 };
-},{"./_cof":13}],30:[function(_dereq_,module,exports){
+},{"./_cof":18}],35:[function(_dereq_,module,exports){
 // check on default Array iterator
 var Iterators  = _dereq_('./_iterators')
   , ITERATOR   = _dereq_('./_wks')('iterator')
@@ -2394,11 +3030,11 @@ var Iterators  = _dereq_('./_iterators')
 module.exports = function(it){
   return it !== undefined && (Iterators.Array === it || ArrayProto[ITERATOR] === it);
 };
-},{"./_iterators":37,"./_wks":63}],31:[function(_dereq_,module,exports){
+},{"./_iterators":42,"./_wks":68}],36:[function(_dereq_,module,exports){
 module.exports = function(it){
   return typeof it === 'object' ? it !== null : typeof it === 'function';
 };
-},{}],32:[function(_dereq_,module,exports){
+},{}],37:[function(_dereq_,module,exports){
 // call something on iterator step with safe closing on error
 var anObject = _dereq_('./_an-object');
 module.exports = function(iterator, fn, value, entries){
@@ -2411,7 +3047,7 @@ module.exports = function(iterator, fn, value, entries){
     throw e;
   }
 };
-},{"./_an-object":10}],33:[function(_dereq_,module,exports){
+},{"./_an-object":15}],38:[function(_dereq_,module,exports){
 'use strict';
 var create         = _dereq_('./_object-create')
   , descriptor     = _dereq_('./_property-desc')
@@ -2425,7 +3061,7 @@ module.exports = function(Constructor, NAME, next){
   Constructor.prototype = create(IteratorPrototype, {next: descriptor(1, next)});
   setToStringTag(Constructor, NAME + ' Iterator');
 };
-},{"./_hide":25,"./_object-create":40,"./_property-desc":46,"./_set-to-string-tag":50,"./_wks":63}],34:[function(_dereq_,module,exports){
+},{"./_hide":30,"./_object-create":45,"./_property-desc":51,"./_set-to-string-tag":55,"./_wks":68}],39:[function(_dereq_,module,exports){
 'use strict';
 var LIBRARY        = _dereq_('./_library')
   , $export        = _dereq_('./_export')
@@ -2496,7 +3132,7 @@ module.exports = function(Base, NAME, Constructor, next, DEFAULT, IS_SET, FORCED
   }
   return methods;
 };
-},{"./_export":20,"./_has":24,"./_hide":25,"./_iter-create":33,"./_iterators":37,"./_library":38,"./_object-gpo":43,"./_redefine":48,"./_set-to-string-tag":50,"./_wks":63}],35:[function(_dereq_,module,exports){
+},{"./_export":25,"./_has":29,"./_hide":30,"./_iter-create":38,"./_iterators":42,"./_library":43,"./_object-gpo":48,"./_redefine":53,"./_set-to-string-tag":55,"./_wks":68}],40:[function(_dereq_,module,exports){
 var ITERATOR     = _dereq_('./_wks')('iterator')
   , SAFE_CLOSING = false;
 
@@ -2518,15 +3154,15 @@ module.exports = function(exec, skipClosing){
   } catch(e){ /* empty */ }
   return safe;
 };
-},{"./_wks":63}],36:[function(_dereq_,module,exports){
+},{"./_wks":68}],41:[function(_dereq_,module,exports){
 module.exports = function(done, value){
   return {value: value, done: !!done};
 };
-},{}],37:[function(_dereq_,module,exports){
+},{}],42:[function(_dereq_,module,exports){
 module.exports = {};
-},{}],38:[function(_dereq_,module,exports){
+},{}],43:[function(_dereq_,module,exports){
 module.exports = false;
-},{}],39:[function(_dereq_,module,exports){
+},{}],44:[function(_dereq_,module,exports){
 var global    = _dereq_('./_global')
   , macrotask = _dereq_('./_task').set
   , Observer  = global.MutationObserver || global.WebKitMutationObserver
@@ -2595,7 +3231,7 @@ module.exports = function(){
     } last = task;
   };
 };
-},{"./_cof":13,"./_global":23,"./_task":55}],40:[function(_dereq_,module,exports){
+},{"./_cof":18,"./_global":28,"./_task":60}],45:[function(_dereq_,module,exports){
 // 19.1.2.2 / 15.2.3.5 Object.create(O [, Properties])
 var anObject    = _dereq_('./_an-object')
   , dPs         = _dereq_('./_object-dps')
@@ -2638,7 +3274,7 @@ module.exports = Object.create || function create(O, Properties){
   return Properties === undefined ? result : dPs(result, Properties);
 };
 
-},{"./_an-object":10,"./_dom-create":18,"./_enum-bug-keys":19,"./_html":26,"./_object-dps":42,"./_shared-key":51}],41:[function(_dereq_,module,exports){
+},{"./_an-object":15,"./_dom-create":23,"./_enum-bug-keys":24,"./_html":31,"./_object-dps":47,"./_shared-key":56}],46:[function(_dereq_,module,exports){
 var anObject       = _dereq_('./_an-object')
   , IE8_DOM_DEFINE = _dereq_('./_ie8-dom-define')
   , toPrimitive    = _dereq_('./_to-primitive')
@@ -2655,7 +3291,7 @@ exports.f = _dereq_('./_descriptors') ? Object.defineProperty : function defineP
   if('value' in Attributes)O[P] = Attributes.value;
   return O;
 };
-},{"./_an-object":10,"./_descriptors":17,"./_ie8-dom-define":27,"./_to-primitive":61}],42:[function(_dereq_,module,exports){
+},{"./_an-object":15,"./_descriptors":22,"./_ie8-dom-define":32,"./_to-primitive":66}],47:[function(_dereq_,module,exports){
 var dP       = _dereq_('./_object-dp')
   , anObject = _dereq_('./_an-object')
   , getKeys  = _dereq_('./_object-keys');
@@ -2669,7 +3305,7 @@ module.exports = _dereq_('./_descriptors') ? Object.defineProperties : function 
   while(length > i)dP.f(O, P = keys[i++], Properties[P]);
   return O;
 };
-},{"./_an-object":10,"./_descriptors":17,"./_object-dp":41,"./_object-keys":45}],43:[function(_dereq_,module,exports){
+},{"./_an-object":15,"./_descriptors":22,"./_object-dp":46,"./_object-keys":50}],48:[function(_dereq_,module,exports){
 // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
 var has         = _dereq_('./_has')
   , toObject    = _dereq_('./_to-object')
@@ -2683,7 +3319,7 @@ module.exports = Object.getPrototypeOf || function(O){
     return O.constructor.prototype;
   } return O instanceof Object ? ObjectProto : null;
 };
-},{"./_has":24,"./_shared-key":51,"./_to-object":60}],44:[function(_dereq_,module,exports){
+},{"./_has":29,"./_shared-key":56,"./_to-object":65}],49:[function(_dereq_,module,exports){
 var has          = _dereq_('./_has')
   , toIObject    = _dereq_('./_to-iobject')
   , arrayIndexOf = _dereq_('./_array-includes')(false)
@@ -2701,7 +3337,7 @@ module.exports = function(object, names){
   }
   return result;
 };
-},{"./_array-includes":11,"./_has":24,"./_shared-key":51,"./_to-iobject":58}],45:[function(_dereq_,module,exports){
+},{"./_array-includes":16,"./_has":29,"./_shared-key":56,"./_to-iobject":63}],50:[function(_dereq_,module,exports){
 // 19.1.2.14 / 15.2.3.14 Object.keys(O)
 var $keys       = _dereq_('./_object-keys-internal')
   , enumBugKeys = _dereq_('./_enum-bug-keys');
@@ -2709,7 +3345,7 @@ var $keys       = _dereq_('./_object-keys-internal')
 module.exports = Object.keys || function keys(O){
   return $keys(O, enumBugKeys);
 };
-},{"./_enum-bug-keys":19,"./_object-keys-internal":44}],46:[function(_dereq_,module,exports){
+},{"./_enum-bug-keys":24,"./_object-keys-internal":49}],51:[function(_dereq_,module,exports){
 module.exports = function(bitmap, value){
   return {
     enumerable  : !(bitmap & 1),
@@ -2718,13 +3354,13 @@ module.exports = function(bitmap, value){
     value       : value
   };
 };
-},{}],47:[function(_dereq_,module,exports){
+},{}],52:[function(_dereq_,module,exports){
 var redefine = _dereq_('./_redefine');
 module.exports = function(target, src, safe){
   for(var key in src)redefine(target, key, src[key], safe);
   return target;
 };
-},{"./_redefine":48}],48:[function(_dereq_,module,exports){
+},{"./_redefine":53}],53:[function(_dereq_,module,exports){
 var global    = _dereq_('./_global')
   , hide      = _dereq_('./_hide')
   , has       = _dereq_('./_has')
@@ -2757,7 +3393,7 @@ _dereq_('./_core').inspectSource = function(it){
 })(Function.prototype, TO_STRING, function toString(){
   return typeof this == 'function' && this[SRC] || $toString.call(this);
 });
-},{"./_core":14,"./_global":23,"./_has":24,"./_hide":25,"./_uid":62}],49:[function(_dereq_,module,exports){
+},{"./_core":19,"./_global":28,"./_has":29,"./_hide":30,"./_uid":67}],54:[function(_dereq_,module,exports){
 'use strict';
 var global      = _dereq_('./_global')
   , dP          = _dereq_('./_object-dp')
@@ -2771,7 +3407,7 @@ module.exports = function(KEY){
     get: function(){ return this; }
   });
 };
-},{"./_descriptors":17,"./_global":23,"./_object-dp":41,"./_wks":63}],50:[function(_dereq_,module,exports){
+},{"./_descriptors":22,"./_global":28,"./_object-dp":46,"./_wks":68}],55:[function(_dereq_,module,exports){
 var def = _dereq_('./_object-dp').f
   , has = _dereq_('./_has')
   , TAG = _dereq_('./_wks')('toStringTag');
@@ -2779,20 +3415,20 @@ var def = _dereq_('./_object-dp').f
 module.exports = function(it, tag, stat){
   if(it && !has(it = stat ? it : it.prototype, TAG))def(it, TAG, {configurable: true, value: tag});
 };
-},{"./_has":24,"./_object-dp":41,"./_wks":63}],51:[function(_dereq_,module,exports){
+},{"./_has":29,"./_object-dp":46,"./_wks":68}],56:[function(_dereq_,module,exports){
 var shared = _dereq_('./_shared')('keys')
   , uid    = _dereq_('./_uid');
 module.exports = function(key){
   return shared[key] || (shared[key] = uid(key));
 };
-},{"./_shared":52,"./_uid":62}],52:[function(_dereq_,module,exports){
+},{"./_shared":57,"./_uid":67}],57:[function(_dereq_,module,exports){
 var global = _dereq_('./_global')
   , SHARED = '__core-js_shared__'
   , store  = global[SHARED] || (global[SHARED] = {});
 module.exports = function(key){
   return store[key] || (store[key] = {});
 };
-},{"./_global":23}],53:[function(_dereq_,module,exports){
+},{"./_global":28}],58:[function(_dereq_,module,exports){
 // 7.3.20 SpeciesConstructor(O, defaultConstructor)
 var anObject  = _dereq_('./_an-object')
   , aFunction = _dereq_('./_a-function')
@@ -2801,7 +3437,7 @@ module.exports = function(O, D){
   var C = anObject(O).constructor, S;
   return C === undefined || (S = anObject(C)[SPECIES]) == undefined ? D : aFunction(S);
 };
-},{"./_a-function":7,"./_an-object":10,"./_wks":63}],54:[function(_dereq_,module,exports){
+},{"./_a-function":12,"./_an-object":15,"./_wks":68}],59:[function(_dereq_,module,exports){
 var toInteger = _dereq_('./_to-integer')
   , defined   = _dereq_('./_defined');
 // true  -> String#at
@@ -2819,7 +3455,7 @@ module.exports = function(TO_STRING){
       : TO_STRING ? s.slice(i, i + 2) : (a - 0xd800 << 10) + (b - 0xdc00) + 0x10000;
   };
 };
-},{"./_defined":16,"./_to-integer":57}],55:[function(_dereq_,module,exports){
+},{"./_defined":21,"./_to-integer":62}],60:[function(_dereq_,module,exports){
 var ctx                = _dereq_('./_ctx')
   , invoke             = _dereq_('./_invoke')
   , html               = _dereq_('./_html')
@@ -2895,7 +3531,7 @@ module.exports = {
   set:   setTask,
   clear: clearTask
 };
-},{"./_cof":13,"./_ctx":15,"./_dom-create":18,"./_global":23,"./_html":26,"./_invoke":28}],56:[function(_dereq_,module,exports){
+},{"./_cof":18,"./_ctx":20,"./_dom-create":23,"./_global":28,"./_html":31,"./_invoke":33}],61:[function(_dereq_,module,exports){
 var toInteger = _dereq_('./_to-integer')
   , max       = Math.max
   , min       = Math.min;
@@ -2903,34 +3539,34 @@ module.exports = function(index, length){
   index = toInteger(index);
   return index < 0 ? max(index + length, 0) : min(index, length);
 };
-},{"./_to-integer":57}],57:[function(_dereq_,module,exports){
+},{"./_to-integer":62}],62:[function(_dereq_,module,exports){
 // 7.1.4 ToInteger
 var ceil  = Math.ceil
   , floor = Math.floor;
 module.exports = function(it){
   return isNaN(it = +it) ? 0 : (it > 0 ? floor : ceil)(it);
 };
-},{}],58:[function(_dereq_,module,exports){
+},{}],63:[function(_dereq_,module,exports){
 // to indexed object, toObject with fallback for non-array-like ES3 strings
 var IObject = _dereq_('./_iobject')
   , defined = _dereq_('./_defined');
 module.exports = function(it){
   return IObject(defined(it));
 };
-},{"./_defined":16,"./_iobject":29}],59:[function(_dereq_,module,exports){
+},{"./_defined":21,"./_iobject":34}],64:[function(_dereq_,module,exports){
 // 7.1.15 ToLength
 var toInteger = _dereq_('./_to-integer')
   , min       = Math.min;
 module.exports = function(it){
   return it > 0 ? min(toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
 };
-},{"./_to-integer":57}],60:[function(_dereq_,module,exports){
+},{"./_to-integer":62}],65:[function(_dereq_,module,exports){
 // 7.1.13 ToObject(argument)
 var defined = _dereq_('./_defined');
 module.exports = function(it){
   return Object(defined(it));
 };
-},{"./_defined":16}],61:[function(_dereq_,module,exports){
+},{"./_defined":21}],66:[function(_dereq_,module,exports){
 // 7.1.1 ToPrimitive(input [, PreferredType])
 var isObject = _dereq_('./_is-object');
 // instead of the ES6 spec version, we didn't implement @@toPrimitive case
@@ -2943,13 +3579,13 @@ module.exports = function(it, S){
   if(!S && typeof (fn = it.toString) == 'function' && !isObject(val = fn.call(it)))return val;
   throw TypeError("Can't convert object to primitive value");
 };
-},{"./_is-object":31}],62:[function(_dereq_,module,exports){
+},{"./_is-object":36}],67:[function(_dereq_,module,exports){
 var id = 0
   , px = Math.random();
 module.exports = function(key){
   return 'Symbol('.concat(key === undefined ? '' : key, ')_', (++id + px).toString(36));
 };
-},{}],63:[function(_dereq_,module,exports){
+},{}],68:[function(_dereq_,module,exports){
 var store      = _dereq_('./_shared')('wks')
   , uid        = _dereq_('./_uid')
   , Symbol     = _dereq_('./_global').Symbol
@@ -2961,7 +3597,7 @@ var $exports = module.exports = function(name){
 };
 
 $exports.store = store;
-},{"./_global":23,"./_shared":52,"./_uid":62}],64:[function(_dereq_,module,exports){
+},{"./_global":28,"./_shared":57,"./_uid":67}],69:[function(_dereq_,module,exports){
 var classof   = _dereq_('./_classof')
   , ITERATOR  = _dereq_('./_wks')('iterator')
   , Iterators = _dereq_('./_iterators');
@@ -2970,7 +3606,7 @@ module.exports = _dereq_('./_core').getIteratorMethod = function(it){
     || it['@@iterator']
     || Iterators[classof(it)];
 };
-},{"./_classof":12,"./_core":14,"./_iterators":37,"./_wks":63}],65:[function(_dereq_,module,exports){
+},{"./_classof":17,"./_core":19,"./_iterators":42,"./_wks":68}],70:[function(_dereq_,module,exports){
 'use strict';
 var addToUnscopables = _dereq_('./_add-to-unscopables')
   , step             = _dereq_('./_iter-step')
@@ -3005,7 +3641,7 @@ Iterators.Arguments = Iterators.Array;
 addToUnscopables('keys');
 addToUnscopables('values');
 addToUnscopables('entries');
-},{"./_add-to-unscopables":8,"./_iter-define":34,"./_iter-step":36,"./_iterators":37,"./_to-iobject":58}],66:[function(_dereq_,module,exports){
+},{"./_add-to-unscopables":13,"./_iter-define":39,"./_iter-step":41,"./_iterators":42,"./_to-iobject":63}],71:[function(_dereq_,module,exports){
 'use strict';
 // 19.1.3.6 Object.prototype.toString()
 var classof = _dereq_('./_classof')
@@ -3016,7 +3652,7 @@ if(test + '' != '[object z]'){
     return '[object ' + classof(this) + ']';
   }, true);
 }
-},{"./_classof":12,"./_redefine":48,"./_wks":63}],67:[function(_dereq_,module,exports){
+},{"./_classof":17,"./_redefine":53,"./_wks":68}],72:[function(_dereq_,module,exports){
 'use strict';
 var LIBRARY            = _dereq_('./_library')
   , global             = _dereq_('./_global')
@@ -3316,7 +3952,7 @@ $export($export.S + $export.F * !(USE_NATIVE && _dereq_('./_iter-detect')(functi
     return capability.promise;
   }
 });
-},{"./_a-function":7,"./_an-instance":9,"./_classof":12,"./_core":14,"./_ctx":15,"./_export":20,"./_for-of":22,"./_global":23,"./_is-object":31,"./_iter-detect":35,"./_library":38,"./_microtask":39,"./_redefine-all":47,"./_set-species":49,"./_set-to-string-tag":50,"./_species-constructor":53,"./_task":55,"./_wks":63}],68:[function(_dereq_,module,exports){
+},{"./_a-function":12,"./_an-instance":14,"./_classof":17,"./_core":19,"./_ctx":20,"./_export":25,"./_for-of":27,"./_global":28,"./_is-object":36,"./_iter-detect":40,"./_library":43,"./_microtask":44,"./_redefine-all":52,"./_set-species":54,"./_set-to-string-tag":55,"./_species-constructor":58,"./_task":60,"./_wks":68}],73:[function(_dereq_,module,exports){
 'use strict';
 var $at  = _dereq_('./_string-at')(true);
 
@@ -3334,7 +3970,7 @@ _dereq_('./_iter-define')(String, 'String', function(iterated){
   this._i += point.length;
   return {value: point, done: false};
 });
-},{"./_iter-define":34,"./_string-at":54}],69:[function(_dereq_,module,exports){
+},{"./_iter-define":39,"./_string-at":59}],74:[function(_dereq_,module,exports){
 var $iterators    = _dereq_('./es6.array.iterator')
   , redefine      = _dereq_('./_redefine')
   , global        = _dereq_('./_global')
@@ -3357,7 +3993,7 @@ for(var collections = ['NodeList', 'DOMTokenList', 'MediaList', 'StyleSheetList'
     for(key in $iterators)if(!proto[key])redefine(proto, key, $iterators[key], true);
   }
 }
-},{"./_global":23,"./_hide":25,"./_iterators":37,"./_redefine":48,"./_wks":63,"./es6.array.iterator":65}],70:[function(_dereq_,module,exports){
+},{"./_global":28,"./_hide":30,"./_iterators":42,"./_redefine":53,"./_wks":68,"./es6.array.iterator":70}],75:[function(_dereq_,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -3469,7 +4105,7 @@ function objectToString(o) {
 
 }).call(this,{"isBuffer":_dereq_("../../is-buffer/index.js")})
 
-},{"../../is-buffer/index.js":95}],71:[function(_dereq_,module,exports){
+},{"../../is-buffer/index.js":100}],76:[function(_dereq_,module,exports){
 // (c) Dean McNamee <dean@gmail.com>, 2012.
 //
 // https://github.com/deanm/css-color-parser-js
@@ -3672,7 +4308,7 @@ function parseCSSColor(css_str) {
 
 try { exports.parseCSSColor = parseCSSColor } catch(e) { }
 
-},{}],72:[function(_dereq_,module,exports){
+},{}],77:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = earcut;
@@ -4318,7 +4954,7 @@ earcut.flatten = function (data) {
     return result;
 };
 
-},{}],73:[function(_dereq_,module,exports){
+},{}],78:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -4622,7 +5258,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],74:[function(_dereq_,module,exports){
+},{}],79:[function(_dereq_,module,exports){
 (function(){function m(a,b){document.addEventListener?a.addEventListener("scroll",b,!1):a.attachEvent("scroll",b)}function n(a){document.body?a():document.addEventListener?document.addEventListener("DOMContentLoaded",function c(){document.removeEventListener("DOMContentLoaded",c);a()}):document.attachEvent("onreadystatechange",function l(){if("interactive"==document.readyState||"complete"==document.readyState)document.detachEvent("onreadystatechange",l),a()})};function t(a){this.a=document.createElement("div");this.a.setAttribute("aria-hidden","true");this.a.appendChild(document.createTextNode(a));this.b=document.createElement("span");this.c=document.createElement("span");this.h=document.createElement("span");this.f=document.createElement("span");this.g=-1;this.b.style.cssText="max-width:none;display:inline-block;position:absolute;height:100%;width:100%;overflow:scroll;font-size:16px;";this.c.style.cssText="max-width:none;display:inline-block;position:absolute;height:100%;width:100%;overflow:scroll;font-size:16px;";
 this.f.style.cssText="max-width:none;display:inline-block;position:absolute;height:100%;width:100%;overflow:scroll;font-size:16px;";this.h.style.cssText="display:inline-block;width:200%;height:200%;font-size:16px;max-width:none;";this.b.appendChild(this.h);this.c.appendChild(this.f);this.a.appendChild(this.b);this.a.appendChild(this.c)}
 function x(a,b){a.a.style.cssText="max-width:none;min-width:20px;min-height:20px;display:inline-block;overflow:hidden;position:absolute;width:auto;margin:0;padding:0;top:-999px;left:-999px;white-space:nowrap;font:"+b+";"}function y(a){var b=a.a.offsetWidth,c=b+100;a.f.style.width=c+"px";a.c.scrollLeft=c;a.b.scrollLeft=a.b.scrollWidth+100;return a.g!==b?(a.g=b,!0):!1}function z(a,b){function c(){var a=l;y(a)&&a.a.parentNode&&b(a.g)}var l=a;m(a.b,c);m(a.c,c);y(a)};function A(a,b){var c=b||{};this.family=a;this.style=c.style||"normal";this.weight=c.weight||"normal";this.stretch=c.stretch||"normal"}var B=null,C=null,E=null,F=null;function I(){if(null===E){var a=document.createElement("div");try{a.style.font="condensed 100px sans-serif"}catch(b){}E=""!==a.style.font}return E}function J(a,b){return[a.style,a.weight,I()?a.stretch:"","100px",b].join(" ")}
@@ -4631,7 +5267,7 @@ c){r=setTimeout(c,D)});Promise.race([K,e]).then(function(){clearTimeout(r);a(c)}
 function H(){if((new Date).getTime()-G>=D)d.parentNode&&d.parentNode.removeChild(d),b(c);else{var a=document.hidden;if(!0===a||void 0===a)g=f.a.offsetWidth,h=p.a.offsetWidth,k=q.a.offsetWidth,e();r=setTimeout(H,50)}}var f=new t(l),p=new t(l),q=new t(l),g=-1,h=-1,k=-1,u=-1,v=-1,w=-1,d=document.createElement("div");d.dir="ltr";x(f,J(c,"sans-serif"));x(p,J(c,"serif"));x(q,J(c,"monospace"));d.appendChild(f.a);d.appendChild(p.a);d.appendChild(q.a);document.body.appendChild(d);u=f.a.offsetWidth;v=p.a.offsetWidth;
 w=q.a.offsetWidth;H();z(f,function(a){g=a;e()});x(f,J(c,'"'+c.family+'",sans-serif'));z(p,function(a){h=a;e()});x(p,J(c,'"'+c.family+'",serif'));z(q,function(a){k=a;e()});x(q,J(c,'"'+c.family+'",monospace'))})})};"undefined"!==typeof module?module.exports=A:(window.FontFaceObserver=A,window.FontFaceObserver.prototype.load=A.prototype.load);}());
 
-},{}],75:[function(_dereq_,module,exports){
+},{}],80:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = clip;
@@ -4782,7 +5418,7 @@ function newSlice(slices, slice, area, dist, outer) {
     return [];
 }
 
-},{"./feature":77}],76:[function(_dereq_,module,exports){
+},{"./feature":82}],81:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = convert;
@@ -4905,7 +5541,7 @@ function calcSize(points) {
     points.dist = dist;
 }
 
-},{"./feature":77,"./simplify":79}],77:[function(_dereq_,module,exports){
+},{"./feature":82,"./simplify":84}],82:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = createFeature;
@@ -4950,7 +5586,7 @@ function calcRingBBox(min, max, points) {
     }
 }
 
-},{}],78:[function(_dereq_,module,exports){
+},{}],83:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = geojsonvt;
@@ -5194,7 +5830,7 @@ function isClippedSquare(tile, extent, buffer) {
     return true;
 }
 
-},{"./clip":75,"./convert":76,"./tile":80,"./transform":81,"./wrap":82}],79:[function(_dereq_,module,exports){
+},{"./clip":80,"./convert":81,"./tile":85,"./transform":86,"./wrap":87}],84:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = simplify;
@@ -5270,7 +5906,7 @@ function getSqSegDist(p, a, b) {
     return dx * dx + dy * dy;
 }
 
-},{}],80:[function(_dereq_,module,exports){
+},{}],85:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = createTile;
@@ -5378,7 +6014,7 @@ function signedArea(ring) {
     return sum;
 }
 
-},{}],81:[function(_dereq_,module,exports){
+},{}],86:[function(_dereq_,module,exports){
 'use strict';
 
 exports.tile = transformTile;
@@ -5421,7 +6057,7 @@ function transformPoint(p, extent, z2, tx, ty) {
     return [x, y];
 }
 
-},{}],82:[function(_dereq_,module,exports){
+},{}],87:[function(_dereq_,module,exports){
 'use strict';
 
 var clip = _dereq_('./clip');
@@ -5479,7 +6115,7 @@ function shiftCoords(points, offset) {
     return newPoints;
 }
 
-},{"./clip":75,"./feature":77}],83:[function(_dereq_,module,exports){
+},{"./clip":80,"./feature":82}],88:[function(_dereq_,module,exports){
 module.exports = invert
 
 /**
@@ -5518,7 +6154,7 @@ function invert(out, a) {
   return out
 }
 
-},{}],84:[function(_dereq_,module,exports){
+},{}],89:[function(_dereq_,module,exports){
 module.exports = normalFromMat4
 
 /**
@@ -5575,7 +6211,7 @@ function normalFromMat4(out, a) {
   return out
 }
 
-},{}],85:[function(_dereq_,module,exports){
+},{}],90:[function(_dereq_,module,exports){
 module.exports = copy;
 
 /**
@@ -5604,7 +6240,7 @@ function copy(out, a) {
     out[15] = a[15];
     return out;
 };
-},{}],86:[function(_dereq_,module,exports){
+},{}],91:[function(_dereq_,module,exports){
 module.exports = identity;
 
 /**
@@ -5632,7 +6268,7 @@ function identity(out) {
     out[15] = 1;
     return out;
 };
-},{}],87:[function(_dereq_,module,exports){
+},{}],92:[function(_dereq_,module,exports){
 var identity = _dereq_('./identity');
 
 module.exports = lookAt;
@@ -5723,7 +6359,7 @@ function lookAt(out, eye, center, up) {
 
     return out;
 };
-},{"./identity":86}],88:[function(_dereq_,module,exports){
+},{"./identity":91}],93:[function(_dereq_,module,exports){
 module.exports = multiply;
 
 /**
@@ -5766,7 +6402,7 @@ function multiply(out, a, b) {
     out[15] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
     return out;
 };
-},{}],89:[function(_dereq_,module,exports){
+},{}],94:[function(_dereq_,module,exports){
 module.exports = perspective;
 
 /**
@@ -5800,7 +6436,7 @@ function perspective(out, fovy, aspect, near, far) {
     out[15] = 0;
     return out;
 };
-},{}],90:[function(_dereq_,module,exports){
+},{}],95:[function(_dereq_,module,exports){
 module.exports = scale;
 
 /**
@@ -5832,7 +6468,7 @@ function scale(out, a, v) {
     out[15] = a[15];
     return out;
 };
-},{}],91:[function(_dereq_,module,exports){
+},{}],96:[function(_dereq_,module,exports){
 module.exports = translate;
 
 /**
@@ -5871,7 +6507,7 @@ function translate(out, a, v) {
 
     return out;
 };
-},{}],92:[function(_dereq_,module,exports){
+},{}],97:[function(_dereq_,module,exports){
 module.exports = parseErrors
 
 function parseErrors(log) {
@@ -5899,7 +6535,7 @@ function parseErrors(log) {
   return logs
 }
 
-},{}],93:[function(_dereq_,module,exports){
+},{}],98:[function(_dereq_,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -5985,7 +6621,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],94:[function(_dereq_,module,exports){
+},{}],99:[function(_dereq_,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -6010,7 +6646,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],95:[function(_dereq_,module,exports){
+},{}],100:[function(_dereq_,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -6033,14 +6669,14 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],96:[function(_dereq_,module,exports){
+},{}],101:[function(_dereq_,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],97:[function(_dereq_,module,exports){
+},{}],102:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -6049,7 +6685,7 @@ var yaml = _dereq_('./lib/js-yaml.js');
 
 module.exports = yaml;
 
-},{"./lib/js-yaml.js":98}],98:[function(_dereq_,module,exports){
+},{"./lib/js-yaml.js":103}],103:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -6090,7 +6726,7 @@ module.exports.parse          = deprecated('parse');
 module.exports.compose        = deprecated('compose');
 module.exports.addConstructor = deprecated('addConstructor');
 
-},{"./js-yaml/exception":100,"./js-yaml/loader":101,"./js-yaml/schema":103,"./js-yaml/schema/core":104,"./js-yaml/schema/default_full":105,"./js-yaml/schema/default_safe":106,"./js-yaml/schema/failsafe":107,"./js-yaml/schema/json":108,"./js-yaml/type":109}],99:[function(_dereq_,module,exports){
+},{"./js-yaml/exception":105,"./js-yaml/loader":106,"./js-yaml/schema":108,"./js-yaml/schema/core":109,"./js-yaml/schema/default_full":110,"./js-yaml/schema/default_safe":111,"./js-yaml/schema/failsafe":112,"./js-yaml/schema/json":113,"./js-yaml/type":114}],104:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -6151,7 +6787,7 @@ module.exports.repeat         = repeat;
 module.exports.isNegativeZero = isNegativeZero;
 module.exports.extend         = extend;
 
-},{}],100:[function(_dereq_,module,exports){
+},{}],105:[function(_dereq_,module,exports){
 // YAML error class. http://stackoverflow.com/questions/8458984
 //
 'use strict';
@@ -6196,7 +6832,7 @@ YAMLException.prototype.toString = function toString(compact) {
 
 module.exports = YAMLException;
 
-},{}],101:[function(_dereq_,module,exports){
+},{}],106:[function(_dereq_,module,exports){
 'use strict';
 
 /*eslint-disable max-len,no-use-before-define*/
@@ -7784,7 +8420,7 @@ module.exports.load        = load;
 module.exports.safeLoadAll = safeLoadAll;
 module.exports.safeLoad    = safeLoad;
 
-},{"./common":99,"./exception":100,"./mark":102,"./schema/default_full":105,"./schema/default_safe":106}],102:[function(_dereq_,module,exports){
+},{"./common":104,"./exception":105,"./mark":107,"./schema/default_full":110,"./schema/default_safe":111}],107:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -7862,7 +8498,7 @@ Mark.prototype.toString = function toString(compact) {
 
 module.exports = Mark;
 
-},{"./common":99}],103:[function(_dereq_,module,exports){
+},{"./common":104}],108:[function(_dereq_,module,exports){
 'use strict';
 
 /*eslint-disable max-len*/
@@ -7968,7 +8604,7 @@ Schema.create = function createSchema() {
 
 module.exports = Schema;
 
-},{"./common":99,"./exception":100,"./type":109}],104:[function(_dereq_,module,exports){
+},{"./common":104,"./exception":105,"./type":114}],109:[function(_dereq_,module,exports){
 // Standard YAML's Core schema.
 // http://www.yaml.org/spec/1.2/spec.html#id2804923
 //
@@ -7988,7 +8624,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":103,"./json":108}],105:[function(_dereq_,module,exports){
+},{"../schema":108,"./json":113}],110:[function(_dereq_,module,exports){
 // JS-YAML's default schema for `load` function.
 // It is not described in the YAML specification.
 //
@@ -8015,7 +8651,7 @@ module.exports = Schema.DEFAULT = new Schema({
   ]
 });
 
-},{"../schema":103,"../type/js/function":114,"../type/js/regexp":115,"../type/js/undefined":116,"./default_safe":106}],106:[function(_dereq_,module,exports){
+},{"../schema":108,"../type/js/function":119,"../type/js/regexp":120,"../type/js/undefined":121,"./default_safe":111}],111:[function(_dereq_,module,exports){
 // JS-YAML's default schema for `safeLoad` function.
 // It is not described in the YAML specification.
 //
@@ -8045,7 +8681,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":103,"../type/binary":110,"../type/merge":118,"../type/omap":120,"../type/pairs":121,"../type/set":123,"../type/timestamp":125,"./core":104}],107:[function(_dereq_,module,exports){
+},{"../schema":108,"../type/binary":115,"../type/merge":123,"../type/omap":125,"../type/pairs":126,"../type/set":128,"../type/timestamp":130,"./core":109}],112:[function(_dereq_,module,exports){
 // Standard YAML's Failsafe schema.
 // http://www.yaml.org/spec/1.2/spec.html#id2802346
 
@@ -8064,7 +8700,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":103,"../type/map":117,"../type/seq":122,"../type/str":124}],108:[function(_dereq_,module,exports){
+},{"../schema":108,"../type/map":122,"../type/seq":127,"../type/str":129}],113:[function(_dereq_,module,exports){
 // Standard YAML's JSON schema.
 // http://www.yaml.org/spec/1.2/spec.html#id2803231
 //
@@ -8091,7 +8727,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":103,"../type/bool":111,"../type/float":112,"../type/int":113,"../type/null":119,"./failsafe":107}],109:[function(_dereq_,module,exports){
+},{"../schema":108,"../type/bool":116,"../type/float":117,"../type/int":118,"../type/null":124,"./failsafe":112}],114:[function(_dereq_,module,exports){
 'use strict';
 
 var YAMLException = _dereq_('./exception');
@@ -8154,7 +8790,7 @@ function Type(tag, options) {
 
 module.exports = Type;
 
-},{"./exception":100}],110:[function(_dereq_,module,exports){
+},{"./exception":105}],115:[function(_dereq_,module,exports){
 'use strict';
 
 /*eslint-disable no-bitwise*/
@@ -8286,7 +8922,7 @@ module.exports = new Type('tag:yaml.org,2002:binary', {
   represent: representYamlBinary
 });
 
-},{"../type":109,"buffer":4}],111:[function(_dereq_,module,exports){
+},{"../type":114,"buffer":9}],116:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8323,7 +8959,7 @@ module.exports = new Type('tag:yaml.org,2002:bool', {
   defaultStyle: 'lowercase'
 });
 
-},{"../type":109}],112:[function(_dereq_,module,exports){
+},{"../type":114}],117:[function(_dereq_,module,exports){
 'use strict';
 
 var common = _dereq_('../common');
@@ -8430,7 +9066,7 @@ module.exports = new Type('tag:yaml.org,2002:float', {
   defaultStyle: 'lowercase'
 });
 
-},{"../common":99,"../type":109}],113:[function(_dereq_,module,exports){
+},{"../common":104,"../type":114}],118:[function(_dereq_,module,exports){
 'use strict';
 
 var common = _dereq_('../common');
@@ -8600,7 +9236,7 @@ module.exports = new Type('tag:yaml.org,2002:int', {
   }
 });
 
-},{"../common":99,"../type":109}],114:[function(_dereq_,module,exports){
+},{"../common":104,"../type":114}],119:[function(_dereq_,module,exports){
 'use strict';
 
 var esprima;
@@ -8686,7 +9322,7 @@ module.exports = new Type('tag:yaml.org,2002:js/function', {
   represent: representJavascriptFunction
 });
 
-},{"../../type":109}],115:[function(_dereq_,module,exports){
+},{"../../type":114}],120:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../../type');
@@ -8748,7 +9384,7 @@ module.exports = new Type('tag:yaml.org,2002:js/regexp', {
   represent: representJavascriptRegExp
 });
 
-},{"../../type":109}],116:[function(_dereq_,module,exports){
+},{"../../type":114}],121:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../../type');
@@ -8778,7 +9414,7 @@ module.exports = new Type('tag:yaml.org,2002:js/undefined', {
   represent: representJavascriptUndefined
 });
 
-},{"../../type":109}],117:[function(_dereq_,module,exports){
+},{"../../type":114}],122:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8788,7 +9424,7 @@ module.exports = new Type('tag:yaml.org,2002:map', {
   construct: function (data) { return data !== null ? data : {}; }
 });
 
-},{"../type":109}],118:[function(_dereq_,module,exports){
+},{"../type":114}],123:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8802,7 +9438,7 @@ module.exports = new Type('tag:yaml.org,2002:merge', {
   resolve: resolveYamlMerge
 });
 
-},{"../type":109}],119:[function(_dereq_,module,exports){
+},{"../type":114}],124:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8838,7 +9474,7 @@ module.exports = new Type('tag:yaml.org,2002:null', {
   defaultStyle: 'lowercase'
 });
 
-},{"../type":109}],120:[function(_dereq_,module,exports){
+},{"../type":114}],125:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8884,7 +9520,7 @@ module.exports = new Type('tag:yaml.org,2002:omap', {
   construct: constructYamlOmap
 });
 
-},{"../type":109}],121:[function(_dereq_,module,exports){
+},{"../type":114}],126:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8939,7 +9575,7 @@ module.exports = new Type('tag:yaml.org,2002:pairs', {
   construct: constructYamlPairs
 });
 
-},{"../type":109}],122:[function(_dereq_,module,exports){
+},{"../type":114}],127:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8949,7 +9585,7 @@ module.exports = new Type('tag:yaml.org,2002:seq', {
   construct: function (data) { return data !== null ? data : []; }
 });
 
-},{"../type":109}],123:[function(_dereq_,module,exports){
+},{"../type":114}],128:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8980,7 +9616,7 @@ module.exports = new Type('tag:yaml.org,2002:set', {
   construct: constructYamlSet
 });
 
-},{"../type":109}],124:[function(_dereq_,module,exports){
+},{"../type":114}],129:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -8990,7 +9626,7 @@ module.exports = new Type('tag:yaml.org,2002:str', {
   construct: function (data) { return data !== null ? data : ''; }
 });
 
-},{"../type":109}],125:[function(_dereq_,module,exports){
+},{"../type":114}],130:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9073,7 +9709,7 @@ module.exports = new Type('tag:yaml.org,2002:timestamp', {
   represent: representYamlTimestamp
 });
 
-},{"../type":109}],126:[function(_dereq_,module,exports){
+},{"../type":114}],131:[function(_dereq_,module,exports){
 'use strict';
 var utils = _dereq_('./utils');
 var support = _dereq_('./support');
@@ -9160,7 +9796,7 @@ exports.decode = function(input) {
     return output;
 };
 
-},{"./support":152,"./utils":154}],127:[function(_dereq_,module,exports){
+},{"./support":157,"./utils":159}],132:[function(_dereq_,module,exports){
 'use strict';
 
 var external = _dereq_("./external");
@@ -9237,7 +9873,7 @@ CompressedObject.createWorkerFrom = function (uncompressedWorker, compression, c
 
 module.exports = CompressedObject;
 
-},{"./external":131,"./stream/Crc32Probe":147,"./stream/DataLengthProbe":148,"./stream/DataWorker":149}],128:[function(_dereq_,module,exports){
+},{"./external":136,"./stream/Crc32Probe":152,"./stream/DataLengthProbe":153,"./stream/DataWorker":154}],133:[function(_dereq_,module,exports){
 'use strict';
 
 var GenericWorker = _dereq_("./stream/GenericWorker");
@@ -9253,7 +9889,7 @@ exports.STORE = {
 };
 exports.DEFLATE = _dereq_('./flate');
 
-},{"./flate":132,"./stream/GenericWorker":150}],129:[function(_dereq_,module,exports){
+},{"./flate":137,"./stream/GenericWorker":155}],134:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('./utils');
@@ -9333,7 +9969,7 @@ module.exports = function crc32wrapper(input, crc) {
 };
 // vim: set shiftwidth=4 softtabstop=4:
 
-},{"./utils":154}],130:[function(_dereq_,module,exports){
+},{"./utils":159}],135:[function(_dereq_,module,exports){
 'use strict';
 exports.base64 = false;
 exports.binary = false;
@@ -9346,7 +9982,7 @@ exports.comment = null;
 exports.unixPermissions = null;
 exports.dosPermissions = null;
 
-},{}],131:[function(_dereq_,module,exports){
+},{}],136:[function(_dereq_,module,exports){
 'use strict';
 
 // var ES6Promise = require("es6-promise").Promise;
@@ -9358,7 +9994,7 @@ module.exports = {
     Promise: window.Promise
 };
 
-},{}],132:[function(_dereq_,module,exports){
+},{}],137:[function(_dereq_,module,exports){
 'use strict';
 var USE_TYPEDARRAY = (typeof Uint8Array !== 'undefined') && (typeof Uint16Array !== 'undefined') && (typeof Uint32Array !== 'undefined');
 
@@ -9428,7 +10064,7 @@ exports.uncompressWorker = function () {
     return new FlateWorker("Inflate", {});
 };
 
-},{"./stream/GenericWorker":150,"./utils":154,"pako":165}],133:[function(_dereq_,module,exports){
+},{"./stream/GenericWorker":155,"./utils":159,"pako":170}],138:[function(_dereq_,module,exports){
 'use strict';
 
 /**
@@ -9478,7 +10114,7 @@ JSZip.loadAsync = function (content, options) {
 JSZip.external = _dereq_("./external");
 module.exports = JSZip;
 
-},{"./defaults":130,"./external":131,"./load":134,"./object":138,"./support":152}],134:[function(_dereq_,module,exports){
+},{"./defaults":135,"./external":136,"./load":139,"./object":143,"./support":157}],139:[function(_dereq_,module,exports){
 'use strict';
 var utils = _dereq_('./utils');
 var external = _dereq_("./external");
@@ -9562,7 +10198,7 @@ module.exports = function(data, options) {
     });
 };
 
-},{"./external":131,"./nodejsUtils":137,"./stream/Crc32Probe":147,"./utf8":153,"./utils":154,"./zipEntries":155}],135:[function(_dereq_,module,exports){
+},{"./external":136,"./nodejsUtils":142,"./stream/Crc32Probe":152,"./utf8":158,"./utils":159,"./zipEntries":160}],140:[function(_dereq_,module,exports){
 "use strict";
 
 var utils = _dereq_('../utils');
@@ -9638,7 +10274,7 @@ NodejsStreamInputAdapter.prototype.resume = function () {
 
 module.exports = NodejsStreamInputAdapter;
 
-},{"../stream/GenericWorker":150,"../utils":154}],136:[function(_dereq_,module,exports){
+},{"../stream/GenericWorker":155,"../utils":159}],141:[function(_dereq_,module,exports){
 'use strict';
 
 var Readable = _dereq_('readable-stream').Readable;
@@ -9682,7 +10318,7 @@ NodejsStreamOutputAdapter.prototype._read = function() {
 
 module.exports = NodejsStreamOutputAdapter;
 
-},{"readable-stream":163,"util":191}],137:[function(_dereq_,module,exports){
+},{"readable-stream":168,"util":195}],142:[function(_dereq_,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -9721,7 +10357,7 @@ module.exports = {
 
 }).call(this,_dereq_("buffer").Buffer)
 
-},{"buffer":5}],138:[function(_dereq_,module,exports){
+},{"buffer":10}],143:[function(_dereq_,module,exports){
 'use strict';
 // var utf8 = require('./utf8');
 var utils = _dereq_('./utils');
@@ -10110,7 +10746,7 @@ var out = {
 };
 module.exports = out;
 
-},{"./compressedObject":127,"./defaults":130,"./nodejs/NodejsStreamInputAdapter":135,"./nodejsUtils":137,"./stream/GenericWorker":150,"./utils":154,"./zipObject":157}],139:[function(_dereq_,module,exports){
+},{"./compressedObject":132,"./defaults":135,"./nodejs/NodejsStreamInputAdapter":140,"./nodejsUtils":142,"./stream/GenericWorker":155,"./utils":159,"./zipObject":162}],144:[function(_dereq_,module,exports){
 'use strict';
 var DataReader = _dereq_('./DataReader');
 var utils = _dereq_('../utils');
@@ -10169,7 +10805,7 @@ ArrayReader.prototype.readData = function(size) {
 };
 module.exports = ArrayReader;
 
-},{"../utils":154,"./DataReader":140}],140:[function(_dereq_,module,exports){
+},{"../utils":159,"./DataReader":145}],145:[function(_dereq_,module,exports){
 'use strict';
 var utils = _dereq_('../utils');
 
@@ -10287,7 +10923,7 @@ DataReader.prototype = {
 };
 module.exports = DataReader;
 
-},{"../utils":154}],141:[function(_dereq_,module,exports){
+},{"../utils":159}],146:[function(_dereq_,module,exports){
 'use strict';
 var Uint8ArrayReader = _dereq_('./Uint8ArrayReader');
 var utils = _dereq_('../utils');
@@ -10308,7 +10944,7 @@ NodeBufferReader.prototype.readData = function(size) {
 };
 module.exports = NodeBufferReader;
 
-},{"../utils":154,"./Uint8ArrayReader":143}],142:[function(_dereq_,module,exports){
+},{"../utils":159,"./Uint8ArrayReader":148}],147:[function(_dereq_,module,exports){
 'use strict';
 var DataReader = _dereq_('./DataReader');
 var utils = _dereq_('../utils');
@@ -10348,7 +10984,7 @@ StringReader.prototype.readData = function(size) {
 };
 module.exports = StringReader;
 
-},{"../utils":154,"./DataReader":140}],143:[function(_dereq_,module,exports){
+},{"../utils":159,"./DataReader":145}],148:[function(_dereq_,module,exports){
 'use strict';
 var ArrayReader = _dereq_('./ArrayReader');
 var utils = _dereq_('../utils');
@@ -10372,7 +11008,7 @@ Uint8ArrayReader.prototype.readData = function(size) {
 };
 module.exports = Uint8ArrayReader;
 
-},{"../utils":154,"./ArrayReader":139}],144:[function(_dereq_,module,exports){
+},{"../utils":159,"./ArrayReader":144}],149:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('../utils');
@@ -10404,7 +11040,7 @@ module.exports = function (data) {
 
 // vim: set shiftwidth=4 softtabstop=4:
 
-},{"../support":152,"../utils":154,"./ArrayReader":139,"./NodeBufferReader":141,"./StringReader":142,"./Uint8ArrayReader":143}],145:[function(_dereq_,module,exports){
+},{"../support":157,"../utils":159,"./ArrayReader":144,"./NodeBufferReader":146,"./StringReader":147,"./Uint8ArrayReader":148}],150:[function(_dereq_,module,exports){
 'use strict';
 exports.LOCAL_FILE_HEADER = "PK\x03\x04";
 exports.CENTRAL_FILE_HEADER = "PK\x01\x02";
@@ -10413,7 +11049,7 @@ exports.ZIP64_CENTRAL_DIRECTORY_LOCATOR = "PK\x06\x07";
 exports.ZIP64_CENTRAL_DIRECTORY_END = "PK\x06\x06";
 exports.DATA_DESCRIPTOR = "PK\x07\x08";
 
-},{}],146:[function(_dereq_,module,exports){
+},{}],151:[function(_dereq_,module,exports){
 'use strict';
 
 var GenericWorker = _dereq_('./GenericWorker');
@@ -10441,7 +11077,7 @@ ConvertWorker.prototype.processChunk = function (chunk) {
 };
 module.exports = ConvertWorker;
 
-},{"../utils":154,"./GenericWorker":150}],147:[function(_dereq_,module,exports){
+},{"../utils":159,"./GenericWorker":155}],152:[function(_dereq_,module,exports){
 'use strict';
 
 var GenericWorker = _dereq_('./GenericWorker');
@@ -10466,7 +11102,7 @@ Crc32Probe.prototype.processChunk = function (chunk) {
 };
 module.exports = Crc32Probe;
 
-},{"../crc32":129,"../utils":154,"./GenericWorker":150}],148:[function(_dereq_,module,exports){
+},{"../crc32":134,"../utils":159,"./GenericWorker":155}],153:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('../utils');
@@ -10497,7 +11133,7 @@ DataLengthProbe.prototype.processChunk = function (chunk) {
 module.exports = DataLengthProbe;
 
 
-},{"../utils":154,"./GenericWorker":150}],149:[function(_dereq_,module,exports){
+},{"../utils":159,"./GenericWorker":155}],154:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('../utils');
@@ -10615,7 +11251,7 @@ DataWorker.prototype._tick = function() {
 
 module.exports = DataWorker;
 
-},{"../utils":154,"./GenericWorker":150}],150:[function(_dereq_,module,exports){
+},{"../utils":159,"./GenericWorker":155}],155:[function(_dereq_,module,exports){
 'use strict';
 
 /**
@@ -10880,7 +11516,7 @@ GenericWorker.prototype = {
 
 module.exports = GenericWorker;
 
-},{}],151:[function(_dereq_,module,exports){
+},{}],156:[function(_dereq_,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -11090,7 +11726,7 @@ module.exports = StreamHelper;
 
 }).call(this,_dereq_("buffer").Buffer)
 
-},{"../base64":126,"../external":131,"../nodejs/NodejsStreamOutputAdapter":136,"../utils":154,"./ConvertWorker":146,"./GenericWorker":150,"buffer":5}],152:[function(_dereq_,module,exports){
+},{"../base64":131,"../external":136,"../nodejs/NodejsStreamOutputAdapter":141,"../utils":159,"./ConvertWorker":151,"./GenericWorker":155,"buffer":10}],157:[function(_dereq_,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -11129,7 +11765,7 @@ exports.nodestream = !!_dereq_("./nodejs/NodejsStreamOutputAdapter").prototype;
 
 }).call(this,_dereq_("buffer").Buffer)
 
-},{"./nodejs/NodejsStreamOutputAdapter":136,"buffer":5}],153:[function(_dereq_,module,exports){
+},{"./nodejs/NodejsStreamOutputAdapter":141,"buffer":10}],158:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('./utils');
@@ -11406,7 +12042,7 @@ Utf8EncodeWorker.prototype.processChunk = function (chunk) {
 };
 exports.Utf8EncodeWorker = Utf8EncodeWorker;
 
-},{"./nodejsUtils":137,"./stream/GenericWorker":150,"./support":152,"./utils":154}],154:[function(_dereq_,module,exports){
+},{"./nodejsUtils":142,"./stream/GenericWorker":155,"./support":157,"./utils":159}],159:[function(_dereq_,module,exports){
 'use strict';
 
 var support = _dereq_('./support');
@@ -11873,7 +12509,7 @@ exports.prepareContent = function(name, inputData, isBinary, isOptimizedBinarySt
     });
 };
 
-},{"./base64":126,"./external":131,"./nodejsUtils":137,"./support":152,"asap":1}],155:[function(_dereq_,module,exports){
+},{"./base64":131,"./external":136,"./nodejsUtils":142,"./support":157,"asap":6}],160:[function(_dereq_,module,exports){
 'use strict';
 var readerFor = _dereq_('./reader/readerFor');
 var utils = _dereq_('./utils');
@@ -12137,7 +12773,7 @@ ZipEntries.prototype = {
 // }}} end of ZipEntries
 module.exports = ZipEntries;
 
-},{"./reader/readerFor":144,"./signature":145,"./support":152,"./utf8":153,"./utils":154,"./zipEntry":156}],156:[function(_dereq_,module,exports){
+},{"./reader/readerFor":149,"./signature":150,"./support":157,"./utf8":158,"./utils":159,"./zipEntry":161}],161:[function(_dereq_,module,exports){
 'use strict';
 var readerFor = _dereq_('./reader/readerFor');
 var utils = _dereq_('./utils');
@@ -12431,7 +13067,7 @@ ZipEntry.prototype = {
 };
 module.exports = ZipEntry;
 
-},{"./compressedObject":127,"./compressions":128,"./crc32":129,"./reader/readerFor":144,"./support":152,"./utf8":153,"./utils":154}],157:[function(_dereq_,module,exports){
+},{"./compressedObject":132,"./compressions":133,"./crc32":134,"./reader/readerFor":149,"./support":157,"./utf8":158,"./utils":159}],162:[function(_dereq_,module,exports){
 'use strict';
 
 var StreamHelper = _dereq_('./stream/StreamHelper');
@@ -12557,7 +13193,7 @@ for(var i = 0; i < removedMethods.length; i++) {
 }
 module.exports = ZipObject;
 
-},{"./compressedObject":127,"./stream/DataWorker":149,"./stream/GenericWorker":150,"./stream/StreamHelper":151,"./utf8":153}],158:[function(_dereq_,module,exports){
+},{"./compressedObject":132,"./stream/DataWorker":154,"./stream/GenericWorker":155,"./stream/StreamHelper":156,"./utf8":158}],163:[function(_dereq_,module,exports){
 // a duplex stream is just a stream that is both readable and writable.
 // Since JS doesn't have multiple prototypal inheritance, this class
 // prototypally inherits from Readable, and then parasitically from
@@ -12633,7 +13269,7 @@ function forEach(xs, f) {
     f(xs[i], i);
   }
 }
-},{"./_stream_readable":160,"./_stream_writable":162,"core-util-is":70,"inherits":94,"process-nextick-args":184}],159:[function(_dereq_,module,exports){
+},{"./_stream_readable":165,"./_stream_writable":167,"core-util-is":75,"inherits":99,"process-nextick-args":188}],164:[function(_dereq_,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -12660,7 +13296,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":161,"core-util-is":70,"inherits":94}],160:[function(_dereq_,module,exports){
+},{"./_stream_transform":166,"core-util-is":75,"inherits":99}],165:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 
@@ -13544,7 +14180,7 @@ function indexOf(xs, x) {
 }
 }).call(this,_dereq_('_process'))
 
-},{"./_stream_duplex":158,"_process":185,"buffer":5,"core-util-is":70,"events":73,"inherits":94,"isarray":96,"process-nextick-args":184,"string_decoder/":164,"util":4}],161:[function(_dereq_,module,exports){
+},{"./_stream_duplex":163,"_process":189,"buffer":10,"core-util-is":75,"events":78,"inherits":99,"isarray":101,"process-nextick-args":188,"string_decoder/":169,"util":9}],166:[function(_dereq_,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -13725,7 +14361,7 @@ function done(stream, er) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":158,"core-util-is":70,"inherits":94}],162:[function(_dereq_,module,exports){
+},{"./_stream_duplex":163,"core-util-is":75,"inherits":99}],167:[function(_dereq_,module,exports){
 (function (process){
 // A bit simpler than readable streams.
 // Implement an async ._write(chunk, encoding, cb), and it'll handle all
@@ -14245,7 +14881,7 @@ function CorkedRequest(state) {
 }
 }).call(this,_dereq_('_process'))
 
-},{"./_stream_duplex":158,"_process":185,"buffer":5,"core-util-is":70,"events":73,"inherits":94,"process-nextick-args":184,"util-deprecate":188}],163:[function(_dereq_,module,exports){
+},{"./_stream_duplex":163,"_process":189,"buffer":10,"core-util-is":75,"events":78,"inherits":99,"process-nextick-args":188,"util-deprecate":192}],168:[function(_dereq_,module,exports){
 var Stream = (function (){
   try {
     return _dereq_('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
@@ -14259,7 +14895,7 @@ exports.Duplex = _dereq_('./lib/_stream_duplex.js');
 exports.Transform = _dereq_('./lib/_stream_transform.js');
 exports.PassThrough = _dereq_('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":158,"./lib/_stream_passthrough.js":159,"./lib/_stream_readable.js":160,"./lib/_stream_transform.js":161,"./lib/_stream_writable.js":162}],164:[function(_dereq_,module,exports){
+},{"./lib/_stream_duplex.js":163,"./lib/_stream_passthrough.js":164,"./lib/_stream_readable.js":165,"./lib/_stream_transform.js":166,"./lib/_stream_writable.js":167}],169:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -14482,7 +15118,7 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":5}],165:[function(_dereq_,module,exports){
+},{"buffer":10}],170:[function(_dereq_,module,exports){
 // Top level file is just a mixin of submodules & constants
 'use strict';
 
@@ -14498,7 +15134,7 @@ assign(pako, deflate, inflate, constants);
 
 module.exports = pako;
 
-},{"./lib/deflate":166,"./lib/inflate":167,"./lib/utils/common":168,"./lib/zlib/constants":171}],166:[function(_dereq_,module,exports){
+},{"./lib/deflate":171,"./lib/inflate":172,"./lib/utils/common":173,"./lib/zlib/constants":176}],171:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -14540,7 +15176,7 @@ var Z_DEFLATED  = 8;
 /* internal
  * Deflate.chunks -> Array
  *
- * Chunks of output data, if [[Deflate#onData]] not overriden.
+ * Chunks of output data, if [[Deflate#onData]] not overridden.
  **/
 
 /**
@@ -14693,7 +15329,7 @@ function Deflate(options) {
  * - data (Uint8Array|Array|ArrayBuffer|String): input data. Strings will be
  *   converted to utf8 byte sequence.
  * - mode (Number|Boolean): 0..6 for corresponding Z_NO_FLUSH..Z_TREE modes.
- *   See constants. Skipped or `false` means Z_NO_FLUSH, `true` meansh Z_FINISH.
+ *   See constants. Skipped or `false` means Z_NO_FLUSH, `true` means Z_FINISH.
  *
  * Sends input data to deflate pipe, generating [[Deflate#onData]] calls with
  * new compressed chunks. Returns `true` on success. The last data block must have
@@ -14782,7 +15418,7 @@ Deflate.prototype.push = function (data, mode) {
 
 /**
  * Deflate#onData(chunk) -> Void
- * - chunk (Uint8Array|Array|String): ouput data. Type of array depends
+ * - chunk (Uint8Array|Array|String): output data. Type of array depends
  *   on js engine support. When string output requested, each chunk
  *   will be string.
  *
@@ -14900,7 +15536,7 @@ exports.deflate = deflate;
 exports.deflateRaw = deflateRaw;
 exports.gzip = gzip;
 
-},{"./utils/common":168,"./utils/strings":169,"./zlib/deflate":173,"./zlib/messages":178,"./zlib/zstream":180}],167:[function(_dereq_,module,exports){
+},{"./utils/common":173,"./utils/strings":174,"./zlib/deflate":178,"./zlib/messages":183,"./zlib/zstream":185}],172:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -14925,7 +15561,7 @@ var toString = Object.prototype.toString;
 /* internal
  * inflate.chunks -> Array
  *
- * Chunks of output data, if [[Inflate#onData]] not overriden.
+ * Chunks of output data, if [[Inflate#onData]] not overridden.
  **/
 
 /**
@@ -15053,7 +15689,7 @@ function Inflate(options) {
  * Inflate#push(data[, mode]) -> Boolean
  * - data (Uint8Array|Array|ArrayBuffer|String): input data
  * - mode (Number|Boolean): 0..6 for corresponding Z_NO_FLUSH..Z_TREE modes.
- *   See constants. Skipped or `false` means Z_NO_FLUSH, `true` meansh Z_FINISH.
+ *   See constants. Skipped or `false` means Z_NO_FLUSH, `true` means Z_FINISH.
  *
  * Sends input data to inflate pipe, generating [[Inflate#onData]] calls with
  * new output chunks. Returns `true` on success. The last data block must have
@@ -15200,7 +15836,7 @@ Inflate.prototype.push = function (data, mode) {
 
 /**
  * Inflate#onData(chunk) -> Void
- * - chunk (Uint8Array|Array|String): ouput data. Type of array depends
+ * - chunk (Uint8Array|Array|String): output data. Type of array depends
  *   on js engine support. When string output requested, each chunk
  *   will be string.
  *
@@ -15227,7 +15863,7 @@ Inflate.prototype.onEnd = function (status) {
   if (status === c.Z_OK) {
     if (this.options.to === 'string') {
       // Glue & convert here, until we teach pako to send
-      // utf8 alligned strings to onData
+      // utf8 aligned strings to onData
       this.result = this.chunks.join('');
     } else {
       this.result = utils.flattenChunks(this.chunks);
@@ -15320,7 +15956,7 @@ exports.inflate = inflate;
 exports.inflateRaw = inflateRaw;
 exports.ungzip  = inflate;
 
-},{"./utils/common":168,"./utils/strings":169,"./zlib/constants":171,"./zlib/gzheader":174,"./zlib/inflate":176,"./zlib/messages":178,"./zlib/zstream":180}],168:[function(_dereq_,module,exports){
+},{"./utils/common":173,"./utils/strings":174,"./zlib/constants":176,"./zlib/gzheader":179,"./zlib/inflate":181,"./zlib/messages":183,"./zlib/zstream":185}],173:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -15328,6 +15964,9 @@ var TYPED_OK =  (typeof Uint8Array !== 'undefined') &&
                 (typeof Uint16Array !== 'undefined') &&
                 (typeof Int32Array !== 'undefined');
 
+function _has(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
 
 exports.assign = function (obj /*from1, from2, from3, ...*/) {
   var sources = Array.prototype.slice.call(arguments, 1);
@@ -15340,7 +15979,7 @@ exports.assign = function (obj /*from1, from2, from3, ...*/) {
     }
 
     for (var p in source) {
-      if (source.hasOwnProperty(p)) {
+      if (_has(source, p)) {
         obj[p] = source[p];
       }
     }
@@ -15424,7 +16063,7 @@ exports.setTyped = function (on) {
 
 exports.setTyped(TYPED_OK);
 
-},{}],169:[function(_dereq_,module,exports){
+},{}],174:[function(_dereq_,module,exports){
 // String encode/decode helpers
 'use strict';
 
@@ -15435,7 +16074,7 @@ var utils = _dereq_('./common');
 // Quick check if we can use fast array to bin string conversion
 //
 // - apply(Array) can fail on Android 2.2
-// - apply(Uint8Array) can fail on iOS 5.1 Safary
+// - apply(Uint8Array) can fail on iOS 5.1 Safari
 //
 var STR_APPLY_OK = true;
 var STR_APPLY_UIA_OK = true;
@@ -15600,22 +16239,22 @@ exports.utf8border = function (buf, max) {
   pos = max - 1;
   while (pos >= 0 && (buf[pos] & 0xC0) === 0x80) { pos--; }
 
-  // Fuckup - very small and broken sequence,
+  // Very small and broken sequence,
   // return max, because we should return something anyway.
   if (pos < 0) { return max; }
 
-  // If we came to start of buffer - that means vuffer is too small,
+  // If we came to start of buffer - that means buffer is too small,
   // return max too.
   if (pos === 0) { return max; }
 
   return (pos + _utf8len[buf[pos]] > max) ? pos : max;
 };
 
-},{"./common":168}],170:[function(_dereq_,module,exports){
+},{"./common":173}],175:[function(_dereq_,module,exports){
 'use strict';
 
 // Note: adler32 takes 12% for level 0 and 2% for level 6.
-// It doesn't worth to make additional optimizationa as in original.
+// It isn't worth it to make additional optimizations as in original.
 // Small size is preferable.
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -15664,7 +16303,7 @@ function adler32(adler, buf, len, pos) {
 
 module.exports = adler32;
 
-},{}],171:[function(_dereq_,module,exports){
+},{}],176:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -15734,7 +16373,7 @@ module.exports = {
   //Z_NULL:                 null // Use -1 or null inline, depending on var type
 };
 
-},{}],172:[function(_dereq_,module,exports){
+},{}],177:[function(_dereq_,module,exports){
 'use strict';
 
 // Note: we can't get significant speed boost here.
@@ -15795,7 +16434,7 @@ function crc32(crc, buf, len, pos) {
 
 module.exports = crc32;
 
-},{}],173:[function(_dereq_,module,exports){
+},{}],178:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -17671,7 +18310,7 @@ exports.deflatePrime = deflatePrime;
 exports.deflateTune = deflateTune;
 */
 
-},{"../utils/common":168,"./adler32":170,"./crc32":172,"./messages":178,"./trees":179}],174:[function(_dereq_,module,exports){
+},{"../utils/common":173,"./adler32":175,"./crc32":177,"./messages":183,"./trees":184}],179:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -17731,7 +18370,7 @@ function GZheader() {
 
 module.exports = GZheader;
 
-},{}],175:[function(_dereq_,module,exports){
+},{}],180:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -17935,7 +18574,7 @@ module.exports = function inflate_fast(strm, start) {
                   break top;
                 }
 
-// (!) This block is disabled in zlib defailts,
+// (!) This block is disabled in zlib defaults,
 // don't enable it for binary compatibility
 //#ifdef INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR
 //                if (len <= op - whave) {
@@ -18078,7 +18717,7 @@ module.exports = function inflate_fast(strm, start) {
   return;
 };
 
-},{}],176:[function(_dereq_,module,exports){
+},{}],181:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -18513,162 +19152,72 @@ function inflate(strm, flush) {
   inf_leave: // goto emulation
   for (;;) {
     switch (state.mode) {
-    case HEAD:
-      if (state.wrap === 0) {
-        state.mode = TYPEDO;
-        break;
-      }
-      //=== NEEDBITS(16);
-      while (bits < 16) {
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-      }
-      //===//
-      if ((state.wrap & 2) && hold === 0x8b1f) {  /* gzip header */
-        state.check = 0/*crc32(0L, Z_NULL, 0)*/;
-        //=== CRC2(state.check, hold);
-        hbuf[0] = hold & 0xff;
-        hbuf[1] = (hold >>> 8) & 0xff;
-        state.check = crc32(state.check, hbuf, 2, 0);
+      case HEAD:
+        if (state.wrap === 0) {
+          state.mode = TYPEDO;
+          break;
+        }
+        //=== NEEDBITS(16);
+        while (bits < 16) {
+          if (have === 0) { break inf_leave; }
+          have--;
+          hold += input[next++] << bits;
+          bits += 8;
+        }
         //===//
+        if ((state.wrap & 2) && hold === 0x8b1f) {  /* gzip header */
+          state.check = 0/*crc32(0L, Z_NULL, 0)*/;
+          //=== CRC2(state.check, hold);
+          hbuf[0] = hold & 0xff;
+          hbuf[1] = (hold >>> 8) & 0xff;
+          state.check = crc32(state.check, hbuf, 2, 0);
+          //===//
 
+          //=== INITBITS();
+          hold = 0;
+          bits = 0;
+          //===//
+          state.mode = FLAGS;
+          break;
+        }
+        state.flags = 0;           /* expect zlib header */
+        if (state.head) {
+          state.head.done = false;
+        }
+        if (!(state.wrap & 1) ||   /* check if zlib header allowed */
+          (((hold & 0xff)/*BITS(8)*/ << 8) + (hold >> 8)) % 31) {
+          strm.msg = 'incorrect header check';
+          state.mode = BAD;
+          break;
+        }
+        if ((hold & 0x0f)/*BITS(4)*/ !== Z_DEFLATED) {
+          strm.msg = 'unknown compression method';
+          state.mode = BAD;
+          break;
+        }
+        //--- DROPBITS(4) ---//
+        hold >>>= 4;
+        bits -= 4;
+        //---//
+        len = (hold & 0x0f)/*BITS(4)*/ + 8;
+        if (state.wbits === 0) {
+          state.wbits = len;
+        }
+        else if (len > state.wbits) {
+          strm.msg = 'invalid window size';
+          state.mode = BAD;
+          break;
+        }
+        state.dmax = 1 << len;
+        //Tracev((stderr, "inflate:   zlib header ok\n"));
+        strm.adler = state.check = 1/*adler32(0L, Z_NULL, 0)*/;
+        state.mode = hold & 0x200 ? DICTID : TYPE;
         //=== INITBITS();
         hold = 0;
         bits = 0;
         //===//
-        state.mode = FLAGS;
         break;
-      }
-      state.flags = 0;           /* expect zlib header */
-      if (state.head) {
-        state.head.done = false;
-      }
-      if (!(state.wrap & 1) ||   /* check if zlib header allowed */
-        (((hold & 0xff)/*BITS(8)*/ << 8) + (hold >> 8)) % 31) {
-        strm.msg = 'incorrect header check';
-        state.mode = BAD;
-        break;
-      }
-      if ((hold & 0x0f)/*BITS(4)*/ !== Z_DEFLATED) {
-        strm.msg = 'unknown compression method';
-        state.mode = BAD;
-        break;
-      }
-      //--- DROPBITS(4) ---//
-      hold >>>= 4;
-      bits -= 4;
-      //---//
-      len = (hold & 0x0f)/*BITS(4)*/ + 8;
-      if (state.wbits === 0) {
-        state.wbits = len;
-      }
-      else if (len > state.wbits) {
-        strm.msg = 'invalid window size';
-        state.mode = BAD;
-        break;
-      }
-      state.dmax = 1 << len;
-      //Tracev((stderr, "inflate:   zlib header ok\n"));
-      strm.adler = state.check = 1/*adler32(0L, Z_NULL, 0)*/;
-      state.mode = hold & 0x200 ? DICTID : TYPE;
-      //=== INITBITS();
-      hold = 0;
-      bits = 0;
-      //===//
-      break;
-    case FLAGS:
-      //=== NEEDBITS(16); */
-      while (bits < 16) {
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-      }
-      //===//
-      state.flags = hold;
-      if ((state.flags & 0xff) !== Z_DEFLATED) {
-        strm.msg = 'unknown compression method';
-        state.mode = BAD;
-        break;
-      }
-      if (state.flags & 0xe000) {
-        strm.msg = 'unknown header flags set';
-        state.mode = BAD;
-        break;
-      }
-      if (state.head) {
-        state.head.text = ((hold >> 8) & 1);
-      }
-      if (state.flags & 0x0200) {
-        //=== CRC2(state.check, hold);
-        hbuf[0] = hold & 0xff;
-        hbuf[1] = (hold >>> 8) & 0xff;
-        state.check = crc32(state.check, hbuf, 2, 0);
-        //===//
-      }
-      //=== INITBITS();
-      hold = 0;
-      bits = 0;
-      //===//
-      state.mode = TIME;
-      /* falls through */
-    case TIME:
-      //=== NEEDBITS(32); */
-      while (bits < 32) {
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-      }
-      //===//
-      if (state.head) {
-        state.head.time = hold;
-      }
-      if (state.flags & 0x0200) {
-        //=== CRC4(state.check, hold)
-        hbuf[0] = hold & 0xff;
-        hbuf[1] = (hold >>> 8) & 0xff;
-        hbuf[2] = (hold >>> 16) & 0xff;
-        hbuf[3] = (hold >>> 24) & 0xff;
-        state.check = crc32(state.check, hbuf, 4, 0);
-        //===
-      }
-      //=== INITBITS();
-      hold = 0;
-      bits = 0;
-      //===//
-      state.mode = OS;
-      /* falls through */
-    case OS:
-      //=== NEEDBITS(16); */
-      while (bits < 16) {
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-      }
-      //===//
-      if (state.head) {
-        state.head.xflags = (hold & 0xff);
-        state.head.os = (hold >> 8);
-      }
-      if (state.flags & 0x0200) {
-        //=== CRC2(state.check, hold);
-        hbuf[0] = hold & 0xff;
-        hbuf[1] = (hold >>> 8) & 0xff;
-        state.check = crc32(state.check, hbuf, 2, 0);
-        //===//
-      }
-      //=== INITBITS();
-      hold = 0;
-      bits = 0;
-      //===//
-      state.mode = EXLEN;
-      /* falls through */
-    case EXLEN:
-      if (state.flags & 0x0400) {
+      case FLAGS:
         //=== NEEDBITS(16); */
         while (bits < 16) {
           if (have === 0) { break inf_leave; }
@@ -18677,9 +19226,19 @@ function inflate(strm, flush) {
           bits += 8;
         }
         //===//
-        state.length = hold;
+        state.flags = hold;
+        if ((state.flags & 0xff) !== Z_DEFLATED) {
+          strm.msg = 'unknown compression method';
+          state.mode = BAD;
+          break;
+        }
+        if (state.flags & 0xe000) {
+          strm.msg = 'unknown header flags set';
+          state.mode = BAD;
+          break;
+        }
         if (state.head) {
-          state.head.extra_len = hold;
+          state.head.text = ((hold >> 8) & 1);
         }
         if (state.flags & 0x0200) {
           //=== CRC2(state.check, hold);
@@ -18692,102 +19251,36 @@ function inflate(strm, flush) {
         hold = 0;
         bits = 0;
         //===//
-      }
-      else if (state.head) {
-        state.head.extra = null/*Z_NULL*/;
-      }
-      state.mode = EXTRA;
-      /* falls through */
-    case EXTRA:
-      if (state.flags & 0x0400) {
-        copy = state.length;
-        if (copy > have) { copy = have; }
-        if (copy) {
-          if (state.head) {
-            len = state.head.extra_len - state.length;
-            if (!state.head.extra) {
-              // Use untyped array for more conveniend processing later
-              state.head.extra = new Array(state.head.extra_len);
-            }
-            utils.arraySet(
-              state.head.extra,
-              input,
-              next,
-              // extra field is limited to 65536 bytes
-              // - no need for additional size check
-              copy,
-              /*len + copy > state.head.extra_max - len ? state.head.extra_max : copy,*/
-              len
-            );
-            //zmemcpy(state.head.extra + len, next,
-            //        len + copy > state.head.extra_max ?
-            //        state.head.extra_max - len : copy);
-          }
-          if (state.flags & 0x0200) {
-            state.check = crc32(state.check, input, copy, next);
-          }
-          have -= copy;
-          next += copy;
-          state.length -= copy;
+        state.mode = TIME;
+        /* falls through */
+      case TIME:
+        //=== NEEDBITS(32); */
+        while (bits < 32) {
+          if (have === 0) { break inf_leave; }
+          have--;
+          hold += input[next++] << bits;
+          bits += 8;
         }
-        if (state.length) { break inf_leave; }
-      }
-      state.length = 0;
-      state.mode = NAME;
-      /* falls through */
-    case NAME:
-      if (state.flags & 0x0800) {
-        if (have === 0) { break inf_leave; }
-        copy = 0;
-        do {
-          // TODO: 2 or 1 bytes?
-          len = input[next + copy++];
-          /* use constant limit because in js we should not preallocate memory */
-          if (state.head && len &&
-              (state.length < 65536 /*state.head.name_max*/)) {
-            state.head.name += String.fromCharCode(len);
-          }
-        } while (len && copy < have);
-
+        //===//
+        if (state.head) {
+          state.head.time = hold;
+        }
         if (state.flags & 0x0200) {
-          state.check = crc32(state.check, input, copy, next);
+          //=== CRC4(state.check, hold)
+          hbuf[0] = hold & 0xff;
+          hbuf[1] = (hold >>> 8) & 0xff;
+          hbuf[2] = (hold >>> 16) & 0xff;
+          hbuf[3] = (hold >>> 24) & 0xff;
+          state.check = crc32(state.check, hbuf, 4, 0);
+          //===
         }
-        have -= copy;
-        next += copy;
-        if (len) { break inf_leave; }
-      }
-      else if (state.head) {
-        state.head.name = null;
-      }
-      state.length = 0;
-      state.mode = COMMENT;
-      /* falls through */
-    case COMMENT:
-      if (state.flags & 0x1000) {
-        if (have === 0) { break inf_leave; }
-        copy = 0;
-        do {
-          len = input[next + copy++];
-          /* use constant limit because in js we should not preallocate memory */
-          if (state.head && len &&
-              (state.length < 65536 /*state.head.comm_max*/)) {
-            state.head.comment += String.fromCharCode(len);
-          }
-        } while (len && copy < have);
-        if (state.flags & 0x0200) {
-          state.check = crc32(state.check, input, copy, next);
-        }
-        have -= copy;
-        next += copy;
-        if (len) { break inf_leave; }
-      }
-      else if (state.head) {
-        state.head.comment = null;
-      }
-      state.mode = HCRC;
-      /* falls through */
-    case HCRC:
-      if (state.flags & 0x0200) {
+        //=== INITBITS();
+        hold = 0;
+        bits = 0;
+        //===//
+        state.mode = OS;
+        /* falls through */
+      case OS:
         //=== NEEDBITS(16); */
         while (bits < 16) {
           if (have === 0) { break inf_leave; }
@@ -18796,201 +19289,213 @@ function inflate(strm, flush) {
           bits += 8;
         }
         //===//
-        if (hold !== (state.check & 0xffff)) {
-          strm.msg = 'header crc mismatch';
-          state.mode = BAD;
-          break;
+        if (state.head) {
+          state.head.xflags = (hold & 0xff);
+          state.head.os = (hold >> 8);
+        }
+        if (state.flags & 0x0200) {
+          //=== CRC2(state.check, hold);
+          hbuf[0] = hold & 0xff;
+          hbuf[1] = (hold >>> 8) & 0xff;
+          state.check = crc32(state.check, hbuf, 2, 0);
+          //===//
         }
         //=== INITBITS();
         hold = 0;
         bits = 0;
         //===//
-      }
-      if (state.head) {
-        state.head.hcrc = ((state.flags >> 9) & 1);
-        state.head.done = true;
-      }
-      strm.adler = state.check = 0;
-      state.mode = TYPE;
-      break;
-    case DICTID:
-      //=== NEEDBITS(32); */
-      while (bits < 32) {
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-      }
-      //===//
-      strm.adler = state.check = zswap32(hold);
-      //=== INITBITS();
-      hold = 0;
-      bits = 0;
-      //===//
-      state.mode = DICT;
-      /* falls through */
-    case DICT:
-      if (state.havedict === 0) {
-        //--- RESTORE() ---
-        strm.next_out = put;
-        strm.avail_out = left;
-        strm.next_in = next;
-        strm.avail_in = have;
-        state.hold = hold;
-        state.bits = bits;
-        //---
-        return Z_NEED_DICT;
-      }
-      strm.adler = state.check = 1/*adler32(0L, Z_NULL, 0)*/;
-      state.mode = TYPE;
-      /* falls through */
-    case TYPE:
-      if (flush === Z_BLOCK || flush === Z_TREES) { break inf_leave; }
-      /* falls through */
-    case TYPEDO:
-      if (state.last) {
-        //--- BYTEBITS() ---//
-        hold >>>= bits & 7;
-        bits -= bits & 7;
-        //---//
-        state.mode = CHECK;
-        break;
-      }
-      //=== NEEDBITS(3); */
-      while (bits < 3) {
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-      }
-      //===//
-      state.last = (hold & 0x01)/*BITS(1)*/;
-      //--- DROPBITS(1) ---//
-      hold >>>= 1;
-      bits -= 1;
-      //---//
-
-      switch ((hold & 0x03)/*BITS(2)*/) {
-      case 0:                             /* stored block */
-        //Tracev((stderr, "inflate:     stored block%s\n",
-        //        state.last ? " (last)" : ""));
-        state.mode = STORED;
-        break;
-      case 1:                             /* fixed block */
-        fixedtables(state);
-        //Tracev((stderr, "inflate:     fixed codes block%s\n",
-        //        state.last ? " (last)" : ""));
-        state.mode = LEN_;             /* decode codes */
-        if (flush === Z_TREES) {
-          //--- DROPBITS(2) ---//
-          hold >>>= 2;
-          bits -= 2;
-          //---//
-          break inf_leave;
+        state.mode = EXLEN;
+        /* falls through */
+      case EXLEN:
+        if (state.flags & 0x0400) {
+          //=== NEEDBITS(16); */
+          while (bits < 16) {
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
+          }
+          //===//
+          state.length = hold;
+          if (state.head) {
+            state.head.extra_len = hold;
+          }
+          if (state.flags & 0x0200) {
+            //=== CRC2(state.check, hold);
+            hbuf[0] = hold & 0xff;
+            hbuf[1] = (hold >>> 8) & 0xff;
+            state.check = crc32(state.check, hbuf, 2, 0);
+            //===//
+          }
+          //=== INITBITS();
+          hold = 0;
+          bits = 0;
+          //===//
         }
+        else if (state.head) {
+          state.head.extra = null/*Z_NULL*/;
+        }
+        state.mode = EXTRA;
+        /* falls through */
+      case EXTRA:
+        if (state.flags & 0x0400) {
+          copy = state.length;
+          if (copy > have) { copy = have; }
+          if (copy) {
+            if (state.head) {
+              len = state.head.extra_len - state.length;
+              if (!state.head.extra) {
+                // Use untyped array for more convenient processing later
+                state.head.extra = new Array(state.head.extra_len);
+              }
+              utils.arraySet(
+                state.head.extra,
+                input,
+                next,
+                // extra field is limited to 65536 bytes
+                // - no need for additional size check
+                copy,
+                /*len + copy > state.head.extra_max - len ? state.head.extra_max : copy,*/
+                len
+              );
+              //zmemcpy(state.head.extra + len, next,
+              //        len + copy > state.head.extra_max ?
+              //        state.head.extra_max - len : copy);
+            }
+            if (state.flags & 0x0200) {
+              state.check = crc32(state.check, input, copy, next);
+            }
+            have -= copy;
+            next += copy;
+            state.length -= copy;
+          }
+          if (state.length) { break inf_leave; }
+        }
+        state.length = 0;
+        state.mode = NAME;
+        /* falls through */
+      case NAME:
+        if (state.flags & 0x0800) {
+          if (have === 0) { break inf_leave; }
+          copy = 0;
+          do {
+            // TODO: 2 or 1 bytes?
+            len = input[next + copy++];
+            /* use constant limit because in js we should not preallocate memory */
+            if (state.head && len &&
+                (state.length < 65536 /*state.head.name_max*/)) {
+              state.head.name += String.fromCharCode(len);
+            }
+          } while (len && copy < have);
+
+          if (state.flags & 0x0200) {
+            state.check = crc32(state.check, input, copy, next);
+          }
+          have -= copy;
+          next += copy;
+          if (len) { break inf_leave; }
+        }
+        else if (state.head) {
+          state.head.name = null;
+        }
+        state.length = 0;
+        state.mode = COMMENT;
+        /* falls through */
+      case COMMENT:
+        if (state.flags & 0x1000) {
+          if (have === 0) { break inf_leave; }
+          copy = 0;
+          do {
+            len = input[next + copy++];
+            /* use constant limit because in js we should not preallocate memory */
+            if (state.head && len &&
+                (state.length < 65536 /*state.head.comm_max*/)) {
+              state.head.comment += String.fromCharCode(len);
+            }
+          } while (len && copy < have);
+          if (state.flags & 0x0200) {
+            state.check = crc32(state.check, input, copy, next);
+          }
+          have -= copy;
+          next += copy;
+          if (len) { break inf_leave; }
+        }
+        else if (state.head) {
+          state.head.comment = null;
+        }
+        state.mode = HCRC;
+        /* falls through */
+      case HCRC:
+        if (state.flags & 0x0200) {
+          //=== NEEDBITS(16); */
+          while (bits < 16) {
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
+          }
+          //===//
+          if (hold !== (state.check & 0xffff)) {
+            strm.msg = 'header crc mismatch';
+            state.mode = BAD;
+            break;
+          }
+          //=== INITBITS();
+          hold = 0;
+          bits = 0;
+          //===//
+        }
+        if (state.head) {
+          state.head.hcrc = ((state.flags >> 9) & 1);
+          state.head.done = true;
+        }
+        strm.adler = state.check = 0;
+        state.mode = TYPE;
         break;
-      case 2:                             /* dynamic block */
-        //Tracev((stderr, "inflate:     dynamic codes block%s\n",
-        //        state.last ? " (last)" : ""));
-        state.mode = TABLE;
-        break;
-      case 3:
-        strm.msg = 'invalid block type';
-        state.mode = BAD;
-      }
-      //--- DROPBITS(2) ---//
-      hold >>>= 2;
-      bits -= 2;
-      //---//
-      break;
-    case STORED:
-      //--- BYTEBITS() ---// /* go to byte boundary */
-      hold >>>= bits & 7;
-      bits -= bits & 7;
-      //---//
-      //=== NEEDBITS(32); */
-      while (bits < 32) {
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-      }
-      //===//
-      if ((hold & 0xffff) !== ((hold >>> 16) ^ 0xffff)) {
-        strm.msg = 'invalid stored block lengths';
-        state.mode = BAD;
-        break;
-      }
-      state.length = hold & 0xffff;
-      //Tracev((stderr, "inflate:       stored length %u\n",
-      //        state.length));
-      //=== INITBITS();
-      hold = 0;
-      bits = 0;
-      //===//
-      state.mode = COPY_;
-      if (flush === Z_TREES) { break inf_leave; }
-      /* falls through */
-    case COPY_:
-      state.mode = COPY;
-      /* falls through */
-    case COPY:
-      copy = state.length;
-      if (copy) {
-        if (copy > have) { copy = have; }
-        if (copy > left) { copy = left; }
-        if (copy === 0) { break inf_leave; }
-        //--- zmemcpy(put, next, copy); ---
-        utils.arraySet(output, input, next, copy, put);
-        //---//
-        have -= copy;
-        next += copy;
-        left -= copy;
-        put += copy;
-        state.length -= copy;
-        break;
-      }
-      //Tracev((stderr, "inflate:       stored end\n"));
-      state.mode = TYPE;
-      break;
-    case TABLE:
-      //=== NEEDBITS(14); */
-      while (bits < 14) {
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-      }
-      //===//
-      state.nlen = (hold & 0x1f)/*BITS(5)*/ + 257;
-      //--- DROPBITS(5) ---//
-      hold >>>= 5;
-      bits -= 5;
-      //---//
-      state.ndist = (hold & 0x1f)/*BITS(5)*/ + 1;
-      //--- DROPBITS(5) ---//
-      hold >>>= 5;
-      bits -= 5;
-      //---//
-      state.ncode = (hold & 0x0f)/*BITS(4)*/ + 4;
-      //--- DROPBITS(4) ---//
-      hold >>>= 4;
-      bits -= 4;
-      //---//
-//#ifndef PKZIP_BUG_WORKAROUND
-      if (state.nlen > 286 || state.ndist > 30) {
-        strm.msg = 'too many length or distance symbols';
-        state.mode = BAD;
-        break;
-      }
-//#endif
-      //Tracev((stderr, "inflate:       table sizes ok\n"));
-      state.have = 0;
-      state.mode = LENLENS;
-      /* falls through */
-    case LENLENS:
-      while (state.have < state.ncode) {
-        //=== NEEDBITS(3);
+      case DICTID:
+        //=== NEEDBITS(32); */
+        while (bits < 32) {
+          if (have === 0) { break inf_leave; }
+          have--;
+          hold += input[next++] << bits;
+          bits += 8;
+        }
+        //===//
+        strm.adler = state.check = zswap32(hold);
+        //=== INITBITS();
+        hold = 0;
+        bits = 0;
+        //===//
+        state.mode = DICT;
+        /* falls through */
+      case DICT:
+        if (state.havedict === 0) {
+          //--- RESTORE() ---
+          strm.next_out = put;
+          strm.avail_out = left;
+          strm.next_in = next;
+          strm.avail_in = have;
+          state.hold = hold;
+          state.bits = bits;
+          //---
+          return Z_NEED_DICT;
+        }
+        strm.adler = state.check = 1/*adler32(0L, Z_NULL, 0)*/;
+        state.mode = TYPE;
+        /* falls through */
+      case TYPE:
+        if (flush === Z_BLOCK || flush === Z_TREES) { break inf_leave; }
+        /* falls through */
+      case TYPEDO:
+        if (state.last) {
+          //--- BYTEBITS() ---//
+          hold >>>= bits & 7;
+          bits -= bits & 7;
+          //---//
+          state.mode = CHECK;
+          break;
+        }
+        //=== NEEDBITS(3); */
         while (bits < 3) {
           if (have === 0) { break inf_leave; }
           have--;
@@ -18998,39 +19503,442 @@ function inflate(strm, flush) {
           bits += 8;
         }
         //===//
-        state.lens[order[state.have++]] = (hold & 0x07);//BITS(3);
-        //--- DROPBITS(3) ---//
-        hold >>>= 3;
-        bits -= 3;
+        state.last = (hold & 0x01)/*BITS(1)*/;
+        //--- DROPBITS(1) ---//
+        hold >>>= 1;
+        bits -= 1;
         //---//
-      }
-      while (state.have < 19) {
-        state.lens[order[state.have++]] = 0;
-      }
-      // We have separate tables & no pointers. 2 commented lines below not needed.
-      //state.next = state.codes;
-      //state.lencode = state.next;
-      // Switch to use dynamic table
-      state.lencode = state.lendyn;
-      state.lenbits = 7;
 
-      opts = { bits: state.lenbits };
-      ret = inflate_table(CODES, state.lens, 0, 19, state.lencode, 0, state.work, opts);
-      state.lenbits = opts.bits;
-
-      if (ret) {
-        strm.msg = 'invalid code lengths set';
-        state.mode = BAD;
+        switch ((hold & 0x03)/*BITS(2)*/) {
+          case 0:                             /* stored block */
+            //Tracev((stderr, "inflate:     stored block%s\n",
+            //        state.last ? " (last)" : ""));
+            state.mode = STORED;
+            break;
+          case 1:                             /* fixed block */
+            fixedtables(state);
+            //Tracev((stderr, "inflate:     fixed codes block%s\n",
+            //        state.last ? " (last)" : ""));
+            state.mode = LEN_;             /* decode codes */
+            if (flush === Z_TREES) {
+              //--- DROPBITS(2) ---//
+              hold >>>= 2;
+              bits -= 2;
+              //---//
+              break inf_leave;
+            }
+            break;
+          case 2:                             /* dynamic block */
+            //Tracev((stderr, "inflate:     dynamic codes block%s\n",
+            //        state.last ? " (last)" : ""));
+            state.mode = TABLE;
+            break;
+          case 3:
+            strm.msg = 'invalid block type';
+            state.mode = BAD;
+        }
+        //--- DROPBITS(2) ---//
+        hold >>>= 2;
+        bits -= 2;
+        //---//
         break;
-      }
-      //Tracev((stderr, "inflate:       code lengths ok\n"));
-      state.have = 0;
-      state.mode = CODELENS;
-      /* falls through */
-    case CODELENS:
-      while (state.have < state.nlen + state.ndist) {
+      case STORED:
+        //--- BYTEBITS() ---// /* go to byte boundary */
+        hold >>>= bits & 7;
+        bits -= bits & 7;
+        //---//
+        //=== NEEDBITS(32); */
+        while (bits < 32) {
+          if (have === 0) { break inf_leave; }
+          have--;
+          hold += input[next++] << bits;
+          bits += 8;
+        }
+        //===//
+        if ((hold & 0xffff) !== ((hold >>> 16) ^ 0xffff)) {
+          strm.msg = 'invalid stored block lengths';
+          state.mode = BAD;
+          break;
+        }
+        state.length = hold & 0xffff;
+        //Tracev((stderr, "inflate:       stored length %u\n",
+        //        state.length));
+        //=== INITBITS();
+        hold = 0;
+        bits = 0;
+        //===//
+        state.mode = COPY_;
+        if (flush === Z_TREES) { break inf_leave; }
+        /* falls through */
+      case COPY_:
+        state.mode = COPY;
+        /* falls through */
+      case COPY:
+        copy = state.length;
+        if (copy) {
+          if (copy > have) { copy = have; }
+          if (copy > left) { copy = left; }
+          if (copy === 0) { break inf_leave; }
+          //--- zmemcpy(put, next, copy); ---
+          utils.arraySet(output, input, next, copy, put);
+          //---//
+          have -= copy;
+          next += copy;
+          left -= copy;
+          put += copy;
+          state.length -= copy;
+          break;
+        }
+        //Tracev((stderr, "inflate:       stored end\n"));
+        state.mode = TYPE;
+        break;
+      case TABLE:
+        //=== NEEDBITS(14); */
+        while (bits < 14) {
+          if (have === 0) { break inf_leave; }
+          have--;
+          hold += input[next++] << bits;
+          bits += 8;
+        }
+        //===//
+        state.nlen = (hold & 0x1f)/*BITS(5)*/ + 257;
+        //--- DROPBITS(5) ---//
+        hold >>>= 5;
+        bits -= 5;
+        //---//
+        state.ndist = (hold & 0x1f)/*BITS(5)*/ + 1;
+        //--- DROPBITS(5) ---//
+        hold >>>= 5;
+        bits -= 5;
+        //---//
+        state.ncode = (hold & 0x0f)/*BITS(4)*/ + 4;
+        //--- DROPBITS(4) ---//
+        hold >>>= 4;
+        bits -= 4;
+        //---//
+//#ifndef PKZIP_BUG_WORKAROUND
+        if (state.nlen > 286 || state.ndist > 30) {
+          strm.msg = 'too many length or distance symbols';
+          state.mode = BAD;
+          break;
+        }
+//#endif
+        //Tracev((stderr, "inflate:       table sizes ok\n"));
+        state.have = 0;
+        state.mode = LENLENS;
+        /* falls through */
+      case LENLENS:
+        while (state.have < state.ncode) {
+          //=== NEEDBITS(3);
+          while (bits < 3) {
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
+          }
+          //===//
+          state.lens[order[state.have++]] = (hold & 0x07);//BITS(3);
+          //--- DROPBITS(3) ---//
+          hold >>>= 3;
+          bits -= 3;
+          //---//
+        }
+        while (state.have < 19) {
+          state.lens[order[state.have++]] = 0;
+        }
+        // We have separate tables & no pointers. 2 commented lines below not needed.
+        //state.next = state.codes;
+        //state.lencode = state.next;
+        // Switch to use dynamic table
+        state.lencode = state.lendyn;
+        state.lenbits = 7;
+
+        opts = { bits: state.lenbits };
+        ret = inflate_table(CODES, state.lens, 0, 19, state.lencode, 0, state.work, opts);
+        state.lenbits = opts.bits;
+
+        if (ret) {
+          strm.msg = 'invalid code lengths set';
+          state.mode = BAD;
+          break;
+        }
+        //Tracev((stderr, "inflate:       code lengths ok\n"));
+        state.have = 0;
+        state.mode = CODELENS;
+        /* falls through */
+      case CODELENS:
+        while (state.have < state.nlen + state.ndist) {
+          for (;;) {
+            here = state.lencode[hold & ((1 << state.lenbits) - 1)];/*BITS(state.lenbits)*/
+            here_bits = here >>> 24;
+            here_op = (here >>> 16) & 0xff;
+            here_val = here & 0xffff;
+
+            if ((here_bits) <= bits) { break; }
+            //--- PULLBYTE() ---//
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
+            //---//
+          }
+          if (here_val < 16) {
+            //--- DROPBITS(here.bits) ---//
+            hold >>>= here_bits;
+            bits -= here_bits;
+            //---//
+            state.lens[state.have++] = here_val;
+          }
+          else {
+            if (here_val === 16) {
+              //=== NEEDBITS(here.bits + 2);
+              n = here_bits + 2;
+              while (bits < n) {
+                if (have === 0) { break inf_leave; }
+                have--;
+                hold += input[next++] << bits;
+                bits += 8;
+              }
+              //===//
+              //--- DROPBITS(here.bits) ---//
+              hold >>>= here_bits;
+              bits -= here_bits;
+              //---//
+              if (state.have === 0) {
+                strm.msg = 'invalid bit length repeat';
+                state.mode = BAD;
+                break;
+              }
+              len = state.lens[state.have - 1];
+              copy = 3 + (hold & 0x03);//BITS(2);
+              //--- DROPBITS(2) ---//
+              hold >>>= 2;
+              bits -= 2;
+              //---//
+            }
+            else if (here_val === 17) {
+              //=== NEEDBITS(here.bits + 3);
+              n = here_bits + 3;
+              while (bits < n) {
+                if (have === 0) { break inf_leave; }
+                have--;
+                hold += input[next++] << bits;
+                bits += 8;
+              }
+              //===//
+              //--- DROPBITS(here.bits) ---//
+              hold >>>= here_bits;
+              bits -= here_bits;
+              //---//
+              len = 0;
+              copy = 3 + (hold & 0x07);//BITS(3);
+              //--- DROPBITS(3) ---//
+              hold >>>= 3;
+              bits -= 3;
+              //---//
+            }
+            else {
+              //=== NEEDBITS(here.bits + 7);
+              n = here_bits + 7;
+              while (bits < n) {
+                if (have === 0) { break inf_leave; }
+                have--;
+                hold += input[next++] << bits;
+                bits += 8;
+              }
+              //===//
+              //--- DROPBITS(here.bits) ---//
+              hold >>>= here_bits;
+              bits -= here_bits;
+              //---//
+              len = 0;
+              copy = 11 + (hold & 0x7f);//BITS(7);
+              //--- DROPBITS(7) ---//
+              hold >>>= 7;
+              bits -= 7;
+              //---//
+            }
+            if (state.have + copy > state.nlen + state.ndist) {
+              strm.msg = 'invalid bit length repeat';
+              state.mode = BAD;
+              break;
+            }
+            while (copy--) {
+              state.lens[state.have++] = len;
+            }
+          }
+        }
+
+        /* handle error breaks in while */
+        if (state.mode === BAD) { break; }
+
+        /* check for end-of-block code (better have one) */
+        if (state.lens[256] === 0) {
+          strm.msg = 'invalid code -- missing end-of-block';
+          state.mode = BAD;
+          break;
+        }
+
+        /* build code tables -- note: do not change the lenbits or distbits
+           values here (9 and 6) without reading the comments in inftrees.h
+           concerning the ENOUGH constants, which depend on those values */
+        state.lenbits = 9;
+
+        opts = { bits: state.lenbits };
+        ret = inflate_table(LENS, state.lens, 0, state.nlen, state.lencode, 0, state.work, opts);
+        // We have separate tables & no pointers. 2 commented lines below not needed.
+        // state.next_index = opts.table_index;
+        state.lenbits = opts.bits;
+        // state.lencode = state.next;
+
+        if (ret) {
+          strm.msg = 'invalid literal/lengths set';
+          state.mode = BAD;
+          break;
+        }
+
+        state.distbits = 6;
+        //state.distcode.copy(state.codes);
+        // Switch to use dynamic table
+        state.distcode = state.distdyn;
+        opts = { bits: state.distbits };
+        ret = inflate_table(DISTS, state.lens, state.nlen, state.ndist, state.distcode, 0, state.work, opts);
+        // We have separate tables & no pointers. 2 commented lines below not needed.
+        // state.next_index = opts.table_index;
+        state.distbits = opts.bits;
+        // state.distcode = state.next;
+
+        if (ret) {
+          strm.msg = 'invalid distances set';
+          state.mode = BAD;
+          break;
+        }
+        //Tracev((stderr, 'inflate:       codes ok\n'));
+        state.mode = LEN_;
+        if (flush === Z_TREES) { break inf_leave; }
+        /* falls through */
+      case LEN_:
+        state.mode = LEN;
+        /* falls through */
+      case LEN:
+        if (have >= 6 && left >= 258) {
+          //--- RESTORE() ---
+          strm.next_out = put;
+          strm.avail_out = left;
+          strm.next_in = next;
+          strm.avail_in = have;
+          state.hold = hold;
+          state.bits = bits;
+          //---
+          inflate_fast(strm, _out);
+          //--- LOAD() ---
+          put = strm.next_out;
+          output = strm.output;
+          left = strm.avail_out;
+          next = strm.next_in;
+          input = strm.input;
+          have = strm.avail_in;
+          hold = state.hold;
+          bits = state.bits;
+          //---
+
+          if (state.mode === TYPE) {
+            state.back = -1;
+          }
+          break;
+        }
+        state.back = 0;
         for (;;) {
-          here = state.lencode[hold & ((1 << state.lenbits) - 1)];/*BITS(state.lenbits)*/
+          here = state.lencode[hold & ((1 << state.lenbits) - 1)];  /*BITS(state.lenbits)*/
+          here_bits = here >>> 24;
+          here_op = (here >>> 16) & 0xff;
+          here_val = here & 0xffff;
+
+          if (here_bits <= bits) { break; }
+          //--- PULLBYTE() ---//
+          if (have === 0) { break inf_leave; }
+          have--;
+          hold += input[next++] << bits;
+          bits += 8;
+          //---//
+        }
+        if (here_op && (here_op & 0xf0) === 0) {
+          last_bits = here_bits;
+          last_op = here_op;
+          last_val = here_val;
+          for (;;) {
+            here = state.lencode[last_val +
+                    ((hold & ((1 << (last_bits + last_op)) - 1))/*BITS(last.bits + last.op)*/ >> last_bits)];
+            here_bits = here >>> 24;
+            here_op = (here >>> 16) & 0xff;
+            here_val = here & 0xffff;
+
+            if ((last_bits + here_bits) <= bits) { break; }
+            //--- PULLBYTE() ---//
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
+            //---//
+          }
+          //--- DROPBITS(last.bits) ---//
+          hold >>>= last_bits;
+          bits -= last_bits;
+          //---//
+          state.back += last_bits;
+        }
+        //--- DROPBITS(here.bits) ---//
+        hold >>>= here_bits;
+        bits -= here_bits;
+        //---//
+        state.back += here_bits;
+        state.length = here_val;
+        if (here_op === 0) {
+          //Tracevv((stderr, here.val >= 0x20 && here.val < 0x7f ?
+          //        "inflate:         literal '%c'\n" :
+          //        "inflate:         literal 0x%02x\n", here.val));
+          state.mode = LIT;
+          break;
+        }
+        if (here_op & 32) {
+          //Tracevv((stderr, "inflate:         end of block\n"));
+          state.back = -1;
+          state.mode = TYPE;
+          break;
+        }
+        if (here_op & 64) {
+          strm.msg = 'invalid literal/length code';
+          state.mode = BAD;
+          break;
+        }
+        state.extra = here_op & 15;
+        state.mode = LENEXT;
+        /* falls through */
+      case LENEXT:
+        if (state.extra) {
+          //=== NEEDBITS(state.extra);
+          n = state.extra;
+          while (bits < n) {
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
+          }
+          //===//
+          state.length += hold & ((1 << state.extra) - 1)/*BITS(state.extra)*/;
+          //--- DROPBITS(state.extra) ---//
+          hold >>>= state.extra;
+          bits -= state.extra;
+          //---//
+          state.back += state.extra;
+        }
+        //Tracevv((stderr, "inflate:         length %u\n", state.length));
+        state.was = state.length;
+        state.mode = DIST;
+        /* falls through */
+      case DIST:
+        for (;;) {
+          here = state.distcode[hold & ((1 << state.distbits) - 1)];/*BITS(state.distbits)*/
           here_bits = here >>> 24;
           here_op = (here >>> 16) & 0xff;
           here_val = here & 0xffff;
@@ -19043,354 +19951,85 @@ function inflate(strm, flush) {
           bits += 8;
           //---//
         }
-        if (here_val < 16) {
-          //--- DROPBITS(here.bits) ---//
-          hold >>>= here_bits;
-          bits -= here_bits;
-          //---//
-          state.lens[state.have++] = here_val;
-        }
-        else {
-          if (here_val === 16) {
-            //=== NEEDBITS(here.bits + 2);
-            n = here_bits + 2;
-            while (bits < n) {
-              if (have === 0) { break inf_leave; }
-              have--;
-              hold += input[next++] << bits;
-              bits += 8;
-            }
-            //===//
-            //--- DROPBITS(here.bits) ---//
-            hold >>>= here_bits;
-            bits -= here_bits;
+        if ((here_op & 0xf0) === 0) {
+          last_bits = here_bits;
+          last_op = here_op;
+          last_val = here_val;
+          for (;;) {
+            here = state.distcode[last_val +
+                    ((hold & ((1 << (last_bits + last_op)) - 1))/*BITS(last.bits + last.op)*/ >> last_bits)];
+            here_bits = here >>> 24;
+            here_op = (here >>> 16) & 0xff;
+            here_val = here & 0xffff;
+
+            if ((last_bits + here_bits) <= bits) { break; }
+            //--- PULLBYTE() ---//
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
             //---//
-            if (state.have === 0) {
-              strm.msg = 'invalid bit length repeat';
+          }
+          //--- DROPBITS(last.bits) ---//
+          hold >>>= last_bits;
+          bits -= last_bits;
+          //---//
+          state.back += last_bits;
+        }
+        //--- DROPBITS(here.bits) ---//
+        hold >>>= here_bits;
+        bits -= here_bits;
+        //---//
+        state.back += here_bits;
+        if (here_op & 64) {
+          strm.msg = 'invalid distance code';
+          state.mode = BAD;
+          break;
+        }
+        state.offset = here_val;
+        state.extra = (here_op) & 15;
+        state.mode = DISTEXT;
+        /* falls through */
+      case DISTEXT:
+        if (state.extra) {
+          //=== NEEDBITS(state.extra);
+          n = state.extra;
+          while (bits < n) {
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
+          }
+          //===//
+          state.offset += hold & ((1 << state.extra) - 1)/*BITS(state.extra)*/;
+          //--- DROPBITS(state.extra) ---//
+          hold >>>= state.extra;
+          bits -= state.extra;
+          //---//
+          state.back += state.extra;
+        }
+//#ifdef INFLATE_STRICT
+        if (state.offset > state.dmax) {
+          strm.msg = 'invalid distance too far back';
+          state.mode = BAD;
+          break;
+        }
+//#endif
+        //Tracevv((stderr, "inflate:         distance %u\n", state.offset));
+        state.mode = MATCH;
+        /* falls through */
+      case MATCH:
+        if (left === 0) { break inf_leave; }
+        copy = _out - left;
+        if (state.offset > copy) {         /* copy from window */
+          copy = state.offset - copy;
+          if (copy > state.whave) {
+            if (state.sane) {
+              strm.msg = 'invalid distance too far back';
               state.mode = BAD;
               break;
             }
-            len = state.lens[state.have - 1];
-            copy = 3 + (hold & 0x03);//BITS(2);
-            //--- DROPBITS(2) ---//
-            hold >>>= 2;
-            bits -= 2;
-            //---//
-          }
-          else if (here_val === 17) {
-            //=== NEEDBITS(here.bits + 3);
-            n = here_bits + 3;
-            while (bits < n) {
-              if (have === 0) { break inf_leave; }
-              have--;
-              hold += input[next++] << bits;
-              bits += 8;
-            }
-            //===//
-            //--- DROPBITS(here.bits) ---//
-            hold >>>= here_bits;
-            bits -= here_bits;
-            //---//
-            len = 0;
-            copy = 3 + (hold & 0x07);//BITS(3);
-            //--- DROPBITS(3) ---//
-            hold >>>= 3;
-            bits -= 3;
-            //---//
-          }
-          else {
-            //=== NEEDBITS(here.bits + 7);
-            n = here_bits + 7;
-            while (bits < n) {
-              if (have === 0) { break inf_leave; }
-              have--;
-              hold += input[next++] << bits;
-              bits += 8;
-            }
-            //===//
-            //--- DROPBITS(here.bits) ---//
-            hold >>>= here_bits;
-            bits -= here_bits;
-            //---//
-            len = 0;
-            copy = 11 + (hold & 0x7f);//BITS(7);
-            //--- DROPBITS(7) ---//
-            hold >>>= 7;
-            bits -= 7;
-            //---//
-          }
-          if (state.have + copy > state.nlen + state.ndist) {
-            strm.msg = 'invalid bit length repeat';
-            state.mode = BAD;
-            break;
-          }
-          while (copy--) {
-            state.lens[state.have++] = len;
-          }
-        }
-      }
-
-      /* handle error breaks in while */
-      if (state.mode === BAD) { break; }
-
-      /* check for end-of-block code (better have one) */
-      if (state.lens[256] === 0) {
-        strm.msg = 'invalid code -- missing end-of-block';
-        state.mode = BAD;
-        break;
-      }
-
-      /* build code tables -- note: do not change the lenbits or distbits
-         values here (9 and 6) without reading the comments in inftrees.h
-         concerning the ENOUGH constants, which depend on those values */
-      state.lenbits = 9;
-
-      opts = { bits: state.lenbits };
-      ret = inflate_table(LENS, state.lens, 0, state.nlen, state.lencode, 0, state.work, opts);
-      // We have separate tables & no pointers. 2 commented lines below not needed.
-      // state.next_index = opts.table_index;
-      state.lenbits = opts.bits;
-      // state.lencode = state.next;
-
-      if (ret) {
-        strm.msg = 'invalid literal/lengths set';
-        state.mode = BAD;
-        break;
-      }
-
-      state.distbits = 6;
-      //state.distcode.copy(state.codes);
-      // Switch to use dynamic table
-      state.distcode = state.distdyn;
-      opts = { bits: state.distbits };
-      ret = inflate_table(DISTS, state.lens, state.nlen, state.ndist, state.distcode, 0, state.work, opts);
-      // We have separate tables & no pointers. 2 commented lines below not needed.
-      // state.next_index = opts.table_index;
-      state.distbits = opts.bits;
-      // state.distcode = state.next;
-
-      if (ret) {
-        strm.msg = 'invalid distances set';
-        state.mode = BAD;
-        break;
-      }
-      //Tracev((stderr, 'inflate:       codes ok\n'));
-      state.mode = LEN_;
-      if (flush === Z_TREES) { break inf_leave; }
-      /* falls through */
-    case LEN_:
-      state.mode = LEN;
-      /* falls through */
-    case LEN:
-      if (have >= 6 && left >= 258) {
-        //--- RESTORE() ---
-        strm.next_out = put;
-        strm.avail_out = left;
-        strm.next_in = next;
-        strm.avail_in = have;
-        state.hold = hold;
-        state.bits = bits;
-        //---
-        inflate_fast(strm, _out);
-        //--- LOAD() ---
-        put = strm.next_out;
-        output = strm.output;
-        left = strm.avail_out;
-        next = strm.next_in;
-        input = strm.input;
-        have = strm.avail_in;
-        hold = state.hold;
-        bits = state.bits;
-        //---
-
-        if (state.mode === TYPE) {
-          state.back = -1;
-        }
-        break;
-      }
-      state.back = 0;
-      for (;;) {
-        here = state.lencode[hold & ((1 << state.lenbits) - 1)];  /*BITS(state.lenbits)*/
-        here_bits = here >>> 24;
-        here_op = (here >>> 16) & 0xff;
-        here_val = here & 0xffff;
-
-        if (here_bits <= bits) { break; }
-        //--- PULLBYTE() ---//
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-        //---//
-      }
-      if (here_op && (here_op & 0xf0) === 0) {
-        last_bits = here_bits;
-        last_op = here_op;
-        last_val = here_val;
-        for (;;) {
-          here = state.lencode[last_val +
-                  ((hold & ((1 << (last_bits + last_op)) - 1))/*BITS(last.bits + last.op)*/ >> last_bits)];
-          here_bits = here >>> 24;
-          here_op = (here >>> 16) & 0xff;
-          here_val = here & 0xffff;
-
-          if ((last_bits + here_bits) <= bits) { break; }
-          //--- PULLBYTE() ---//
-          if (have === 0) { break inf_leave; }
-          have--;
-          hold += input[next++] << bits;
-          bits += 8;
-          //---//
-        }
-        //--- DROPBITS(last.bits) ---//
-        hold >>>= last_bits;
-        bits -= last_bits;
-        //---//
-        state.back += last_bits;
-      }
-      //--- DROPBITS(here.bits) ---//
-      hold >>>= here_bits;
-      bits -= here_bits;
-      //---//
-      state.back += here_bits;
-      state.length = here_val;
-      if (here_op === 0) {
-        //Tracevv((stderr, here.val >= 0x20 && here.val < 0x7f ?
-        //        "inflate:         literal '%c'\n" :
-        //        "inflate:         literal 0x%02x\n", here.val));
-        state.mode = LIT;
-        break;
-      }
-      if (here_op & 32) {
-        //Tracevv((stderr, "inflate:         end of block\n"));
-        state.back = -1;
-        state.mode = TYPE;
-        break;
-      }
-      if (here_op & 64) {
-        strm.msg = 'invalid literal/length code';
-        state.mode = BAD;
-        break;
-      }
-      state.extra = here_op & 15;
-      state.mode = LENEXT;
-      /* falls through */
-    case LENEXT:
-      if (state.extra) {
-        //=== NEEDBITS(state.extra);
-        n = state.extra;
-        while (bits < n) {
-          if (have === 0) { break inf_leave; }
-          have--;
-          hold += input[next++] << bits;
-          bits += 8;
-        }
-        //===//
-        state.length += hold & ((1 << state.extra) - 1)/*BITS(state.extra)*/;
-        //--- DROPBITS(state.extra) ---//
-        hold >>>= state.extra;
-        bits -= state.extra;
-        //---//
-        state.back += state.extra;
-      }
-      //Tracevv((stderr, "inflate:         length %u\n", state.length));
-      state.was = state.length;
-      state.mode = DIST;
-      /* falls through */
-    case DIST:
-      for (;;) {
-        here = state.distcode[hold & ((1 << state.distbits) - 1)];/*BITS(state.distbits)*/
-        here_bits = here >>> 24;
-        here_op = (here >>> 16) & 0xff;
-        here_val = here & 0xffff;
-
-        if ((here_bits) <= bits) { break; }
-        //--- PULLBYTE() ---//
-        if (have === 0) { break inf_leave; }
-        have--;
-        hold += input[next++] << bits;
-        bits += 8;
-        //---//
-      }
-      if ((here_op & 0xf0) === 0) {
-        last_bits = here_bits;
-        last_op = here_op;
-        last_val = here_val;
-        for (;;) {
-          here = state.distcode[last_val +
-                  ((hold & ((1 << (last_bits + last_op)) - 1))/*BITS(last.bits + last.op)*/ >> last_bits)];
-          here_bits = here >>> 24;
-          here_op = (here >>> 16) & 0xff;
-          here_val = here & 0xffff;
-
-          if ((last_bits + here_bits) <= bits) { break; }
-          //--- PULLBYTE() ---//
-          if (have === 0) { break inf_leave; }
-          have--;
-          hold += input[next++] << bits;
-          bits += 8;
-          //---//
-        }
-        //--- DROPBITS(last.bits) ---//
-        hold >>>= last_bits;
-        bits -= last_bits;
-        //---//
-        state.back += last_bits;
-      }
-      //--- DROPBITS(here.bits) ---//
-      hold >>>= here_bits;
-      bits -= here_bits;
-      //---//
-      state.back += here_bits;
-      if (here_op & 64) {
-        strm.msg = 'invalid distance code';
-        state.mode = BAD;
-        break;
-      }
-      state.offset = here_val;
-      state.extra = (here_op) & 15;
-      state.mode = DISTEXT;
-      /* falls through */
-    case DISTEXT:
-      if (state.extra) {
-        //=== NEEDBITS(state.extra);
-        n = state.extra;
-        while (bits < n) {
-          if (have === 0) { break inf_leave; }
-          have--;
-          hold += input[next++] << bits;
-          bits += 8;
-        }
-        //===//
-        state.offset += hold & ((1 << state.extra) - 1)/*BITS(state.extra)*/;
-        //--- DROPBITS(state.extra) ---//
-        hold >>>= state.extra;
-        bits -= state.extra;
-        //---//
-        state.back += state.extra;
-      }
-//#ifdef INFLATE_STRICT
-      if (state.offset > state.dmax) {
-        strm.msg = 'invalid distance too far back';
-        state.mode = BAD;
-        break;
-      }
-//#endif
-      //Tracevv((stderr, "inflate:         distance %u\n", state.offset));
-      state.mode = MATCH;
-      /* falls through */
-    case MATCH:
-      if (left === 0) { break inf_leave; }
-      copy = _out - left;
-      if (state.offset > copy) {         /* copy from window */
-        copy = state.offset - copy;
-        if (copy > state.whave) {
-          if (state.sane) {
-            strm.msg = 'invalid distance too far back';
-            state.mode = BAD;
-            break;
-          }
-// (!) This block is disabled in zlib defailts,
+// (!) This block is disabled in zlib defaults,
 // don't enable it for binary compatibility
 //#ifdef INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR
 //          Trace((stderr, "inflate.c too far\n"));
@@ -19405,106 +20044,106 @@ function inflate(strm, flush) {
 //          if (state.length === 0) { state.mode = LEN; }
 //          break;
 //#endif
+          }
+          if (copy > state.wnext) {
+            copy -= state.wnext;
+            from = state.wsize - copy;
+          }
+          else {
+            from = state.wnext - copy;
+          }
+          if (copy > state.length) { copy = state.length; }
+          from_source = state.window;
         }
-        if (copy > state.wnext) {
-          copy -= state.wnext;
-          from = state.wsize - copy;
+        else {                              /* copy from output */
+          from_source = output;
+          from = put - state.offset;
+          copy = state.length;
         }
-        else {
-          from = state.wnext - copy;
-        }
-        if (copy > state.length) { copy = state.length; }
-        from_source = state.window;
-      }
-      else {                              /* copy from output */
-        from_source = output;
-        from = put - state.offset;
-        copy = state.length;
-      }
-      if (copy > left) { copy = left; }
-      left -= copy;
-      state.length -= copy;
-      do {
-        output[put++] = from_source[from++];
-      } while (--copy);
-      if (state.length === 0) { state.mode = LEN; }
-      break;
-    case LIT:
-      if (left === 0) { break inf_leave; }
-      output[put++] = state.length;
-      left--;
-      state.mode = LEN;
-      break;
-    case CHECK:
-      if (state.wrap) {
-        //=== NEEDBITS(32);
-        while (bits < 32) {
-          if (have === 0) { break inf_leave; }
-          have--;
-          // Use '|' insdead of '+' to make sure that result is signed
-          hold |= input[next++] << bits;
-          bits += 8;
-        }
-        //===//
-        _out -= left;
-        strm.total_out += _out;
-        state.total += _out;
-        if (_out) {
-          strm.adler = state.check =
-              /*UPDATE(state.check, put - _out, _out);*/
-              (state.flags ? crc32(state.check, output, _out, put - _out) : adler32(state.check, output, _out, put - _out));
+        if (copy > left) { copy = left; }
+        left -= copy;
+        state.length -= copy;
+        do {
+          output[put++] = from_source[from++];
+        } while (--copy);
+        if (state.length === 0) { state.mode = LEN; }
+        break;
+      case LIT:
+        if (left === 0) { break inf_leave; }
+        output[put++] = state.length;
+        left--;
+        state.mode = LEN;
+        break;
+      case CHECK:
+        if (state.wrap) {
+          //=== NEEDBITS(32);
+          while (bits < 32) {
+            if (have === 0) { break inf_leave; }
+            have--;
+            // Use '|' instead of '+' to make sure that result is signed
+            hold |= input[next++] << bits;
+            bits += 8;
+          }
+          //===//
+          _out -= left;
+          strm.total_out += _out;
+          state.total += _out;
+          if (_out) {
+            strm.adler = state.check =
+                /*UPDATE(state.check, put - _out, _out);*/
+                (state.flags ? crc32(state.check, output, _out, put - _out) : adler32(state.check, output, _out, put - _out));
 
+          }
+          _out = left;
+          // NB: crc32 stored as signed 32-bit int, zswap32 returns signed too
+          if ((state.flags ? hold : zswap32(hold)) !== state.check) {
+            strm.msg = 'incorrect data check';
+            state.mode = BAD;
+            break;
+          }
+          //=== INITBITS();
+          hold = 0;
+          bits = 0;
+          //===//
+          //Tracev((stderr, "inflate:   check matches trailer\n"));
         }
-        _out = left;
-        // NB: crc32 stored as signed 32-bit int, zswap32 returns signed too
-        if ((state.flags ? hold : zswap32(hold)) !== state.check) {
-          strm.msg = 'incorrect data check';
-          state.mode = BAD;
-          break;
+        state.mode = LENGTH;
+        /* falls through */
+      case LENGTH:
+        if (state.wrap && state.flags) {
+          //=== NEEDBITS(32);
+          while (bits < 32) {
+            if (have === 0) { break inf_leave; }
+            have--;
+            hold += input[next++] << bits;
+            bits += 8;
+          }
+          //===//
+          if (hold !== (state.total & 0xffffffff)) {
+            strm.msg = 'incorrect length check';
+            state.mode = BAD;
+            break;
+          }
+          //=== INITBITS();
+          hold = 0;
+          bits = 0;
+          //===//
+          //Tracev((stderr, "inflate:   length matches trailer\n"));
         }
-        //=== INITBITS();
-        hold = 0;
-        bits = 0;
-        //===//
-        //Tracev((stderr, "inflate:   check matches trailer\n"));
-      }
-      state.mode = LENGTH;
-      /* falls through */
-    case LENGTH:
-      if (state.wrap && state.flags) {
-        //=== NEEDBITS(32);
-        while (bits < 32) {
-          if (have === 0) { break inf_leave; }
-          have--;
-          hold += input[next++] << bits;
-          bits += 8;
-        }
-        //===//
-        if (hold !== (state.total & 0xffffffff)) {
-          strm.msg = 'incorrect length check';
-          state.mode = BAD;
-          break;
-        }
-        //=== INITBITS();
-        hold = 0;
-        bits = 0;
-        //===//
-        //Tracev((stderr, "inflate:   length matches trailer\n"));
-      }
-      state.mode = DONE;
-      /* falls through */
-    case DONE:
-      ret = Z_STREAM_END;
-      break inf_leave;
-    case BAD:
-      ret = Z_DATA_ERROR;
-      break inf_leave;
-    case MEM:
-      return Z_MEM_ERROR;
-    case SYNC:
-      /* falls through */
-    default:
-      return Z_STREAM_ERROR;
+        state.mode = DONE;
+        /* falls through */
+      case DONE:
+        ret = Z_STREAM_END;
+        break inf_leave;
+      case BAD:
+        ret = Z_DATA_ERROR;
+        break inf_leave;
+      case MEM:
+        return Z_MEM_ERROR;
+      case SYNC:
+        /* falls through */
+      default:
+        return Z_STREAM_ERROR;
     }
   }
 
@@ -19636,7 +20275,7 @@ exports.inflateSyncPoint = inflateSyncPoint;
 exports.inflateUndermine = inflateUndermine;
 */
 
-},{"../utils/common":168,"./adler32":170,"./crc32":172,"./inffast":175,"./inftrees":177}],177:[function(_dereq_,module,exports){
+},{"../utils/common":173,"./adler32":175,"./crc32":177,"./inffast":180,"./inftrees":182}],182:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -19981,7 +20620,7 @@ module.exports = function inflate_table(type, lens, lens_index, codes, table, ta
   return 0;
 };
 
-},{"../utils/common":168}],178:[function(_dereq_,module,exports){
+},{"../utils/common":173}],183:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -20015,7 +20654,7 @@ module.exports = {
   '-6':   'incompatible version' /* Z_VERSION_ERROR (-6) */
 };
 
-},{}],179:[function(_dereq_,module,exports){
+},{}],184:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -20146,7 +20785,7 @@ var bl_order =
 
 var DIST_CODE_LEN = 512; /* see definition of array dist_code below */
 
-// !!!! Use flat array insdead of structure, Freq = i*2, Len = i*2+1
+// !!!! Use flat array instead of structure, Freq = i*2, Len = i*2+1
 var static_ltree  = new Array((L_CODES + 2) * 2);
 zero(static_ltree);
 /* The static literal tree. Since the bit lengths are imposed, there is no
@@ -21201,7 +21840,7 @@ function _tr_tally(s, dist, lc)
     s.dyn_dtree[d_code(dist) * 2]/*.Freq*/++;
   }
 
-// (!) This block is disabled in zlib defailts,
+// (!) This block is disabled in zlib defaults,
 // don't enable it for binary compatibility
 
 //#ifdef TRUNCATE_BLOCK
@@ -21237,7 +21876,7 @@ exports._tr_flush_block  = _tr_flush_block;
 exports._tr_tally = _tr_tally;
 exports._tr_align = _tr_align;
 
-},{"../utils/common":168}],180:[function(_dereq_,module,exports){
+},{"../utils/common":173}],185:[function(_dereq_,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -21286,7 +21925,7 @@ function ZStream() {
 
 module.exports = ZStream;
 
-},{}],181:[function(_dereq_,module,exports){
+},{}],186:[function(_dereq_,module,exports){
 'use strict';
 
 // lightweight Buffer shim for pbf browser build
@@ -21447,7 +22086,7 @@ function encodeString(str) {
     return bytes;
 }
 
-},{"ieee754":93}],182:[function(_dereq_,module,exports){
+},{"ieee754":98}],187:[function(_dereq_,module,exports){
 (function (global){
 'use strict';
 
@@ -21874,140 +22513,7 @@ function writePackedSFixed64(arr, pbf) { for (var i = 0; i < arr.length; i++) pb
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./buffer":181}],183:[function(_dereq_,module,exports){
-'use strict';
-
-module.exports = Point;
-
-function Point(x, y) {
-    this.x = x;
-    this.y = y;
-}
-
-Point.prototype = {
-    clone: function() { return new Point(this.x, this.y); },
-
-    add:     function(p) { return this.clone()._add(p);     },
-    sub:     function(p) { return this.clone()._sub(p);     },
-    mult:    function(k) { return this.clone()._mult(k);    },
-    div:     function(k) { return this.clone()._div(k);     },
-    rotate:  function(a) { return this.clone()._rotate(a);  },
-    matMult: function(m) { return this.clone()._matMult(m); },
-    unit:    function() { return this.clone()._unit(); },
-    perp:    function() { return this.clone()._perp(); },
-    round:   function() { return this.clone()._round(); },
-
-    mag: function() {
-        return Math.sqrt(this.x * this.x + this.y * this.y);
-    },
-
-    equals: function(p) {
-        return this.x === p.x &&
-               this.y === p.y;
-    },
-
-    dist: function(p) {
-        return Math.sqrt(this.distSqr(p));
-    },
-
-    distSqr: function(p) {
-        var dx = p.x - this.x,
-            dy = p.y - this.y;
-        return dx * dx + dy * dy;
-    },
-
-    angle: function() {
-        return Math.atan2(this.y, this.x);
-    },
-
-    angleTo: function(b) {
-        return Math.atan2(this.y - b.y, this.x - b.x);
-    },
-
-    angleWith: function(b) {
-        return this.angleWithSep(b.x, b.y);
-    },
-
-    // Find the angle of the two vectors, solving the formula for the cross product a x b = |a||b|sin(θ) for θ.
-    angleWithSep: function(x, y) {
-        return Math.atan2(
-            this.x * y - this.y * x,
-            this.x * x + this.y * y);
-    },
-
-    _matMult: function(m) {
-        var x = m[0] * this.x + m[1] * this.y,
-            y = m[2] * this.x + m[3] * this.y;
-        this.x = x;
-        this.y = y;
-        return this;
-    },
-
-    _add: function(p) {
-        this.x += p.x;
-        this.y += p.y;
-        return this;
-    },
-
-    _sub: function(p) {
-        this.x -= p.x;
-        this.y -= p.y;
-        return this;
-    },
-
-    _mult: function(k) {
-        this.x *= k;
-        this.y *= k;
-        return this;
-    },
-
-    _div: function(k) {
-        this.x /= k;
-        this.y /= k;
-        return this;
-    },
-
-    _unit: function() {
-        this._div(this.mag());
-        return this;
-    },
-
-    _perp: function() {
-        var y = this.y;
-        this.y = this.x;
-        this.x = -y;
-        return this;
-    },
-
-    _rotate: function(angle) {
-        var cos = Math.cos(angle),
-            sin = Math.sin(angle),
-            x = cos * this.x - sin * this.y,
-            y = sin * this.x + cos * this.y;
-        this.x = x;
-        this.y = y;
-        return this;
-    },
-
-    _round: function() {
-        this.x = Math.round(this.x);
-        this.y = Math.round(this.y);
-        return this;
-    }
-};
-
-// constructs Point from an array if necessary
-Point.convert = function (a) {
-    if (a instanceof Point) {
-        return a;
-    }
-    if (Array.isArray(a)) {
-        return new Point(a[0], a[1]);
-    }
-    return a;
-};
-
-},{}],184:[function(_dereq_,module,exports){
+},{"./buffer":186}],188:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 
@@ -22055,7 +22561,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 
 }).call(this,_dereq_('_process'))
 
-},{"_process":185}],185:[function(_dereq_,module,exports){
+},{"_process":189}],189:[function(_dereq_,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -22241,7 +22747,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],186:[function(_dereq_,module,exports){
+},{}],190:[function(_dereq_,module,exports){
 /*!
  * strip-comments <https://github.com/jonschlinkert/strip-comments>
  *
@@ -22316,7 +22822,7 @@ strip.line = function(str, opts) {
   return str ? str.replace(re, '') : '';
 };
 
-},{}],187:[function(_dereq_,module,exports){
+},{}],191:[function(_dereq_,module,exports){
 // https://github.com/topojson/topojson-client Version 2.1.0. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -22432,7 +22938,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],188:[function(_dereq_,module,exports){
+},{}],192:[function(_dereq_,module,exports){
 (function (global){
 
 /**
@@ -22504,16 +23010,16 @@ function config (name) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],189:[function(_dereq_,module,exports){
-arguments[4][94][0].apply(exports,arguments)
-},{"dup":94}],190:[function(_dereq_,module,exports){
+},{}],193:[function(_dereq_,module,exports){
+arguments[4][99][0].apply(exports,arguments)
+},{"dup":99}],194:[function(_dereq_,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],191:[function(_dereq_,module,exports){
+},{}],195:[function(_dereq_,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -23104,329 +23610,7 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,_dereq_('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./support/isBuffer":190,"_process":185,"inherits":189}],192:[function(_dereq_,module,exports){
-module.exports.VectorTile = _dereq_('./lib/vectortile.js');
-module.exports.VectorTileFeature = _dereq_('./lib/vectortilefeature.js');
-module.exports.VectorTileLayer = _dereq_('./lib/vectortilelayer.js');
-
-},{"./lib/vectortile.js":193,"./lib/vectortilefeature.js":194,"./lib/vectortilelayer.js":195}],193:[function(_dereq_,module,exports){
-'use strict';
-
-var VectorTileLayer = _dereq_('./vectortilelayer');
-
-module.exports = VectorTile;
-
-function VectorTile(pbf, end) {
-    this.layers = pbf.readFields(readTile, {}, end);
-}
-
-function readTile(tag, layers, pbf) {
-    if (tag === 3) {
-        var layer = new VectorTileLayer(pbf, pbf.readVarint() + pbf.pos);
-        if (layer.length) layers[layer.name] = layer;
-    }
-}
-
-
-},{"./vectortilelayer":195}],194:[function(_dereq_,module,exports){
-'use strict';
-
-var Point = _dereq_('point-geometry');
-
-module.exports = VectorTileFeature;
-
-function VectorTileFeature(pbf, end, extent, keys, values) {
-    // Public
-    this.properties = {};
-    this.extent = extent;
-    this.type = 0;
-
-    // Private
-    this._pbf = pbf;
-    this._geometry = -1;
-    this._keys = keys;
-    this._values = values;
-
-    pbf.readFields(readFeature, this, end);
-}
-
-function readFeature(tag, feature, pbf) {
-    if (tag == 1) feature.id = pbf.readVarint();
-    else if (tag == 2) readTag(pbf, feature);
-    else if (tag == 3) feature.type = pbf.readVarint();
-    else if (tag == 4) feature._geometry = pbf.pos;
-}
-
-function readTag(pbf, feature) {
-    var end = pbf.readVarint() + pbf.pos;
-
-    while (pbf.pos < end) {
-        var key = feature._keys[pbf.readVarint()],
-            value = feature._values[pbf.readVarint()];
-        feature.properties[key] = value;
-    }
-}
-
-VectorTileFeature.types = ['Unknown', 'Point', 'LineString', 'Polygon'];
-
-VectorTileFeature.prototype.loadGeometry = function() {
-    var pbf = this._pbf;
-    pbf.pos = this._geometry;
-
-    var end = pbf.readVarint() + pbf.pos,
-        cmd = 1,
-        length = 0,
-        x = 0,
-        y = 0,
-        lines = [],
-        line;
-
-    while (pbf.pos < end) {
-        if (!length) {
-            var cmdLen = pbf.readVarint();
-            cmd = cmdLen & 0x7;
-            length = cmdLen >> 3;
-        }
-
-        length--;
-
-        if (cmd === 1 || cmd === 2) {
-            x += pbf.readSVarint();
-            y += pbf.readSVarint();
-
-            if (cmd === 1) { // moveTo
-                if (line) lines.push(line);
-                line = [];
-            }
-
-            line.push(new Point(x, y));
-
-        } else if (cmd === 7) {
-
-            // Workaround for https://github.com/mapbox/mapnik-vector-tile/issues/90
-            if (line) {
-                line.push(line[0].clone()); // closePolygon
-            }
-
-        } else {
-            throw new Error('unknown command ' + cmd);
-        }
-    }
-
-    if (line) lines.push(line);
-
-    return lines;
-};
-
-VectorTileFeature.prototype.bbox = function() {
-    var pbf = this._pbf;
-    pbf.pos = this._geometry;
-
-    var end = pbf.readVarint() + pbf.pos,
-        cmd = 1,
-        length = 0,
-        x = 0,
-        y = 0,
-        x1 = Infinity,
-        x2 = -Infinity,
-        y1 = Infinity,
-        y2 = -Infinity;
-
-    while (pbf.pos < end) {
-        if (!length) {
-            var cmdLen = pbf.readVarint();
-            cmd = cmdLen & 0x7;
-            length = cmdLen >> 3;
-        }
-
-        length--;
-
-        if (cmd === 1 || cmd === 2) {
-            x += pbf.readSVarint();
-            y += pbf.readSVarint();
-            if (x < x1) x1 = x;
-            if (x > x2) x2 = x;
-            if (y < y1) y1 = y;
-            if (y > y2) y2 = y;
-
-        } else if (cmd !== 7) {
-            throw new Error('unknown command ' + cmd);
-        }
-    }
-
-    return [x1, y1, x2, y2];
-};
-
-VectorTileFeature.prototype.toGeoJSON = function(x, y, z) {
-    var size = this.extent * Math.pow(2, z),
-        x0 = this.extent * x,
-        y0 = this.extent * y,
-        coords = this.loadGeometry(),
-        type = VectorTileFeature.types[this.type],
-        i, j;
-
-    function project(line) {
-        for (var j = 0; j < line.length; j++) {
-            var p = line[j], y2 = 180 - (p.y + y0) * 360 / size;
-            line[j] = [
-                (p.x + x0) * 360 / size - 180,
-                360 / Math.PI * Math.atan(Math.exp(y2 * Math.PI / 180)) - 90
-            ];
-        }
-    }
-
-    switch (this.type) {
-    case 1:
-        var points = [];
-        for (i = 0; i < coords.length; i++) {
-            points[i] = coords[i][0];
-        }
-        coords = points;
-        project(coords);
-        break;
-
-    case 2:
-        for (i = 0; i < coords.length; i++) {
-            project(coords[i]);
-        }
-        break;
-
-    case 3:
-        coords = classifyRings(coords);
-        for (i = 0; i < coords.length; i++) {
-            for (j = 0; j < coords[i].length; j++) {
-                project(coords[i][j]);
-            }
-        }
-        break;
-    }
-
-    if (coords.length === 1) {
-        coords = coords[0];
-    } else {
-        type = 'Multi' + type;
-    }
-
-    var result = {
-        type: "Feature",
-        geometry: {
-            type: type,
-            coordinates: coords
-        },
-        properties: this.properties
-    };
-
-    if ('id' in this) {
-        result.id = this.id;
-    }
-
-    return result;
-};
-
-// classifies an array of rings into polygons with outer rings and holes
-
-function classifyRings(rings) {
-    var len = rings.length;
-
-    if (len <= 1) return [rings];
-
-    var polygons = [],
-        polygon,
-        ccw;
-
-    for (var i = 0; i < len; i++) {
-        var area = signedArea(rings[i]);
-        if (area === 0) continue;
-
-        if (ccw === undefined) ccw = area < 0;
-
-        if (ccw === area < 0) {
-            if (polygon) polygons.push(polygon);
-            polygon = [rings[i]];
-
-        } else {
-            polygon.push(rings[i]);
-        }
-    }
-    if (polygon) polygons.push(polygon);
-
-    return polygons;
-}
-
-function signedArea(ring) {
-    var sum = 0;
-    for (var i = 0, len = ring.length, j = len - 1, p1, p2; i < len; j = i++) {
-        p1 = ring[i];
-        p2 = ring[j];
-        sum += (p2.x - p1.x) * (p1.y + p2.y);
-    }
-    return sum;
-}
-
-},{"point-geometry":183}],195:[function(_dereq_,module,exports){
-'use strict';
-
-var VectorTileFeature = _dereq_('./vectortilefeature.js');
-
-module.exports = VectorTileLayer;
-
-function VectorTileLayer(pbf, end) {
-    // Public
-    this.version = 1;
-    this.name = null;
-    this.extent = 4096;
-    this.length = 0;
-
-    // Private
-    this._pbf = pbf;
-    this._keys = [];
-    this._values = [];
-    this._features = [];
-
-    pbf.readFields(readLayer, this, end);
-
-    this.length = this._features.length;
-}
-
-function readLayer(tag, layer, pbf) {
-    if (tag === 15) layer.version = pbf.readVarint();
-    else if (tag === 1) layer.name = pbf.readString();
-    else if (tag === 5) layer.extent = pbf.readVarint();
-    else if (tag === 2) layer._features.push(pbf.pos);
-    else if (tag === 3) layer._keys.push(pbf.readString());
-    else if (tag === 4) layer._values.push(readValueMessage(pbf));
-}
-
-function readValueMessage(pbf) {
-    var value = null,
-        end = pbf.readVarint() + pbf.pos;
-
-    while (pbf.pos < end) {
-        var tag = pbf.readVarint() >> 3;
-
-        value = tag === 1 ? pbf.readString() :
-            tag === 2 ? pbf.readFloat() :
-            tag === 3 ? pbf.readDouble() :
-            tag === 4 ? pbf.readVarint64() :
-            tag === 5 ? pbf.readVarint() :
-            tag === 6 ? pbf.readSVarint() :
-            tag === 7 ? pbf.readBoolean() : null;
-    }
-
-    return value;
-}
-
-// return feature `i` from this layer as a `VectorTileFeature`
-VectorTileLayer.prototype.feature = function(i) {
-    if (i < 0 || i >= this._features.length) throw new Error('feature index out of bounds');
-
-    this._pbf.pos = this._features[i];
-
-    var end = this._pbf.readVarint() + this._pbf.pos;
-    return new VectorTileFeature(this._pbf, end, this.extent, this._keys, this._values);
-};
-
-},{"./vectortilefeature.js":194}],196:[function(_dereq_,module,exports){
+},{"./support/isBuffer":194,"_process":189,"inherits":193}],196:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -23799,7 +23983,7 @@ function triangulatePolygon(data) {
     return (0, _earcut2.default)(data.vertices, data.holes, data.dimensions);
 }
 
-},{"../geo":201,"../vector":272,"./common":196,"earcut":72}],199:[function(_dereq_,module,exports){
+},{"../geo":201,"../vector":272,"./common":196,"earcut":77}],199:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -23845,6 +24029,9 @@ var DEFAULT = {
 
 // Scaling factor to add precision to line texture V coordinate packed as normalized short
 var v_scale_adjust = _geo2.default.tile_scale;
+var zero_v = [0, 0],
+    one_v = [1, 0],
+    mid_v = [0.5, 0]; // reusable instances, updated with V coordinate
 
 function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
     var closed_polygon = _ref.closed_polygon,
@@ -23855,12 +24042,12 @@ function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
         texcoord_width = _ref.texcoord_width,
         texcoord_ratio = _ref.texcoord_ratio,
         texcoord_normalize = _ref.texcoord_normalize,
-        scaling_index = _ref.scaling_index,
-        scaling_normalize = _ref.scaling_normalize,
+        extrude_index = _ref.extrude_index,
+        offset_index = _ref.offset_index,
         join = _ref.join,
         cap = _ref.cap,
-        miter_limit = _ref.miter_limit;
-
+        miter_limit = _ref.miter_limit,
+        offset = _ref.offset;
 
     var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
     var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter;
@@ -23890,37 +24077,38 @@ function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
         vertex_data: vertex_data,
         vertex_template: vertex_template,
         half_width: width / 2,
-        scaling_index: scaling_index,
-        scaling_normalize: scaling_normalize,
+        extrude_index: extrude_index,
+        offset_index: offset_index,
         v_scale: v_scale,
         texcoord_index: texcoord_index,
         texcoord_width: texcoord_width,
         texcoord_normalize: texcoord_normalize,
+        offset: offset,
         geom_count: 0
     };
 
-    // Buffer for extra lines to process
-    var extra_lines = [];
-
     // Process lines
     for (var index = 0; index < lines.length; index++) {
-        buildPolyline(lines[index], context, extra_lines);
+        buildPolyline(lines[index], context);
     }
 
     // Process extra lines (which are created above if lines need to be mutated for easier processing)
-    for (var _index = 0; _index < extra_lines.length; _index++) {
-        buildPolyline(extra_lines[_index], context, extra_lines);
+    if (context.extra_lines) {
+        for (var _index = 0; _index < context.extra_lines.length; _index++) {
+            buildPolyline(context.extra_lines[_index], context);
+        }
     }
 
     return context.geom_count;
 }
 
-function buildPolyline(line, context, extra_lines) {
+function buildPolyline(line, context) {
     // Skip if line is not valid
     if (line.length < 2) {
         return;
     }
 
+    var coordCurr, coordNext, normPrev, normNext;
     var join_type = context.join_type,
         cap_type = context.cap_type,
         closed_polygon = context.closed_polygon,
@@ -23929,22 +24117,22 @@ function buildPolyline(line, context, extra_lines) {
         v_scale = context.v_scale,
         miter_len_sq = context.miter_len_sq;
 
+    var has_texcoord = context.texcoord_index != null;
+    var v = 0; // Texture v-coordinate
+
     // Loop backwards through line to a tile boundary if found
     // since you need to draw lines that are only partially inside the tile,
     // so we start at the first index where it is safe to loop through to the last index within the tile
-
     if (closed_polygon && join_type === JOIN_TYPE.miter) {
         var boundaryIndex = getTileBoundaryIndex(line);
         if (boundaryIndex !== 0) {
             // create new line that is a cyclic permutation of the original
             var permutedLine = permuteLine(line, boundaryIndex);
-            extra_lines.push(permutedLine);
+            context.extra_lines = context.extra_lines || [];
+            context.extra_lines.push(permutedLine);
             return;
         }
     }
-
-    var coordCurr, coordNext, normPrev, normNext;
-    var v = 0; // Texture v-coordinate
 
     var index_start = 0;
     var index_end = line.length - 1;
@@ -23983,7 +24171,8 @@ function buildPolyline(line, context, extra_lines) {
     if (remove_tile_edges && (0, _common.outsideTile)(coordCurr, coordNext, tile_edge_tolerance)) {
         var nonBoundarySegment = getNextNonBoundarySegment(line, index_start, tile_edge_tolerance);
         if (nonBoundarySegment) {
-            extra_lines.push(nonBoundarySegment);
+            context.extra_lines = context.extra_lines || [];
+            context.extra_lines.push(nonBoundarySegment);
         }
         return;
     }
@@ -23996,18 +24185,21 @@ function buildPolyline(line, context, extra_lines) {
         // If line begins at edge, don't add a cap
         if (!(0, _common.isCoordOutsideTile)(coordCurr)) {
             addCap(coordCurr, v, normNext, cap_type, true, context);
-            if (cap_type !== CAP_TYPE.butt) {
+            if (has_texcoord && cap_type !== CAP_TYPE.butt) {
                 v += 0.5 * v_scale * context.texcoord_width;
             }
         }
 
         // Add first pair of points for the line strip
-        addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, _vector2.default.neg(normNext), [0, v], context);
+        addVertex(coordCurr, normNext, normNext, 1, v, context, 1);
+        addVertex(coordCurr, normNext, normNext, 0, v, context, -1);
     }
 
     // INTERMEDIARY POINTS
-    v += v_scale * _vector2.default.length(_vector2.default.sub(coordNext, coordCurr));
+    if (has_texcoord) {
+        v += v_scale * _vector2.default.length(_vector2.default.sub(coordNext, coordCurr));
+    }
+
     for (var i = index_start + 1; i < index_end; i++) {
         var currIndex = i;
         var nextIndex = i + 1;
@@ -24021,13 +24213,15 @@ function buildPolyline(line, context, extra_lines) {
 
         // Remove tile boundaries
         if (remove_tile_edges && (0, _common.outsideTile)(coordCurr, coordNext, tile_edge_tolerance)) {
-            addVertex(coordCurr, normNext, [1, v], context);
-            addVertex(coordCurr, _vector2.default.neg(normNext), [0, v], context);
+            addVertex(coordCurr, normNext, normNext, 1, v, context, 1);
+            addVertex(coordCurr, normNext, normNext, 0, v, context, -1);
+
             indexPairs(1, context);
 
             var nonBoundaryLines = getNextNonBoundarySegment(line, currIndex + 1, tile_edge_tolerance);
             if (nonBoundaryLines) {
-                extra_lines.push(nonBoundaryLines);
+                context.extra_lines = context.extra_lines || [];
+                context.extra_lines.push(nonBoundaryLines);
             }
             return;
         }
@@ -24042,7 +24236,9 @@ function buildPolyline(line, context, extra_lines) {
             addJoin(join_type, v, coordCurr, normPrev, normNext, false, context);
         }
 
-        v += v_scale * _vector2.default.length(_vector2.default.sub(coordNext, coordCurr));
+        if (has_texcoord) {
+            v += v_scale * _vector2.default.length(_vector2.default.sub(coordNext, coordCurr));
+        }
     }
 
     // LAST POINT
@@ -24055,8 +24251,9 @@ function buildPolyline(line, context, extra_lines) {
         endPolygon(coordCurr, normPrev, normNext, join_type, v, context);
     } else {
         // Finish the line strip
-        addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, _vector2.default.neg(normPrev), [0, v], context);
+        addVertex(coordCurr, normPrev, normNext, 1, v, context, 1);
+        addVertex(coordCurr, normPrev, normNext, 0, v, context, -1);
+
         indexPairs(1, context);
 
         // If line ends at edge, don't add a cap
@@ -24096,8 +24293,8 @@ function getNextNonBoundarySegment(line, startIndex, tolerance) {
 function startPolygon(coordCurr, normPrev, normNext, join_type, context) {
     // If polygon starts on a tile boundary, don't add a join
     if (join_type === undefined || (0, _common.isCoordOutsideTile)(coordCurr)) {
-        addVertex(coordCurr, normNext, [1, 0], context);
-        addVertex(coordCurr, _vector2.default.neg(normNext), [0, 0], context);
+        addVertex(coordCurr, normNext, normNext, 1, 0, context, 1);
+        addVertex(coordCurr, normNext, normNext, 0, 0, context, -1);
     } else {
         // If polygon starts within a tile, add a join
         var v = 0;
@@ -24113,8 +24310,8 @@ function startPolygon(coordCurr, normPrev, normNext, join_type, context) {
 function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
     // If polygon ends on a tile boundary, don't add a join
     if ((0, _common.isCoordOutsideTile)(coordCurr)) {
-        addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, _vector2.default.neg(normPrev), [0, v], context);
+        addVertex(coordCurr, normPrev, normPrev, 1, v, context, 1);
+        addVertex(coordCurr, normPrev, normPrev, 0, v, context, -1);
         indexPairs(1, context);
     } else {
         // If polygon ends within a tile, add Miter or no joint (join added on startPolygon)
@@ -24125,12 +24322,12 @@ function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
         }
 
         if (join_type === JOIN_TYPE.miter) {
-            addVertex(coordCurr, miterVec, [1, v], context);
-            addVertex(coordCurr, _vector2.default.neg(miterVec), [0, v], context);
+            addVertex(coordCurr, miterVec, normPrev, 1, v, context, 1);
+            addVertex(coordCurr, miterVec, normPrev, 0, v, context, -1);
             indexPairs(1, context);
         } else {
-            addVertex(coordCurr, normPrev, [1, v], context);
-            addVertex(coordCurr, _vector2.default.neg(normPrev), [0, v], context);
+            addVertex(coordCurr, normPrev, normPrev, 1, v, context, 1);
+            addVertex(coordCurr, normPrev, normPrev, 0, v, context, -1);
             indexPairs(1, context);
         }
     }
@@ -24150,8 +24347,8 @@ function addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, c
     if (_vector2.default.lengthSq(miterVec) > miter_len_sq) {
         addJoin(JOIN_TYPE.bevel, v, coordCurr, normPrev, normNext, isBeginning, context);
     } else {
-        addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, _vector2.default.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, miterVec, miterVec, 1, v, context, 1);
+        addVertex(coordCurr, miterVec, miterVec, 0, v, context, -1);
         if (!isBeginning) {
             indexPairs(1, context);
         }
@@ -24163,38 +24360,55 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     var miterVec = createMiterVec(normPrev, normNext);
     var isClockwise = normNext[0] * normPrev[1] - normNext[1] * normPrev[0] > 0;
 
+    if (context.texcoord_index != null) {
+        zero_v[1] = v;
+        one_v[1] = v;
+    }
+
     if (isClockwise) {
-        addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, _vector2.default.neg(normPrev), [0, v], context);
+        addVertex(coordCurr, miterVec, miterVec, 1, v, context, 1);
+        addVertex(coordCurr, normPrev, miterVec, 0, v, context, -1);
 
         if (!isBeginning) {
             indexPairs(1, context);
         }
 
-        if (join_type === JOIN_TYPE.bevel) {
-            addBevel(coordCurr, _vector2.default.neg(normPrev), miterVec, _vector2.default.neg(normNext), [0, v], [1, v], [0, v], context);
-        } else if (join_type === JOIN_TYPE.round) {
-            addFan(coordCurr, _vector2.default.neg(normPrev), miterVec, _vector2.default.neg(normNext), [0, v], [1, v], [0, v], false, context);
-        }
+        addFan(coordCurr,
+        // extrusion vector of first vertex
+        _vector2.default.neg(normPrev),
+        // controls extrude distance of pivot vertex
+        miterVec,
+        // extrusion vector of last vertex
+        _vector2.default.neg(normNext),
+        // line normal (unused here)
+        miterVec,
+        // uv coordinates
+        zero_v, one_v, zero_v, false, join_type === JOIN_TYPE.bevel, context);
 
-        addVertex(coordCurr, miterVec, [1, v], context);
-        addVertex(coordCurr, _vector2.default.neg(normNext), [0, v], context);
+        addVertex(coordCurr, miterVec, miterVec, 1, v, context, 1);
+        addVertex(coordCurr, normNext, miterVec, 0, v, context, -1);
     } else {
-        addVertex(coordCurr, normPrev, [1, v], context);
-        addVertex(coordCurr, _vector2.default.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, normPrev, miterVec, 1, v, context, 1);
+        addVertex(coordCurr, miterVec, miterVec, 0, v, context, -1);
 
         if (!isBeginning) {
             indexPairs(1, context);
         }
 
-        if (join_type === JOIN_TYPE.bevel) {
-            addBevel(coordCurr, normPrev, _vector2.default.neg(miterVec), normNext, [1, v], [0, v], [1, v], context);
-        } else if (join_type === JOIN_TYPE.round) {
-            addFan(coordCurr, normPrev, _vector2.default.neg(miterVec), normNext, [1, v], [0, v], [1, v], false, context);
-        }
+        addFan(coordCurr,
+        // extrusion vector of first vertex
+        normPrev,
+        // extrusion vector of pivot vertex
+        _vector2.default.neg(miterVec),
+        // extrusion vector of last vertex
+        normNext,
+        // line normal for offset
+        miterVec,
+        // uv coordinates
+        one_v, zero_v, one_v, false, join_type === JOIN_TYPE.bevel, context);
 
-        addVertex(coordCurr, normNext, [1, v], context);
-        addVertex(coordCurr, _vector2.default.neg(miterVec), [0, v], context);
+        addVertex(coordCurr, normNext, miterVec, 1, v, context, 1);
+        addVertex(coordCurr, miterVec, miterVec, 0, v, context, -1);
     }
 }
 
@@ -24215,75 +24429,113 @@ function indexPairs(num_pairs, context) {
     }
 }
 
-function addVertex(coordinate, normal, uv, context) {
+function addVertex(position, extrude, normal, u, v, context, flip) {
     var vertex_template = context.vertex_template;
     var vertex_data = context.vertex_data;
 
-    buildVertexTemplate(vertex_template, coordinate, uv, normal, context);
+    // set vertex position
+    vertex_template[0] = position[0];
+    vertex_template[1] = position[1];
+
+    // set line extrusion vector
+    var len = context.half_width * flip;
+    vertex_template[context.extrude_index + 0] = extrude[0] * len;
+    vertex_template[context.extrude_index + 1] = extrude[1] * len;
+
+    // set line offset vector
+    if (context.offset) {
+        vertex_template[context.offset_index + 0] = normal[0] * context.offset;
+        vertex_template[context.offset_index + 1] = normal[1] * context.offset;
+    }
+
+    // set UVs
+    if (context.texcoord_index != null) {
+        vertex_template[context.texcoord_index + 0] = u * context.texcoord_normalize;
+        vertex_template[context.texcoord_index + 1] = v * context.texcoord_normalize;
+    }
+
     vertex_data.addVertex(vertex_template);
 }
 
-function buildVertexTemplate(vertex_template, vertex, texture_coord, scale, context) {
-    // set vertex position
-    vertex_template[0] = vertex[0];
-    vertex_template[1] = vertex[1];
-
-    // set UVs
-    if (context.texcoord_index && texture_coord) {
-        vertex_template[context.texcoord_index + 0] = texture_coord[0] * context.texcoord_normalize;
-        vertex_template[context.texcoord_index + 1] = texture_coord[1] * context.texcoord_normalize;
-    }
-
-    // set Scaling vertex (X, Y normal direction + Z half_width as attribute)
-    if (context.scaling_index) {
-        vertex_template[context.scaling_index + 0] = scale[0] * context.scaling_normalize;
-        vertex_template[context.scaling_index + 1] = scale[1] * context.scaling_normalize;
-        vertex_template[context.scaling_index + 2] = context.half_width;
-    }
-}
-
-//  Tessalate a FAN geometry between points A       B
-//  using their normals from a center        \ . . /
+//  Tesselate a fan geometry between points A ----- B
+//  using their normals from a center p      \ . . /
 //  and interpolating their UVs               \ p /
 //                                             \./
-function addFan(coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
-    var cross = nA[0] * nB[1] - nA[1] * nB[0];
-    var dot = _vector2.default.dot(nA, nB);
+//                                              C
+var uvCurr = [0, 0];
+
+function addFan(coord, eA, eC, eB, normal, uvA, uvC, uvB, isCap, isBevel, context) {
+    // eA = extrusion vector of first outer vertex
+    // eC = extrusion vector of inner vertex
+    // eA, eC, eB = extrusion vectors
+    // normal = line normal for calculating cap offsets
+    // coord = center point p - vertex connecting two line segments
+
+    var cross = eA[0] * eB[1] - eA[1] * eB[0];
+    var dot = _vector2.default.dot(eA, eB);
 
     var angle = Math.atan2(cross, dot);
     while (angle >= Math.PI) {
         angle -= 2 * Math.PI;
     }
 
-    var numTriangles = trianglesPerArc(angle, context.half_width);
-    if (numTriangles < 1) {
-        return;
+    if (isBevel) {
+        numTriangles = 1;
+    } else {
+        // vary number of triangles in fan with angle (based on MIN_FAN_WIDTH)
+        var numTriangles = trianglesPerArc(angle, context.half_width);
+        if (numTriangles < 1) {
+            return;
+        }
     }
 
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
+    if (angle < 0) {
+        // cw
+        addVertex(coord, eC, normal, uvC[0], uvC[1], context, 1);
+        addVertex(coord, eA, normal, uvA[0], uvA[1], context, 1);
+    } else {
+        // ccw
+        addVertex(coord, eC, normal, uvC[0], uvC[1], context, 1);
+        addVertex(coord, eA, normal, uvA[0], uvA[1], context, 1);
+    }
 
-    addVertex(coord, nC, uvC, context);
-    addVertex(coord, nA, uvA, context);
+    var blade = eA;
 
-    var blade = nA;
-
-    if (context.texcoord_index !== undefined) {
-        var uvCurr;
+    var has_texcoord = context.texcoord_index != null;
+    if (has_texcoord) {
         if (isCap) {
-            uvCurr = [];
             var affine_uvCurr = _vector2.default.sub(uvA, uvC);
         } else {
-            uvCurr = _vector2.default.set(uvA);
+            uvCurr = _vector2.default.copy(uvA);
             var uv_delta = _vector2.default.div(_vector2.default.sub(uvB, uvA), numTriangles);
         }
     }
 
     var angle_step = angle / numTriangles;
+    var flip = angle < 0 ? -1 : 1; // if angle < 0, is cw - set 'flip' flag
+
+    // add outside vertices in reverse order depending on sign of angle
+    var v1 = void 0,
+        v2 = void 0;
+    if (cross > 0) {
+        v1 = 2;
+        v2 = 1;
+    } else {
+        v1 = 1;
+        v2 = 2;
+    }
+
     for (var i = 0; i < numTriangles; i++) {
+        if (i === 0 && angle < 0) {
+            // if ccw, flip the extrusion vector so offsets work properly
+            blade = _vector2.default.neg(blade);
+        }
+
         blade = _vector2.default.rot(blade, angle_step);
 
-        if (context.texcoord_index !== undefined) {
+        if (has_texcoord) {
             if (isCap) {
                 // UV textures go "through" the cap
                 affine_uvCurr = _vector2.default.rot(affine_uvCurr, angle_step);
@@ -24295,99 +24547,88 @@ function addFan(coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
             }
         }
 
-        addVertex(coord, blade, uvCurr, context);
+        addVertex(coord, blade, normal, uvCurr[0], uvCurr[1], context, flip);
 
-        vertex_elements.push(pivotIndex + i + (cross > 0 ? 2 : 1));
+        vertex_elements.push(pivotIndex + i + v1);
         vertex_elements.push(pivotIndex);
-        vertex_elements.push(pivotIndex + i + (cross > 0 ? 1 : 2));
+        vertex_elements.push(pivotIndex + i + v2);
     }
 }
 
-//  addBevel    A ----- B
-//             / \     / \
-//           /   /\   /\  \
-//              /  \ /  \  \
-//                / C \
-function addBevel(coord, nA, nC, nB, uA, uC, uB, context) {
-    var pivotIndex = context.vertex_data.vertex_count;
-
-    addVertex(coord, nC, uC, context);
-    addVertex(coord, nA, uA, context);
-    addVertex(coord, nB, uB, context);
-
-    var orientation = nA[0] * nB[1] - nA[1] * nB[0] > 0;
-
-    var vertex_elements = context.vertex_data.vertex_elements;
-
-    if (orientation) {
-        vertex_elements.push(pivotIndex + 2);
-        vertex_elements.push(pivotIndex + 0);
-        vertex_elements.push(pivotIndex + 1);
-    } else {
-        vertex_elements.push(pivotIndex + 1);
-        vertex_elements.push(pivotIndex + 0);
-        vertex_elements.push(pivotIndex + 2);
-    }
-}
-
-//  Function to add the vertex need for line caps,
-//  because re-use the buffers needs to be at the end
+//  Function to add the vertices needed for line caps,
+//  because to re-use the buffers they need to be at the end
 function addCap(coord, v, normal, type, isBeginning, context) {
     var neg_normal = _vector2.default.neg(normal);
+    var has_texcoord = context.texcoord_index != null;
 
     switch (type) {
         case CAP_TYPE.square:
             var tangent;
+            // first vertex on the lineString
             if (isBeginning) {
                 tangent = [normal[1], -normal[0]];
 
-                addVertex(coord, _vector2.default.add(normal, tangent), [1, v], context);
-                addVertex(coord, _vector2.default.add(neg_normal, tangent), [0, v], context);
+                addVertex(coord, _vector2.default.add(normal, tangent), normal, 1, v, context, 1);
+                addVertex(coord, _vector2.default.add(neg_normal, tangent), normal, 0, v, context, 1);
 
-                // Add length of square cap to texture coordinate
-                v += 0.5 * context.texcoord_width * context.v_scale;
+                if (has_texcoord) {
+                    // Add length of square cap to texture coordinate
+                    v += 0.5 * context.texcoord_width * context.v_scale;
+                }
 
-                addVertex(coord, normal, [1, v], context);
-                addVertex(coord, neg_normal, [0, v], context);
-            } else {
-                tangent = [-normal[1], normal[0]];
-
-                addVertex(coord, normal, [1, v], context);
-                addVertex(coord, neg_normal, [0, v], context);
-
-                // Add length of square cap to texture coordinate
-                v += 0.5 * context.texcoord_width * context.v_scale;
-
-                addVertex(coord, _vector2.default.add(normal, tangent), [1, v], context);
-                addVertex(coord, _vector2.default.add(neg_normal, tangent), [0, v], context);
+                addVertex(coord, normal, normal, 1, v, context, 1);
+                addVertex(coord, neg_normal, normal, 0, v, context, 1);
             }
+            // last vertex on the lineString
+            else {
+                    tangent = [-normal[1], normal[0]];
+
+                    addVertex(coord, normal, normal, 1, v, context, 1);
+                    addVertex(coord, neg_normal, normal, 0, v, context, 1);
+
+                    if (has_texcoord) {
+                        // Add length of square cap to texture coordinate
+                        v += 0.5 * context.texcoord_width * context.v_scale;
+                    }
+
+                    addVertex(coord, _vector2.default.add(normal, tangent), normal, 1, v, context, 1);
+                    addVertex(coord, _vector2.default.add(neg_normal, tangent), normal, 0, v, context, 1);
+                }
 
             indexPairs(1, context);
             break;
         case CAP_TYPE.round:
-            var nA, nB, uvA, uvB, uvC;
+            // default for end cap, beginning cap will overwrite below (this way we're always passing a non-null value,
+            // even if texture coords are disabled)
+            var uvA = zero_v,
+                uvB = one_v,
+                uvC = mid_v;
+            var nA, nB;
+
+            // first vertex on the lineString
             if (isBeginning) {
                 nA = normal;
                 nB = neg_normal;
 
-                if (context.texcoord_index !== undefined) {
+                if (has_texcoord) {
                     v += 0.5 * context.texcoord_width * context.v_scale;
-                    uvA = [1, v];
-                    uvB = [0, v];
-                    uvC = [0.5, v];
-                }
-            } else {
-                nA = neg_normal;
-                nB = normal;
-
-                if (context.texcoord_index !== undefined) {
-                    uvA = [0, v];
-                    uvB = [1, v];
-                    uvC = [0.5, v];
+                    uvA = one_v, uvB = zero_v, uvC = mid_v; // update cap UV order
                 }
             }
+            // last vertex on the lineString - flip the direction of the cap
+            else {
+                    nA = neg_normal;
+                    nB = normal;
+                }
 
-            addFan(coord, nA, zero_vec2, nB, uvA, uvC, uvB, true, context);
+            if (has_texcoord) {
+                zero_v[1] = v, one_v[1] = v, mid_v[1] = v; // update cap UV values
+            }
+
+            addFan(coord, nA, zero_vec2, nB, // extrusion normal
+            normal, // line normal, for offsets
+            uvA, uvC, uvB, // texture coords (ignored if disabled)
+            true, false, context);
 
             break;
         case CAP_TYPE.butt:
@@ -26468,7 +26709,7 @@ ShaderProgram.createShader = function (gl, source, stype) {
     return shader;
 };
 
-},{"../utils/hash":258,"../utils/log":259,"./extensions":204,"./glsl":205,"./texture":208,"gl-shader-errors":92,"strip-comments":186}],208:[function(_dereq_,module,exports){
+},{"../utils/hash":258,"../utils/log":259,"./extensions":204,"./glsl":205,"./texture":208,"gl-shader-errors":97,"strip-comments":190}],208:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -26519,13 +26760,17 @@ var Texture = function () {
         this.loading = null; // a Promise object to track the loading state of this texture
         this.loaded = false; // successfully loaded as expected
         this.filtering = options.filtering;
+        this.density = options.density || 1; // native pixel density of texture
         this.sprites = options.sprites;
         this.texcoords = {}; // sprite UVs ([0, 1] range)
         this.sizes = {}; // sprite sizes (pixel size)
+        this.css_sizes = {}; // sprite sizes, adjusted for native texture pixel density
+        this.aspects = {}; // sprite aspect ratios
 
-        // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
+        // Default to a 1-pixel transparent black texture so we can safely render while we wait for an image to load
         // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
-        this.setData(1, 1, new Uint8Array([0, 0, 0, 255]), { filtering: 'nearest' });
+        this.setData(1, 1, new Uint8Array([0, 0, 0, 0]), { filtering: 'nearest' });
+        this.loaded = false; // don't consider loaded when only placeholder data is present
 
         // Destroy previous texture if present
         if (Texture.textures[this.name]) {
@@ -26836,7 +27081,10 @@ var Texture = function () {
                     this.texcoords[s] = Texture.getTexcoordsForSprite([sprite[0], sprite[1]], [sprite[2], sprite[3]], [this.width, this.height]);
 
                     // Pixel size of sprite
+                    // Divide by native texture density to get correct CSS pixels
                     this.sizes[s] = [sprite[2], sprite[3]];
+                    this.css_sizes[s] = [sprite[2] / this.density, sprite[3] / this.density];
+                    this.aspects[s] = sprite[2] / sprite[3];
                 }
             }
         }
@@ -26878,7 +27126,12 @@ Texture.destroy = function (gl) {
 // Get sprite pixel size and UVs
 Texture.getSpriteInfo = function (texname, sprite) {
     var texture = Texture.textures[texname];
-    return texture && { size: texture.sizes[sprite], texcoords: texture.texcoords[sprite] };
+    return texture && {
+        size: texture.sizes[sprite],
+        css_size: texture.css_sizes[sprite],
+        aspect: texture.aspects[sprite],
+        texcoords: texture.texcoords[sprite]
+    };
 };
 
 // Re-scale UVs from [0, 1] range to a smaller area within the image
@@ -26927,6 +27180,7 @@ Texture.sliceOptions = function (options) {
         data: options.data,
         width: options.width,
         height: options.height,
+        density: options.density,
         repeat: options.repeat,
         TEXTURE_WRAP_S: options.TEXTURE_WRAP_S,
         TEXTURE_WRAP_T: options.TEXTURE_WRAP_T,
@@ -26982,9 +27236,12 @@ Texture.getInfo = function (name) {
                 name: tex.name,
                 width: tex.width,
                 height: tex.height,
+                density: tex.density,
                 sprites: tex.sprites,
                 texcoords: tex.texcoords,
                 sizes: tex.sizes,
+                css_sizes: tex.css_sizes,
+                aspects: tex.aspects,
                 filtering: tex.filtering,
                 power_of_2: tex.power_of_2,
                 valid: tex.valid
@@ -27359,17 +27616,17 @@ var VertexData = function () {
     _createClass(VertexData, [{
         key: 'setBufferViews',
         value: function setBufferViews() {
+            var _this = this;
+
             this.views = {};
             this.views[_constants2.default.UNSIGNED_BYTE] = this.vertex_buffer;
-            for (var a = 0; a < this.vertex_layout.attribs.length; a++) {
-                var attrib = this.vertex_layout.attribs[a];
-
+            this.vertex_layout.dynamic_attribs.forEach(function (attrib) {
                 // Need view for this type?
-                if (this.views[attrib.type] == null) {
+                if (_this.views[attrib.type] == null) {
                     var array_type = array_types[attrib.type];
-                    this.views[attrib.type] = new array_type(this.vertex_buffer.buffer);
+                    _this.views[attrib.type] = new array_type(_this.vertex_buffer.buffer);
                 }
-            }
+            });
         }
 
         // Check allocated buffer size, expand/realloc buffer if needed
@@ -27538,56 +27795,65 @@ var VertexLayout = function () {
         _classCallCheck(this, VertexLayout);
 
         this.attribs = attribs; // array of attributes, specified as standard GL attrib options
+        this.dynamic_attribs = this.attribs.filter(function (x) {
+            return !x.static;
+        }); // attributes with per-vertex values, used to build VBOs
         this.components = []; // list of type and offset info about each attribute component
         this.index = {}; // linear buffer index of each attribute component, e.g. this.index.position.x
-
-        // Calc vertex stride
-        this.stride = 0;
+        this.stride = 0; // byte stride of a single vertex
 
         var index = 0,
             count = 0;
         for (var a = 0; a < this.attribs.length; a++) {
             var attrib = this.attribs[a];
-            attrib.offset = this.stride;
-            attrib.byte_size = attrib.size;
-            var shift = 0;
+            // Dynamic attribute
+            if (attrib.static == null) {
+                attrib.offset = this.stride;
+                attrib.byte_size = attrib.size;
+                var shift = 0;
 
-            switch (attrib.type) {
-                case _constants2.default.FLOAT:
-                case _constants2.default.INT:
-                case _constants2.default.UNSIGNED_INT:
-                    attrib.byte_size *= 4;
-                    shift = 2;
-                    break;
-                case _constants2.default.SHORT:
-                case _constants2.default.UNSIGNED_SHORT:
-                    attrib.byte_size *= 2;
-                    shift = 1;
-                    break;
+                switch (attrib.type) {
+                    case _constants2.default.FLOAT:
+                    case _constants2.default.INT:
+                    case _constants2.default.UNSIGNED_INT:
+                        attrib.byte_size *= 4;
+                        shift = 2;
+                        break;
+                    case _constants2.default.SHORT:
+                    case _constants2.default.UNSIGNED_SHORT:
+                        attrib.byte_size *= 2;
+                        shift = 1;
+                        break;
+                }
+
+                // Force 4-byte alignment on attributes
+                if (attrib.byte_size & 3) {
+                    // pad to multiple of 4 bytes
+                    attrib.byte_size += 4 - (attrib.byte_size & 3);
+                }
+                this.stride += attrib.byte_size;
+
+                // Add info to list of attribute components (e.g. float is 1 component, vec3 is 3 separate components)
+                // Used to map plain JS array to typed arrays
+                var offset_typed = attrib.offset >> shift;
+                for (var s = 0; s < attrib.size; s++) {
+                    this.components.push({
+                        type: attrib.type,
+                        shift: shift,
+                        offset: offset_typed++,
+                        index: count++
+                    });
+                }
+
+                // Provide an index into the vertex data buffer for each attribute component
+                this.index[attrib.name] = index;
+                index += attrib.size;
             }
-
-            // Force 4-byte alignment on attributes
-            if (attrib.byte_size & 3) {
-                // pad to multiple of 4 bytes
-                attrib.byte_size += 4 - (attrib.byte_size & 3);
-            }
-            this.stride += attrib.byte_size;
-
-            // Add info to list of attribute components (e.g. float is 1 component, vec3 is 3 separate components)
-            // Used to map plain JS array to typed arrays
-            var offset_typed = attrib.offset >> shift;
-            for (var s = 0; s < attrib.size; s++) {
-                this.components.push({
-                    type: attrib.type,
-                    shift: shift,
-                    offset: offset_typed++,
-                    index: count++
-                });
-            }
-
-            // Provide an index into the vertex data buffer for each attribute component
-            this.index[attrib.name] = index;
-            index += attrib.size;
+            // Static attribute
+            else {
+                    attrib.static = Array.isArray(attrib.static) ? attrib.static : [attrib.static]; // convert single value to array
+                    attrib.method = 'vertexAttrib' + attrib.static.length + 'fv';
+                }
         }
     }
 
@@ -27600,7 +27866,8 @@ var VertexLayout = function () {
     _createClass(VertexLayout, [{
         key: 'enable',
         value: function enable(gl, program, force) {
-            var attrib, location;
+            var attrib = void 0,
+                location = void 0;
 
             // Enable all attributes for this layout
             for (var a = 0; a < this.attribs.length; a++) {
@@ -27608,11 +27875,26 @@ var VertexLayout = function () {
                 location = program.attribute(attrib.name).location;
 
                 if (location !== -1) {
-                    if (!VertexLayout.enabled_attribs[location] || force) {
-                        gl.enableVertexAttribArray(location);
+                    // Dynamic attribute
+                    if (attrib.static == null) {
+                        if (!VertexLayout.enabled_attribs[location] || force) {
+                            gl.enableVertexAttribArray(location);
+                        }
+                        gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
+                        VertexLayout.enabled_attribs[location] = program;
                     }
-                    gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
-                    VertexLayout.enabled_attribs[location] = program;
+                    // Static attribute
+                    else {
+                            if (gl[attrib.method] instanceof Function) {
+                                // N.B.: Safari appears to require an explicit array enable to set vertex attribute as "active"
+                                // (the static attribute value method does not work without it). So the attribute is temporarily
+                                // enabled as an array, then disabled.
+                                gl.enableVertexAttribArray(location);
+                                gl[attrib.method](location, attrib.static);
+                                gl.disableVertexAttribArray(location);
+                                delete VertexLayout.enabled_attribs[location];
+                            }
+                        }
                 }
             }
 
@@ -29634,8 +29916,7 @@ function extendLeaflet(options) {
         var layerBaseClass = L.GridLayer ? L.GridLayer : L.TileLayer;
         var leafletVersion = layerBaseClass === L.GridLayer ? '1.x' : '0.7.x';
         var layerClassConfig = {};
-        var setZoomAroundNoMoveEnd = void 0,
-            debounceMoveEnd = void 0; // alternate zoom functions defined below
+        var setZoomAroundNoMoveEnd = void 0; // alternate zoom functions defined below
 
         // If extending leaflet 0.7.x TileLayer, additional modifications are needed
         if (layerBaseClass === L.TileLayer) {
@@ -29661,7 +29942,6 @@ function extendLeaflet(options) {
                 this.createScene();
                 this.hooks = {};
                 this._updating_tangram = false;
-                this._zoomAnimated = false; // turn leaflet zoom animations off for this layer
             },
             createScene: function createScene() {
                 this.scene = _scene2.default.create(this.options.scene, {
@@ -29712,7 +29992,6 @@ function extendLeaflet(options) {
                         // otherwise, wait until next regular animation loop iteration
                         _this.scene.immediateRedraw();
                     }
-                    _this.reverseTransform();
 
                     _this._updating_tangram = false;
                 };
@@ -29729,13 +30008,18 @@ function extendLeaflet(options) {
                 };
                 map.on('drag', this.hooks.drag);
 
+                // keep Tangram layer in sync with view via mutation observer
+                this._map_pane_observer = new MutationObserver(function (mutations) {
+                    mutations.forEach(function (mutation) {
+                        return _this.reverseTransform();
+                    });
+                });
+                this._map_pane_observer.observe(map.getPanes().mapPane, { attributes: true });
+
                 // Modify default Leaflet behaviors
                 this.modifyScrollWheelBehavior(map);
-                this.modifyDoubleClickZoom(map);
-                debounceMoveEnd = (0, _debounce2.default)(function (map) {
-                    map._moveEnd(true);
-                    map.fire('viewreset'); // keep other leaflet layers in sync
-                }, map.options.wheelDebounceTime * 2);
+                this.modifyZoomBehavior(map);
+
                 this.trackMapLayerCounts(map);
 
                 // Setup feature selection
@@ -29766,7 +30050,7 @@ function extendLeaflet(options) {
 
                     _this.updateSize();
                     _this.updateView();
-                    _this.reverseTransform();
+                    // this.reverseTransform();
 
                     _this._updating_tangram = false;
 
@@ -29788,6 +30072,8 @@ function extendLeaflet(options) {
                 map.off('mouseout', this.hooks.mouseout);
                 document.removeEventListener('visibilitychange', this.hooks.visibilitychange);
                 this.hooks = {};
+
+                this._map_pane_observer.disconnect();
 
                 if (this.scene) {
                     this.scene.destroy();
@@ -29846,6 +30132,11 @@ function extendLeaflet(options) {
                         map.options.wheelDebounceTime = 20; // better default for FF and Edge/IE
                     }
 
+                    var debounceMoveEnd = (0, _debounce2.default)(function (map) {
+                        map._moveEnd(true);
+                        map.fire('viewreset'); // keep other leaflet layers in sync
+                    }, map.options.wheelDebounceTime * 2);
+
                     var layer = this;
                     map.scrollWheelZoom._performZoom = function () {
                         var map = this._map,
@@ -29881,17 +30172,13 @@ function extendLeaflet(options) {
             },
 
 
-            // Modify leaflet's default double-click zoom behavior, to match typical vector basemap products
-            modifyDoubleClickZoom: function modifyDoubleClickZoom(map) {
-                if (this.scene.view.continuous_zoom && map.doubleClickZoom && this.options.modifyDoubleClickZoom !== false) {
+            // Modify leaflet's default double-click and zoom in/out behavior, to better keep Tangram layer in sync with marker/SVG layers
+            modifyZoomBehavior: function modifyZoomBehavior(map) {
+                if (this.scene.view.continuous_zoom && this.options.modifyZoomBehavior !== false) {
+                    var layer = this;
 
                     // Simplified version of Leaflet's flyTo, for short animations zooming around a point
-                    var flyAround = function flyAround(layer, targetCenter, targetZoom, options) {
-                        options = options || {};
-                        if (options.animate === false || !L.Browser.any3d) {
-                            return map.setView(targetCenter, targetZoom, options);
-                        }
-
+                    var flyAround = function flyAround(layer, targetCenter, targetZoom) {
                         map._stop();
 
                         var startZoom = map._zoom;
@@ -29904,7 +30191,7 @@ function extendLeaflet(options) {
                             to = map.project(targetCenter, startZoom);
 
                         var start = Date.now(),
-                            duration = options.duration ? 1000 * options.duration : 75;
+                            duration = 75;
 
                         function frame() {
                             var t = (Date.now() - start) / duration;
@@ -29929,25 +30216,49 @@ function extendLeaflet(options) {
                     };
 
                     // Modify the double-click zoom handler to do a short zoom animation
-                    var enabled = map.doubleClickZoom.enabled();
-                    map.doubleClickZoom.disable();
+                    // See original: https://github.com/Leaflet/Leaflet/blob/cf518ff1a5e0e54a2f63faa144aeaa50888e0bc6/src/map/handler/Map.DoubleClickZoom.js#L29
+                    if (map.doubleClickZoom) {
+                        var enabled = map.doubleClickZoom.enabled();
+                        map.doubleClickZoom.disable();
 
-                    var layer = this;
-                    map.doubleClickZoom._onDoubleClick = function (e) {
-                        var map = this._map,
-                            oldZoom = map.getZoom(),
-                            delta = map.options.zoomDelta,
-                            zoom = e.originalEvent.shiftKey ? oldZoom - delta : oldZoom + delta;
+                        map.doubleClickZoom._onDoubleClick = function (e) {
+                            var map = this._map,
+                                oldZoom = map.getZoom(),
+                                delta = map.options.zoomDelta,
+                                zoom = e.originalEvent.shiftKey ? oldZoom - delta : oldZoom + delta;
 
-                        if (map.options.doubleClickZoom === 'center') {
-                            flyAround(layer, map.getCenter(), zoom);
-                        } else {
-                            flyAround(layer, map.containerPointToLatLng(e.containerPoint), zoom);
+                            if (map.options.doubleClickZoom === 'center') {
+                                flyAround(layer, map.getCenter(), zoom);
+                            } else {
+                                flyAround(layer, map.containerPointToLatLng(e.containerPoint), zoom);
+                            }
+                        };
+
+                        if (enabled) {
+                            map.doubleClickZoom.enable();
                         }
-                    };
+                    }
 
-                    if (enabled) {
-                        map.doubleClickZoom.enable();
+                    // Modify the zoom in/out behavior
+                    // NOTE: this will NOT fire the 'zoomanim' event, so this modification should be disabled for apps that depend on it
+                    // See original: https://github.com/Leaflet/Leaflet/blob/cf518ff1a5e0e54a2f63faa144aeaa50888e0bc6/src/map/Map.js#L1610
+                    if (map._zoomAnimated) {
+                        map._animateZoom = function (center, zoom, startAnim, noUpdate) {
+                            if (startAnim) {
+                                this._animatingZoom = true;
+
+                                // remember what center/zoom to set after animation
+                                this._animateToCenter = center;
+                                this._animateToZoom = zoom;
+
+                                // replace leaflet CSS animation with Tangram animation to keep markers/SVG in sync
+                                // (this is a workaround from not being able to easily track/sync to on-going CSS animations in JS)
+                                flyAround(layer, center, zoom);
+                            }
+
+                            // Work around webkit not firing 'transitionend', see https://github.com/Leaflet/Leaflet/issues/3689, 2693
+                            setTimeout(L.Util.bind(this._onZoomTransitionEnd, this), 250);
+                        };
                     }
                 }
             },
@@ -29987,7 +30298,6 @@ function extendLeaflet(options) {
 
                 this._updating_tangram = true;
                 this._map.setView([this.scene.view.center.lat, this.scene.view.center.lng], this.scene.view.zoom, { animate: false });
-                this.reverseTransform();
                 this._updating_tangram = false;
             },
             render: function render() {
@@ -30374,7 +30684,7 @@ var DirectionalLight = function (_Light2) {
             return this._direction;
         },
         set: function set(v) {
-            this._direction = _vector2.default.normalize(v);
+            this._direction = _vector2.default.normalize(_vector2.default.copy(v));
         }
 
         // Inject struct and calculate function
@@ -30532,7 +30842,7 @@ var SpotLight = function (_PointLight) {
             return this._direction;
         },
         set: function set(v) {
-            this._direction = _vector2.default.normalize(v);
+            this._direction = _vector2.default.normalize(_vector2.default.copy(v));
         }
 
         // Inject struct and calculate function
@@ -30872,7 +31182,7 @@ module.exports = {
     version: _version2.default
 };
 
-},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./gl/texture":208,"./gl/vertex_data":211,"./labels/collision":214,"./leaflet_layer":222,"./light":223,"./material":224,"./scene":226,"./scene_worker":229,"./selection":230,"./sources/data_source":231,"./sources/geojson":232,"./sources/mvt":233,"./sources/raster":234,"./sources/topojson":235,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./utils/debug_settings":255,"./utils/log":259,"./utils/polyfills":263,"./utils/thread":267,"./utils/utils":269,"./utils/version":270,"./utils/worker_broker":271,"./vector":272,"js-yaml":97,"jszip":133}],226:[function(_dereq_,module,exports){
+},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./gl/texture":208,"./gl/vertex_data":211,"./labels/collision":214,"./leaflet_layer":222,"./light":223,"./material":224,"./scene":226,"./scene_worker":229,"./selection":230,"./sources/data_source":231,"./sources/geojson":232,"./sources/mvt":233,"./sources/raster":234,"./sources/topojson":235,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./utils/debug_settings":255,"./utils/log":259,"./utils/polyfills":263,"./utils/thread":267,"./utils/utils":269,"./utils/version":270,"./utils/worker_broker":271,"./vector":272,"js-yaml":102,"jszip":138}],226:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -31025,12 +31335,12 @@ var Scene = function () {
 
         if (options.preUpdate) {
             // optional pre-render loop hook
-            this.subscribe({ 'preUpdate': options.preUpdate });
+            this.subscribe({ 'pre_update': options.preUpdate });
         }
 
         if (options.postUpdate) {
             // optional post-render loop hook
-            this.subscribe({ 'postUpdate': options.postUpdate });
+            this.subscribe({ 'post_update': options.postUpdate });
         }
 
         this.render_loop = !options.disableRenderLoop; // disable render loop - app will have to manually call Scene.render() per frame
@@ -31211,6 +31521,7 @@ var Scene = function () {
             try {
                 this.gl = _context2.default.getContext(this.canvas, Object.assign({
                     alpha: true, premultipliedAlpha: true,
+                    stencil: true,
                     device_pixel_ratio: _utils2.default.device_pixel_ratio
                 }, this.contextOptions));
             } catch (e) {
@@ -31244,17 +31555,7 @@ var Scene = function () {
             if (!worker_url) {
                 throw new Error("Couldn't find internal Tangram source variable (may indicate the library did not build correctly)");
             }
-
-            // Import custom data source scripts alongside core library
-            // NOTE: workaround for issue where large libraries intermittently fail to load in web workers,
-            // when multiple importScripts() calls are used. Loading all scripts (including Tangram itself)
-            // in one call at at worker creation time has not exhibited the same issue.
-            var urls = [].concat(_toConsumableArray(this.data_source_scripts));
-            urls.push(worker_url); // load Tangram *last* (has been more reliable, though reason unknown)
-            var body = 'importScripts(' + urls.map(function (url) {
-                return '\'' + url + '\'';
-            }).join(',') + ');';
-            return URLs.createObjectURL(new Blob([body], { type: 'application/javascript' }));
+            return worker_url;
         }
 
         // Update list of any custom data source scripts (if any)
@@ -31271,9 +31572,6 @@ var Scene = function () {
             }).filter(function (x) {
                 return x;
             });
-            if (scripts.length > 0) {
-                (0, _log2.default)('debug', 'loading custom data source scripts in worker:', scripts);
-            }
             this.data_source_scripts = (_ref = []).concat.apply(_ref, _toConsumableArray(scripts)).sort();
 
             // Scripts changed?
@@ -31311,16 +31609,15 @@ var Scene = function () {
             var queue = [];
             this.workers = [];
 
-            var _loop = function _loop() {
-                worker = new Worker(url);
-
+            var _loop = function _loop(id) {
+                var worker = new Worker(url);
                 _this3.workers[id] = worker;
 
                 _worker_broker2.default.addWorker(worker);
 
                 (0, _log2.default)('debug', 'Scene.makeWorkers: initializing worker ' + id);
                 var _id = id;
-                queue.push(_worker_broker2.default.postMessage(worker, 'self.init', _this3.id, id, _this3.num_workers, _this3.log_level, _utils2.default.device_pixel_ratio, has_element_index_uint).then(function (id) {
+                queue.push(_worker_broker2.default.postMessage(worker, 'self.init', _this3.id, id, _this3.num_workers, _this3.log_level, _utils2.default.device_pixel_ratio, has_element_index_uint, _this3.data_source_scripts).then(function (id) {
                     (0, _log2.default)('debug', 'Scene.makeWorkers: initialized worker ' + id);
                     return id;
                 }, function (error) {
@@ -31330,9 +31627,7 @@ var Scene = function () {
             };
 
             for (var id = 0; id < this.num_workers; id++) {
-                var worker;
-
-                _loop();
+                _loop(id);
             }
 
             this.next_worker = 0;
@@ -31458,7 +31753,7 @@ var Scene = function () {
             var will_render = !(main === false && selection === false || this.initialized === false || this.updating > 0 || this.ready() === false);
 
             // Pre-render loop hook
-            this.trigger('preUpdate', will_render);
+            this.trigger('pre_update', will_render);
 
             // Update view (needs to update user input timer even if no render will occur)
             this.view.update();
@@ -31476,7 +31771,7 @@ var Scene = function () {
             this.media_capture.completeScreenshot(); // completes screenshot capture if requested
 
             // Post-render loop hook
-            this.trigger('postUpdate', will_render);
+            this.trigger('post_update', will_render);
 
             // Redraw every frame if animating
             if (this.animated === true || this.view.isAnimating()) {
@@ -31567,7 +31862,7 @@ var Scene = function () {
             // optionally force alpha off (e.g. for selection pass)
             allow_blend = allow_blend == null ? true : allow_blend;
 
-            this.clearFrame({ clear_color: true, clear_depth: true });
+            this.clearFrame();
 
             // Sort styles by blend order
             var styles = this.tile_manager.getActiveStyles().map(function (s) {
@@ -31590,7 +31885,32 @@ var Scene = function () {
                     });
                     this.setRenderState(state);
                 }
+
+                // Depth pre-pass for translucency
+                var translucent = style.blend === 'translucent' && program_key === 'program'; // skip for selection buffer render pass
+                if (translucent) {
+                    this.gl.colorMask(false, false, false, false);
+                    this.renderStyle(style.name, program_key);
+
+                    this.gl.colorMask(true, true, true, true);
+                    this.gl.depthFunc(this.gl.EQUAL);
+
+                    // stencil buffer prevents compounding alpha from overlapping polys
+                    this.gl.enable(this.gl.STENCIL_TEST);
+                    this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
+                    this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
+                    this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
+                }
+
+                // Main render pass
                 count += this.renderStyle(style.name, program_key);
+
+                if (translucent) {
+                    // disable translucency-specific settings
+                    this.gl.disable(this.gl.STENCIL_TEST);
+                    this.gl.depthFunc(this.gl.LESS);
+                }
+
                 last_blend = style.blend;
             }
 
@@ -31680,35 +32000,20 @@ var Scene = function () {
     }, {
         key: 'clearFrame',
         value: function clearFrame() {
-            var _ref4 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                clear_color = _ref4.clear_color,
-                clear_depth = _ref4.clear_depth;
-
             if (!this.initialized) {
                 return;
             }
-
-            // Defaults
-            clear_color = clear_color === false ? false : true; // default true
-            clear_depth = clear_depth === false ? false : true; // default true
-
-            // Set GL state
-            this.render_states.depth_write.set({ depth_write: clear_depth });
-
-            var gl = this.gl;
-            if (clear_color || clear_depth) {
-                var mask = (clear_color && gl.COLOR_BUFFER_BIT) | (clear_depth && gl.DEPTH_BUFFER_BIT);
-                gl.clear(mask);
-            }
+            this.render_states.depth_write.set({ depth_write: true });
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
         }
     }, {
         key: 'setRenderState',
         value: function setRenderState() {
-            var _ref5 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                depth_test = _ref5.depth_test,
-                depth_write = _ref5.depth_write,
-                cull_face = _ref5.cull_face,
-                blend = _ref5.blend;
+            var _ref4 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                depth_test = _ref4.depth_test,
+                depth_write = _ref4.depth_write,
+                cull_face = _ref4.cull_face,
+                blend = _ref4.blend;
 
             if (!this.initialized) {
                 return;
@@ -31740,7 +32045,7 @@ var Scene = function () {
                     });
                 }
                 // Traditional alpha blending
-                else if (blend === 'overlay' || blend === 'inlay') {
+                else if (blend === 'overlay' || blend === 'inlay' || blend === 'translucent') {
                         render_states.blending.set({
                             blend: true,
                             src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
@@ -31771,8 +32076,8 @@ var Scene = function () {
     }, {
         key: 'getFeatureAt',
         value: function getFeatureAt(pixel) {
-            var _ref6 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-                radius = _ref6.radius;
+            var _ref5 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+                radius = _ref5.radius;
 
             if (!this.initialized) {
                 (0, _log2.default)('debug', "Scene.getFeatureAt() called before scene was initialized");
@@ -31806,16 +32111,16 @@ var Scene = function () {
     }, {
         key: 'queryFeatures',
         value: function queryFeatures() {
-            var _ref7 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                filter = _ref7.filter,
-                _ref7$unique = _ref7.unique,
-                unique = _ref7$unique === undefined ? true : _ref7$unique,
-                _ref7$group_by = _ref7.group_by,
-                group_by = _ref7$group_by === undefined ? null : _ref7$group_by,
-                _ref7$visible = _ref7.visible,
-                visible = _ref7$visible === undefined ? null : _ref7$visible,
-                _ref7$geometry = _ref7.geometry,
-                geometry = _ref7$geometry === undefined ? false : _ref7$geometry;
+            var _ref6 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                filter = _ref6.filter,
+                _ref6$unique = _ref6.unique,
+                unique = _ref6$unique === undefined ? true : _ref6$unique,
+                _ref6$group_by = _ref6.group_by,
+                group_by = _ref6$group_by === undefined ? null : _ref6$group_by,
+                _ref6$visible = _ref6.visible,
+                visible = _ref6$visible === undefined ? null : _ref6$visible,
+                _ref6$geometry = _ref6.geometry,
+                geometry = _ref6$geometry === undefined ? false : _ref6$geometry;
 
             filter = _utils2.default.serializeWithFunctions(filter);
             var tile_keys = this.tile_manager.getRenderableTiles().map(function (t) {
@@ -31872,16 +32177,16 @@ var Scene = function () {
         value: function rebuild() {
             var _this9 = this;
 
-            var _ref8 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref8$new_generation = _ref8.new_generation,
-                new_generation = _ref8$new_generation === undefined ? true : _ref8$new_generation,
-                _ref8$sources = _ref8.sources,
-                sources = _ref8$sources === undefined ? null : _ref8$sources,
-                serialize_funcs = _ref8.serialize_funcs,
-                _ref8$profile = _ref8.profile,
-                profile = _ref8$profile === undefined ? false : _ref8$profile,
-                _ref8$fade_in = _ref8.fade_in,
-                fade_in = _ref8$fade_in === undefined ? false : _ref8$fade_in;
+            var _ref7 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref7$new_generation = _ref7.new_generation,
+                new_generation = _ref7$new_generation === undefined ? true : _ref7$new_generation,
+                _ref7$sources = _ref7.sources,
+                sources = _ref7$sources === undefined ? null : _ref7$sources,
+                serialize_funcs = _ref7.serialize_funcs,
+                _ref7$profile = _ref7.profile,
+                profile = _ref7$profile === undefined ? false : _ref7$profile,
+                _ref7$fade_in = _ref7.fade_in,
+                fade_in = _ref7$fade_in === undefined ? false : _ref7$fade_in;
 
             return new Promise(function (resolve, reject) {
                 // Skip rebuild if already in progress
@@ -31979,9 +32284,9 @@ var Scene = function () {
 
             var config_source = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
 
-            var _ref9 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-                base_path = _ref9.base_path,
-                file_type = _ref9.file_type;
+            var _ref8 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+                base_path = _ref8.base_path,
+                file_type = _ref8.file_type;
 
             this.config_source = config_source || this.config_source;
             this.config_globals_applied = [];
@@ -31996,9 +32301,9 @@ var Scene = function () {
             // TODO: schedule for deprecation
             this.config_path = this.base_path;
 
-            return _scene_loader2.default.loadScene(this.config_source, { path: this.base_path, type: file_type }).then(function (_ref10) {
-                var config = _ref10.config,
-                    bundle = _ref10.bundle;
+            return _scene_loader2.default.loadScene(this.config_source, { path: this.base_path, type: file_type }).then(function (_ref9) {
+                var config = _ref9.config,
+                    bundle = _ref9.bundle;
 
                 _this10.config = config;
                 _this10.config_bundle = bundle;
@@ -32223,27 +32528,33 @@ var Scene = function () {
     }, {
         key: 'updateConfig',
         value: function updateConfig() {
-            var _ref11 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref11$load_event = _ref11.load_event,
-                load_event = _ref11$load_event === undefined ? false : _ref11$load_event,
-                _ref11$rebuild = _ref11.rebuild,
-                rebuild = _ref11$rebuild === undefined ? true : _ref11$rebuild,
-                serialize_funcs = _ref11.serialize_funcs,
-                _ref11$normalize = _ref11.normalize,
-                normalize = _ref11$normalize === undefined ? true : _ref11$normalize,
-                _ref11$fade_in = _ref11.fade_in,
-                fade_in = _ref11$fade_in === undefined ? false : _ref11$fade_in;
+            var _ref10 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref10$load_event = _ref10.load_event,
+                load_event = _ref10$load_event === undefined ? false : _ref10$load_event,
+                _ref10$rebuild = _ref10.rebuild,
+                rebuild = _ref10$rebuild === undefined ? true : _ref10$rebuild,
+                serialize_funcs = _ref10.serialize_funcs,
+                _ref10$normalize = _ref10.normalize,
+                normalize = _ref10$normalize === undefined ? true : _ref10$normalize,
+                _ref10$fade_in = _ref10.fade_in,
+                fade_in = _ref10$fade_in === undefined ? false : _ref10$fade_in;
 
             this.generation = ++Scene.generation;
             this.updating++;
 
             this.config = _scene_loader2.default.applyGlobalProperties(this.config, this.config_globals_applied);
             if (normalize) {
+                // normalize whole scene
                 _scene_loader2.default.normalize(this.config, this.config_bundle);
+            } else {
+                // special handling for shader uniforms that are globals
+                _scene_loader2.default.hoistStyleShaderUniformTextures(this.config, this.config_bundle, { include_globals: true });
+
+                // just normalize top-level textures - necessary for adding base path to globals
+                _scene_loader2.default.normalizeTextures(this.config, this.config_bundle);
             }
             this.trigger(load_event ? 'load' : 'update', { config: this.config });
 
-            _scene_loader2.default.hoistTextures(this.config); // move inline textures into global texture set
             this.style_manager.init();
             this.view.reset();
             this.createLights();
@@ -32271,9 +32582,9 @@ var Scene = function () {
     }, {
         key: 'syncConfigToWorker',
         value: function syncConfigToWorker() {
-            var _ref12 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref12$serialize_func = _ref12.serialize_funcs,
-                serialize_funcs = _ref12$serialize_func === undefined ? true : _ref12$serialize_func;
+            var _ref11 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref11$serialize_func = _ref11.serialize_funcs,
+                serialize_funcs = _ref11$serialize_func === undefined ? true : _ref11$serialize_func;
 
             // Tell workers we're about to rebuild (so they can update styles, etc.)
             var config_serialized = serialize_funcs ? _utils2.default.serializeWithFunctions(this.config) : JSON.stringify(this.config);
@@ -32393,9 +32704,9 @@ var Scene = function () {
     }, {
         key: 'screenshot',
         value: function screenshot() {
-            var _ref13 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref13$background = _ref13.background,
-                background = _ref13$background === undefined ? 'white' : _ref13$background;
+            var _ref12 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref12$background = _ref12.background,
+                background = _ref12$background === undefined ? 'white' : _ref12$background;
 
             this.requestRedraw();
             return this.media_capture.screenshot({ background: background });
@@ -32879,7 +33190,7 @@ function loadResource(source) {
     });
 }
 
-},{"./utils/urls":268,"./utils/utils":269,"js-yaml":97,"jszip":133}],228:[function(_dereq_,module,exports){
+},{"./utils/urls":268,"./utils/utils":269,"js-yaml":102,"jszip":138}],228:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -32909,6 +33220,8 @@ var _subscribe = _dereq_('./utils/subscribe');
 var _subscribe2 = _interopRequireDefault(_subscribe);
 
 var _scene_bundle = _dereq_('./scene_bundle');
+
+var _layer = _dereq_('./styles/layer');
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
@@ -32972,7 +33285,8 @@ exports.default = SceneLoader = {
 
         return bundle.load().then(function (config) {
             if (config.import == null) {
-                return _this2.normalize(config, bundle);
+                _this2.normalize(config, bundle);
+                return { config: config, bundle: bundle };
             }
 
             // accept single entry or array
@@ -32995,11 +33309,15 @@ exports.default = SceneLoader = {
             return Promise.all(imports.map(function (resource) {
                 return _this2.loadSceneRecursive(resource, bundle, errors);
             })).then(function (results) {
+                results.forEach(function (r) {
+                    return _this2.normalize(r.config, r.bundle);
+                }); // first normalize imports
                 var configs = results.map(function (r) {
                     return r.config;
                 });
-                config = _merge2.default.apply(undefined, [{}].concat(_toConsumableArray(configs), [config]));
-                return _this2.normalize(config, bundle);
+                config = _merge2.default.apply(undefined, _toConsumableArray(configs).concat([config]));
+                _this2.normalize(config, bundle); // last normalize parent, after merge
+                return { config: config, bundle: bundle };
             });
         }).catch(function (error) {
             // Collect scene load errors as we go
@@ -33015,6 +33333,7 @@ exports.default = SceneLoader = {
         this.normalizeDataSources(config, bundle);
         this.normalizeFonts(config, bundle);
         this.normalizeTextures(config, bundle);
+        this.hoistTextures(config, bundle);
         return { config: config, bundle: bundle };
     },
 
@@ -33076,6 +33395,17 @@ exports.default = SceneLoader = {
                 }
             }
         }
+    },
+
+
+    // Move inline (URL string) textures to the scene's top-level set of textures (config.textures).
+    // There are 4 such cases of textures:
+    // - in a style's `texture` property
+    // - in a style's `material` properties
+    // - in a style's custom uniforms (`shaders.uniforms`)
+    // - in a draw groups `texture` property
+    hoistTextures: function hoistTextures(config, bundle) {
+        var _this3 = this;
 
         // Resolve URLs for inline textures
         if (config.styles) {
@@ -33084,8 +33414,8 @@ exports.default = SceneLoader = {
 
                 // Style `texture`
                 var tex = style.texture;
-                if (typeof tex === 'string' && !config.textures[tex] && !(0, _scene_bundle.isGlobal)(tex)) {
-                    style.texture = bundle.urlFor(tex);
+                if (typeof tex === 'string' && !config.textures[tex]) {
+                    style.texture = _this3.hoistTexture(tex, config, bundle);
                 }
 
                 // Material
@@ -33093,23 +33423,8 @@ exports.default = SceneLoader = {
                     ['emission', 'ambient', 'diffuse', 'specular', 'normal'].forEach(function (prop) {
                         // Material property has a texture
                         var tex = style.material[prop] != null && style.material[prop].texture;
-                        if (typeof tex === 'string' && !config.textures[tex] && !(0, _scene_bundle.isGlobal)(tex)) {
-                            style.material[prop].texture = bundle.urlFor(tex);
-                        }
-                    });
-                }
-
-                // Shader uniforms
-                if (style.shaders && style.shaders.uniforms) {
-                    _glsl2.default.parseUniforms(style.shaders.uniforms).forEach(function (_ref4) {
-                        var type = _ref4.type,
-                            value = _ref4.value,
-                            key = _ref4.key,
-                            uniforms = _ref4.uniforms;
-
-                        // Texture by URL (string-named texture not referencing existing texture definition)
-                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] && !(0, _scene_bundle.isGlobal)(value)) {
-                            uniforms[key] = bundle.urlFor(value);
+                        if (typeof tex === 'string' && !config.textures[tex]) {
+                            style.material[prop].texture = _this3.hoistTexture(tex, config, bundle);
                         }
                     });
                 }
@@ -33120,7 +33435,86 @@ exports.default = SceneLoader = {
             }
         }
 
-        return config;
+        // Special handling for shader uniforms, exclude globals because they are ambiguous:
+        // could later be resolved to a string value indicating a texture, but could also be a vector or other type
+        this.hoistStyleShaderUniformTextures(config, bundle, { include_globals: false });
+
+        // Resolve and hoist inline textures in draw blocks
+        if (config.layers) {
+            var stack = [config.layers];
+            while (stack.length > 0) {
+                var layer = stack.pop();
+
+                // only recurse into objects
+                if ((typeof layer === 'undefined' ? 'undefined' : _typeof(layer)) !== 'object' || Array.isArray(layer)) {
+                    continue;
+                }
+
+                for (var prop in layer) {
+                    if (prop === 'draw') {
+                        // process draw groups for current layer
+                        var draws = layer[prop];
+                        for (var group in draws) {
+                            if (draws[group].texture) {
+                                var _tex = draws[group].texture;
+                                if (typeof _tex === 'string' && !config.textures[_tex]) {
+                                    draws[group].texture = this.hoistTexture(_tex, config, bundle);
+                                }
+                            }
+
+                            // special handling for outlines :(
+                            if (draws[group].outline && draws[group].outline.texture) {
+                                var _tex2 = draws[group].outline.texture;
+                                if (typeof _tex2 === 'string' && !config.textures[_tex2]) {
+                                    draws[group].outline.texture = this.hoistTexture(_tex2, config, bundle);
+                                }
+                            }
+                        }
+                    } else if ((0, _layer.isReserved)(prop)) {
+                        continue; // skip reserved keyword
+                    } else {
+                        stack.push(layer[prop]); // traverse sublayer
+                    }
+                }
+            }
+        }
+    },
+    hoistStyleShaderUniformTextures: function hoistStyleShaderUniformTextures(config, bundle, _ref4) {
+        var _this4 = this;
+
+        var include_globals = _ref4.include_globals;
+
+        // Resolve URLs for inline textures
+        if (config.styles) {
+            for (var sn in config.styles) {
+                var _style = config.styles[sn];
+
+                // Shader uniforms
+                if (_style.shaders && _style.shaders.uniforms) {
+                    _glsl2.default.parseUniforms(_style.shaders.uniforms).forEach(function (_ref5) {
+                        var type = _ref5.type,
+                            value = _ref5.value,
+                            key = _ref5.key,
+                            uniforms = _ref5.uniforms;
+
+                        // Texture by URL (string-named texture not referencing existing texture definition)
+                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] && (include_globals || !(0, _scene_bundle.isGlobal)(value))) {
+                            uniforms[key] = _this4.hoistTexture(value, config, bundle);
+                        }
+                    });
+                }
+            }
+        }
+    },
+
+
+    // Convert an inline URL texture to a global one, and return the texture's (possibly modified) name
+    hoistTexture: function hoistTexture(tex, config, bundle) {
+        var global = (0, _scene_bundle.isGlobal)(tex);
+        var url = global ? tex : bundle.urlFor(tex);
+        var name = global ? 'texture-' + url : url;
+        config.textures[name] = { url: url };
+        return name;
     },
 
 
@@ -33141,10 +33535,10 @@ exports.default = SceneLoader = {
         // at run-time. Once a global property substitution has been recorderd, it will always be re-applied
         // on subsequent scene updates, even if the target property was updated to another literal value.
         // This is unlikely to be a common occurrence an acceptable limitation for now.
-        applied.forEach(function (_ref5) {
-            var prop = _ref5.prop,
-                target = _ref5.target,
-                key = _ref5.key;
+        applied.forEach(function (_ref6) {
+            var prop = _ref6.prop,
+                target = _ref6.target,
+                key = _ref6.key;
 
             if (target) {
                 target[key] = props[prop];
@@ -33205,65 +33599,6 @@ exports.default = SceneLoader = {
     },
 
 
-    // Move inline (URL string) textures to the scene's top-level set of textures (config.textures).
-    // There are 3 such cases of textures:
-    // - in a style's `texture` property
-    // - in a style's `material` properties
-    // - in a style's custom uniforms (`shaders.uniforms`)
-    hoistTextures: function hoistTextures(config) {
-        if (config.styles) {
-            var _loop2 = function _loop2(sn) {
-                var style = config.styles[sn];
-
-                // Style `texture`
-                var tex = style.texture;
-                if (typeof tex === 'string' && !config.textures[tex]) {
-                    var url = tex;
-                    var name = (0, _scene_bundle.isGlobal)(url) ? 'texture-' + url : url;
-                    config.textures[name] = { url: url };
-                    style.texture = name;
-                }
-
-                // Material
-                if (style.material) {
-                    ['emission', 'ambient', 'diffuse', 'specular', 'normal'].forEach(function (prop) {
-                        // Material property has a texture
-                        var tex = style.material[prop] != null && style.material[prop].texture;
-                        if (typeof tex === 'string' && !config.textures[tex]) {
-                            var _url = tex;
-                            var _name = (0, _scene_bundle.isGlobal)(_url) ? 'texture-' + _url : _url;
-                            config.textures[_name] = { url: _url };
-                            style.material[prop].texture = _name;
-                        }
-                    });
-                }
-
-                // Shader uniforms
-                if (style.shaders && style.shaders.uniforms) {
-                    _glsl2.default.parseUniforms(style.shaders.uniforms).forEach(function (_ref6) {
-                        var type = _ref6.type,
-                            value = _ref6.value,
-                            key = _ref6.key,
-                            uniforms = _ref6.uniforms;
-
-                        // Texture by URL (string-named texture not referencing existing texture definition)
-                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
-                            var _url2 = value;
-                            var _name2 = (0, _scene_bundle.isGlobal)(_url2) ? 'texture-' + _url2 : _url2;
-                            config.textures[_name2] = { url: _url2 };
-                            uniforms[key] = _name2;
-                        }
-                    });
-                }
-            };
-
-            for (var sn in config.styles) {
-                _loop2(sn);
-            }
-        }
-    },
-
-
     // Normalize some scene-wide settings that apply to the final, merged scene
     finalize: function finalize(_ref7) {
         var config = _ref7.config,
@@ -33274,6 +33609,7 @@ exports.default = SceneLoader = {
         }
 
         // Ensure top-level properties
+        config.global = config.global || {};
         config.scene = config.scene || {};
         config.cameras = config.cameras || {};
         config.lights = config.lights || {};
@@ -33327,7 +33663,7 @@ function flattenProperties(obj) {
 
 (0, _subscribe2.default)(SceneLoader);
 
-},{"./gl/glsl":205,"./scene_bundle":227,"./utils/log":259,"./utils/merge":261,"./utils/subscribe":265,"./utils/urls":268}],229:[function(_dereq_,module,exports){
+},{"./gl/glsl":205,"./scene_bundle":227,"./styles/layer":237,"./utils/log":259,"./utils/merge":261,"./utils/subscribe":265,"./utils/urls":268}],229:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33406,7 +33742,7 @@ if (_thread2.default.is_worker) {
         tiles: {},
 
         // Initialize worker
-        init: function init(scene_id, worker_id, num_workers, log_level, device_pixel_ratio, has_element_index_unit) {
+        init: function init(scene_id, worker_id, num_workers, log_level, device_pixel_ratio, has_element_index_unit, external_scripts) {
             self.scene_id = scene_id;
             self._worker_id = worker_id;
             self.num_workers = num_workers;
@@ -33415,7 +33751,30 @@ if (_thread2.default.is_worker) {
             _vertex_elements2.default.setElementIndexUint(has_element_index_unit);
             _selection2.default.setPrefix(self._worker_id);
             self.style_manager = new _style_manager.StyleManager();
+            self.importCustomScripts(external_scripts);
             return worker_id;
+        },
+
+
+        // Import custom scripts
+        importCustomScripts: function importCustomScripts(scripts) {
+            if (scripts.length === 0) {
+                return;
+            }
+            (0, _log2.default)('debug', 'loading custom data source scripts in worker:', scripts);
+
+            // `window` is already shimmed to allow compatibility with some other libraries (e.g. FontFaceObserver)
+            // So there's an extra dance here to look for any additional `window` properties added by these script imports,
+            // then add them to the worker `self` scope.
+            var prev_names = Object.getOwnPropertyNames(window);
+
+            importScripts.apply(undefined, _toConsumableArray(scripts));
+
+            Object.getOwnPropertyNames(window).forEach(function (prop) {
+                if (prev_names.indexOf(prop) === -1) {
+                    self[prop] = window[prop]; // new property added to window, also add it to self
+                }
+            });
         },
 
 
@@ -35013,7 +35372,7 @@ function getCentroidFeatureForPolygon(coordinates, properties, newProperties) {
     };
 }
 
-},{"../geo":201,"../utils/log":259,"./data_source":231,"./mvt":233,"geojson-vt":78}],233:[function(_dereq_,module,exports){
+},{"../geo":201,"../utils/log":259,"./data_source":231,"./mvt":233,"geojson-vt":83}],233:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35037,7 +35396,7 @@ var _pbf = _dereq_('pbf');
 
 var _pbf2 = _interopRequireDefault(_pbf);
 
-var _vectorTile = _dereq_('vector-tile');
+var _vectorTile = _dereq_('@mapbox/vector-tile');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -35182,7 +35541,7 @@ function decodeMultiPolygon(geom) {
 
 _data_source2.default.register(MVTSource, 'MVT');
 
-},{"../geo":201,"./data_source":231,"pbf":182,"vector-tile":192}],234:[function(_dereq_,module,exports){
+},{"../geo":201,"./data_source":231,"@mapbox/vector-tile":2,"pbf":187}],234:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35408,7 +35767,7 @@ var TopoJSONTileSource = exports.TopoJSONTileSource = function (_GeoJSONTileSour
 
 _data_source2.default.register(TopoJSONTileSource, 'TopoJSON'); // prefered shorter name
 
-},{"./data_source":231,"./geojson":232,"topojson-client":187}],236:[function(_dereq_,module,exports){
+},{"./data_source":231,"./geojson":232,"topojson-client":191}],236:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35571,7 +35930,7 @@ function buildFilter(filter, options) {
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.FilterOptions = exports.LayerTree = exports.LayerLeaf = exports.reserved = undefined;
+exports.FilterOptions = exports.LayerTree = exports.LayerLeaf = undefined;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
@@ -35581,6 +35940,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 exports.layerCache = layerCache;
 exports.mergeTrees = mergeTrees;
+exports.isReserved = isReserved;
 exports.groupProps = groupProps;
 exports.calculateDraw = calculateDraw;
 exports.parseLayerNode = parseLayerNode;
@@ -35614,7 +35974,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 // N.B.: 'visible' is legacy compatibility for 'enabled'
-var reserved = exports.reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
+var reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
 
 var layer_cache = {};
 function layerCache() {
@@ -35658,9 +36018,12 @@ function mergeTrees(matchingTrees, group) {
     // Iterate trees in parallel
 
     var _loop = function _loop(x) {
-        // Pull out the requested draw group, for each tree, at this depth
-        draws = matchingTrees.map(function (tree) {
-            return tree[x] && tree[x][group];
+        // Pull out the requested draw group, for each tree, at this depth (avoiding duplicates at the same level in tree)
+        draws = [];
+        matchingTrees.forEach(function (tree) {
+            if (tree[x] && tree[x][group] && draws.indexOf(tree[x][group]) === -1) {
+                draws.push(tree[x][group]);
+            }
         });
         if (draws.length === 0) {
             return 'continue';
@@ -36257,6 +36620,14 @@ var _geo = _dereq_('../../geo');
 
 var _geo2 = _interopRequireDefault(_geo);
 
+var _worker_broker = _dereq_('../../utils/worker_broker');
+
+var _worker_broker2 = _interopRequireDefault(_worker_broker);
+
+var _hash = _dereq_('../../utils/hash');
+
+var _hash2 = _interopRequireDefault(_hash);
+
 var _polygons = _dereq_('../polygons/polygons');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -36264,47 +36635,26 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 // web workers don't have access to GL context, so import all GL constants
 var Lines = exports.Lines = Object.create(_style.Style); // Line rendering style
 
+Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
+Lines.variants = {}; // mesh variants by variant key
+Lines.dash_textures = {}; // needs to be cleared on scene config update
+
+var DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
+
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
     vertex_shader_src: _polygons.shaderSrc_polygonsVertex,
     fragment_shader_src: _polygons.shaderSrc_polygonsFragment,
-    selection: true, // turn feature selection on
+    selection: true, // enable feature selection
 
     init: function init() {
         _style.Style.init.apply(this, arguments);
 
-        // Basic attributes, others can be added (see texture UVs below)
-        var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_extrude', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
-
         // Tell the shader we want a order in vertex attributes, and to extrude lines
         this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
-
-        // Optional feature selection
-        if (this.selection) {
-            attribs.push({ name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true });
-        }
-
-        // Optional line texture or dash array
-        // (latter will be rendered at compile-time, when GL context available)
-        if (this.texture || this.dash) {
-            this.texcoords = true;
-        }
-
-        // Optional texture UVs
-        if (this.texcoords) {
-            this.defines.TANGRAM_TEXTURE_COORDS = true;
-
-            // Scaling factor to add precision to line texture V coordinate packed as normalized short
-            this.defines.TANGRAM_DASH_SCALE = 1;
-            this.defines.TANGRAM_V_SCALE_ADJUST = _geo2.default.tile_scale * this.defines.TANGRAM_DASH_SCALE;
-
-            // Add vertex attribute for UVs only when needed
-            attribs.push({ name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true });
-        }
-
-        this.vertex_layout = new _vertex_layout2.default(attribs);
+        this.defines.TANGRAM_TEXTURE_COORDS = true; // texcoords attribute is set to static when not needed
 
         // Additional single-allocated object used for holding outline style as it is processed
         // Separate from this.feature_style so that outline properties do not overwrite calculated
@@ -36314,97 +36664,132 @@ Object.assign(Lines, {
     },
 
 
-    // Override
-    compileSetup: function compileSetup() {
-        if (!this.compile_setup) {
-            this.parseLineTexture();
-        }
-        return _style.Style.compileSetup.apply(this, arguments);
+    // Calculate width or offset at zoom given in `context`
+    calcDistance: function calcDistance(prop, context) {
+        return prop && _style_parser.StyleParser.evalCachedDistanceProperty(prop, context) || 0;
     },
 
 
-    // Optionally apply a dash array pattern to this line
-    parseLineTexture: function parseLineTexture() {
-        var _this = this;
-
-        // Specify a line pattern
-        if (this.dash) {
-            // Optional background color for dash pattern (defaults transparent)
-            if (this.dash_background_color) {
-                this.dash_background_color = _style_parser.StyleParser.parseColor(this.dash_background_color);
-                this.defines.TANGRAM_LINE_BACKGROUND_COLOR = 'vec3(' + this.dash_background_color.slice(0, 3).join(', ') + ')';
-            }
-
-            // Adjust texcoord scale to allow for dash patterns that are a fraction of line width
-            this.defines.TANGRAM_DASH_SCALE = 20;
-            this.defines.TANGRAM_V_SCALE_ADJUST = _geo2.default.tile_scale * this.defines.TANGRAM_DASH_SCALE;
-
-            // Render line pattern
-            var dash = (0, _dasharray2.default)(this.dash, { scale: this.defines.TANGRAM_DASH_SCALE });
-            this.texture = '_' + this.name + '_dasharray';
-            _texture2.default.create(this.gl, this.texture, {
-                data: dash.pixels,
-                height: dash.length,
-                width: 1,
-                filtering: 'nearest'
-            });
-        }
-
-        // Specify a line texture (either directly, or rendered dash pattern from above)
-        if (this.texture) {
-            this.defines.TANGRAM_LINE_TEXTURE = true;
-            this.shaders.uniforms = this.shaders.uniforms || {};
-            this.shaders.uniforms.u_texture = this.texture;
-            this.shaders.uniforms.u_texture_ratio = 1;
-
-            // update line pattern aspect ratio after texture loads
-            _texture2.default.getInfo(this.texture).then(function (texture) {
-                if (texture) {
-                    _this.shaders.uniforms.u_texture_ratio = texture.height / texture.width;
-                }
-            });
-        }
-    },
-
-
-    // Calculate width at zoom given in `context`
-    calcWidth: function calcWidth(width, context) {
-        return width && _style_parser.StyleParser.evalCachedDistanceProperty(width, context) || 0;
-    },
-
-
-    // Calculate width at next zoom (used for line width interpolation)
-    calcWidthNextZoom: function calcWidthNextZoom(width, context) {
+    // Calculate width or offset at next zoom (used for zoom-based interpolation in shader)
+    calcDistanceNextZoom: function calcDistanceNextZoom(prop, context) {
         context.zoom++;
-        var val = this.calcWidth(width, context);
+        var val = this.calcDistance(prop, context);
         context.zoom--;
         return val;
+    },
+
+
+    // Calculate width at current and next zoom, and scaling factor between
+    calcWidth: function calcWidth(draw, style, context) {
+        // line width in meters
+        var width = this.calcDistance(draw.width, context);
+        if (width < 0) {
+            return; // skip lines with negative width
+        }
+
+        var next_width = void 0;
+        if (draw.next_width) {
+            next_width = this.calcDistanceNextZoom(draw.next_width, context);
+        } else {
+            next_width = width / 2; // when width is static, width at next zoom is just half as many tile units
+        }
+
+        if (width === 0 && next_width === 0 || next_width < 0) {
+            return false; // skip lines that don't interpolate to a positive value at next zoom
+        }
+
+        // these values are saved for later calculating the outline width, which needs to add the base line's width
+        style.width_unscaled = width;
+        style.next_width_unscaled = next_width;
+
+        // calculate relative change in line width between zooms
+        // interpolate from the line width at the zoom mid-point, towards/away from the previous/next integer zoom
+        if (draw.next_width) {
+            next_width *= 2; // NB: a given width is twice as big in screen space at the next zoom
+            var mid_width = (width + next_width) * 0.5;
+            style.width = mid_width * context.units_per_meter_overzoom; // width at zoom mid-point
+            style.width_scale = 1 - next_width / mid_width;
+        } else {
+            style.width = width * context.units_per_meter_overzoom;
+            style.width_scale = 0;
+        }
+
+        // optional adjustment to texcoord width based on scale
+        if (draw.texcoords) {
+            // when drawing an outline, use the inline's texture scale
+            // (e.g. keeps dashed outline pattern locked to inline pattern)
+            if (draw.inline_texcoord_width) {
+                style.texcoord_width = draw.inline_texcoord_width;
+            }
+            // when drawing an inline, calculate UVs based on line width
+            else {
+                    // UVs can't calc for zero-width, use next zoom width in that case
+                    style.texcoord_width = (style.width_unscaled || style.next_width_unscaled) * context.units_per_meter_overzoom / context.tile.overzoom2; // shorten calcs
+                }
+        }
+
+        return true;
+    },
+
+
+    // Calculate offset at current and next zoom, and scaling factor between
+    calcOffset: function calcOffset(draw, style, context) {
+        // Pre-calculated offset passed
+        // This happens when a line passes pre-computed offset values to its outline
+        if (draw.offset_precalc) {
+            style.offset = draw.offset_precalc;
+            style.offset_scale = draw.offset_scale_precalc;
+        }
+        // Offset to calculate
+        else if (draw.offset) {
+                var offset = this.calcDistance(draw.offset, context);
+
+                if (draw.next_offset) {
+                    var next_offset = this.calcDistanceNextZoom(draw.next_offset, context) * 2;
+
+                    if (Math.abs(offset) >= Math.abs(next_offset)) {
+                        style.offset = offset * context.units_per_meter_overzoom;
+                        if (offset !== 0) {
+                            style.offset_scale = 1 - next_offset / offset;
+                        } else {
+                            style.offset_scale = 0;
+                        }
+                    } else {
+                        style.offset = next_offset * context.units_per_meter_overzoom;
+                        if (next_offset !== 0) {
+                            style.offset_scale = (1 - offset / next_offset) * -1;
+                        } else {
+                            style.offset_scale = 0;
+                        }
+                    }
+                } else {
+                    style.offset = offset * context.units_per_meter_overzoom;
+                    style.offset_scale = 0;
+                }
+            }
+            // No offset
+            else {
+                    style.offset = 0;
+                    style.offset_scale = 0;
+                }
     },
     _parseFeature: function _parseFeature(feature, draw, context) {
         var style = this.feature_style;
 
-        // line width in meters
-        var width = this.calcWidth(draw.width, context);
-        if (width < 0) {
-            return; // skip lines with negative width
-        }
-        var next_width = this.calcWidthNextZoom(draw.next_width, context);
-
-        if (width === 0 && next_width === 0 || next_width < 0) {
-            return; // skip lines that don't interpolate to a positive value at next zoom
+        // calculate line width at current and next zoom
+        if (this.calcWidth(draw, style, context) === false) {
+            return; // missing or zero width
         }
 
-        // convert to units and relative change from previous zoom
-        // NB: multiply by 2 because a given width is twice as big in screen space at the next zoom
-        style.width = width * context.units_per_meter_overzoom;
-        style.next_width = next_width * 2 - width;
-        style.next_width *= context.units_per_meter_overzoom;
-        style.next_width /= 2; // NB: divide by 2 because extrusion width is halved in builder - remove?
+        // calculate line offset at current and next zoom
+        this.calcOffset(draw, style, context);
 
         style.color = this.parseColor(draw.color, context);
         if (!style.color) {
             return;
         }
+
+        style.variant = draw.variant; // pre-calculated mesh variant
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.z = draw.z && _style_parser.StyleParser.evalCachedDistanceProperty(draw.z || 0, context) || _style_parser.StyleParser.defaults.z;
@@ -36428,34 +36813,48 @@ Object.assign(Lines, {
 
         style.cap = draw.cap;
         style.join = draw.join;
+
         style.miter_limit = draw.miter_limit;
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // Construct an outline style
         // Reusable outline style object, marked as already wrapped in cache objects (preprocessed = true)
-        style.outline = style.outline || { width: {}, next_width: {}, preprocessed: true };
+        style.outline = style.outline || {
+            width: {}, next_width: {},
+            preprocessed: true
+        };
 
         if (draw.outline && draw.outline.visible !== false && draw.outline.color && draw.outline.width) {
             // outline width in meters
             // NB: multiply by 2 because outline is applied on both sides of line
-            var outline_width = this.calcWidth(draw.outline.width, context) * 2;
-            var outline_next_width = this.calcWidthNextZoom(draw.outline.next_width, context) * 2;
+            var outline_width = this.calcDistance(draw.outline.width, context) * 2;
+            var outline_next_width = this.calcDistanceNextZoom(draw.outline.next_width, context) * 2;
 
             if (outline_width === 0 && outline_next_width === 0 || outline_width < 0 || outline_next_width < 0) {
                 // skip lines that don't interpolate between zero or greater width
                 style.outline.width.value = null;
                 style.outline.next_width.value = null;
                 style.outline.color = null;
+                style.outline.inline_texcoord_width = null;
+                style.outline.texcoords = false;
             } else {
                 // Maintain consistent outline width around the line fill
-                style.outline.width.value = outline_width + width;
-                style.outline.next_width.value = outline_next_width + next_width;
+                style.outline.width.value = outline_width + style.width_unscaled;
+                style.outline.next_width.value = outline_next_width + style.next_width_unscaled;
+                style.outline.inline_texcoord_width = style.texcoord_width;
 
+                // Offset is directly copied from fill to outline, no need to re-calculate it
+                style.outline.offset_precalc = style.offset;
+                style.outline.offset_scale_precalc = style.offset_scale;
+
+                // Inherited properties
                 style.outline.color = draw.outline.color;
-                style.outline.cap = draw.outline.cap || draw.cap;
-                style.outline.join = draw.outline.join || draw.join;
-                style.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
-                style.outline.style = draw.outline.style || this.name;
+                style.outline.cap = draw.outline.cap;
+                style.outline.join = draw.outline.join;
+                style.outline.miter_limit = draw.outline.miter_limit;
+                style.outline.texcoords = draw.outline.texcoords;
+                style.outline.style = draw.outline.style;
+                style.outline.variant = draw.outline.variant;
 
                 // Explicitly defined outline order, or inherited from inner line
                 if (draw.outline.order) {
@@ -36471,11 +36870,15 @@ Object.assign(Lines, {
 
                 // Outlines are always at half-layer intervals to avoid conflicting with inner lines
                 style.outline.order -= 0.5;
+
+                // Ensure outlines in a separate mesh variant are drawn first
+                style.outline.variant_order = 0;
             }
         } else {
             style.outline.width.value = null;
             style.outline.next_width.value = null;
             style.outline.color = null;
+            style.outline.inline_texcoord_width = null;
         }
 
         return style;
@@ -36483,15 +36886,195 @@ Object.assign(Lines, {
     _preprocess: function _preprocess(draw) {
         draw.color = _style_parser.StyleParser.createColorPropertyCache(draw.color);
         draw.width = _style_parser.StyleParser.createPropertyCache(draw.width, _style_parser.StyleParser.parseUnits);
-        draw.next_width = _style_parser.StyleParser.createPropertyCache(draw.width, _style_parser.StyleParser.parseUnits); // width will be computed for next zoom
+        if (draw.width && draw.width.type !== _style_parser.StyleParser.CACHE_TYPE.STATIC) {
+            draw.next_width = _style_parser.StyleParser.createPropertyCache(draw.width, _style_parser.StyleParser.parseUnits);
+        }
+        draw.offset = draw.offset && _style_parser.StyleParser.createPropertyCache(draw.offset, _style_parser.StyleParser.parseUnits);
+        if (draw.offset && draw.offset.type !== _style_parser.StyleParser.CACHE_TYPE.STATIC) {
+            draw.next_offset = _style_parser.StyleParser.createPropertyCache(draw.offset, _style_parser.StyleParser.parseUnits);
+        }
         draw.z = _style_parser.StyleParser.createPropertyCache(draw.z, _style_parser.StyleParser.parseUnits);
 
+        draw.dash = draw.dash !== undefined ? draw.dash : this.dash;
+        draw.dash_key = draw.dash && this.dashTextureKey(draw.dash);
+        draw.dash_background_color = draw.dash_background_color !== undefined ? draw.dash_background_color : this.dash_background_color;
+        draw.dash_background_color = draw.dash_background_color && _style_parser.StyleParser.parseColor(draw.dash_background_color);
+        draw.texture_merged = draw.dash_key || (draw.texture !== undefined ? draw.texture : this.texture);
+        draw.texcoords = this.texcoords || draw.texture_merged ? 1 : 0;
+        this.computeVariant(draw);
+
         if (draw.outline) {
+            draw.outline.style = draw.outline.style || this.name;
             draw.outline.color = _style_parser.StyleParser.createColorPropertyCache(draw.outline.color);
             draw.outline.width = _style_parser.StyleParser.createPropertyCache(draw.outline.width, _style_parser.StyleParser.parseUnits);
             draw.outline.next_width = _style_parser.StyleParser.createPropertyCache(draw.outline.width, _style_parser.StyleParser.parseUnits); // width re-computed for next zoom
+
+            draw.outline.cap = draw.outline.cap || draw.cap;
+            draw.outline.join = draw.outline.join || draw.join;
+            draw.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
+            draw.outline.offset = draw.offset;
+
+            // outline inhertits dash pattern, but NOT explicit texture
+            var outline_style = this.styles[draw.outline.style];
+            draw.outline.dash = draw.outline.dash !== undefined ? draw.outline.dash : outline_style.dash;
+            draw.outline.texture = draw.outline.texture !== undefined ? draw.outline.texture : outline_style.texture;
+
+            if (draw.outline.dash != null) {
+                // dash was defined by outline draw or style
+                draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
+                draw.outline.texture_merged = draw.outline.dash_key;
+            } else if (draw.outline.dash === null) {
+                // dash explicitly disabled by outline draw or style
+                draw.outline.dash_key = null;
+                draw.outline.texture_merged = draw.outline.texture;
+            } else if (draw.outline.texture != null) {
+                // texture was defined by outline draw or style
+                draw.outline.dash_key = null; // outline explicitly turning off dash
+                draw.outline.texture_merged = draw.outline.texture;
+            } else {
+                // no dash or texture defined for outline, inherit parent dash
+                draw.outline.dash = draw.dash;
+                draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
+                draw.outline.texture_merged = draw.outline.dash_key;
+            }
+            draw.outline.dash_background_color = draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : outline_style.dash_background_color;
+            draw.outline.dash_background_color = draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color;
+            draw.outline.dash_background_color = draw.outline.dash_background_color && _style_parser.StyleParser.parseColor(draw.outline.dash_background_color);
+            draw.outline.texcoords = outline_style.texcoords || draw.outline.texture_merged ? 1 : 0;
+            this.computeVariant(draw.outline);
         }
         return draw;
+    },
+
+
+    // Unique string key for a dash pattern (used as texture name)
+    dashTextureKey: function dashTextureKey(dash) {
+        return '__dash_' + JSON.stringify(dash);
+    },
+
+
+    // Return or render a dash pattern texture
+    getDashTexture: function getDashTexture(dash) {
+        var dash_key = this.dashTextureKey(dash);
+
+        if (Lines.dash_textures[dash_key] == null) {
+            Lines.dash_textures[dash_key] = true;
+
+            // Render line pattern
+            var dash_texture = (0, _dasharray2.default)(dash, { scale: DASH_SCALE });
+            _texture2.default.create(this.gl, dash_key, {
+                data: dash_texture.pixels,
+                height: dash_texture.length,
+                width: 1,
+                filtering: 'nearest'
+            });
+        }
+    },
+
+
+    // Override
+    endData: function endData(tile) {
+        var _this = this;
+
+        return _style.Style.endData.call(this, tile).then(function (tile_data) {
+            if (tile_data) {
+                tile_data.uniforms.u_has_line_texture = false;
+                tile_data.uniforms.u_texture = _texture2.default.default;
+                tile_data.uniforms.u_v_scale_adjust = _geo2.default.tile_scale;
+
+                var pending = [];
+
+                var _loop = function _loop(m) {
+                    var variant = tile_data.meshes[m].variant;
+                    if (variant.texture) {
+                        var uniforms = tile_data.meshes[m].uniforms = tile_data.meshes[m].uniforms || {};
+                        uniforms.u_has_line_texture = true;
+                        uniforms.u_texture = variant.texture;
+                        uniforms.u_texture_ratio = 1;
+
+                        if (variant.dash) {
+                            uniforms.u_v_scale_adjust = _geo2.default.tile_scale * DASH_SCALE;
+                            uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
+                        }
+
+                        if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
+                            Lines.dash_textures[variant.dash_key] = true;
+                            _worker_broker2.default.postMessage(_this.main_thread_target + '.getDashTexture', variant.dash);
+                        }
+
+                        if (_texture2.default.textures[variant.texture] == null) {
+                            pending.push(_texture2.default.syncTexturesToWorker([variant.texture]).then(function (textures) {
+                                var texture = textures[variant.texture];
+                                if (texture) {
+                                    uniforms.u_texture_ratio = texture.height / texture.width;
+                                }
+                            }));
+                        } else {
+                            var texture = _texture2.default.textures[variant.texture];
+                            uniforms.u_texture_ratio = texture.height / texture.width;
+                        }
+                    }
+                };
+
+                for (var m in tile_data.meshes) {
+                    _loop(m);
+                }
+                return Promise.all(pending).then(function () {
+                    return tile_data;
+                });
+            }
+            return tile_data;
+        });
+    },
+
+
+    // Calculate and store mesh variant (unique by draw group but not feature)
+    computeVariant: function computeVariant(draw) {
+        var key = draw.offset ? 1 : 0;
+        if (draw.dash_key) {
+            key += draw.dash_key;
+            if (draw.dash_background_color) {
+                key += draw.dash_background_color;
+            }
+        }
+
+        if (draw.texture_merged) {
+            key += draw.texture_merged;
+        }
+        key += '/' + draw.texcoords;
+        key = (0, _hash2.default)(key);
+        draw.variant = key;
+
+        if (Lines.variants[key] == null) {
+            Lines.variants[key] = {
+                key: key,
+                order: draw.variant_order,
+                offset: draw.offset ? 1 : 0,
+                texcoords: draw.texcoords,
+                texture: draw.texture_merged,
+                dash: draw.dash,
+                dash_key: draw.dash_key,
+                dash_background_color: draw.dash_background_color
+            };
+        }
+    },
+
+
+    // Override
+    // Create or return desired vertex layout permutation based on flags
+    vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
+        if (Lines.vertex_layouts[variant.key] == null) {
+            // Basic attributes, others can be added (see texture UVs below)
+            var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_extrude', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_offset', size: 2, type: _constants2.default.SHORT, normalized: false, static: variant.offset ? null : [0, 0] }, { name: 'a_scaling', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true, static: variant.texcoords ? null : [0, 0] }, { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }, { name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
+            Lines.vertex_layouts[variant.key] = new _vertex_layout2.default(attribs);
+        }
+        return Lines.vertex_layouts[variant.key];
+    },
+
+
+    // Override
+    meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
+        return Lines.variants[draw.variant]; // return pre-calculated mesh variant
     },
 
 
@@ -36499,26 +37082,39 @@ Object.assign(Lines, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate: function makeVertexTemplate(style) {
+    makeVertexTemplate: function makeVertexTemplate(style, mesh) {
         var i = 0;
 
-        // position - x & y coords will be filled in per-vertex below
+        // a_position.xyz - vertex position
+        // a_position.w - layer order
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = style.z || 0;
-
-        // layer order - w coord of 'position' attribute (for packing efficiency)
         this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // extrusion vector
-        this.vertex_template[i++] = 0;
+        // a_extrude.xy - extrusion vector
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
 
-        // scaling to previous and next zoom
-        this.vertex_template[i++] = style.next_width;
+        // a_offset.xy - normal vector
+        // offset can be static or dynamic depending on style
+        if (mesh.variant.offset) {
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
+        }
 
-        // color
+        // a_scaling.xy - scaling to previous and next zoom
+        this.vertex_template[i++] = style.width_scale * 1024; // line width
+        this.vertex_template[i++] = style.offset_scale * 1024; // line offset
+
+        // Add texture UVs to template only if needed
+        if (mesh.variant.texcoords) {
+            // a_texcoord.uv
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
+        }
+
+        // a_color.rgba
         this.vertex_template[i++] = style.color[0] * 255;
         this.vertex_template[i++] = style.color[1] * 255;
         this.vertex_template[i++] = style.color[2] * 255;
@@ -36526,21 +37122,16 @@ Object.assign(Lines, {
 
         // selection color
         if (this.selection) {
+            // a_selection_color.rgba
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
             this.vertex_template[i++] = style.selection_color[2] * 255;
             this.vertex_template[i++] = style.selection_color[3] * 255;
         }
 
-        // Add texture UVs to template only if needed
-        if (this.texcoords) {
-            this.vertex_template[i++] = 0;
-            this.vertex_template[i++] = 0;
-        }
-
         return this.vertex_template;
     },
-    buildLines: function buildLines(lines, style, vertex_data, context, options) {
+    buildLines: function buildLines(lines, style, mesh, context, options) {
         // Outline (build first so that blended geometry without a depth test is drawn first/under the inner line)
         this.feature_style = this.outline_feature_style; // swap in outline-specific style holder
         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
@@ -36552,32 +37143,35 @@ Object.assign(Lines, {
 
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
-        var vertex_template = this.makeVertexTemplate(style);
+        var vertex_data = mesh.vertex_data;
+        var vertex_layout = vertex_data.vertex_layout;
+        var vertex_template = this.makeVertexTemplate(style, mesh);
         return (0, _polylines.buildPolylines)(lines, style.width, vertex_data, vertex_template, {
             cap: style.cap,
             join: style.join,
             miter_limit: style.miter_limit,
-            scaling_index: this.vertex_layout.index.a_extrude,
-            scaling_normalize: 256, // values have an 8-bit fraction
-            texcoord_index: this.vertex_layout.index.a_texcoord,
-            texcoord_width: (style.width || style.next_width) / context.tile.overzoom2, // UVs can't calc for zero-width, use next zoom width in that case
+            extrude_index: vertex_layout.index.a_extrude,
+            offset_index: vertex_layout.index.a_offset,
+            texcoord_index: vertex_layout.index.a_texcoord,
+            texcoord_width: style.texcoord_width,
             texcoord_normalize: 65535, // scale UVs to unsigned shorts
             closed_polygon: options && options.closed_polygon,
             remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
-            tile_edge_tolerance: _geo2.default.tile_scale * context.tile.pad_scale * 2
+            tile_edge_tolerance: _geo2.default.tile_scale * context.tile.pad_scale * 2,
+            offset: style.offset
         });
     },
-    buildPolygons: function buildPolygons(polygons, style, vertex_data, context) {
+    buildPolygons: function buildPolygons(polygons, style, mesh, context) {
         // Render polygons as individual lines
         var geom_count = 0;
         for (var p = 0; p < polygons.length; p++) {
-            geom_count += this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
+            geom_count += this.buildLines(polygons[p], style, mesh, context, { closed_polygon: true, remove_tile_edges: true });
         }
         return geom_count;
     }
 });
 
-},{"../../builders/polylines":199,"../../geo":201,"../../gl/constants":202,"../../gl/texture":208,"../../gl/vertex_layout":213,"../polygons/polygons":241,"../style":243,"../style_parser":245,"./dasharray":238}],240:[function(_dereq_,module,exports){
+},{"../../builders/polylines":199,"../../geo":201,"../../gl/constants":202,"../../gl/texture":208,"../../gl/vertex_layout":213,"../../utils/hash":258,"../../utils/worker_broker":271,"../polygons/polygons":241,"../style":243,"../style_parser":245,"./dasharray":238}],240:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -36645,8 +37239,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 
-var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute float a_outline_edge;\nattribute vec4 a_outline_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n// Assumes stops are [0, 0.33, 0.66, 0.99];\nfloat mix4linear(float a, float b, float c, float d, float x) {\n    return mix(mix(a, b, 3. * x),\n               mix(b,\n                   mix(c, d, 3. * (max(x, .66) - .66)),\n                   3. * (clamp(x, .33, .66) - .33)),\n               step(0.33, x)\n            );\n}\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_SHADER_POINT\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_SHADER_POINT\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
-var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_SHADER_POINT\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_SHADER_POINT\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n        color *= texture2D(u_texture, v_texcoord);\n    }\n    else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture, avoid divide by zero\n    }\n    #ifdef TANGRAM_SHADER_POINT\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n            // Distance to this fragment from the center.\n            float l = length(v_texcoord);\n            // Mask of outermost circle, either outline or point boundary.\n            float outer_alpha  = _tangram_antialias(l, 1.);\n            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n            // Distance to this fragment from the center.\n            float l = length(v_texcoord);\n            // Mask of outermost circle, either outline or point boundary.\n            float outer_alpha  = _tangram_antialias(l, 1.);\n            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var PLACEMENT = _label_point2.default.PLACEMENT;
 
@@ -36657,10 +37251,15 @@ var texcoord_normalize = 65535;
 
 var Points = exports.Points = Object.create(_style.Style);
 
+Points.variants = {}; // mesh variants by variant key
+
 // texture types
 var TANGRAM_POINT_TYPE_TEXTURE = 1; // style texture/sprites (assigned by user)
 var TANGRAM_POINT_TYPE_LABEL = 2; // labels (generated by rendering labels to canvas)
 var TANGRAM_POINT_TYPE_SHADER = 3; // point (drawn in shader)
+
+// default point size in pixels
+var DEFAULT_POINT_SIZE = [16, 16];
 
 // Mixin text label methods
 Object.assign(Points, _text_labels.TextLabels);
@@ -36670,43 +37269,56 @@ Object.assign(Points, {
     built_in: true,
     vertex_shader_src: shaderSrc_pointsVertex,
     fragment_shader_src: shaderSrc_pointsFragment,
+    selection: true, // enable feature selection
     collision: true, // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init: function init() {
         var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-        var extra_attributes = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
 
         _style.Style.init.call(this, options);
 
-        var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_shape', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true }, { name: 'a_offset', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
+        // Vertex layout
+        var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_shape', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true }, { name: 'a_offset', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }, { name: 'a_outline_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true, static: [0, 0, 0, 0] }, { name: 'a_outline_edge', size: 1, type: _constants2.default.FLOAT, normalized: false, static: 0 }, { name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
 
-        if (extra_attributes.length) {
-            Array.prototype.push.apply(attribs, extra_attributes);
-        }
+        this.vertex_layout = new _vertex_layout2.default(attribs);
 
-        // Feature selection
-        this.selection = true;
-        attribs.push({ name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true });
+        // Modified vertex layout for shader-drawn points
+        attribs = attribs.map(function (x) {
+            return Object.assign({}, x);
+        }); // copy attribs
+        attribs.forEach(function (attrib) {
+            // clear the static attribute value for shader points
+            if (attrib.name === 'a_outline_color' || attrib.name === 'a_outline_edge') {
+                attrib.static = null;
+            }
+        });
+        this.vertex_layout_shader_point = new _vertex_layout2.default(attribs);
 
-        // If we're not rendering as overlay, we need a layer attribute
-        if (this.blend !== 'overlay') {
-            this.defines.TANGRAM_LAYER_ORDER = true;
-        }
+        // Shader defines
+        this.setupDefines();
+
+        // Include code for SDF-drawn shader points
+        this.defines.TANGRAM_HAS_SHADER_POINTS = true;
 
         // texture types
         this.defines.TANGRAM_POINT_TYPE_TEXTURE = TANGRAM_POINT_TYPE_TEXTURE;
         this.defines.TANGRAM_POINT_TYPE_LABEL = TANGRAM_POINT_TYPE_LABEL;
         this.defines.TANGRAM_POINT_TYPE_SHADER = TANGRAM_POINT_TYPE_SHADER;
 
-        // if no texture defined, use a shader-drawn point
-        if (!this.texture) {
-            this.defines.TANGRAM_SHADER_POINT = true;
-            attribs.push({ name: 'a_outline_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true });
-            attribs.push({ name: 'a_outline_edge', size: 1, type: _constants2.default.FLOAT, normalized: false });
-        }
+        this.collision_group_points = this.name + '-points';
+        this.collision_group_text = this.name + '-text';
 
-        this.vertex_layout = new _vertex_layout2.default(attribs);
+        this.reset();
+    },
+
+
+    // Setup defines common to points base and child (text) styles
+    setupDefines: function setupDefines() {
+        // If we're not rendering as overlay, we need a layer attribute
+        if (this.blend !== 'overlay') {
+            this.defines.TANGRAM_LAYER_ORDER = true;
+        }
 
         // Fade out when tile is zooming out, e.g. acting as proxy tiles
         this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
@@ -36725,11 +37337,6 @@ Object.assign(Points, {
         if (_debug_settings2.default.suppress_label_snap_animation !== true) {
             this.defines.TANGRAM_VIEW_PAN_SNAP_RATE = 1 / _view.VIEW_PAN_SNAP_TIME; // inverse time in seconds
         }
-
-        this.collision_group_points = this.name + '-points';
-        this.collision_group_text = this.name + '-text';
-
-        this.reset();
     },
     reset: function reset() {
         this.queues = {};
@@ -36748,16 +37355,18 @@ Object.assign(Points, {
         // Point styling
         var style = {};
         style.color = this.parseColor(draw.color, context);
+        style.texture = draw.texture; // optional point texture, specified in `draw` or at style level
+        style.label_texture = null; // assigned by labelling code if needed
 
         // require color or texture
-        if (!style.color && !this.texture) {
+        if (!style.color && !style.texture) {
             return;
         }
 
         // optional sprite
         var sprite_info = void 0;
-        if (this.hasSprites()) {
-            sprite_info = this.parseSprite(draw, context);
+        if (this.hasSprites(style)) {
+            sprite_info = this.parseSprite(style, draw, context);
             if (sprite_info) {
                 style.texcoords = sprite_info.texcoords;
             } else {
@@ -36768,14 +37377,13 @@ Object.assign(Points, {
         // point size defined explicitly, or defaults to sprite size, or generic fallback
         style.size = draw.size;
         if (!style.size) {
-            if (sprite_info) {
-                style.size = sprite_info.size;
-            } else {
-                style.size = [16, 16];
-            }
+            style.size = sprite_info && sprite_info.css_size || DEFAULT_POINT_SIZE;
         } else {
-            style.size = _style_parser.StyleParser.evalCachedProperty(style.size, context);
-            if (typeof style.size === 'number') {
+            style.size = _style_parser.StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, context);
+            if (style.size == null) {
+                (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + ('\'size\' includes % and/or ratio-based scaling (' + JSON.stringify(draw.size.value) + '); ') + 'these can only applied to sprites, but no sprite was specified, skipping features in layer');
+                return;
+            } else if (typeof style.size === 'number') {
                 style.size = [style.size, style.size]; // convert 1d size to 2d
             }
         }
@@ -36814,8 +37422,6 @@ Object.assign(Points, {
 
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
-        style.label_texture = null; // clear out label texture assignment
-
         this.computeLayout(style, feature, draw, context, tile);
 
         // Text styling
@@ -36824,7 +37430,7 @@ Object.assign(Points, {
 
         if (Array.isArray(tf)) {
             tf = null; // NB: boundary labels not supported for point label attachments, should log warning
-            (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + 'cannot use boundary labels (e.g. \'text_source: { left: ..., right: ... }\') for \'text\' labels attached to \'points\'; ' + ('provided \'text_source\' value was \'' + JSON.stringify(draw.text.text_source) + '\''));
+            (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + 'cannot use boundary labels (e.g. \'text_source: { left: ..., right: ... }\') for \'text\' labels attached to \'points\'; ' + ('provided \'text_source\' value was ' + JSON.stringify(draw.text.text_source)));
         }
 
         if (tf) {
@@ -36846,23 +37452,27 @@ Object.assign(Points, {
         // Register with collision manager
         _collision2.default.addStyle(this.collision_group_points, tile.id);
     },
-    hasSprites: function hasSprites() {
-        return this.texture && _texture2.default.textures[this.texture] && _texture2.default.textures[this.texture].sprites;
+    hasSprites: function hasSprites(style) {
+        return style.texture && _texture2.default.textures[style.texture] && _texture2.default.textures[style.texture].sprites;
     },
-    getSpriteInfo: function getSpriteInfo(sprite) {
-        var info = _texture2.default.textures[this.texture].sprites[sprite] && _texture2.default.getSpriteInfo(this.texture, sprite);
+    getSpriteInfo: function getSpriteInfo(style, sprite) {
+        var info = _texture2.default.textures[style.texture].sprites[sprite] && _texture2.default.getSpriteInfo(style.texture, sprite);
         if (sprite && !info) {
-            if (!this.texture_missing_sprites[sprite]) {
+            // track misisng sprites (per texture)
+            this.texture_missing_sprites[style.texture] = this.texture_missing_sprites[style.texture] || {};
+            if (!this.texture_missing_sprites[style.texture][sprite]) {
                 // only log each missing sprite once
-                (0, _log2.default)('debug', 'Style: in style \'' + this.name + '\', could not find sprite \'' + sprite + '\' for texture \'' + this.texture + '\'');
-                this.texture_missing_sprites[sprite] = true;
+                (0, _log2.default)('debug', 'Style: in style \'' + this.name + '\', could not find sprite \'' + sprite + '\' for texture \'' + style.texture + '\'');
+                this.texture_missing_sprites[style.texture][sprite] = true;
             }
+        } else if (info) {
+            info.sprite = sprite;
         }
         return info;
     },
-    parseSprite: function parseSprite(draw, context) {
+    parseSprite: function parseSprite(style, draw, context) {
         var sprite = _style_parser.StyleParser.evalProperty(draw.sprite, context);
-        var sprite_info = this.getSpriteInfo(sprite) || this.getSpriteInfo(draw.sprite_default);
+        var sprite_info = this.getSpriteInfo(style, sprite) || this.getSpriteInfo(style, draw.sprite_default);
         return sprite_info;
     },
 
@@ -36985,6 +37595,7 @@ Object.assign(Points, {
     },
     _preprocess: function _preprocess(draw) {
         draw.color = _style_parser.StyleParser.createColorPropertyCache(draw.color);
+        draw.texture = draw.texture !== undefined ? draw.texture : this.texture; // optional or default texture
 
         if (draw.outline) {
             draw.outline.color = _style_parser.StyleParser.createColorPropertyCache(draw.outline.color);
@@ -36996,18 +37607,27 @@ Object.assign(Points, {
         draw.z = _style_parser.StyleParser.createPropertyCache(draw.z, _style_parser.StyleParser.parseUnits);
 
         // Size (1d value or 2d array)
-        draw.size = _style_parser.StyleParser.createPropertyCache(draw.size, function (v) {
-            return Array.isArray(v) ? v.map(parseFloat) : parseFloat(v);
-        });
+        try {
+            draw.size = _style_parser.StyleParser.createPointSizePropertyCache(draw.size);
+        } catch (e) {
+            (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + (e + ' (' + JSON.stringify(draw.size) + '), skipping features in layer'));
+            return null;
+        }
 
         // Offset (2d array)
         draw.offset = _style_parser.StyleParser.createPropertyCache(draw.offset, function (v) {
-            return Array.isArray(v) && v.map(parseFloat) || 0;
+            return Array.isArray(v) && v.map(parseFloat).map(function (v) {
+                return isNaN(v) ? 0 : v;
+            }) || [0, 0];
         });
 
-        // Buffer (1d value or 2d array, expand 1d to 2d)
+        // Buffer (1d value or or 2d array) - must be >= 0
         draw.buffer = _style_parser.StyleParser.createPropertyCache(draw.buffer, function (v) {
-            return (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0;
+            return (Array.isArray(v) ? v : [v, v]).map(function (v) {
+                return Math.max(parseFloat(v), 0);
+            }).map(function (v) {
+                return isNaN(v) ? 0 : v;
+            }) || [0, 0];
         });
 
         // Repeat rules - no repeat limitation for points by default
@@ -37187,50 +37807,55 @@ Object.assign(Points, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate: function makeVertexTemplate(style) {
+    makeVertexTemplate: function makeVertexTemplate(style, mesh) {
         var color = style.color || _style_parser.StyleParser.defaults.color;
+        var vertex_layout = mesh.vertex_data.vertex_layout;
 
         // position - x & y coords will be filled in per-vertex below
-        this.fillVertexTemplate('a_position', 0, { size: 2 });
-        this.fillVertexTemplate('a_position', style.z || 0, { size: 1, offset: 2 });
+        this.fillVertexTemplate(vertex_layout, 'a_position', 0, { size: 2 });
+        this.fillVertexTemplate(vertex_layout, 'a_position', style.z || 0, { size: 1, offset: 2 });
         // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.fillVertexTemplate('a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
+        this.fillVertexTemplate(vertex_layout, 'a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
 
         // scaling vector - (x, y) components per pixel, z = angle
-        this.fillVertexTemplate('a_shape', 0, { size: 3 }); // NB: w coord is currently unused, change size: 4 if needed
+        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 3 }); // NB: w coord is currently unused, change size: 4 if needed
 
         // texture coords
-        this.fillVertexTemplate('a_texcoord', 0, { size: 2 });
+        this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, { size: 2 });
 
         // offsets
-        this.fillVertexTemplate('a_offset', 0, { size: 2 });
+        this.fillVertexTemplate(vertex_layout, 'a_offset', 0, { size: 2 });
 
         // color
-        this.fillVertexTemplate('a_color', _vector2.default.mult(color, 255), { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_color', _vector2.default.mult(color, 255), { size: 4 });
 
-        // outline
-        if (this.defines.TANGRAM_SHADER_POINT) {
+        // outline (can be static or dynamic depending on style)
+        if (this.defines.TANGRAM_HAS_SHADER_POINTS && mesh.variant.shader_point) {
             var outline_color = style.outline_color || _style_parser.StyleParser.defaults.outline.color;
-            this.fillVertexTemplate('a_outline_color', _vector2.default.mult(outline_color, 255), { size: 4 });
-            this.fillVertexTemplate('a_outline_edge', style.outline_edge_pct || _style_parser.StyleParser.defaults.outline.width, { size: 1 });
+            this.fillVertexTemplate(vertex_layout, 'a_outline_color', _vector2.default.mult(outline_color, 255), { size: 4 });
+            this.fillVertexTemplate(vertex_layout, 'a_outline_edge', style.outline_edge_pct || _style_parser.StyleParser.defaults.outline.width, { size: 1 });
         }
 
         // selection color
         if (this.selection) {
-            this.fillVertexTemplate('a_selection_color', _vector2.default.mult(style.selection_color, 255), { size: 4 });
+            this.fillVertexTemplate(vertex_layout, 'a_selection_color', _vector2.default.mult(style.selection_color, 255), { size: 4 });
         }
 
         return this.vertex_template;
     },
     buildQuad: function buildQuad(points, size, angle, angles, pre_angles, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+        if (size[0] <= 0 || size[1] <= 0) {
+            return 0; // size must be positive
+        }
+
         return (0, _points.buildQuadsForPoints)(points, vertex_data, vertex_template, {
-            texcoord_index: this.vertex_layout.index.a_texcoord,
-            position_index: this.vertex_layout.index.a_position,
-            shape_index: this.vertex_layout.index.a_shape,
-            offset_index: this.vertex_layout.index.a_offset,
-            offsets_index: this.vertex_layout.index.a_offsets,
-            pre_angles_index: this.vertex_layout.index.a_pre_angles,
-            angles_index: this.vertex_layout.index.a_angles
+            texcoord_index: vertex_data.vertex_layout.index.a_texcoord,
+            position_index: vertex_data.vertex_layout.index.a_position,
+            shape_index: vertex_data.vertex_layout.index.a_shape,
+            offset_index: vertex_data.vertex_layout.index.a_offset,
+            offsets_index: vertex_data.vertex_layout.index.a_offsets,
+            pre_angles_index: vertex_data.vertex_layout.index.a_pre_angles,
+            angles_index: vertex_data.vertex_layout.index.a_angles
         }, {
             quad: size,
             quad_normalize: 256, // values have an 8-bit fraction
@@ -37250,16 +37875,16 @@ Object.assign(Points, {
 
 
     // Build quad for point sprite
-    build: function build(style, vertex_data, context) {
+    build: function build(style, mesh, context) {
         var label = style.label;
         if (label.type === 'curved') {
-            return this.buildArticulatedLabel(label, style, vertex_data, context);
+            return this.buildArticulatedLabel(label, style, mesh, context);
         } else {
-            return this.buildLabel(label, style, vertex_data, context);
+            return this.buildLabel(label, style, mesh, context);
         }
     },
-    buildLabel: function buildLabel(label, style, vertex_data, context) {
-        var vertex_template = this.makeVertexTemplate(style);
+    buildLabel: function buildLabel(label, style, mesh, context) {
+        var vertex_template = this.makeVertexTemplate(style, mesh);
         var angle = label.angle || style.angle;
 
         var size = void 0,
@@ -37272,24 +37897,20 @@ Object.assign(Points, {
             texcoords = style.texcoords;
         }
 
-        // re-point to correct label texture
-        var mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
-        vertex_data = mesh_data.vertex_data;
-
         // setup style or label texture if applicable
-        mesh_data.uniforms = mesh_data.uniforms || {};
+        mesh.uniforms = mesh.uniforms || {};
         if (style.label_texture) {
-            mesh_data.uniforms.u_texture = style.label_texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
-            mesh_data.uniforms.u_apply_color_blocks = false;
-        } else if (this.texture) {
-            mesh_data.uniforms.u_texture = this.texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_TEXTURE;
-            mesh_data.uniforms.u_apply_color_blocks = true;
+            mesh.uniforms.u_texture = style.label_texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh.uniforms.u_apply_color_blocks = false;
+        } else if (style.texture) {
+            mesh.uniforms.u_texture = style.texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_TEXTURE;
+            mesh.uniforms.u_apply_color_blocks = true;
         } else {
-            mesh_data.uniforms.u_texture = _texture2.default.default; // ensure a tetxure is always bound to avoid GL warnings ('no texture bound to unit' in Chrome)
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_SHADER;
-            mesh_data.uniforms.u_apply_color_blocks = true;
+            mesh.uniforms.u_texture = _texture2.default.default; // ensure a tetxure is always bound to avoid GL warnings ('no texture bound to unit' in Chrome)
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_SHADER;
+            mesh.uniforms.u_apply_color_blocks = true;
         }
 
         var offset = label.offset;
@@ -37305,11 +37926,11 @@ Object.assign(Points, {
         null, // placeholder for multiple offsets
         texcoords, // texture UVs
         false, // if curved boolean
-        vertex_data, vertex_template // VBO and data for current vertex
+        mesh.vertex_data, vertex_template // VBO and data for current vertex
         );
     },
-    buildArticulatedLabel: function buildArticulatedLabel(label, style, vertex_data, context) {
-        var vertex_template = this.makeVertexTemplate(style);
+    buildArticulatedLabel: function buildArticulatedLabel(label, style, mesh, context) {
+        var vertex_template = this.makeVertexTemplate(style, mesh);
         var angle = label.angle;
         var geom_count = 0;
 
@@ -37324,7 +37945,6 @@ Object.assign(Points, {
             // re-point to correct label texture
             style.label_texture = style.label_textures[i];
             var mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
-            vertex_data = mesh_data.vertex_data;
 
             // add label texture uniform if needed
             mesh_data.uniforms = mesh_data.uniforms || {};
@@ -37348,7 +37968,7 @@ Object.assign(Points, {
             offsets, // offsets per segment
             texcoord_stroke, // texture UVs for stroked text
             true, // if curved
-            vertex_data, vertex_template // VBO and data for current vertex
+            mesh_data.vertex_data, vertex_template // VBO and data for current vertex
             );
         }
 
@@ -37360,7 +37980,6 @@ Object.assign(Points, {
             // re-point to correct label texture
             style.label_texture = style.label_textures[_i5];
             var _mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
-            vertex_data = _mesh_data.vertex_data;
 
             // add label texture uniform if needed
             _mesh_data.uniforms = _mesh_data.uniforms || {};
@@ -37384,7 +38003,7 @@ Object.assign(Points, {
             _offsets, // offsets per segment
             texcoord, // texture UVs for fill text
             true, // if curved
-            vertex_data, vertex_template // VBO and data for current vertex
+            _mesh_data.vertex_data, vertex_template // VBO and data for current vertex
             );
         }
 
@@ -37393,24 +38012,37 @@ Object.assign(Points, {
 
 
     // Override to pass-through to generic point builder
-    buildLines: function buildLines(lines, style, vertex_data, context) {
-        return this.build(style, vertex_data, context);
+    buildLines: function buildLines(lines, style, mesh, context) {
+        return this.build(style, mesh, context);
     },
-    buildPoints: function buildPoints(points, style, vertex_data, context) {
-        return this.build(style, vertex_data, context);
+    buildPoints: function buildPoints(points, style, mesh, context) {
+        return this.build(style, mesh, context);
     },
-    buildPolygons: function buildPolygons(points, style, vertex_data, context) {
-        return this.build(style, vertex_data, context);
+    buildPolygons: function buildPolygons(points, style, mesh, context) {
+        return this.build(style, mesh, context);
+    },
+
+
+    // Override
+    vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
+        if (variant.shader_point) {
+            return this.vertex_layout_shader_point;
+        }
+        return this.vertex_layout;
     },
 
 
     // Override
     meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
-        // TODO: restore support for varying sprite textures too (?)
-        if (draw.label_texture) {
-            return draw.label_texture;
+        var key = draw.label_texture || draw.texture || this.default_mesh_variant.key; // unique key by texture name
+        if (Points.variants[key] == null) {
+            Points.variants[key] = {
+                key: key,
+                shader_point: key === this.default_mesh_variant.key, // is shader point
+                order: draw.label_texture ? 1 : 0 // put text on top of points (e.g. for highway shields, etc.)
+            };
         }
-        return this.default_mesh_variant;
+        return Points.variants[key]; // return pre-calculated mesh variant
     },
     makeMesh: function makeMesh(vertex_data, vertex_elements) {
         var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
@@ -37452,8 +38084,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 // Polygon rendering style
 
  // web workers don't have access to GL context, so import all GL constants
-var shaderSrc_polygonsVertex = exports.shaderSrc_polygonsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    // xy: extrusion direction in xy plane\n    // z:  half-width of line (amount to extrude)\n    // w:  scaling factor for interpolating width between zooms\n    attribute vec4 a_extrude;\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#ifdef TANGRAM_TEXTURE_COORDS\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= TANGRAM_V_SCALE_ADJUST;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction\n        float width = a_extrude.z;\n        float dwdz = a_extrude.w;\n\n        // Adjust line width based on zoom level, to prevent proxied lines from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from prematurely shrinking), then interpolate\n        // and clamp to 4 (keeps lines from becoming too small when far away).\n        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));\n\n        // Interpolate between zoom levels\n        width += dwdz * dz;\n\n        // Scale pixel dimensions to be consistent in screen space\n        // Scale from style zoom units back to tile zoom\n        width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));\n\n        // Modify line width before extrusion\n        #pragma tangram: width\n\n        position.xy += extrude * width;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n\n    gl_Position = position;\n}\n";
-var shaderSrc_polygonsFragment = exports.shaderSrc_polygonsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#define TANGRAM_NORMAL v_normal\n\n#ifdef TANGRAM_TEXTURE_COORDS\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        color *= sampleRaster(0); // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_LINE_TEXTURE\n        vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n        vec4 _line_color = texture2D(u_texture, _line_st);\n\n        if (_line_color.a < TANGRAM_ALPHA_TEST) {\n            #ifdef TANGRAM_LINE_BACKGROUND_COLOR\n                color.rgb = TANGRAM_LINE_BACKGROUND_COLOR;\n            #elif !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)\n                discard; // use discard when alpha blending is unavailable\n            #else\n                color.a = 0.; // use alpha channel when blending is available\n            #endif\n        }\n        else {\n            color *= _line_color;\n        }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
+var shaderSrc_polygonsVertex = exports.shaderSrc_polygonsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    // xy: extrusion direction in xy plane\n    // z:  half-width of line (amount to extrude)\n    // w:  scaling factor for interpolating width between zooms\n    attribute vec2 a_extrude;\n    // xy: direction of line, for getting perpendicular offset\n    attribute vec2 a_offset;\n    // x: zoom scaling factor for line width\n    // y: zoom scaling factor for line offset\n    attribute vec2 a_scaling;\n\n    uniform float u_v_scale_adjust;\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#define UNPACK_SCALING(x) (x / 1024.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= u_v_scale_adjust;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 extrude = a_extrude.xy;\n        vec2 offset = a_offset.xy;\n\n        // Adjust line width based on zoom level, to prevent proxied lines\n        // from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from\n        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines\n        // from becoming too small when far away).\n        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));\n\n        // Interpolate line width between zooms\n        float mdz = (dz - 0.5) * 2.; // zoom from mid-point\n        extrude -= extrude * UNPACK_SCALING(a_scaling.x) * mdz;\n\n        // Interpolate line offset between zooms\n        // Scales from the larger value to the smaller one\n        float dwdz = UNPACK_SCALING(a_scaling.y);\n        float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates \"direction\" of scaling\n        offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale \"up\" or \"down\"\n\n        // Scale line width and offset to be consistent in screen space\n        float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));\n        extrude *= ssz;\n        offset *= ssz;\n\n        // Modify line width before extrusion\n        #ifdef TANGRAM_BLOCK_WIDTH\n            float width = 1.;\n            #pragma tangram: width\n            extrude *= width;\n        #endif\n\n        position.xy += extrude + offset;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n\n    gl_Position = position;\n}\n";
+var shaderSrc_polygonsFragment = exports.shaderSrc_polygonsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#ifdef TANGRAM_EXTRUDE_LINES\n    uniform bool u_has_line_texture;\n    uniform sampler2D u_texture;\n    uniform float u_texture_ratio;\n    uniform vec4 u_dash_background_color;\n#endif\n\n#define TANGRAM_NORMAL v_normal\n\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        color *= sampleRaster(0); // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_EXTRUDE_LINES\n        if (u_has_line_texture) {\n            vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n            vec4 _line_color = texture2D(u_texture, _line_st);\n\n            if (_line_color.a < TANGRAM_ALPHA_TEST) {\n                #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) // TODO: should be for opaque blend only?\n                    // use discard when alpha blending is unavailable\n                    if (u_dash_background_color.a == 0.) {\n                        discard;\n                    }\n                    color = u_dash_background_color;\n                #else\n                    // use alpha channel when blending is available\n                    color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));\n                #endif\n\n\n            }\n            else {\n                color *= _line_color;\n            }\n        }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
 
 var Polygons = exports.Polygons = Object.create(_style.Style);
 
@@ -37462,21 +38094,18 @@ Object.assign(Polygons, {
     built_in: true,
     vertex_shader_src: shaderSrc_polygonsVertex,
     fragment_shader_src: shaderSrc_polygonsFragment,
+    selection: true, // enable feature selection
 
     init: function init() {
         _style.Style.init.apply(this, arguments);
 
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_normal', size: 3, type: _constants2.default.BYTE, normalized: true }, // gets padded to 4-bytes
-        { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
+        { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }, { name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
 
         // Tell the shader we have a normal and order attributes
         this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
         this.defines.TANGRAM_LAYER_ORDER = true;
-
-        // Feature selection
-        this.selection = true;
-        attribs.push({ name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true });
 
         // Optional texture UVs
         if (this.texcoords) {
@@ -37574,7 +38203,7 @@ Object.assign(Polygons, {
 
         return this.vertex_template;
     },
-    buildPolygons: function buildPolygons(polygons, style, vertex_data, context) {
+    buildPolygons: function buildPolygons(polygons, style, mesh, context) {
         var vertex_template = this.makeVertexTemplate(style);
         var options = {
             texcoord_index: this.vertex_layout.index.a_texcoord,
@@ -37586,12 +38215,12 @@ Object.assign(Polygons, {
 
         // Extruded polygons (e.g. 3D buildings)
         if (style.extrude && style.height) {
-            return (0, _polygons.buildExtrudedPolygons)(polygons, style.z, style.height, style.min_height, vertex_data, vertex_template, this.vertex_layout.index.a_normal, 127, // scale normals to signed bytes
+            return (0, _polygons.buildExtrudedPolygons)(polygons, style.z, style.height, style.min_height, mesh.vertex_data, vertex_template, this.vertex_layout.index.a_normal, 127, // scale normals to signed bytes
             options);
         }
         // Regular polygons
         else {
-                return (0, _polygons.buildPolygons)(polygons, vertex_data, vertex_template, options);
+                return (0, _polygons.buildPolygons)(polygons, mesh.vertex_data, vertex_template, options);
             }
     }
 });
@@ -37639,8 +38268,6 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 exports.Style = undefined;
-
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
@@ -37786,13 +38413,13 @@ var Style = exports.Style = {
             _worker_broker2.default.addTarget(this.main_thread_target, this);
         }
     },
-    fillVertexTemplate: function fillVertexTemplate(attribute, value, _ref2) {
+    fillVertexTemplate: function fillVertexTemplate(vertex_layout, attribute, value, _ref2) {
         var size = _ref2.size,
             offset = _ref2.offset;
 
         offset = offset === undefined ? 0 : offset;
 
-        var index = this.vertex_layout.index[attribute];
+        var index = vertex_layout.index[attribute];
         if (index === undefined) {
             (0, _log2.default)('warn', 'Style: in style \'' + this.name + '\', no index found in vertex layout for attribute \'' + attribute + '\'');
             return;
@@ -37840,7 +38467,7 @@ var Style = exports.Style = {
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
-            return this.buildRasterTextures(tile, tile_data).then(function () {
+            return this.buildRasterTextures(tile, tile_data).then(function (tile_data) {
                 return tile_data;
             });
         } else {
@@ -37855,20 +38482,20 @@ var Style = exports.Style = {
     },
     getTileMesh: function getTileMesh(tile, variant) {
         var meshes = this.tile_data[tile.id].meshes;
-        if (meshes[variant] == null) {
-            meshes[variant] = {
+        if (meshes[variant.key] == null) {
+            meshes[variant.key] = {
                 variant: variant,
                 vertex_data: this.vertexLayoutForMeshVariant(variant).createVertexData()
             };
         }
-        return meshes[variant];
+        return meshes[variant.key];
     },
     vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
         return this.vertex_layout;
     },
 
 
-    default_mesh_variant: 0,
+    default_mesh_variant: { key: 0 },
     meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
         return this.default_mesh_variant;
     },
@@ -37887,27 +38514,27 @@ var Style = exports.Style = {
             return; // skip feature
         }
 
-        var vertex_data = this.getTileMesh(tile, this.meshVariantTypeForDraw(style)).vertex_data;
-        if (this.buildGeometry(feature.geometry, style, vertex_data, context) > 0) {
+        var mesh = this.getTileMesh(tile, this.meshVariantTypeForDraw(style));
+        if (this.buildGeometry(feature.geometry, style, mesh, context) > 0) {
             feature.generation = this.generation; // track scene generation that feature was rendered for
         }
     },
-    buildGeometry: function buildGeometry(geometry, style, vertex_data, context) {
+    buildGeometry: function buildGeometry(geometry, style, mesh, context) {
         var _this = this;
 
         var geom_count = void 0;
         if (geometry.type === 'Polygon') {
-            geom_count = this.buildPolygons([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPolygons([geometry.coordinates], style, mesh, context);
         } else if (geometry.type === 'MultiPolygon') {
-            geom_count = this.buildPolygons(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPolygons(geometry.coordinates, style, mesh, context);
         } else if (geometry.type === 'LineString') {
-            geom_count = this.buildLines([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildLines([geometry.coordinates], style, mesh, context);
         } else if (geometry.type === 'MultiLineString') {
-            geom_count = this.buildLines(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildLines(geometry.coordinates, style, mesh, context);
         } else if (geometry.type === 'Point') {
-            geom_count = this.buildPoints([geometry.coordinates], style, vertex_data, context);
+            geom_count = this.buildPoints([geometry.coordinates], style, mesh, context);
         } else if (geometry.type === 'MultiPoint') {
-            geom_count = this.buildPoints(geometry.coordinates, style, vertex_data, context);
+            geom_count = this.buildPoints(geometry.coordinates, style, mesh, context);
         }
 
         // Optionally collect per-layer stats
@@ -38289,8 +38916,14 @@ var Style = exports.Style = {
         // to avoid flickering while loading (texture will render as black)
         return _worker_broker2.default.postMessage(this.main_thread_target + '.loadTextures', configs).then(function (textures) {
             if (!textures || textures.length < 1) {
+                // no textures found (unexpected)
                 // TODO: warning
                 return tile_data;
+            } else if (textures.some(function (t) {
+                return !t.loaded;
+            })) {
+                // some textures failed, throw out style for this tile
+                return null;
             }
 
             // Set texture uniforms (returned after loading from main thread)
@@ -38301,19 +38934,14 @@ var Style = exports.Style = {
             var u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
             var u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
 
-            textures.forEach(function (_ref3) {
-                var _ref4 = _slicedToArray(_ref3, 3),
-                    tname = _ref4[0],
-                    twidth = _ref4[1],
-                    theight = _ref4[2];
+            textures.forEach(function (t) {
+                var i = index[t.name];
+                var raster_coords = configs[t.name].coords; // tile coords of raster tile
 
-                var i = index[tname];
-                var raster_coords = configs[tname].coords; // tile coords of raster tile
+                u_samplers[i] = t.name;
+                tile_data.textures.push(t.name);
 
-                u_samplers[i] = tname;
-                tile_data.textures.push(tname);
-
-                u_sizes[i] = [twidth, theight];
+                u_sizes[i] = [t.width, t.height];
 
                 // Tile geometry may be at a higher zoom than the raster tile texture,
                 // (e.g. an overzoomed raster tile), in which case we need to adjust the
@@ -38349,7 +38977,7 @@ var Style = exports.Style = {
                 return t.retain();
             });
             return textures.map(function (t) {
-                return [t.name, t.width, t.height];
+                return { name: t.name, width: t.width, height: t.height, loaded: t.loaded };
             });
         });
     },
@@ -38376,6 +39004,7 @@ var Style = exports.Style = {
     // Render state settings by blend mode
     render_states: {
         opaque: { depth_test: true, depth_write: true },
+        translucent: { depth_test: true, depth_write: true },
         add: { depth_test: true, depth_write: false },
         multiply: { depth_test: true, depth_write: false },
         inlay: { depth_test: true, depth_write: false },
@@ -38388,7 +39017,8 @@ var Style = exports.Style = {
         add: 1,
         multiply: 2,
         inlay: 3,
-        overlay: 4
+        translucent: 4,
+        overlay: 5
     },
 
     // Comparison function for sorting styles by blend
@@ -38543,6 +39173,9 @@ var StyleManager = exports.StyleManager = function () {
 
             // Alpha discard threshold (substitute for alpha blending)
             _shader_program2.default.defines.TANGRAM_ALPHA_TEST = 0.5;
+
+            // Reset dash texture cache
+            _lines.Lines.dash_textures = {};
         }
 
         // Destroy all styles for a given GL context
@@ -38987,6 +39620,20 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var StyleParser = exports.StyleParser = {};
 
+// Helpers for string converstion / NaN handling
+var clampPositive = function clampPositive(v) {
+    return Math.max(v, 0);
+};
+var noNaN = function noNaN(v) {
+    return isNaN(v) ? 0 : v;
+};
+var parseNumber = function parseNumber(v) {
+    return Array.isArray(v) ? v.map(parseFloat).map(noNaN) : noNaN(parseFloat(v));
+};
+var parsePositiveNumber = function parsePositiveNumber(v) {
+    return Array.isArray(v) ? v.map(parseNumber).map(clampPositive) : clampPositive(parseNumber(v));
+};
+
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
 // - global: user-defined properties on the `global` object in the scene file
@@ -39055,6 +39702,13 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
 // Build a style param cache object
 // `value` is raw value, cache methods will add other properties as needed
 // `transform` is optional transform function to run on values (except function values)
+var CACHE_TYPE = {
+    STATIC: 0,
+    DYNAMIC: 1,
+    ZOOM: 2
+};
+StyleParser.CACHE_TYPE = CACHE_TYPE;
+
 StyleParser.createPropertyCache = function (obj) {
     var transform = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
 
@@ -39063,26 +39717,29 @@ StyleParser.createPropertyCache = function (obj) {
     }
 
     if (obj.value) {
-        return { value: obj.value, zoom: obj.zoom ? {} : null }; // clone existing cache object
+        return { value: obj.value, zoom: obj.zoom ? {} : null, type: obj.type }; // clone existing cache object
     }
 
-    var c = { value: obj };
+    var c = { value: obj, type: CACHE_TYPE.STATIC };
 
     // does value contain zoom stops to be interpolated?
     if (Array.isArray(c.value) && Array.isArray(c.value[0])) {
         c.zoom = {}; // will hold values interpolated by zoom
+        c.type = CACHE_TYPE.ZOOM;
+    } else if (typeof c.value === 'function') {
+        c.type = CACHE_TYPE.DYNAMIC;
     }
 
     // apply optional transform function
     if (typeof transform === 'function') {
         if (c.zoom) {
             // apply to each zoom stop value
-            c.value = c.value.map(function (v) {
-                return [v[0], transform(v[1])];
+            c.value = c.value.map(function (v, i) {
+                return [v[0], transform(v[1], i)];
             });
         } else if (typeof c.value !== 'function') {
             // don't transform functions
-            c.value = transform(c.value); // single value
+            c.value = transform(c.value, 0); // single value
         }
     }
 
@@ -39101,6 +39758,127 @@ StyleParser.createColorPropertyCache = function (obj) {
 
         return v;
     });
+};
+
+// Caching for point sizes, which include optional %-based or aspect-ratio-constrained scaling from sprite size
+// Returns a cache object if successful, or throws error message
+var isPercent = function isPercent(v) {
+    return typeof v === 'string' && v[v.length - 1] === '%';
+}; // size computed by %
+var isRatio = function isRatio(v) {
+    return v === 'auto';
+}; // size derived from aspect ratio of one dimension
+var isComputed = function isComputed(v) {
+    return isPercent(v) || isRatio(v);
+};
+var dualRatioError = '\'size\' can specify either width or height as derived from aspect ratio, but not both';
+StyleParser.createPointSizePropertyCache = function (obj) {
+    // mimics the structure of the size value (at each zoom stop if applicable),
+    // stores flags indicating if each element is a %-based size or not, or derived from aspect
+    var has_pct = null;
+    var has_ratio = null;
+    if (isPercent(obj)) {
+        // 1D size
+        has_pct = [true];
+    } else if (Array.isArray(obj)) {
+        // track which fields are % vals
+        if (Array.isArray(obj[0])) {
+            // zoom stops
+            // could be a 1D value (that could be a %), or a 2D value (either width or height or both could be a %)
+            if (obj.some(function (v) {
+                return Array.isArray(v[1]) ? v[1].some(function (w) {
+                    return isComputed(w);
+                }) : isPercent(v[1]);
+            })) {
+                has_pct = obj.map(function (v) {
+                    return Array.isArray(v[1]) ? v[1].map(function (w) {
+                        return isPercent(w);
+                    }) : isPercent(v[1]);
+                });
+                has_ratio = obj.map(function (v) {
+                    return Array.isArray(v[1]) && v[1].map(function (w) {
+                        return isRatio(w);
+                    });
+                });
+                if (has_ratio.some(function (v) {
+                    return Array.isArray(v) && v.every(function (c) {
+                        return c;
+                    });
+                })) {
+                    throw dualRatioError; // invalid case where both dims are ratios
+                }
+            }
+        } else if (obj.some(isComputed)) {
+            // 2D size
+            has_pct = [obj.map(isPercent)];
+            has_ratio = [obj.map(isRatio)];
+            if (has_ratio[0].every(function (c) {
+                return c;
+            })) {
+                throw dualRatioError; // invalid case where both dims are ratios
+            }
+        }
+    }
+
+    if (!has_pct) {
+        // no percentage-based calculation, one cache for all sprites
+        obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
+    } else {
+        // per-sprite based evaluation
+        obj = { value: obj };
+        obj.has_pct = has_pct;
+        obj.has_ratio = has_ratio;
+        obj.sprites = {}; // cache by sprite
+    }
+
+    return obj;
+};
+
+StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, context) {
+    // no percentage-based calculation, one cache for all sprites
+    if (!val.has_pct && !val.has_ratio) {
+        return StyleParser.evalCachedProperty(val, context);
+    }
+
+    // per-sprite based evaluation
+    if (!sprite_info) {
+        return; // trying to apply percentage or ratio sizing to a sprite
+    }
+
+    // cache sizes per sprite
+    if (!val.sprites[sprite_info.sprite]) {
+        val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, function (v, i) {
+            if (Array.isArray(v)) {
+                // 2D size
+                // either width or height or both could be a %
+                v = v.map(function (c, j) {
+                    return val.has_ratio[i][j] ? c : parsePositiveNumber(c);
+                }). // convert non-ratio values to px
+                map(function (c, j) {
+                    return val.has_pct[i][j] ? sprite_info.css_size[j] * c / 100 : c;
+                }); // apply % scaling as needed
+
+                // either width or height could be a ratio
+                if (val.has_ratio[i][0]) {
+                    v[0] = v[1] * sprite_info.aspect;
+                } else if (val.has_ratio[i][1]) {
+                    v[1] = v[0] / sprite_info.aspect;
+                }
+            } else {
+                // 1D size
+                v = parsePositiveNumber(v);
+                if (val.has_pct[i]) {
+                    v = sprite_info.css_size.map(function (c) {
+                        return c * v / 100;
+                    }); // set size as % of sprite
+                } else {
+                    v = [v, v]; // expand 1D size to 2D
+                }
+            }
+            return v;
+        });
+    }
+    return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
 };
 
 // Interpolation and caching for a generic property (not a color or distance)
@@ -39130,7 +39908,6 @@ StyleParser.evalCachedProperty = function (val, context) {
         else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
                 // Calculate value for current zoom
                 val.zoom = val.zoom || {};
-                val.zoom = {};
                 val.zoom[context.zoom] = _utils2.default.interpolate(context.zoom, val.value);
                 return val.zoom[context.zoom];
             }
@@ -39378,7 +40155,7 @@ StyleParser.evalProperty = function (prop, context) {
     return prop;
 };
 
-},{"../geo":201,"../utils/utils":269,"csscolorparser":71}],246:[function(_dereq_,module,exports){
+},{"../geo":201,"../utils/utils":269,"csscolorparser":76}],246:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40642,7 +41419,7 @@ var FontManager = {
 
 exports.default = FontManager;
 
-},{"../../utils/log":259,"../../utils/utils":269,"fontfaceobserver":74}],248:[function(_dereq_,module,exports){
+},{"../../utils/log":259,"../../utils/utils":269,"fontfaceobserver":79}],248:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40674,11 +41451,16 @@ var _constants = _dereq_('../../gl/constants');
 
 var _constants2 = _interopRequireDefault(_constants);
 
+var _vertex_layout = _dereq_('../../gl/vertex_layout');
+
+var _vertex_layout2 = _interopRequireDefault(_vertex_layout);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } // Text rendering style
 
 // web workers don't have access to GL context, so import all GL constants
+
 
 var TextStyle = exports.TextStyle = Object.create(_points.Points);
 
@@ -40690,23 +41472,20 @@ Object.assign(TextStyle, {
     init: function init() {
         var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-        var extra_attributes = [{ name: 'a_angles', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_offsets', size: 4, type: _constants2.default.UNSIGNED_SHORT, normalized: false }, { name: 'a_pre_angles', size: 4, type: _constants2.default.BYTE, normalized: false }];
+        _style.Style.init.call(this, options);
 
-        this.super.init.call(this, options, extra_attributes);
+        var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_shape', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true }, { name: 'a_offset', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }, { name: 'a_angles', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_offsets', size: 4, type: _constants2.default.UNSIGNED_SHORT, normalized: false }, { name: 'a_pre_angles', size: 4, type: _constants2.default.BYTE, normalized: false }, { name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
 
-        // Set texture/point config (override parent Point class)
-        this.defines.TANGRAM_SHADER_POINT = false; // standalone text never draws a shader point
+        this.vertex_layout = new _vertex_layout2.default(attribs);
+
+        // Shader defines
+        this.setupDefines();
+
+        // Omit some code for SDF-drawn shader points
+        this.defines.TANGRAM_HAS_SHADER_POINTS = false;
 
         // Indicate vertex shader should apply zoom-interpolated offsets and angles for curved labels
         this.defines.TANGRAM_CURVED_LABEL = true;
-
-        // Fade out text when tile is zooming out, e.g. acting as proxy tiles
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
-
-        // Used to fade out curved labels
-        this.defines.TANGRAM_FADE_ON_ZOOM_IN = true;
-        this.defines.TANGRAM_FADE_ON_ZOOM_IN_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
 
         this.reset();
     },
@@ -40716,12 +41495,13 @@ Object.assign(TextStyle, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate: function makeVertexTemplate(style) {
-        this.super.makeVertexTemplate.call(this, style);
+    makeVertexTemplate: function makeVertexTemplate(style, mesh) {
+        this.super.makeVertexTemplate.apply(this, arguments);
+        var vertex_layout = mesh.vertex_data.vertex_layout;
 
-        this.fillVertexTemplate('a_pre_angles', 0, { size: 4 });
-        this.fillVertexTemplate('a_offsets', 0, { size: 4 });
-        this.fillVertexTemplate('a_angles', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_pre_angles', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_offsets', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_angles', 0, { size: 4 });
 
         return this.vertex_template;
     },
@@ -40943,12 +41723,18 @@ Object.assign(TextStyle, {
             }
         }
         return labels;
-    }
+    },
+
+
+    // Override to restore base class default implementations
+    vertexLayoutForMeshVariant: _style.Style.vertexLayoutForMeshVariant,
+    meshVariantTypeForDraw: _style.Style.meshVariantTypeForDraw
+
 });
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures
 
-},{"../../geo":201,"../../gl/constants":202,"../../labels/collision":214,"../../labels/label_line":217,"../../labels/label_point":218,"../points/points":240,"../style":243}],249:[function(_dereq_,module,exports){
+},{"../../geo":201,"../../gl/constants":202,"../../gl/vertex_layout":213,"../../labels/collision":214,"../../labels/label_line":217,"../../labels/label_point":218,"../points/points":240,"../style":243}],249:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41277,12 +42063,18 @@ var TextLabels = exports.TextLabels = {
 
         // Offset (2d array)
         draw.offset = _style_parser.StyleParser.createPropertyCache(draw.offset, function (v) {
-            return Array.isArray(v) && v.map(parseFloat) || 0;
+            return Array.isArray(v) && v.map(parseFloat).map(function (v) {
+                return isNaN(v) ? 0 : v;
+            }) || [0, 0];
         });
 
-        // Buffer (1d value or or 2d array)
+        // Buffer (1d value or or 2d array) - must be >= 0
         draw.buffer = _style_parser.StyleParser.createPropertyCache(draw.buffer, function (v) {
-            return (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0;
+            return (Array.isArray(v) ? v : [v, v]).map(function (v) {
+                return Math.max(parseFloat(v), 0);
+            }).map(function (v) {
+                return isNaN(v) ? 0 : v;
+            }) || [0, 0];
         });
 
         // Repeat rules - for text labels, defaults to tile size
@@ -41694,11 +42486,22 @@ var Tile = function () {
                             mesh_options.variant = mesh_variant.variant;
 
                             var mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
+                            mesh.variant = mesh_options.variant;
                             meshes[s] = meshes[s] || [];
                             meshes[s].push(mesh);
                             this.debug.buffer_size += mesh.buffer_size;
                             this.debug.geometry_count += mesh.geometry_count;
                         }
+                    }
+
+                    // Sort mesh variants by explicit render order (if present)
+                    if (meshes[s]) {
+                        meshes[s].sort(function (a, b) {
+                            // Sort variant order ascending if present, then all null values (where order is unspecified)
+                            var ao = a.variant.order,
+                                bo = b.variant.order;
+                            return ao == null ? 1 : bo == null ? -1 : ao < bo ? -1 : 1;
+                        });
                     }
 
                     // Assign texture ownership to tiles
@@ -43133,7 +43936,7 @@ exports.vec3 = vec3;
 exports.mat3 = mat3;
 exports.mat4 = mat4;
 
-},{"gl-mat3/invert":83,"gl-mat3/normal-from-mat4":84,"gl-mat4/copy":85,"gl-mat4/identity":86,"gl-mat4/lookAt":87,"gl-mat4/multiply":88,"gl-mat4/perspective":89,"gl-mat4/scale":90,"gl-mat4/translate":91}],258:[function(_dereq_,module,exports){
+},{"gl-mat3/invert":88,"gl-mat3/normal-from-mat4":89,"gl-mat4/copy":90,"gl-mat4/identity":91,"gl-mat4/lookAt":92,"gl-mat4/multiply":93,"gl-mat4/perspective":94,"gl-mat4/scale":95,"gl-mat4/translate":96}],258:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -43725,7 +44528,7 @@ if (perf && typeof perf.now !== 'function') {
     };
 }
 
-},{"core-js/es6/promise":6}],264:[function(_dereq_,module,exports){
+},{"core-js/es6/promise":11}],264:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -44499,7 +45302,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.13.5\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\",\n    \"vector-tile\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.14.0\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"$(npm bin)/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"$(npm bin)/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ './build/quine.js' 'tangram.debug.js.map' ] -p [ mapstraction 'dist/tangram.debug.js.map' ] -o dist/tangram.debug.js\",\n    \"build-minify\": \"$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ './build/quine.js' 'tangram.debug.temp.js.map' ] -p [ mapstraction 'dist/tangram.debug.temp.js.map' ]\"\n  },\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
@@ -45087,7 +45890,7 @@ var Vector;
 exports.default = Vector = {};
 
 
-Vector.set = function (v) {
+Vector.copy = function (v) {
     var V = [];
     var lim = v.length;
     for (var i = 0; i < lim; i++) {
@@ -45195,7 +45998,7 @@ Vector.angle = function (_ref) {
 
 // Get angle between two vectors
 Vector.angleBetween = function (A, B) {
-    var delta = Vector.dot(Vector.normalize(A), Vector.normalize(B));
+    var delta = Vector.dot(Vector.normalize(Vector.copy(A)), Vector.normalize(Vector.copy(B)));
     if (delta > 1) {
         delta = 1;
     } // protect against floating point error
@@ -45228,7 +46031,7 @@ Vector.length = function (v) {
     return Math.sqrt(Vector.lengthSq(v));
 };
 
-// Normalize a vector
+// Normalize a vector *in place* (use Vector.copy() if you need a new vector instance)
 Vector.normalize = function (v) {
     var d;
     if (v.length === 2) {
@@ -45241,9 +46044,11 @@ Vector.normalize = function (v) {
         d = Math.sqrt(d);
 
         if (d !== 0) {
-            return [v[0] / d, v[1] / d];
+            v[0] /= d;
+            v[1] /= d;
+        } else {
+            v[0] = 0, v[1] = 0;
         }
-        return [0, 0];
     } else if (v.length >= 3) {
         d = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
 
@@ -45254,10 +46059,14 @@ Vector.normalize = function (v) {
         d = Math.sqrt(d);
 
         if (d !== 0) {
-            return [v[0] / d, v[1] / d, v[2] / d];
+            v[0] /= d;
+            v[1] /= d;
+            v[2] /= d;
+        } else {
+            v[0] = 0, v[1] = 0, v[2] = 0;
         }
     }
-    return [0, 0, 0];
+    return v;
 };
 
 // Cross product of two vectors
@@ -45405,11 +46214,15 @@ var View = function () {
         key: 'setActiveCamera',
         value: function setActiveCamera(name) {
             var prev = this.getActiveCamera();
+            if (prev === name) {
+                return name;
+            }
+
             if (this.scene.config.cameras[name]) {
                 this.scene.config.cameras[name].active = true;
 
                 // Clear previously active camera
-                if (prev && prev !== name && this.scene.config.cameras[prev]) {
+                if (prev && this.scene.config.cameras[prev]) {
                     delete this.scene.config.cameras[prev].active;
                 }
             }
