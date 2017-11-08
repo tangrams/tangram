@@ -27,7 +27,7 @@ const angles_normalize = 16384 / Math.PI;
 const offsets_normalize = 64;
 const texcoord_normalize = 65535;
 
-export var Points = Object.create(Style);
+export const Points = Object.create(Style);
 
 Points.variants = {}; // mesh variants by variant key
 

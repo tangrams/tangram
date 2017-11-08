@@ -1,5 +1,6 @@
 // Line rendering style
 
+import log from '../../utils/log';
 import {Style} from '../style';
 import StyleParser from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
@@ -12,7 +13,7 @@ import WorkerBroker from '../../utils/worker_broker';
 import hashString from '../../utils/hash';
 import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
-export var Lines = Object.create(Style);
+export const Lines = Object.create(Style);
 
 Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
 Lines.variants = {}; // mesh variants by variant key
@@ -303,31 +304,39 @@ Object.assign(Lines, {
 
             // outline inhertits dash pattern, but NOT explicit texture
             let outline_style = this.styles[draw.outline.style];
-            draw.outline.dash = (draw.outline.dash !== undefined ? draw.outline.dash : outline_style.dash);
-            draw.outline.texture = (draw.outline.texture !== undefined ? draw.outline.texture : outline_style.texture);
+            if (outline_style) {
+                draw.outline.dash = (draw.outline.dash !== undefined ? draw.outline.dash : outline_style.dash);
+                draw.outline.texture = (draw.outline.texture !== undefined ? draw.outline.texture : outline_style.texture);
 
-            if (draw.outline.dash != null) {            // dash was defined by outline draw or style
-                draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
-                draw.outline.texture_merged = draw.outline.dash_key;
+                if (draw.outline.dash != null) {            // dash was defined by outline draw or style
+                    draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
+                    draw.outline.texture_merged = draw.outline.dash_key;
+                }
+                else if (draw.outline.dash === null) {      // dash explicitly disabled by outline draw or style
+                    draw.outline.dash_key = null;
+                    draw.outline.texture_merged = draw.outline.texture;
+                }
+                else if (draw.outline.texture != null) {    // texture was defined by outline draw or style
+                    draw.outline.dash_key = null; // outline explicitly turning off dash
+                    draw.outline.texture_merged = draw.outline.texture;
+                }
+                else {                                      // no dash or texture defined for outline, inherit parent dash
+                    draw.outline.dash = draw.dash;
+                    draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
+                    draw.outline.texture_merged = draw.outline.dash_key;
+                }
+                draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : outline_style.dash_background_color);
+                draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color);
+                draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
+                draw.outline.texcoords = ((outline_style.texcoords || draw.outline.texture_merged) ? 1 : 0);
+                this.computeVariant(draw.outline);
             }
-            else if (draw.outline.dash === null) {      // dash explicitly disabled by outline draw or style
-                draw.outline.dash_key = null;
-                draw.outline.texture_merged = draw.outline.texture;
+            else {
+                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+                    `line 'outline' specifies non-existent draw style '${draw.outline.style}' (or maybe the style is ` +
+                    `defined but is missing a 'base' or has another error), skipping outlines in layer`);
+                draw.outline = null;
             }
-            else if (draw.outline.texture != null) {    // texture was defined by outline draw or style
-                draw.outline.dash_key = null; // outline explicitly turning off dash
-                draw.outline.texture_merged = draw.outline.texture;
-            }
-            else {                                      // no dash or texture defined for outline, inherit parent dash
-                draw.outline.dash = draw.dash;
-                draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
-                draw.outline.texture_merged = draw.outline.dash_key;
-            }
-            draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : outline_style.dash_background_color);
-            draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color);
-            draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
-            draw.outline.texcoords = ((outline_style.texcoords || draw.outline.texture_merged) ? 1 : 0);
-            this.computeVariant(draw.outline);
         }
         return draw;
     },
