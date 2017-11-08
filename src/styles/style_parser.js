@@ -11,6 +11,8 @@ const noNaN = v => isNaN(v) ? 0 : v;
 const parseNumber = v => Array.isArray(v) ? v.map(parseFloat).map(noNaN) : noNaN(parseFloat(v));
 const parsePositiveNumber = v => Array.isArray(v) ? v.map(parseNumber).map(clampPositive) : clampPositive(parseNumber(v));
 
+Object.assign(StyleParser, {clampPositive, noNaN, parseNumber, parsePositiveNumber});
+
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
 // - global: user-defined properties on the `global` object in the scene file
@@ -293,11 +295,11 @@ StyleParser.convertUnits = function(val, context) {
     // un-parsed unit string
     else if (typeof val === 'string') {
         if (val.trim().slice(-2) === 'px') {
-            val = parseFloat(val);
+            val = parseNumber(val);
             val *= Geo.metersPerPixel(context.zoom); // convert from pixels
         }
         else {
-            val = parseFloat(val);
+            val = parseNumber(val);
         }
     }
     // multiple values or stops
@@ -316,7 +318,7 @@ StyleParser.convertUnits = function(val, context) {
 
 // Pre-parse units from string values
 StyleParser.parseUnits = function (val) {
-    var obj = { val: parseFloat(val) };
+    var obj = { val: parseNumber(val) };
     if (obj.val !== 0 && typeof val === 'string' && val.trim().slice(-2) === 'px') {
         obj.units = 'px';
     }
@@ -500,7 +502,7 @@ StyleParser.calculateOrder = function(order, context) {
         }
         // Explicit order value
         else {
-            order = parseFloat(order);
+            order = parsePositiveNumber(order);
         }
     }
 

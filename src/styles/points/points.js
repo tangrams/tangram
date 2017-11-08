@@ -388,7 +388,7 @@ Object.assign(Points, {
 
         if (draw.outline) {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
-            draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
+            draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parsePositiveNumber);
         }
 
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
@@ -405,16 +405,16 @@ Object.assign(Points, {
 
         // Offset (2d array)
         draw.offset = StyleParser.createPropertyCache(draw.offset,
-            v => (Array.isArray(v) && v.map(parseFloat).map(v => isNaN(v) ? 0 : v)) || [0, 0]
+            v => Array.isArray(v) && v.map(StyleParser.parseNumber)
         );
 
         // Buffer (1d value or or 2d array) - must be >= 0
         draw.buffer = StyleParser.createPropertyCache(draw.buffer,
-            v => (Array.isArray(v) ? v : [v, v]).map(v => Math.max(parseFloat(v), 0)).map(v => isNaN(v) ? 0 : v) || [0, 0]
+            v => (Array.isArray(v) ? v : [v, v]).map(StyleParser.parsePositiveNumber)
         );
 
         // Repeat rules - no repeat limitation for points by default
-        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
+        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, StyleParser.parseNumber);
 
         // Placement strategies
         draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
@@ -423,10 +423,10 @@ Object.assign(Points, {
         }
 
         draw.placement_spacing = draw.placement_spacing != null ? draw.placement_spacing : 80; // default spacing
-        draw.placement_spacing = StyleParser.createPropertyCache(draw.placement_spacing, parseFloat);
+        draw.placement_spacing = StyleParser.createPropertyCache(draw.placement_spacing, StyleParser.parsePositiveNumber);
 
         draw.placement_min_length_ratio = draw.placement_min_length_ratio != null ? draw.placement_min_length_ratio : 1;
-        draw.placement_min_length_ratio = StyleParser.createPropertyCache(draw.placement_min_length_ratio, parseFloat);
+        draw.placement_min_length_ratio = StyleParser.createPropertyCache(draw.placement_min_length_ratio, StyleParser.parsePositiveNumber);
 
         if (typeof draw.angle === 'number') {
             draw.angle = draw.angle * Math.PI / 180;
