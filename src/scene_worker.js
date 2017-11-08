@@ -8,7 +8,7 @@ import Tile from './tile';
 import Geo from './geo';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
-import {StyleParser} from './styles/style_parser';
+import StyleParser from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
 import {parseLayers, FilterOptions} from './styles/layer';
 import {buildFilter} from './styles/filter';

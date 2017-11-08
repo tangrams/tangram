@@ -1,6 +1,6 @@
 // Rendering styles
 
-import {StyleParser} from './style_parser';
+import StyleParser from './style_parser';
 import FeatureSelection from '../selection';
 import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';

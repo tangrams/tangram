@@ -1,7 +1,7 @@
 // Line rendering style
 
 import {Style} from '../style';
-import {StyleParser} from '../style_parser';
+import StyleParser from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import Texture from '../../gl/texture';
 import VertexLayout from '../../gl/vertex_layout';

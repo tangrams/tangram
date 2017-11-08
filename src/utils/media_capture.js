@@ -1,7 +1,7 @@
 /* global MediaRecorder, ImageData */
 import log from './log';
 import {createObjectURL} from './urls';
-import {StyleParser} from '../styles/style_parser';
+import StyleParser from '../styles/style_parser';
 
 export default class MediaCapture {
 

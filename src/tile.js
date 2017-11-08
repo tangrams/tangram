@@ -3,7 +3,7 @@ import Utils from './utils/utils';
 import mergeObjects from './utils/merge';
 import Geo from './geo';
 import {addLayerDebugEntry} from './styles/style';
-import {StyleParser} from './styles/style_parser';
+import StyleParser from './styles/style_parser';
 import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Task from './utils/task';

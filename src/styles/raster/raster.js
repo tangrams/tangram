@@ -1,6 +1,6 @@
 // Raster tile rendering style
 
-import {StyleParser} from '../style_parser';
+import StyleParser from '../style_parser';
 import {Polygons} from '../polygons/polygons';
 
 export let RasterStyle = Object.create(Polygons);

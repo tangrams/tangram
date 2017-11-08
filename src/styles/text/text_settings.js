@@ -1,6 +1,6 @@
 import Utils from '../../utils/utils';
 import Geo from '../../geo';
-import {StyleParser} from '../style_parser';
+import StyleParser from '../style_parser';
 
 var TextSettings;
 

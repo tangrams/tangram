@@ -30,7 +30,7 @@ import Light from './light';
 import WorkerBroker from './utils/worker_broker';
 import {layerCache} from './styles/layer';
 import {StyleManager} from './styles/style_manager';
-import {StyleParser} from './styles/style_parser';
+import StyleParser from './styles/style_parser';
 import Collision from './labels/collision';
 import FeatureSelection from './selection';
 import CanvasText from './styles/text/canvas_text';

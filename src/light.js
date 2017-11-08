@@ -2,7 +2,7 @@ import ShaderProgram from './gl/shader_program';
 import GLSL from './gl/glsl';
 import Geo from './geo';
 import Vector from './vector';
-import {StyleParser} from './styles/style_parser';
+import StyleParser from './styles/style_parser';
 
 let fs = require('fs');
 

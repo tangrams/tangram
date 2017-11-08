@@ -1,4 +1,4 @@
-import {StyleParser} from './style_parser';
+import StyleParser from './style_parser';
 import Utils from '../utils/utils';
 import log from '../utils/log';
 import mergeObjects from '../utils/merge';

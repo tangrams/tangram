@@ -2,7 +2,7 @@ import Label from './label';
 import PointAnchor from './point_anchor';
 import Geo from '../geo';
 import OBB from '../utils/obb';
-import {StyleParser} from '../styles/style_parser';
+import StyleParser from '../styles/style_parser';
 
 export default class LabelPoint extends Label {
 

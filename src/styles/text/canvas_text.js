@@ -3,7 +3,7 @@ import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
 import FontManager from './font_manager';
 import Task from '../../utils/task';
-import {StyleParser} from '../style_parser';
+import StyleParser from '../style_parser';
 import debugSettings from '../../utils/debug_settings';
 
 export default class CanvasText {

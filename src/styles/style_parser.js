@@ -3,7 +3,8 @@ import Geo from '../geo';
 
 import parseCSSColor from 'csscolorparser';
 
-export const StyleParser = {};
+const StyleParser = {};
+export default StyleParser;
 
 // Helpers for string converstion / NaN handling
 const clampPositive = v => Math.max(v, 0);

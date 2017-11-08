@@ -1,5 +1,5 @@
 import GLSL from './gl/glsl';
-import {StyleParser} from './styles/style_parser';
+import StyleParser from './styles/style_parser';
 
 let fs = require('fs');
 const shaderSrc_material = fs.readFileSync(__dirname + '/gl/shaders/material.glsl', 'utf8');
