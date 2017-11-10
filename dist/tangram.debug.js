@@ -10318,7 +10318,7 @@ NodejsStreamOutputAdapter.prototype._read = function() {
 
 module.exports = NodejsStreamOutputAdapter;
 
-},{"readable-stream":168,"util":195}],142:[function(_dereq_,module,exports){
+},{"readable-stream":168,"util":194}],142:[function(_dereq_,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -13269,7 +13269,7 @@ function forEach(xs, f) {
     f(xs[i], i);
   }
 }
-},{"./_stream_readable":165,"./_stream_writable":167,"core-util-is":75,"inherits":99,"process-nextick-args":188}],164:[function(_dereq_,module,exports){
+},{"./_stream_readable":165,"./_stream_writable":167,"core-util-is":75,"inherits":99,"process-nextick-args":187}],164:[function(_dereq_,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -14180,7 +14180,7 @@ function indexOf(xs, x) {
 }
 }).call(this,_dereq_('_process'))
 
-},{"./_stream_duplex":163,"_process":189,"buffer":10,"core-util-is":75,"events":78,"inherits":99,"isarray":101,"process-nextick-args":188,"string_decoder/":169,"util":9}],166:[function(_dereq_,module,exports){
+},{"./_stream_duplex":163,"_process":188,"buffer":10,"core-util-is":75,"events":78,"inherits":99,"isarray":101,"process-nextick-args":187,"string_decoder/":169,"util":9}],166:[function(_dereq_,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -14881,7 +14881,7 @@ function CorkedRequest(state) {
 }
 }).call(this,_dereq_('_process'))
 
-},{"./_stream_duplex":163,"_process":189,"buffer":10,"core-util-is":75,"events":78,"inherits":99,"process-nextick-args":188,"util-deprecate":192}],168:[function(_dereq_,module,exports){
+},{"./_stream_duplex":163,"_process":188,"buffer":10,"core-util-is":75,"events":78,"inherits":99,"process-nextick-args":187,"util-deprecate":191}],168:[function(_dereq_,module,exports){
 var Stream = (function (){
   try {
     return _dereq_('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
@@ -21928,175 +21928,14 @@ module.exports = ZStream;
 },{}],186:[function(_dereq_,module,exports){
 'use strict';
 
-// lightweight Buffer shim for pbf browser build
-// based on code from github.com/feross/buffer (MIT-licensed)
-
-module.exports = Buffer;
+module.exports = Pbf;
 
 var ieee754 = _dereq_('ieee754');
 
-var BufferMethods;
-
-function Buffer(length) {
-    var arr;
-    if (length && length.length) {
-        arr = length;
-        length = arr.length;
-    }
-    var buf = new Uint8Array(length || 0);
-    if (arr) buf.set(arr);
-
-    buf.readUInt32LE = BufferMethods.readUInt32LE;
-    buf.writeUInt32LE = BufferMethods.writeUInt32LE;
-    buf.readInt32LE = BufferMethods.readInt32LE;
-    buf.writeInt32LE = BufferMethods.writeInt32LE;
-    buf.readFloatLE = BufferMethods.readFloatLE;
-    buf.writeFloatLE = BufferMethods.writeFloatLE;
-    buf.readDoubleLE = BufferMethods.readDoubleLE;
-    buf.writeDoubleLE = BufferMethods.writeDoubleLE;
-    buf.toString = BufferMethods.toString;
-    buf.write = BufferMethods.write;
-    buf.slice = BufferMethods.slice;
-    buf.copy = BufferMethods.copy;
-
-    buf._isBuffer = true;
-    return buf;
-}
-
-var lastStr, lastStrEncoded;
-
-BufferMethods = {
-    readUInt32LE: function(pos) {
-        return ((this[pos]) |
-            (this[pos + 1] << 8) |
-            (this[pos + 2] << 16)) +
-            (this[pos + 3] * 0x1000000);
-    },
-
-    writeUInt32LE: function(val, pos) {
-        this[pos] = val;
-        this[pos + 1] = (val >>> 8);
-        this[pos + 2] = (val >>> 16);
-        this[pos + 3] = (val >>> 24);
-    },
-
-    readInt32LE: function(pos) {
-        return ((this[pos]) |
-            (this[pos + 1] << 8) |
-            (this[pos + 2] << 16)) +
-            (this[pos + 3] << 24);
-    },
-
-    readFloatLE:  function(pos) { return ieee754.read(this, pos, true, 23, 4); },
-    readDoubleLE: function(pos) { return ieee754.read(this, pos, true, 52, 8); },
-
-    writeFloatLE:  function(val, pos) { return ieee754.write(this, val, pos, true, 23, 4); },
-    writeDoubleLE: function(val, pos) { return ieee754.write(this, val, pos, true, 52, 8); },
-
-    toString: function(encoding, start, end) {
-        var str = '',
-            tmp = '';
-
-        start = start || 0;
-        end = Math.min(this.length, end || this.length);
-
-        for (var i = start; i < end; i++) {
-            var ch = this[i];
-            if (ch <= 0x7F) {
-                str += decodeURIComponent(tmp) + String.fromCharCode(ch);
-                tmp = '';
-            } else {
-                tmp += '%' + ch.toString(16);
-            }
-        }
-
-        str += decodeURIComponent(tmp);
-
-        return str;
-    },
-
-    write: function(str, pos) {
-        var bytes = str === lastStr ? lastStrEncoded : encodeString(str);
-        for (var i = 0; i < bytes.length; i++) {
-            this[pos + i] = bytes[i];
-        }
-    },
-
-    slice: function(start, end) {
-        return this.subarray(start, end);
-    },
-
-    copy: function(buf, pos) {
-        pos = pos || 0;
-        for (var i = 0; i < this.length; i++) {
-            buf[pos + i] = this[i];
-        }
-    }
-};
-
-BufferMethods.writeInt32LE = BufferMethods.writeUInt32LE;
-
-Buffer.byteLength = function(str) {
-    lastStr = str;
-    lastStrEncoded = encodeString(str);
-    return lastStrEncoded.length;
-};
-
-Buffer.isBuffer = function(buf) {
-    return !!(buf && buf._isBuffer);
-};
-
-function encodeString(str) {
-    var length = str.length,
-        bytes = [];
-
-    for (var i = 0, c, lead; i < length; i++) {
-        c = str.charCodeAt(i); // code point
-
-        if (c > 0xD7FF && c < 0xE000) {
-
-            if (lead) {
-                if (c < 0xDC00) {
-                    bytes.push(0xEF, 0xBF, 0xBD);
-                    lead = c;
-                    continue;
-
-                } else {
-                    c = lead - 0xD800 << 10 | c - 0xDC00 | 0x10000;
-                    lead = null;
-                }
-
-            } else {
-                if (c > 0xDBFF || (i + 1 === length)) bytes.push(0xEF, 0xBF, 0xBD);
-                else lead = c;
-
-                continue;
-            }
-
-        } else if (lead) {
-            bytes.push(0xEF, 0xBF, 0xBD);
-            lead = null;
-        }
-
-        if (c < 0x80) bytes.push(c);
-        else if (c < 0x800) bytes.push(c >> 0x6 | 0xC0, c & 0x3F | 0x80);
-        else if (c < 0x10000) bytes.push(c >> 0xC | 0xE0, c >> 0x6 & 0x3F | 0x80, c & 0x3F | 0x80);
-        else bytes.push(c >> 0x12 | 0xF0, c >> 0xC & 0x3F | 0x80, c >> 0x6 & 0x3F | 0x80, c & 0x3F | 0x80);
-    }
-    return bytes;
-}
-
-},{"ieee754":98}],187:[function(_dereq_,module,exports){
-(function (global){
-'use strict';
-
-module.exports = Pbf;
-
-var Buffer = global.Buffer || _dereq_('./buffer');
-
 function Pbf(buf) {
-    this.buf = !Buffer.isBuffer(buf) ? new Buffer(buf || 0) : buf;
+    this.buf = ArrayBuffer.isView && ArrayBuffer.isView(buf) ? buf : new Uint8Array(buf || 0);
     this.pos = 0;
+    this.type = 0;
     this.length = this.buf.length;
 }
 
@@ -22106,8 +21945,7 @@ Pbf.Bytes   = 2; // length-delimited: string, bytes, embedded messages, packed r
 Pbf.Fixed32 = 5; // 32-bit: float, fixed32, sfixed32
 
 var SHIFT_LEFT_32 = (1 << 16) * (1 << 16),
-    SHIFT_RIGHT_32 = 1 / SHIFT_LEFT_32,
-    POW_2_63 = Math.pow(2, 63);
+    SHIFT_RIGHT_32 = 1 / SHIFT_LEFT_32;
 
 Pbf.prototype = {
 
@@ -22125,6 +21963,7 @@ Pbf.prototype = {
                 tag = val >> 3,
                 startPos = this.pos;
 
+            this.type = val & 0x7;
             readField(tag, result, this);
 
             if (this.pos === startPos) this.skip(val);
@@ -22137,13 +21976,13 @@ Pbf.prototype = {
     },
 
     readFixed32: function() {
-        var val = this.buf.readUInt32LE(this.pos);
+        var val = readUInt32(this.buf, this.pos);
         this.pos += 4;
         return val;
     },
 
     readSFixed32: function() {
-        var val = this.buf.readInt32LE(this.pos);
+        var val = readInt32(this.buf, this.pos);
         this.pos += 4;
         return val;
     },
@@ -22151,30 +21990,30 @@ Pbf.prototype = {
     // 64-bit int handling is based on github.com/dpw/node-buffer-more-ints (MIT-licensed)
 
     readFixed64: function() {
-        var val = this.buf.readUInt32LE(this.pos) + this.buf.readUInt32LE(this.pos + 4) * SHIFT_LEFT_32;
+        var val = readUInt32(this.buf, this.pos) + readUInt32(this.buf, this.pos + 4) * SHIFT_LEFT_32;
         this.pos += 8;
         return val;
     },
 
     readSFixed64: function() {
-        var val = this.buf.readUInt32LE(this.pos) + this.buf.readInt32LE(this.pos + 4) * SHIFT_LEFT_32;
+        var val = readUInt32(this.buf, this.pos) + readInt32(this.buf, this.pos + 4) * SHIFT_LEFT_32;
         this.pos += 8;
         return val;
     },
 
     readFloat: function() {
-        var val = this.buf.readFloatLE(this.pos);
+        var val = ieee754.read(this.buf, this.pos, true, 23, 4);
         this.pos += 4;
         return val;
     },
 
     readDouble: function() {
-        var val = this.buf.readDoubleLE(this.pos);
+        var val = ieee754.read(this.buf, this.pos, true, 52, 8);
         this.pos += 8;
         return val;
     },
 
-    readVarint: function() {
+    readVarint: function(isSigned) {
         var buf = this.buf,
             val, b;
 
@@ -22182,27 +22021,13 @@ Pbf.prototype = {
         b = buf[this.pos++]; val |= (b & 0x7f) << 7;  if (b < 0x80) return val;
         b = buf[this.pos++]; val |= (b & 0x7f) << 14; if (b < 0x80) return val;
         b = buf[this.pos++]; val |= (b & 0x7f) << 21; if (b < 0x80) return val;
+        b = buf[this.pos];   val |= (b & 0x0f) << 28;
 
-        return readVarintRemainder(val, this);
+        return readVarintRemainder(val, isSigned, this);
     },
 
-    readVarint64: function() {
-        var startPos = this.pos,
-            val = this.readVarint();
-
-        if (val < POW_2_63) return val;
-
-        var pos = this.pos - 2;
-        while (this.buf[pos] === 0xff) pos--;
-        if (pos < startPos) pos = startPos;
-
-        val = 0;
-        for (var i = 0; i < pos - startPos + 1; i++) {
-            var b = ~this.buf[startPos + i] & 0x7f;
-            val += i < 4 ? b << i * 7 : b * Math.pow(2, i * 7);
-        }
-
-        return -val - 1;
+    readVarint64: function() { // for compatibility with v2.0.1
+        return this.readVarint(true);
     },
 
     readSVarint: function() {
@@ -22216,62 +22041,71 @@ Pbf.prototype = {
 
     readString: function() {
         var end = this.readVarint() + this.pos,
-            str = this.buf.toString('utf8', this.pos, end);
+            str = readUtf8(this.buf, this.pos, end);
         this.pos = end;
         return str;
     },
 
     readBytes: function() {
         var end = this.readVarint() + this.pos,
-            buffer = this.buf.slice(this.pos, end);
+            buffer = this.buf.subarray(this.pos, end);
         this.pos = end;
         return buffer;
     },
 
     // verbose for performance reasons; doesn't affect gzipped size
 
-    readPackedVarint: function() {
-        var end = this.readVarint() + this.pos, arr = [];
-        while (this.pos < end) arr.push(this.readVarint());
+    readPackedVarint: function(arr, isSigned) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
+        while (this.pos < end) arr.push(this.readVarint(isSigned));
         return arr;
     },
-    readPackedSVarint: function() {
-        var end = this.readVarint() + this.pos, arr = [];
+    readPackedSVarint: function(arr) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
         while (this.pos < end) arr.push(this.readSVarint());
         return arr;
     },
-    readPackedBoolean: function() {
-        var end = this.readVarint() + this.pos, arr = [];
+    readPackedBoolean: function(arr) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
         while (this.pos < end) arr.push(this.readBoolean());
         return arr;
     },
-    readPackedFloat: function() {
-        var end = this.readVarint() + this.pos, arr = [];
+    readPackedFloat: function(arr) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
         while (this.pos < end) arr.push(this.readFloat());
         return arr;
     },
-    readPackedDouble: function() {
-        var end = this.readVarint() + this.pos, arr = [];
+    readPackedDouble: function(arr) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
         while (this.pos < end) arr.push(this.readDouble());
         return arr;
     },
-    readPackedFixed32: function() {
-        var end = this.readVarint() + this.pos, arr = [];
+    readPackedFixed32: function(arr) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
         while (this.pos < end) arr.push(this.readFixed32());
         return arr;
     },
-    readPackedSFixed32: function() {
-        var end = this.readVarint() + this.pos, arr = [];
+    readPackedSFixed32: function(arr) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
         while (this.pos < end) arr.push(this.readSFixed32());
         return arr;
     },
-    readPackedFixed64: function() {
-        var end = this.readVarint() + this.pos, arr = [];
+    readPackedFixed64: function(arr) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
         while (this.pos < end) arr.push(this.readFixed64());
         return arr;
     },
-    readPackedSFixed64: function() {
-        var end = this.readVarint() + this.pos, arr = [];
+    readPackedSFixed64: function(arr) {
+        var end = readPackedEnd(this);
+        arr = arr || [];
         while (this.pos < end) arr.push(this.readSFixed64());
         return arr;
     },
@@ -22297,8 +22131,8 @@ Pbf.prototype = {
         while (length < this.pos + min) length *= 2;
 
         if (length !== this.length) {
-            var buf = new Buffer(length);
-            this.buf.copy(buf);
+            var buf = new Uint8Array(length);
+            buf.set(this.buf);
             this.buf = buf;
             this.length = length;
         }
@@ -22307,39 +22141,39 @@ Pbf.prototype = {
     finish: function() {
         this.length = this.pos;
         this.pos = 0;
-        return this.buf.slice(0, this.length);
+        return this.buf.subarray(0, this.length);
     },
 
     writeFixed32: function(val) {
         this.realloc(4);
-        this.buf.writeUInt32LE(val, this.pos);
+        writeInt32(this.buf, val, this.pos);
         this.pos += 4;
     },
 
     writeSFixed32: function(val) {
         this.realloc(4);
-        this.buf.writeInt32LE(val, this.pos);
+        writeInt32(this.buf, val, this.pos);
         this.pos += 4;
     },
 
     writeFixed64: function(val) {
         this.realloc(8);
-        this.buf.writeInt32LE(val & -1, this.pos);
-        this.buf.writeUInt32LE(Math.floor(val * SHIFT_RIGHT_32), this.pos + 4);
+        writeInt32(this.buf, val & -1, this.pos);
+        writeInt32(this.buf, Math.floor(val * SHIFT_RIGHT_32), this.pos + 4);
         this.pos += 8;
     },
 
     writeSFixed64: function(val) {
         this.realloc(8);
-        this.buf.writeInt32LE(val & -1, this.pos);
-        this.buf.writeInt32LE(Math.floor(val * SHIFT_RIGHT_32), this.pos + 4);
+        writeInt32(this.buf, val & -1, this.pos);
+        writeInt32(this.buf, Math.floor(val * SHIFT_RIGHT_32), this.pos + 4);
         this.pos += 8;
     },
 
     writeVarint: function(val) {
-        val = +val;
+        val = +val || 0;
 
-        if (val > 0xfffffff) {
+        if (val > 0xfffffff || val < 0) {
             writeBigVarint(val, this);
             return;
         }
@@ -22362,22 +22196,32 @@ Pbf.prototype = {
 
     writeString: function(str) {
         str = String(str);
-        var bytes = Buffer.byteLength(str);
-        this.writeVarint(bytes);
-        this.realloc(bytes);
-        this.buf.write(str, this.pos);
-        this.pos += bytes;
+        this.realloc(str.length * 4);
+
+        this.pos++; // reserve 1 byte for short string length
+
+        var startPos = this.pos;
+        // write the string directly to the buffer and see how much was written
+        this.pos = writeUtf8(this.buf, str, this.pos);
+        var len = this.pos - startPos;
+
+        if (len >= 0x80) makeRoomForExtraLength(startPos, len, this);
+
+        // finally, write the message length in the reserved place and restore the position
+        this.pos = startPos - 1;
+        this.writeVarint(len);
+        this.pos += len;
     },
 
     writeFloat: function(val) {
         this.realloc(4);
-        this.buf.writeFloatLE(val, this.pos);
+        ieee754.write(this.buf, val, this.pos, true, 23, 4);
         this.pos += 4;
     },
 
     writeDouble: function(val) {
         this.realloc(8);
-        this.buf.writeDoubleLE(val, this.pos);
+        ieee754.write(this.buf, val, this.pos, true, 52, 8);
         this.pos += 8;
     },
 
@@ -22396,7 +22240,7 @@ Pbf.prototype = {
         fn(obj, this);
         var len = this.pos - startPos;
 
-        if (len >= 0x80) reallocForRawMessage(startPos, len, this);
+        if (len >= 0x80) makeRoomForExtraLength(startPos, len, this);
 
         // finally, write the message length in the reserved place and restore the position
         this.pos = startPos - 1;
@@ -22464,33 +22308,81 @@ Pbf.prototype = {
     }
 };
 
-function readVarintRemainder(val, pbf) {
-    var buf = pbf.buf, b;
+function readVarintRemainder(l, s, p) {
+    var buf = p.buf,
+        h, b;
 
-    b = buf[pbf.pos++]; val += (b & 0x7f) * 0x10000000;         if (b < 0x80) return val;
-    b = buf[pbf.pos++]; val += (b & 0x7f) * 0x800000000;        if (b < 0x80) return val;
-    b = buf[pbf.pos++]; val += (b & 0x7f) * 0x40000000000;      if (b < 0x80) return val;
-    b = buf[pbf.pos++]; val += (b & 0x7f) * 0x2000000000000;    if (b < 0x80) return val;
-    b = buf[pbf.pos++]; val += (b & 0x7f) * 0x100000000000000;  if (b < 0x80) return val;
-    b = buf[pbf.pos++]; val += (b & 0x7f) * 0x8000000000000000; if (b < 0x80) return val;
+    b = buf[p.pos++]; h  = (b & 0x70) >> 4;  if (b < 0x80) return toNum(l, h, s);
+    b = buf[p.pos++]; h |= (b & 0x7f) << 3;  if (b < 0x80) return toNum(l, h, s);
+    b = buf[p.pos++]; h |= (b & 0x7f) << 10; if (b < 0x80) return toNum(l, h, s);
+    b = buf[p.pos++]; h |= (b & 0x7f) << 17; if (b < 0x80) return toNum(l, h, s);
+    b = buf[p.pos++]; h |= (b & 0x7f) << 24; if (b < 0x80) return toNum(l, h, s);
+    b = buf[p.pos++]; h |= (b & 0x01) << 31; if (b < 0x80) return toNum(l, h, s);
 
     throw new Error('Expected varint not more than 10 bytes');
 }
 
-function writeBigVarint(val, pbf) {
-    pbf.realloc(10);
-
-    var maxPos = pbf.pos + 10;
-
-    while (val >= 1) {
-        if (pbf.pos >= maxPos) throw new Error('Given varint doesn\'t fit into 10 bytes');
-        var b = val & 0xff;
-        pbf.buf[pbf.pos++] = b | (val >= 0x80 ? 0x80 : 0);
-        val /= 0x80;
-    }
+function readPackedEnd(pbf) {
+    return pbf.type === Pbf.Bytes ?
+        pbf.readVarint() + pbf.pos : pbf.pos + 1;
 }
 
-function reallocForRawMessage(startPos, len, pbf) {
+function toNum(low, high, isSigned) {
+    if (isSigned) {
+        return high * 0x100000000 + (low >>> 0);
+    }
+
+    return ((high >>> 0) * 0x100000000) + (low >>> 0);
+}
+
+function writeBigVarint(val, pbf) {
+    var low, high;
+
+    if (val >= 0) {
+        low  = (val % 0x100000000) | 0;
+        high = (val / 0x100000000) | 0;
+    } else {
+        low  = ~(-val % 0x100000000);
+        high = ~(-val / 0x100000000);
+
+        if (low ^ 0xffffffff) {
+            low = (low + 1) | 0;
+        } else {
+            low = 0;
+            high = (high + 1) | 0;
+        }
+    }
+
+    if (val >= 0x10000000000000000 || val < -0x10000000000000000) {
+        throw new Error('Given varint doesn\'t fit into 10 bytes');
+    }
+
+    pbf.realloc(10);
+
+    writeBigVarintLow(low, high, pbf);
+    writeBigVarintHigh(high, pbf);
+}
+
+function writeBigVarintLow(low, high, pbf) {
+    pbf.buf[pbf.pos++] = low & 0x7f | 0x80; low >>>= 7;
+    pbf.buf[pbf.pos++] = low & 0x7f | 0x80; low >>>= 7;
+    pbf.buf[pbf.pos++] = low & 0x7f | 0x80; low >>>= 7;
+    pbf.buf[pbf.pos++] = low & 0x7f | 0x80; low >>>= 7;
+    pbf.buf[pbf.pos]   = low & 0x7f;
+}
+
+function writeBigVarintHigh(high, pbf) {
+    var lsb = (high & 0x07) << 4;
+
+    pbf.buf[pbf.pos++] |= lsb         | ((high >>>= 3) ? 0x80 : 0); if (!high) return;
+    pbf.buf[pbf.pos++]  = high & 0x7f | ((high >>>= 7) ? 0x80 : 0); if (!high) return;
+    pbf.buf[pbf.pos++]  = high & 0x7f | ((high >>>= 7) ? 0x80 : 0); if (!high) return;
+    pbf.buf[pbf.pos++]  = high & 0x7f | ((high >>>= 7) ? 0x80 : 0); if (!high) return;
+    pbf.buf[pbf.pos++]  = high & 0x7f | ((high >>>= 7) ? 0x80 : 0); if (!high) return;
+    pbf.buf[pbf.pos++]  = high & 0x7f;
+}
+
+function makeRoomForExtraLength(startPos, len, pbf) {
     var extraLen =
         len <= 0x3fff ? 1 :
         len <= 0x1fffff ? 2 :
@@ -22511,9 +22403,149 @@ function writePackedSFixed32(arr, pbf) { for (var i = 0; i < arr.length; i++) pb
 function writePackedFixed64(arr, pbf)  { for (var i = 0; i < arr.length; i++) pbf.writeFixed64(arr[i]);  }
 function writePackedSFixed64(arr, pbf) { for (var i = 0; i < arr.length; i++) pbf.writeSFixed64(arr[i]); }
 
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+// Buffer code below from https://github.com/feross/buffer, MIT-licensed
 
-},{"./buffer":186}],188:[function(_dereq_,module,exports){
+function readUInt32(buf, pos) {
+    return ((buf[pos]) |
+        (buf[pos + 1] << 8) |
+        (buf[pos + 2] << 16)) +
+        (buf[pos + 3] * 0x1000000);
+}
+
+function writeInt32(buf, val, pos) {
+    buf[pos] = val;
+    buf[pos + 1] = (val >>> 8);
+    buf[pos + 2] = (val >>> 16);
+    buf[pos + 3] = (val >>> 24);
+}
+
+function readInt32(buf, pos) {
+    return ((buf[pos]) |
+        (buf[pos + 1] << 8) |
+        (buf[pos + 2] << 16)) +
+        (buf[pos + 3] << 24);
+}
+
+function readUtf8(buf, pos, end) {
+    var str = '';
+    var i = pos;
+
+    while (i < end) {
+        var b0 = buf[i];
+        var c = null; // codepoint
+        var bytesPerSequence =
+            b0 > 0xEF ? 4 :
+            b0 > 0xDF ? 3 :
+            b0 > 0xBF ? 2 : 1;
+
+        if (i + bytesPerSequence > end) break;
+
+        var b1, b2, b3;
+
+        if (bytesPerSequence === 1) {
+            if (b0 < 0x80) {
+                c = b0;
+            }
+        } else if (bytesPerSequence === 2) {
+            b1 = buf[i + 1];
+            if ((b1 & 0xC0) === 0x80) {
+                c = (b0 & 0x1F) << 0x6 | (b1 & 0x3F);
+                if (c <= 0x7F) {
+                    c = null;
+                }
+            }
+        } else if (bytesPerSequence === 3) {
+            b1 = buf[i + 1];
+            b2 = buf[i + 2];
+            if ((b1 & 0xC0) === 0x80 && (b2 & 0xC0) === 0x80) {
+                c = (b0 & 0xF) << 0xC | (b1 & 0x3F) << 0x6 | (b2 & 0x3F);
+                if (c <= 0x7FF || (c >= 0xD800 && c <= 0xDFFF)) {
+                    c = null;
+                }
+            }
+        } else if (bytesPerSequence === 4) {
+            b1 = buf[i + 1];
+            b2 = buf[i + 2];
+            b3 = buf[i + 3];
+            if ((b1 & 0xC0) === 0x80 && (b2 & 0xC0) === 0x80 && (b3 & 0xC0) === 0x80) {
+                c = (b0 & 0xF) << 0x12 | (b1 & 0x3F) << 0xC | (b2 & 0x3F) << 0x6 | (b3 & 0x3F);
+                if (c <= 0xFFFF || c >= 0x110000) {
+                    c = null;
+                }
+            }
+        }
+
+        if (c === null) {
+            c = 0xFFFD;
+            bytesPerSequence = 1;
+
+        } else if (c > 0xFFFF) {
+            c -= 0x10000;
+            str += String.fromCharCode(c >>> 10 & 0x3FF | 0xD800);
+            c = 0xDC00 | c & 0x3FF;
+        }
+
+        str += String.fromCharCode(c);
+        i += bytesPerSequence;
+    }
+
+    return str;
+}
+
+function writeUtf8(buf, str, pos) {
+    for (var i = 0, c, lead; i < str.length; i++) {
+        c = str.charCodeAt(i); // code point
+
+        if (c > 0xD7FF && c < 0xE000) {
+            if (lead) {
+                if (c < 0xDC00) {
+                    buf[pos++] = 0xEF;
+                    buf[pos++] = 0xBF;
+                    buf[pos++] = 0xBD;
+                    lead = c;
+                    continue;
+                } else {
+                    c = lead - 0xD800 << 10 | c - 0xDC00 | 0x10000;
+                    lead = null;
+                }
+            } else {
+                if (c > 0xDBFF || (i + 1 === str.length)) {
+                    buf[pos++] = 0xEF;
+                    buf[pos++] = 0xBF;
+                    buf[pos++] = 0xBD;
+                } else {
+                    lead = c;
+                }
+                continue;
+            }
+        } else if (lead) {
+            buf[pos++] = 0xEF;
+            buf[pos++] = 0xBF;
+            buf[pos++] = 0xBD;
+            lead = null;
+        }
+
+        if (c < 0x80) {
+            buf[pos++] = c;
+        } else {
+            if (c < 0x800) {
+                buf[pos++] = c >> 0x6 | 0xC0;
+            } else {
+                if (c < 0x10000) {
+                    buf[pos++] = c >> 0xC | 0xE0;
+                } else {
+                    buf[pos++] = c >> 0x12 | 0xF0;
+                    buf[pos++] = c >> 0xC & 0x3F | 0x80;
+                }
+                buf[pos++] = c >> 0x6 & 0x3F | 0x80;
+            }
+            buf[pos++] = c & 0x3F | 0x80;
+        }
+    }
+    return pos;
+}
+
+},{"ieee754":98}],187:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 
@@ -22561,7 +22593,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 
 }).call(this,_dereq_('_process'))
 
-},{"_process":189}],189:[function(_dereq_,module,exports){
+},{"_process":188}],188:[function(_dereq_,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -22747,7 +22779,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],190:[function(_dereq_,module,exports){
+},{}],189:[function(_dereq_,module,exports){
 /*!
  * strip-comments <https://github.com/jonschlinkert/strip-comments>
  *
@@ -22822,7 +22854,7 @@ strip.line = function(str, opts) {
   return str ? str.replace(re, '') : '';
 };
 
-},{}],191:[function(_dereq_,module,exports){
+},{}],190:[function(_dereq_,module,exports){
 // https://github.com/topojson/topojson-client Version 2.1.0. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -22938,7 +22970,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],192:[function(_dereq_,module,exports){
+},{}],191:[function(_dereq_,module,exports){
 (function (global){
 
 /**
@@ -23010,16 +23042,16 @@ function config (name) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],193:[function(_dereq_,module,exports){
+},{}],192:[function(_dereq_,module,exports){
 arguments[4][99][0].apply(exports,arguments)
-},{"dup":99}],194:[function(_dereq_,module,exports){
+},{"dup":99}],193:[function(_dereq_,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],195:[function(_dereq_,module,exports){
+},{}],194:[function(_dereq_,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -23610,7 +23642,7 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,_dereq_('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./support/isBuffer":194,"_process":189,"inherits":193}],196:[function(_dereq_,module,exports){
+},{"./support/isBuffer":193,"_process":188,"inherits":192}],195:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -23652,7 +23684,7 @@ function isCoordOutsideTile(coord, tolerance) {
     return coord[0] <= tile_min.x + tolerance || coord[0] >= tile_max.x - tolerance || coord[1] >= tile_min.y - tolerance || coord[1] <= tile_max.y + tolerance;
 }
 
-},{"../geo":201}],197:[function(_dereq_,module,exports){
+},{"../geo":200}],196:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -23777,7 +23809,7 @@ function buildQuadsForPoints(points, vertex_data, vertex_template, _ref, _ref2) 
     return geom_count;
 }
 
-},{"./common":196}],198:[function(_dereq_,module,exports){
+},{"./common":195}],197:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -23983,7 +24015,7 @@ function triangulatePolygon(data) {
     return (0, _earcut2.default)(data.vertices, data.holes, data.dimensions);
 }
 
-},{"../geo":201,"../vector":272,"./common":196,"earcut":77}],199:[function(_dereq_,module,exports){
+},{"../geo":200,"../vector":271,"./common":195,"earcut":77}],198:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -24660,7 +24692,7 @@ function permuteLine(line, startIndex) {
     return newLine;
 }
 
-},{"../geo":201,"../vector":272,"./common":196}],200:[function(_dereq_,module,exports){
+},{"../geo":200,"../vector":271,"./common":195}],199:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -25027,7 +25059,7 @@ var FlatCamera = function (_IsometricCamera) {
     return FlatCamera;
 }(IsometricCamera);
 
-},{"./gl/shader_program":207,"./utils/gl-matrix":257,"./utils/utils":269}],201:[function(_dereq_,module,exports){
+},{"./gl/shader_program":206,"./utils/gl-matrix":256,"./utils/utils":268}],200:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -25376,7 +25408,7 @@ Geo.ringWinding = function (ring) {
     // return undefined on zero area polygon
 };
 
-},{}],202:[function(_dereq_,module,exports){
+},{}],201:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25397,7 +25429,7 @@ gl.INT = 0x1404;
 gl.UNSIGNED_INT = 0x1405;
 gl.FLOAT = 0x1406;
 
-},{}],203:[function(_dereq_,module,exports){
+},{}],202:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -25453,7 +25485,7 @@ Context.resize = function (gl, width, height, device_pixel_ratio) {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 };
 
-},{}],204:[function(_dereq_,module,exports){
+},{}],203:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25483,7 +25515,7 @@ function getExtension(gl, name) {
     return exts[name];
 }
 
-},{}],205:[function(_dereq_,module,exports){
+},{}],204:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -25767,7 +25799,7 @@ GLSL.expandVec4 = function (v) {
     }
 };
 
-},{}],206:[function(_dereq_,module,exports){
+},{}],205:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25870,7 +25902,7 @@ var RenderStateManager = function RenderStateManager(gl) {
 
 exports.default = RenderStateManager;
 
-},{}],207:[function(_dereq_,module,exports){
+},{}],206:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -26709,7 +26741,7 @@ ShaderProgram.createShader = function (gl, source, stype) {
     return shader;
 };
 
-},{"../utils/hash":258,"../utils/log":259,"./extensions":204,"./glsl":205,"./texture":208,"gl-shader-errors":97,"strip-comments":190}],208:[function(_dereq_,module,exports){
+},{"../utils/hash":257,"../utils/log":258,"./extensions":203,"./glsl":204,"./texture":207,"gl-shader-errors":97,"strip-comments":189}],207:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27279,7 +27311,7 @@ Texture.activeUnit = null;
 _worker_broker2.default.addTarget('Texture', Texture);
 (0, _subscribe2.default)(Texture);
 
-},{"../utils/log":259,"../utils/subscribe":265,"../utils/utils":269,"../utils/worker_broker":271}],209:[function(_dereq_,module,exports){
+},{"../utils/log":258,"../utils/subscribe":264,"../utils/utils":268,"../utils/worker_broker":270}],208:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27378,7 +27410,7 @@ exports.default = {
     }
 };
 
-},{"../utils/log":259,"./extensions":204}],210:[function(_dereq_,module,exports){
+},{"../utils/log":258,"./extensions":203}],209:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27544,7 +27576,7 @@ var VBOMesh = function () {
 
 exports.default = VBOMesh;
 
-},{"./shader_program":207,"./vao":209}],211:[function(_dereq_,module,exports){
+},{"./shader_program":206,"./vao":208}],210:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27690,7 +27722,7 @@ exports.default = VertexData;
 
 VertexData.array_pool = []; // pool of currently available (previously used) buffers (uint8)
 
-},{"../utils/log":259,"./constants":202,"./vertex_elements":212}],212:[function(_dereq_,module,exports){
+},{"../utils/log":258,"./constants":201,"./vertex_elements":211}],211:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27759,7 +27791,7 @@ function createBuffer(array, overflown) {
     return new typedArray(array);
 }
 
-},{}],213:[function(_dereq_,module,exports){
+},{}],212:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27987,7 +28019,7 @@ VertexLayout.enabled_attribs = {};
 // Functions to add plain JS vertex array to typed VBO arrays
 VertexLayout.add_vertex_funcs = {}; // keyed by unique set of attributes
 
-},{"../utils/hash":258,"./constants":202,"./vertex_data":211}],214:[function(_dereq_,module,exports){
+},{"../utils/hash":257,"./constants":201,"./vertex_data":210}],213:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -28172,7 +28204,7 @@ exports.default = Collision = {
     }
 };
 
-},{"../utils/log":259,"./repeat_group":221}],215:[function(_dereq_,module,exports){
+},{"../utils/log":258,"./repeat_group":220}],214:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -28206,7 +28238,7 @@ function boxIntersectsList(a, boxes, callback) {
     }
 }
 
-},{}],216:[function(_dereq_,module,exports){
+},{}],215:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -28349,7 +28381,7 @@ exports.default = Label;
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
 
-},{"../utils/obb":262,"../utils/utils":269,"./intersect":215,"./point_anchor":219}],217:[function(_dereq_,module,exports){
+},{"../utils/obb":261,"../utils/utils":268,"./intersect":214,"./point_anchor":218}],216:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29278,7 +29310,7 @@ function getAbsAngleDiff(angle1, angle2) {
     return Math.abs(big - small);
 }
 
-},{"../utils/obb":262,"../vector":272,"./label":216}],218:[function(_dereq_,module,exports){
+},{"../utils/obb":261,"../vector":271,"./label":215}],217:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29306,6 +29338,8 @@ var _obb = _dereq_('../utils/obb');
 var _obb2 = _interopRequireDefault(_obb);
 
 var _style_parser = _dereq_('../styles/style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -29351,9 +29385,9 @@ var LabelPoint = function (_Label) {
                 // point's own anchor, text anchor applied to point, additional point offset
                 this.offset = _point_anchor2.default.computeOffset(this.offset, parent.size, parent.anchor, _point_anchor2.default.zero_buffer);
                 this.offset = _point_anchor2.default.computeOffset(this.offset, parent.size, this.anchor, _point_anchor2.default.zero_buffer);
-                if (parent.offset !== _style_parser.StyleParser.zeroPair) {
+                if (parent.offset !== _style_parser2.default.zeroPair) {
                     // point has an offset
-                    if (this.offset === _style_parser.StyleParser.zeroPair) {
+                    if (this.offset === _style_parser2.default.zeroPair) {
                         // no text offset, use point's
                         this.offset = parent.offset;
                     } else {
@@ -29492,7 +29526,7 @@ LabelPoint.PLACEMENT = {
     CENTROID: 3 // place labels at center of polygons
 };
 
-},{"../geo":201,"../styles/style_parser":245,"../utils/obb":262,"./label":216,"./point_anchor":219}],219:[function(_dereq_,module,exports){
+},{"../geo":200,"../styles/style_parser":244,"../utils/obb":261,"./label":215,"./point_anchor":218}],218:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29575,7 +29609,7 @@ exports.default = PointAnchor = {
 
 };
 
-},{}],220:[function(_dereq_,module,exports){
+},{}],219:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29738,7 +29772,7 @@ function interpolateSegment(p, q, distance) {
     return [ratio * p[0] + (1 - ratio) * q[0], ratio * p[1] + (1 - ratio) * q[1]];
 }
 
-},{"../builders/common":196,"./label_point":218}],221:[function(_dereq_,module,exports){
+},{"../builders/common":195,"./label_point":217}],220:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29863,7 +29897,7 @@ RepeatGroup.groups = {};
 // will be allowed per group, e.g. set to tile size for one-label-per-tile
 RepeatGroup.max_repeat_dist = _geo2.default.tile_scale;
 
-},{"../geo":201}],222:[function(_dereq_,module,exports){
+},{"../geo":200}],221:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30426,7 +30460,7 @@ function extendLeaflet(options) {
     }
 }
 
-},{"./geo":201,"./scene":226,"./utils/debounce":254,"./utils/debug_settings":255,"./utils/thread":267}],223:[function(_dereq_,module,exports){
+},{"./geo":200,"./scene":225,"./utils/debounce":253,"./utils/debug_settings":254,"./utils/thread":266}],222:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30457,6 +30491,8 @@ var _vector2 = _interopRequireDefault(_vector);
 
 var _style_parser = _dereq_('./styles/style_parser');
 
+var _style_parser2 = _interopRequireDefault(_style_parser);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -30484,19 +30520,19 @@ var Light = function () {
         if (config.ambient == null || typeof config.ambient === 'number') {
             this.ambient = _glsl2.default.expandVec3(config.ambient || 0);
         } else {
-            this.ambient = _style_parser.StyleParser.parseColor(config.ambient).slice(0, 3);
+            this.ambient = _style_parser2.default.parseColor(config.ambient).slice(0, 3);
         }
 
         if (config.diffuse == null || typeof config.diffuse === 'number') {
             this.diffuse = _glsl2.default.expandVec3(config.diffuse != null ? config.diffuse : 1);
         } else {
-            this.diffuse = _style_parser.StyleParser.parseColor(config.diffuse).slice(0, 3);
+            this.diffuse = _style_parser2.default.parseColor(config.diffuse).slice(0, 3);
         }
 
         if (config.specular == null || typeof config.specular === 'number') {
             this.specular = _glsl2.default.expandVec3(config.specular || 0);
         } else {
-            this.specular = _style_parser.StyleParser.parseColor(config.specular).slice(0, 3);
+            this.specular = _style_parser2.default.parseColor(config.specular).slice(0, 3);
         }
     }
 
@@ -30764,13 +30800,13 @@ var PointLight = function (_Light3) {
                 this.position_eye[0] = x - this.view.camera.position_meters[0];
                 this.position_eye[1] = y - this.view.camera.position_meters[1];
 
-                this.position_eye[2] = _style_parser.StyleParser.convertUnits(this.position[2], { zoom: this.view.zoom, meters_per_pixel: _geo2.default.metersPerPixel(this.view.zoom) });
+                this.position_eye[2] = _style_parser2.default.convertUnits(this.position[2], { zoom: this.view.zoom, meters_per_pixel: _geo2.default.metersPerPixel(this.view.zoom) });
                 this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
             } else if (this.origin === 'ground' || this.origin === 'camera') {
                 // For camera or ground origin, format is: [x, y, z] in meters (default) or pixels w/px units
 
                 // Light is in camera space by default
-                this.position_eye = _style_parser.StyleParser.convertUnits(this.position, { zoom: this.view.zoom, meters_per_pixel: _geo2.default.metersPerPixel(this.view.zoom) });
+                this.position_eye = _style_parser2.default.convertUnits(this.position, { zoom: this.view.zoom, meters_per_pixel: _geo2.default.metersPerPixel(this.view.zoom) });
 
                 if (this.origin === 'ground') {
                     // Leave light's xy in camera space, but z needs to be moved relative to ground plane
@@ -30791,11 +30827,11 @@ var PointLight = function (_Light3) {
             }
 
             if (_shader_program2.default.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS']) {
-                _program.uniform('1f', 'u_' + this.name + '.innerRadius', _style_parser.StyleParser.convertUnits(this.radius[0], { zoom: this.view.zoom, meters_per_pixel: _geo2.default.metersPerPixel(this.view.zoom) }));
+                _program.uniform('1f', 'u_' + this.name + '.innerRadius', _style_parser2.default.convertUnits(this.radius[0], { zoom: this.view.zoom, meters_per_pixel: _geo2.default.metersPerPixel(this.view.zoom) }));
             }
 
             if (_shader_program2.default.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS']) {
-                _program.uniform('1f', 'u_' + this.name + '.outerRadius', _style_parser.StyleParser.convertUnits(this.radius[1], { zoom: this.view.zoom, meters_per_pixel: _geo2.default.metersPerPixel(this.view.zoom) }));
+                _program.uniform('1f', 'u_' + this.name + '.outerRadius', _style_parser2.default.convertUnits(this.radius[1], { zoom: this.view.zoom, meters_per_pixel: _geo2.default.metersPerPixel(this.view.zoom) }));
             }
         }
     }], [{
@@ -30859,7 +30895,7 @@ var SpotLight = function (_PointLight) {
 
 Light.types['spotlight'] = SpotLight;
 
-},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./styles/style_parser":245,"./vector":272}],224:[function(_dereq_,module,exports){
+},{"./geo":200,"./gl/glsl":204,"./gl/shader_program":206,"./styles/style_parser":244,"./vector":271}],223:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30873,6 +30909,8 @@ var _glsl = _dereq_('./gl/glsl');
 var _glsl2 = _interopRequireDefault(_glsl);
 
 var _style_parser = _dereq_('./styles/style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -30905,7 +30943,7 @@ var Material = function () {
                 } else if (typeof value === 'number' || Array.isArray(value)) {
                     _this[prop] = { amount: _glsl2.default.expandVec4(value) };
                 } else if (typeof value === 'string') {
-                    _this[prop] = { amount: _style_parser.StyleParser.parseColor(value) };
+                    _this[prop] = { amount: _style_parser2.default.parseColor(value) };
                 } else {
                     _this[prop] = value;
                 }
@@ -31020,7 +31058,7 @@ exports.default = Material;
 
 Material.block = 'material';
 
-},{"./gl/glsl":205,"./styles/style_parser":245}],225:[function(_dereq_,module,exports){
+},{"./gl/glsl":204,"./styles/style_parser":244}],224:[function(_dereq_,module,exports){
 'use strict';
 
 _dereq_('./utils/polyfills');
@@ -31103,6 +31141,8 @@ var _style_manager = _dereq_('./styles/style_manager');
 
 var _style_parser = _dereq_('./styles/style_parser');
 
+var _style_parser2 = _interopRequireDefault(_style_parser);
+
 var _collision = _dereq_('./labels/collision');
 
 var _collision2 = _interopRequireDefault(_collision);
@@ -31152,7 +31192,7 @@ var debug = {
     WorkerBroker: _worker_broker2.default,
     layerCache: _layer.layerCache,
     StyleManager: _style_manager.StyleManager,
-    StyleParser: _style_parser.StyleParser,
+    StyleParser: _style_parser2.default,
     Collision: _collision2.default,
     FeatureSelection: _selection2.default,
     CanvasText: _canvas_text2.default,
@@ -31182,7 +31222,7 @@ module.exports = {
     version: _version2.default
 };
 
-},{"./geo":201,"./gl/glsl":205,"./gl/shader_program":207,"./gl/texture":208,"./gl/vertex_data":211,"./labels/collision":214,"./leaflet_layer":222,"./light":223,"./material":224,"./scene":226,"./scene_worker":229,"./selection":230,"./sources/data_source":231,"./sources/geojson":232,"./sources/mvt":233,"./sources/raster":234,"./sources/topojson":235,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./utils/debug_settings":255,"./utils/log":259,"./utils/polyfills":263,"./utils/thread":267,"./utils/utils":269,"./utils/version":270,"./utils/worker_broker":271,"./vector":272,"js-yaml":102,"jszip":138}],226:[function(_dereq_,module,exports){
+},{"./geo":200,"./gl/glsl":204,"./gl/shader_program":206,"./gl/texture":207,"./gl/vertex_data":210,"./labels/collision":213,"./leaflet_layer":221,"./light":222,"./material":223,"./scene":225,"./scene_worker":228,"./selection":229,"./sources/data_source":230,"./sources/geojson":231,"./sources/mvt":232,"./sources/raster":233,"./sources/topojson":234,"./styles/layer":236,"./styles/style_manager":243,"./styles/style_parser":244,"./styles/text/canvas_text":245,"./utils/debug_settings":254,"./utils/log":258,"./utils/polyfills":262,"./utils/thread":266,"./utils/utils":268,"./utils/version":269,"./utils/worker_broker":270,"./vector":271,"js-yaml":102,"jszip":138}],225:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -31246,6 +31286,8 @@ var _style_manager = _dereq_('./styles/style_manager');
 var _style = _dereq_('./styles/style');
 
 var _style_parser = _dereq_('./styles/style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _scene_loader = _dereq_('./scene_loader');
 
@@ -32487,7 +32529,7 @@ var Scene = function () {
             var bg = this.config.scene.background;
             this.background = {};
             if (bg && bg.color) {
-                this.background.color = _style_parser.StyleParser.parseColor(bg.color);
+                this.background.color = _style_parser2.default.parseColor(bg.color);
             }
             if (!this.background.color) {
                 this.background.color = [0, 0, 0, 0]; // default background TODO: vary w/scene alpha
@@ -32866,7 +32908,7 @@ exports.default = Scene;
 Scene.id = 0; // unique id for a scene instance
 Scene.generation = 0; // id that is incremented each time a scene config is re-parsed
 
-},{"./gl/context":203,"./gl/render_state":206,"./gl/shader_program":207,"./gl/texture":208,"./gl/vao":209,"./light":223,"./scene_loader":228,"./selection":230,"./sources/data_source":231,"./styles/style":243,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./styles/text/font_manager":247,"./tile":251,"./tile_manager":252,"./utils/debug_settings":255,"./utils/log":259,"./utils/media_capture":260,"./utils/slice":264,"./utils/subscribe":265,"./utils/task":266,"./utils/urls":268,"./utils/utils":269,"./utils/worker_broker":271,"./view":273}],227:[function(_dereq_,module,exports){
+},{"./gl/context":202,"./gl/render_state":205,"./gl/shader_program":206,"./gl/texture":207,"./gl/vao":208,"./light":222,"./scene_loader":227,"./selection":229,"./sources/data_source":230,"./styles/style":242,"./styles/style_manager":243,"./styles/style_parser":244,"./styles/text/canvas_text":245,"./styles/text/font_manager":246,"./tile":250,"./tile_manager":251,"./utils/debug_settings":254,"./utils/log":258,"./utils/media_capture":259,"./utils/slice":263,"./utils/subscribe":264,"./utils/task":265,"./utils/urls":267,"./utils/utils":268,"./utils/worker_broker":270,"./view":272}],226:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33190,7 +33232,7 @@ function loadResource(source) {
     });
 }
 
-},{"./utils/urls":268,"./utils/utils":269,"js-yaml":102,"jszip":138}],228:[function(_dereq_,module,exports){
+},{"./utils/urls":267,"./utils/utils":268,"js-yaml":102,"jszip":138}],227:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33663,7 +33705,7 @@ function flattenProperties(obj) {
 
 (0, _subscribe2.default)(SceneLoader);
 
-},{"./gl/glsl":205,"./scene_bundle":227,"./styles/layer":237,"./utils/log":259,"./utils/merge":261,"./utils/subscribe":265,"./utils/urls":268}],229:[function(_dereq_,module,exports){
+},{"./gl/glsl":204,"./scene_bundle":226,"./styles/layer":236,"./utils/log":258,"./utils/merge":260,"./utils/subscribe":264,"./utils/urls":267}],228:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33706,6 +33748,8 @@ var _selection = _dereq_('./selection');
 var _selection2 = _interopRequireDefault(_selection);
 
 var _style_parser = _dereq_('./styles/style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _style_manager = _dereq_('./styles/style_manager');
 
@@ -33805,7 +33849,7 @@ if (_thread2.default.is_worker) {
             self.createDataSources(config);
 
             // Expand styles
-            config.styles = _utils2.default.stringsToFunctions(config.styles, _style_parser.StyleParser.wrapFunction);
+            config.styles = _utils2.default.stringsToFunctions(config.styles, _style_parser2.default.wrapFunction);
             self.styles = self.style_manager.build(config.styles);
             self.style_manager.initStyles({
                 generation: self.generation,
@@ -33991,7 +34035,7 @@ if (_thread2.default.is_worker) {
             // Compile feature filter
             if (filter != null) {
                 filter = ['{', '['].indexOf(filter[0]) > -1 ? JSON.parse(filter) : filter; // de-serialize if looks like an object
-                filter = _utils2.default.stringsToFunctions(filter, _style_parser.StyleParser.wrapFunction);
+                filter = _utils2.default.stringsToFunctions(filter, _style_parser2.default.wrapFunction);
             }
             filter = (0, _filter.buildFilter)(filter, _layer.FilterOptions);
 
@@ -34005,7 +34049,7 @@ if (_thread2.default.is_worker) {
                         }
 
                         // Apply feature filter
-                        var context = _style_parser.StyleParser.getFeatureParseContext(feature, tile, self.global);
+                        var context = _style_parser2.default.getFeatureParseContext(feature, tile, self.global);
                         context.source = tile.source; // add data source name
                         context.layer = layer; // add data source layer name
 
@@ -34100,7 +34144,7 @@ if (_thread2.default.is_worker) {
     _worker_broker2.default.addTarget('self', self);
 }
 
-},{"./geo":201,"./gl/texture":208,"./gl/vertex_elements":212,"./selection":230,"./sources/data_source":231,"./styles/filter":236,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":267,"./utils/utils":269,"./utils/worker_broker":271}],230:[function(_dereq_,module,exports){
+},{"./geo":200,"./gl/texture":207,"./gl/vertex_elements":211,"./selection":229,"./sources/data_source":230,"./styles/filter":235,"./styles/layer":236,"./styles/style_manager":243,"./styles/style_parser":244,"./tile":250,"./utils/debug_settings":254,"./utils/log":258,"./utils/thread":266,"./utils/utils":268,"./utils/worker_broker":270}],229:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -34522,7 +34566,7 @@ FeatureSelection.map_entry = 0;
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];
 
-},{"./gl/texture":208,"./utils/log":259,"./utils/worker_broker":271}],231:[function(_dereq_,module,exports){
+},{"./gl/texture":207,"./utils/log":258,"./utils/worker_broker":270}],230:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35023,7 +35067,7 @@ var NetworkTileSource = exports.NetworkTileSource = function (_NetworkSource) {
     return NetworkTileSource;
 }(NetworkSource);
 
-},{"../geo":201,"../utils/errors":256,"../utils/log":259,"../utils/urls":268,"../utils/utils":269}],232:[function(_dereq_,module,exports){
+},{"../geo":200,"../utils/errors":255,"../utils/log":258,"../utils/urls":267,"../utils/utils":268}],231:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35372,7 +35416,7 @@ function getCentroidFeatureForPolygon(coordinates, properties, newProperties) {
     };
 }
 
-},{"../geo":201,"../utils/log":259,"./data_source":231,"./mvt":233,"geojson-vt":83}],233:[function(_dereq_,module,exports){
+},{"../geo":200,"../utils/log":258,"./data_source":230,"./mvt":232,"geojson-vt":83}],232:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35541,7 +35585,7 @@ function decodeMultiPolygon(geom) {
 
 _data_source2.default.register(MVTSource, 'MVT');
 
-},{"../geo":201,"./data_source":231,"@mapbox/vector-tile":2,"pbf":187}],234:[function(_dereq_,module,exports){
+},{"../geo":200,"./data_source":230,"@mapbox/vector-tile":2,"pbf":186}],233:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35639,7 +35683,7 @@ var RasterTileSource = exports.RasterTileSource = function (_NetworkTileSource) 
 
 _data_source2.default.register(RasterTileSource, 'Raster');
 
-},{"../geo":201,"../tile":251,"./data_source":231}],235:[function(_dereq_,module,exports){
+},{"../geo":200,"../tile":250,"./data_source":230}],234:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35767,7 +35811,7 @@ var TopoJSONTileSource = exports.TopoJSONTileSource = function (_GeoJSONTileSour
 
 _data_source2.default.register(TopoJSONTileSource, 'TopoJSON'); // prefered shorter name
 
-},{"./data_source":231,"./geojson":232,"topojson-client":191}],236:[function(_dereq_,module,exports){
+},{"./data_source":230,"./geojson":231,"topojson-client":190}],235:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35924,7 +35968,7 @@ function buildFilter(filter, options) {
     return new Function('context', 'return ' + filterToString(parseFilter(filter, options)) + ';');
 }
 
-},{}],237:[function(_dereq_,module,exports){
+},{}],236:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35948,6 +35992,8 @@ exports.parseLayers = parseLayers;
 exports.matchFeature = matchFeature;
 
 var _style_parser = _dereq_('./style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _utils = _dereq_('../utils/utils');
 
@@ -36118,14 +36164,14 @@ var Layer = function () {
     }, {
         key: 'buildDraw',
         value: function buildDraw() {
-            this.draw = _utils2.default.stringsToFunctions(this.draw, _style_parser.StyleParser.wrapFunction);
+            this.draw = _utils2.default.stringsToFunctions(this.draw, _style_parser2.default.wrapFunction);
             this.calculatedDraw = calculateDraw(this);
         }
     }, {
         key: 'buildFilter',
         value: function buildFilter() {
             this.filter_original = this.filter;
-            this.filter = _utils2.default.stringsToFunctions(this.filter, _style_parser.StyleParser.wrapFunction);
+            this.filter = _utils2.default.stringsToFunctions(this.filter, _style_parser2.default.wrapFunction);
 
             var type = _typeof(this.filter);
             if (this.filter != null && type !== 'object' && type !== 'function') {
@@ -36535,7 +36581,7 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
     return matched;
 }
 
-},{"../utils/log":259,"../utils/merge":261,"../utils/utils":269,"./filter":236,"./style_parser":245}],238:[function(_dereq_,module,exports){
+},{"../utils/log":258,"../utils/merge":260,"../utils/utils":268,"./filter":235,"./style_parser":244}],237:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -36586,7 +36632,7 @@ function renderDashArray(pattern) {
     return { pixels: pixels, length: length };
 }
 
-},{}],239:[function(_dereq_,module,exports){
+},{}],238:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -36594,9 +36640,15 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.Lines = undefined;
 
+var _log = _dereq_('../../utils/log');
+
+var _log2 = _interopRequireDefault(_log);
+
 var _style = _dereq_('../style');
 
 var _style_parser = _dereq_('../style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _constants = _dereq_('../../gl/constants');
 
@@ -36633,7 +36685,9 @@ var _polygons = _dereq_('../polygons/polygons');
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // web workers don't have access to GL context, so import all GL constants
-var Lines = exports.Lines = Object.create(_style.Style); // Line rendering style
+// Line rendering style
+
+var Lines = exports.Lines = Object.create(_style.Style);
 
 Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
 Lines.variants = {}; // mesh variants by variant key
@@ -36666,7 +36720,7 @@ Object.assign(Lines, {
 
     // Calculate width or offset at zoom given in `context`
     calcDistance: function calcDistance(prop, context) {
-        return prop && _style_parser.StyleParser.evalCachedDistanceProperty(prop, context) || 0;
+        return prop && _style_parser2.default.evalCachedDistanceProperty(prop, context) || 0;
     },
 
 
@@ -36792,9 +36846,9 @@ Object.assign(Lines, {
         style.variant = draw.variant; // pre-calculated mesh variant
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-        style.z = draw.z && _style_parser.StyleParser.evalCachedDistanceProperty(draw.z || 0, context) || _style_parser.StyleParser.defaults.z;
-        style.height = feature.properties.height || _style_parser.StyleParser.defaults.height;
-        style.extrude = _style_parser.StyleParser.evalProperty(draw.extrude, context);
+        style.z = draw.z && _style_parser2.default.evalCachedDistanceProperty(draw.z || 0, context) || _style_parser2.default.defaults.z;
+        style.height = feature.properties.height || _style_parser2.default.defaults.height;
+        style.extrude = _style_parser2.default.evalProperty(draw.extrude, context);
         if (style.extrude) {
             if (typeof style.extrude === 'number') {
                 style.height = style.extrude;
@@ -36884,30 +36938,30 @@ Object.assign(Lines, {
         return style;
     },
     _preprocess: function _preprocess(draw) {
-        draw.color = _style_parser.StyleParser.createColorPropertyCache(draw.color);
-        draw.width = _style_parser.StyleParser.createPropertyCache(draw.width, _style_parser.StyleParser.parseUnits);
-        if (draw.width && draw.width.type !== _style_parser.StyleParser.CACHE_TYPE.STATIC) {
-            draw.next_width = _style_parser.StyleParser.createPropertyCache(draw.width, _style_parser.StyleParser.parseUnits);
+        draw.color = _style_parser2.default.createColorPropertyCache(draw.color);
+        draw.width = _style_parser2.default.createPropertyCache(draw.width, _style_parser2.default.parseUnits);
+        if (draw.width && draw.width.type !== _style_parser2.default.CACHE_TYPE.STATIC) {
+            draw.next_width = _style_parser2.default.createPropertyCache(draw.width, _style_parser2.default.parseUnits);
         }
-        draw.offset = draw.offset && _style_parser.StyleParser.createPropertyCache(draw.offset, _style_parser.StyleParser.parseUnits);
-        if (draw.offset && draw.offset.type !== _style_parser.StyleParser.CACHE_TYPE.STATIC) {
-            draw.next_offset = _style_parser.StyleParser.createPropertyCache(draw.offset, _style_parser.StyleParser.parseUnits);
+        draw.offset = draw.offset && _style_parser2.default.createPropertyCache(draw.offset, _style_parser2.default.parseUnits);
+        if (draw.offset && draw.offset.type !== _style_parser2.default.CACHE_TYPE.STATIC) {
+            draw.next_offset = _style_parser2.default.createPropertyCache(draw.offset, _style_parser2.default.parseUnits);
         }
-        draw.z = _style_parser.StyleParser.createPropertyCache(draw.z, _style_parser.StyleParser.parseUnits);
+        draw.z = _style_parser2.default.createPropertyCache(draw.z, _style_parser2.default.parseUnits);
 
         draw.dash = draw.dash !== undefined ? draw.dash : this.dash;
         draw.dash_key = draw.dash && this.dashTextureKey(draw.dash);
         draw.dash_background_color = draw.dash_background_color !== undefined ? draw.dash_background_color : this.dash_background_color;
-        draw.dash_background_color = draw.dash_background_color && _style_parser.StyleParser.parseColor(draw.dash_background_color);
+        draw.dash_background_color = draw.dash_background_color && _style_parser2.default.parseColor(draw.dash_background_color);
         draw.texture_merged = draw.dash_key || (draw.texture !== undefined ? draw.texture : this.texture);
         draw.texcoords = this.texcoords || draw.texture_merged ? 1 : 0;
         this.computeVariant(draw);
 
         if (draw.outline) {
             draw.outline.style = draw.outline.style || this.name;
-            draw.outline.color = _style_parser.StyleParser.createColorPropertyCache(draw.outline.color);
-            draw.outline.width = _style_parser.StyleParser.createPropertyCache(draw.outline.width, _style_parser.StyleParser.parseUnits);
-            draw.outline.next_width = _style_parser.StyleParser.createPropertyCache(draw.outline.width, _style_parser.StyleParser.parseUnits); // width re-computed for next zoom
+            draw.outline.color = _style_parser2.default.createColorPropertyCache(draw.outline.color);
+            draw.outline.width = _style_parser2.default.createPropertyCache(draw.outline.width, _style_parser2.default.parseUnits);
+            draw.outline.next_width = _style_parser2.default.createPropertyCache(draw.outline.width, _style_parser2.default.parseUnits); // width re-computed for next zoom
 
             draw.outline.cap = draw.outline.cap || draw.cap;
             draw.outline.join = draw.outline.join || draw.join;
@@ -36916,32 +36970,37 @@ Object.assign(Lines, {
 
             // outline inhertits dash pattern, but NOT explicit texture
             var outline_style = this.styles[draw.outline.style];
-            draw.outline.dash = draw.outline.dash !== undefined ? draw.outline.dash : outline_style.dash;
-            draw.outline.texture = draw.outline.texture !== undefined ? draw.outline.texture : outline_style.texture;
+            if (outline_style) {
+                draw.outline.dash = draw.outline.dash !== undefined ? draw.outline.dash : outline_style.dash;
+                draw.outline.texture = draw.outline.texture !== undefined ? draw.outline.texture : outline_style.texture;
 
-            if (draw.outline.dash != null) {
-                // dash was defined by outline draw or style
-                draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
-                draw.outline.texture_merged = draw.outline.dash_key;
-            } else if (draw.outline.dash === null) {
-                // dash explicitly disabled by outline draw or style
-                draw.outline.dash_key = null;
-                draw.outline.texture_merged = draw.outline.texture;
-            } else if (draw.outline.texture != null) {
-                // texture was defined by outline draw or style
-                draw.outline.dash_key = null; // outline explicitly turning off dash
-                draw.outline.texture_merged = draw.outline.texture;
+                if (draw.outline.dash != null) {
+                    // dash was defined by outline draw or style
+                    draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
+                    draw.outline.texture_merged = draw.outline.dash_key;
+                } else if (draw.outline.dash === null) {
+                    // dash explicitly disabled by outline draw or style
+                    draw.outline.dash_key = null;
+                    draw.outline.texture_merged = draw.outline.texture;
+                } else if (draw.outline.texture != null) {
+                    // texture was defined by outline draw or style
+                    draw.outline.dash_key = null; // outline explicitly turning off dash
+                    draw.outline.texture_merged = draw.outline.texture;
+                } else {
+                    // no dash or texture defined for outline, inherit parent dash
+                    draw.outline.dash = draw.dash;
+                    draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
+                    draw.outline.texture_merged = draw.outline.dash_key;
+                }
+                draw.outline.dash_background_color = draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : outline_style.dash_background_color;
+                draw.outline.dash_background_color = draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color;
+                draw.outline.dash_background_color = draw.outline.dash_background_color && _style_parser2.default.parseColor(draw.outline.dash_background_color);
+                draw.outline.texcoords = outline_style.texcoords || draw.outline.texture_merged ? 1 : 0;
+                this.computeVariant(draw.outline);
             } else {
-                // no dash or texture defined for outline, inherit parent dash
-                draw.outline.dash = draw.dash;
-                draw.outline.dash_key = draw.outline.dash && this.dashTextureKey(draw.outline.dash);
-                draw.outline.texture_merged = draw.outline.dash_key;
+                (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + ('line \'outline\' specifies non-existent draw style \'' + draw.outline.style + '\' (or maybe the style is ') + 'defined but is missing a \'base\' or has another error), skipping outlines in layer');
+                draw.outline = null;
             }
-            draw.outline.dash_background_color = draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : outline_style.dash_background_color;
-            draw.outline.dash_background_color = draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color;
-            draw.outline.dash_background_color = draw.outline.dash_background_color && _style_parser.StyleParser.parseColor(draw.outline.dash_background_color);
-            draw.outline.texcoords = outline_style.texcoords || draw.outline.texture_merged ? 1 : 0;
-            this.computeVariant(draw.outline);
         }
         return draw;
     },
@@ -37171,7 +37230,7 @@ Object.assign(Lines, {
     }
 });
 
-},{"../../builders/polylines":199,"../../geo":201,"../../gl/constants":202,"../../gl/texture":208,"../../gl/vertex_layout":213,"../../utils/hash":258,"../../utils/worker_broker":271,"../polygons/polygons":241,"../style":243,"../style_parser":245,"./dasharray":238}],240:[function(_dereq_,module,exports){
+},{"../../builders/polylines":198,"../../geo":200,"../../gl/constants":201,"../../gl/texture":207,"../../gl/vertex_layout":212,"../../utils/hash":257,"../../utils/log":258,"../../utils/worker_broker":270,"../polygons/polygons":240,"../style":242,"../style_parser":244,"./dasharray":237}],239:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37191,6 +37250,8 @@ var _log2 = _interopRequireDefault(_log);
 var _style = _dereq_('../style');
 
 var _style_parser = _dereq_('../style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _constants = _dereq_('../../gl/constants');
 
@@ -37259,7 +37320,7 @@ var TANGRAM_POINT_TYPE_LABEL = 2; // labels (generated by rendering labels to ca
 var TANGRAM_POINT_TYPE_SHADER = 3; // point (drawn in shader)
 
 // default point size in pixels
-var DEFAULT_POINT_SIZE = [16, 16];
+var DEFAULT_POINT_SIZE = 16;
 
 // Mixin text label methods
 Object.assign(Points, _text_labels.TextLabels);
@@ -37377,9 +37438,9 @@ Object.assign(Points, {
         // point size defined explicitly, or defaults to sprite size, or generic fallback
         style.size = draw.size;
         if (!style.size) {
-            style.size = sprite_info && sprite_info.css_size || DEFAULT_POINT_SIZE;
+            style.size = sprite_info && sprite_info.css_size || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
         } else {
-            style.size = _style_parser.StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, context);
+            style.size = _style_parser2.default.evalCachedPointSizeProperty(draw.size, sprite_info, context);
             if (style.size == null) {
                 (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + ('\'size\' includes % and/or ratio-based scaling (' + JSON.stringify(draw.size.value) + '); ') + 'these can only applied to sprites, but no sprite was specified, skipping features in layer');
                 return;
@@ -37390,7 +37451,7 @@ Object.assign(Points, {
 
         // incorporate outline into size
         if (draw.outline) {
-            style.outline_width = _style_parser.StyleParser.evalCachedProperty(draw.outline.width, context) || _style_parser.StyleParser.defaults.outline.width;
+            style.outline_width = _style_parser2.default.evalCachedProperty(draw.outline.width, context) || _style_parser2.default.defaults.outline.width;
             style.outline_color = this.parseColor(draw.outline.color, context);
         }
 
@@ -37403,22 +37464,23 @@ Object.assign(Points, {
         }
 
         // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
-        style.size = [Math.min(style.size[0], 256), Math.min(style.size[1], 256)];
+        style.size[0] = Math.min(style.size[0], 256);
+        style.size[1] = Math.min(style.size[1], 256);
 
         // Placement strategy
         style.placement = draw.placement;
-        style.placement_min_length_ratio = _style_parser.StyleParser.evalCachedProperty(draw.placement_min_length_ratio, context);
+        style.placement_min_length_ratio = _style_parser2.default.evalCachedProperty(draw.placement_min_length_ratio, context);
 
         // Spacing parameter (in pixels) to equally space points along a line
         if (style.placement === PLACEMENT.SPACED && draw.placement_spacing) {
-            style.placement_spacing = _style_parser.StyleParser.evalCachedProperty(draw.placement_spacing, context);
+            style.placement_spacing = _style_parser2.default.evalCachedProperty(draw.placement_spacing, context);
         }
 
         // Angle parameter (can be a number or the string "auto")
-        style.angle = _style_parser.StyleParser.evalProperty(draw.angle, context) || 0;
+        style.angle = _style_parser2.default.evalProperty(draw.angle, context) || 0;
 
         // points can be placed off the ground
-        style.z = draw.z && _style_parser.StyleParser.evalCachedDistanceProperty(draw.z, context) || _style_parser.StyleParser.defaults.z;
+        style.z = draw.z && _style_parser2.default.evalCachedDistanceProperty(draw.z, context) || _style_parser2.default.defaults.z;
 
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
@@ -37471,7 +37533,7 @@ Object.assign(Points, {
         return info;
     },
     parseSprite: function parseSprite(style, draw, context) {
-        var sprite = _style_parser.StyleParser.evalProperty(draw.sprite, context);
+        var sprite = _style_parser2.default.evalProperty(draw.sprite, context);
         var sprite_info = this.getSpriteInfo(style, sprite) || this.getSpriteInfo(style, draw.sprite_default);
         return sprite_info;
     },
@@ -37594,44 +37656,36 @@ Object.assign(Points, {
         });
     },
     _preprocess: function _preprocess(draw) {
-        draw.color = _style_parser.StyleParser.createColorPropertyCache(draw.color);
+        draw.color = _style_parser2.default.createColorPropertyCache(draw.color);
         draw.texture = draw.texture !== undefined ? draw.texture : this.texture; // optional or default texture
 
         if (draw.outline) {
-            draw.outline.color = _style_parser.StyleParser.createColorPropertyCache(draw.outline.color);
-            draw.outline.width = _style_parser.StyleParser.createPropertyCache(draw.outline.width, function (v) {
-                return Array.isArray(v) ? v.map(parseFloat) : parseFloat(v);
-            });
+            draw.outline.color = _style_parser2.default.createColorPropertyCache(draw.outline.color);
+            draw.outline.width = _style_parser2.default.createPropertyCache(draw.outline.width, _style_parser2.default.parsePositiveNumber);
         }
 
-        draw.z = _style_parser.StyleParser.createPropertyCache(draw.z, _style_parser.StyleParser.parseUnits);
+        draw.z = _style_parser2.default.createPropertyCache(draw.z, _style_parser2.default.parseUnits);
 
         // Size (1d value or 2d array)
         try {
-            draw.size = _style_parser.StyleParser.createPointSizePropertyCache(draw.size);
+            draw.size = _style_parser2.default.createPointSizePropertyCache(draw.size);
         } catch (e) {
             (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + (e + ' (' + JSON.stringify(draw.size) + '), skipping features in layer'));
             return null;
         }
 
         // Offset (2d array)
-        draw.offset = _style_parser.StyleParser.createPropertyCache(draw.offset, function (v) {
-            return Array.isArray(v) && v.map(parseFloat).map(function (v) {
-                return isNaN(v) ? 0 : v;
-            }) || [0, 0];
+        draw.offset = _style_parser2.default.createPropertyCache(draw.offset, function (v) {
+            return Array.isArray(v) && v.map(_style_parser2.default.parseNumber);
         });
 
         // Buffer (1d value or or 2d array) - must be >= 0
-        draw.buffer = _style_parser.StyleParser.createPropertyCache(draw.buffer, function (v) {
-            return (Array.isArray(v) ? v : [v, v]).map(function (v) {
-                return Math.max(parseFloat(v), 0);
-            }).map(function (v) {
-                return isNaN(v) ? 0 : v;
-            }) || [0, 0];
+        draw.buffer = _style_parser2.default.createPropertyCache(draw.buffer, function (v) {
+            return (Array.isArray(v) ? v : [v, v]).map(_style_parser2.default.parsePositiveNumber);
         });
 
         // Repeat rules - no repeat limitation for points by default
-        draw.repeat_distance = _style_parser.StyleParser.createPropertyCache(draw.repeat_distance, parseFloat);
+        draw.repeat_distance = _style_parser2.default.createPropertyCache(draw.repeat_distance, _style_parser2.default.parseNumber);
 
         // Placement strategies
         draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
@@ -37640,10 +37694,10 @@ Object.assign(Points, {
         }
 
         draw.placement_spacing = draw.placement_spacing != null ? draw.placement_spacing : 80; // default spacing
-        draw.placement_spacing = _style_parser.StyleParser.createPropertyCache(draw.placement_spacing, parseFloat);
+        draw.placement_spacing = _style_parser2.default.createPropertyCache(draw.placement_spacing, _style_parser2.default.parsePositiveNumber);
 
         draw.placement_min_length_ratio = draw.placement_min_length_ratio != null ? draw.placement_min_length_ratio : 1;
-        draw.placement_min_length_ratio = _style_parser.StyleParser.createPropertyCache(draw.placement_min_length_ratio, parseFloat);
+        draw.placement_min_length_ratio = _style_parser2.default.createPropertyCache(draw.placement_min_length_ratio, _style_parser2.default.parsePositiveNumber);
 
         if (typeof draw.angle === 'number') {
             draw.angle = draw.angle * Math.PI / 180;
@@ -37692,11 +37746,11 @@ Object.assign(Points, {
         layout.anchor = draw.anchor;
 
         // label offset and buffer in pixel (applied in screen space)
-        layout.offset = _style_parser.StyleParser.evalCachedProperty(draw.offset, context) || _style_parser.StyleParser.zeroPair;
-        layout.buffer = _style_parser.StyleParser.evalCachedProperty(draw.buffer, context) || _style_parser.StyleParser.zeroPair;
+        layout.offset = _style_parser2.default.evalCachedProperty(draw.offset, context) || _style_parser2.default.zeroPair;
+        layout.buffer = _style_parser2.default.evalCachedProperty(draw.buffer, context) || _style_parser2.default.zeroPair;
 
         // repeat rules
-        layout.repeat_distance = _style_parser.StyleParser.evalCachedProperty(draw.repeat_distance, context);
+        layout.repeat_distance = _style_parser2.default.evalCachedProperty(draw.repeat_distance, context);
         if (layout.repeat_distance) {
             layout.repeat_distance *= layout.units_per_pixel;
 
@@ -37808,7 +37862,7 @@ Object.assign(Points, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate: function makeVertexTemplate(style, mesh) {
-        var color = style.color || _style_parser.StyleParser.defaults.color;
+        var color = style.color || _style_parser2.default.defaults.color;
         var vertex_layout = mesh.vertex_data.vertex_layout;
 
         // position - x & y coords will be filled in per-vertex below
@@ -37831,9 +37885,9 @@ Object.assign(Points, {
 
         // outline (can be static or dynamic depending on style)
         if (this.defines.TANGRAM_HAS_SHADER_POINTS && mesh.variant.shader_point) {
-            var outline_color = style.outline_color || _style_parser.StyleParser.defaults.outline.color;
+            var outline_color = style.outline_color || _style_parser2.default.defaults.outline.color;
             this.fillVertexTemplate(vertex_layout, 'a_outline_color', _vector2.default.mult(outline_color, 255), { size: 4 });
-            this.fillVertexTemplate(vertex_layout, 'a_outline_edge', style.outline_edge_pct || _style_parser.StyleParser.defaults.outline.width, { size: 1 });
+            this.fillVertexTemplate(vertex_layout, 'a_outline_edge', style.outline_edge_pct || _style_parser2.default.defaults.outline.width, { size: 1 });
         }
 
         // selection color
@@ -38053,7 +38107,7 @@ Object.assign(Points, {
     }
 });
 
-},{"../../builders/points":197,"../../geo":201,"../../gl/constants":202,"../../gl/texture":208,"../../gl/vertex_layout":213,"../../labels/collision":214,"../../labels/label_point":218,"../../labels/point_placement":220,"../../utils/debug_settings":255,"../../utils/log":259,"../../vector":272,"../../view":273,"../style":243,"../style_parser":245,"../text/text_labels":249}],241:[function(_dereq_,module,exports){
+},{"../../builders/points":196,"../../geo":200,"../../gl/constants":201,"../../gl/texture":207,"../../gl/vertex_layout":212,"../../labels/collision":213,"../../labels/label_point":217,"../../labels/point_placement":219,"../../utils/debug_settings":254,"../../utils/log":258,"../../vector":271,"../../view":272,"../style":242,"../style_parser":244,"../text/text_labels":248}],240:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38064,6 +38118,8 @@ exports.Polygons = exports.shaderSrc_polygonsFragment = exports.shaderSrc_polygo
 var _style = _dereq_('../style');
 
 var _style_parser = _dereq_('../style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _constants = _dereq_('../../gl/constants');
 
@@ -38125,15 +38181,15 @@ Object.assign(Polygons, {
             return null;
         }
 
-        style.z = draw.z && _style_parser.StyleParser.evalCachedDistanceProperty(draw.z, context) || _style_parser.StyleParser.defaults.z;
+        style.z = draw.z && _style_parser2.default.evalCachedDistanceProperty(draw.z, context) || _style_parser2.default.defaults.z;
         style.z *= _geo2.default.height_scale; // provide sub-meter precision of height values
 
-        style.extrude = _style_parser.StyleParser.evalProperty(draw.extrude, context);
+        style.extrude = _style_parser2.default.evalProperty(draw.extrude, context);
         if (style.extrude) {
             // use feature's height and min_height properties
             if (style.extrude === true) {
-                style.height = feature.properties.height || _style_parser.StyleParser.defaults.height;
-                style.min_height = feature.properties.min_height || _style_parser.StyleParser.defaults.min_height;
+                style.height = feature.properties.height || _style_parser2.default.defaults.height;
+                style.min_height = feature.properties.min_height || _style_parser2.default.defaults.min_height;
             }
             // explicit height, no min_height
             else if (typeof style.extrude === 'number') {
@@ -38155,8 +38211,8 @@ Object.assign(Polygons, {
         return style;
     },
     _preprocess: function _preprocess(draw) {
-        draw.color = _style_parser.StyleParser.createColorPropertyCache(draw.color);
-        draw.z = _style_parser.StyleParser.createPropertyCache(draw.z, _style_parser.StyleParser.parseUnits);
+        draw.color = _style_parser2.default.createColorPropertyCache(draw.color);
+        draw.z = _style_parser2.default.createPropertyCache(draw.z, _style_parser2.default.parseUnits);
         return draw;
     },
 
@@ -38225,7 +38281,7 @@ Object.assign(Polygons, {
     }
 });
 
-},{"../../builders/polygons":198,"../../geo":201,"../../gl/constants":202,"../../gl/vertex_layout":213,"../style":243,"../style_parser":245}],242:[function(_dereq_,module,exports){
+},{"../../builders/polygons":197,"../../geo":200,"../../gl/constants":201,"../../gl/vertex_layout":212,"../style":242,"../style_parser":244}],241:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38235,7 +38291,11 @@ exports.RasterStyle = undefined;
 
 var _style_parser = _dereq_('../style_parser');
 
+var _style_parser2 = _interopRequireDefault(_style_parser);
+
 var _polygons = _dereq_('../polygons/polygons');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // Raster tile rendering style
 
@@ -38256,12 +38316,12 @@ Object.assign(RasterStyle, {
     },
     _preprocess: function _preprocess(draw) {
         // Raster tiles default to white vertex color, as this color will tint the underlying texture
-        draw.color = draw.color || _style_parser.StyleParser.defaults.color;
+        draw.color = draw.color || _style_parser2.default.defaults.color;
         return this.super._preprocess.apply(this, arguments);
     }
 });
 
-},{"../polygons/polygons":241,"../style_parser":245}],243:[function(_dereq_,module,exports){
+},{"../polygons/polygons":240,"../style_parser":244}],242:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38274,6 +38334,8 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 exports.addLayerDebugEntry = addLayerDebugEntry;
 
 var _style_parser = _dereq_('./style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _selection = _dereq_('../selection');
 
@@ -38370,7 +38432,7 @@ var Style = exports.Style = {
         // If the style defines its own material, replace the inherited material instance
         if (!(this.material instanceof _material2.default)) {
             if (!_material2.default.isValid(this.material)) {
-                this.material = _style_parser.StyleParser.defaults.material;
+                this.material = _style_parser2.default.defaults.material;
             }
             this.material = new _material2.default(this.material);
         }
@@ -38596,7 +38658,7 @@ var Style = exports.Style = {
 
             // Feature selection (only if feature is marked as interactive, and style supports it)
             if (this.selection) {
-                style.interactive = _style_parser.StyleParser.evalProperty(this.introspection || draw.interactive, context);
+                style.interactive = _style_parser2.default.evalProperty(this.introspection || draw.interactive, context);
             } else {
                 style.interactive = false;
             }
@@ -38653,7 +38715,7 @@ var Style = exports.Style = {
     parseOrder: function parseOrder(order, context) {
         // Calculate order if it was not cached
         if (typeof order !== 'number') {
-            return _style_parser.StyleParser.calculateOrder(order, context);
+            return _style_parser2.default.calculateOrder(order, context);
         }
         return order;
     },
@@ -38669,9 +38731,9 @@ var Style = exports.Style = {
     parseColor: function parseColor(color, context) {
         // Need either a color, or a shader block for 'color' or 'filter'
         if (color) {
-            return _style_parser.StyleParser.evalCachedColorProperty(color, context);
+            return _style_parser2.default.evalCachedColorProperty(color, context);
         } else if (this.shaders.blocks.color || this.shaders.blocks.filter) {
-            return _style_parser.StyleParser.defaults.color;
+            return _style_parser2.default.defaults.color;
         }
     },
 
@@ -39072,7 +39134,7 @@ function addLayerDebugEntry(target, layer, faeture_count, geom_count, styles, ba
     }
 }
 
-},{"../gl/shader_program":207,"../gl/texture":208,"../gl/vbo_mesh":210,"../light":223,"../material":224,"../selection":230,"../sources/raster":234,"../utils/debug_settings":255,"../utils/log":259,"../utils/merge":261,"../utils/thread":267,"../utils/worker_broker":271,"./style_parser":245}],244:[function(_dereq_,module,exports){
+},{"../gl/shader_program":206,"../gl/texture":207,"../gl/vbo_mesh":209,"../light":222,"../material":223,"../selection":229,"../sources/raster":233,"../utils/debug_settings":254,"../utils/log":258,"../utils/merge":260,"../utils/thread":266,"../utils/worker_broker":270,"./style_parser":244}],243:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39596,13 +39658,12 @@ var StyleManager = exports.StyleManager = function () {
     return StyleManager;
 }();
 
-},{"../geo":201,"../gl/shader_program":207,"../utils/log":259,"../utils/merge":261,"./lines/lines":239,"./points/points":240,"./polygons/polygons":241,"./raster/raster":242,"./text/text":248}],245:[function(_dereq_,module,exports){
+},{"../geo":200,"../gl/shader_program":206,"../utils/log":258,"../utils/merge":260,"./lines/lines":238,"./points/points":239,"./polygons/polygons":240,"./raster/raster":241,"./text/text":247}],244:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.StyleParser = undefined;
 
 var _utils = _dereq_('../utils/utils');
 
@@ -39618,9 +39679,11 @@ var _csscolorparser2 = _interopRequireDefault(_csscolorparser);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var StyleParser = exports.StyleParser = {};
+var StyleParser = {};
+exports.default = StyleParser;
 
 // Helpers for string converstion / NaN handling
+
 var clampPositive = function clampPositive(v) {
     return Math.max(v, 0);
 };
@@ -39633,6 +39696,8 @@ var parseNumber = function parseNumber(v) {
 var parsePositiveNumber = function parsePositiveNumber(v) {
     return Array.isArray(v) ? v.map(parseNumber).map(clampPositive) : clampPositive(parseNumber(v));
 };
+
+Object.assign(StyleParser, { clampPositive: clampPositive, noNaN: noNaN, parseNumber: parseNumber, parsePositiveNumber: parsePositiveNumber });
 
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
@@ -39931,10 +39996,10 @@ StyleParser.convertUnits = function (val, context) {
     // un-parsed unit string
     else if (typeof val === 'string') {
             if (val.trim().slice(-2) === 'px') {
-                val = parseFloat(val);
+                val = parseNumber(val);
                 val *= _geo2.default.metersPerPixel(context.zoom); // convert from pixels
             } else {
-                val = parseFloat(val);
+                val = parseNumber(val);
             }
         }
         // multiple values or stops
@@ -39957,7 +40022,7 @@ StyleParser.convertUnits = function (val, context) {
 
 // Pre-parse units from string values
 StyleParser.parseUnits = function (val) {
-    var obj = { val: parseFloat(val) };
+    var obj = { val: parseNumber(val) };
     if (obj.val !== 0 && typeof val === 'string' && val.trim().slice(-2) === 'px') {
         obj.units = 'px';
     }
@@ -40140,7 +40205,7 @@ StyleParser.calculateOrder = function (order, context) {
         }
         // Explicit order value
         else {
-                order = parseFloat(order);
+                order = parsePositiveNumber(order);
             }
     }
 
@@ -40155,7 +40220,7 @@ StyleParser.evalProperty = function (prop, context) {
     return prop;
 };
 
-},{"../geo":201,"../utils/utils":269,"csscolorparser":76}],246:[function(_dereq_,module,exports){
+},{"../geo":200,"../utils/utils":268,"csscolorparser":76}],245:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40185,6 +40250,10 @@ var _font_manager2 = _interopRequireDefault(_font_manager);
 var _task = _dereq_('../../utils/task');
 
 var _task2 = _interopRequireDefault(_task);
+
+var _style_parser = _dereq_('../style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _debug_settings = _dereq_('../../utils/debug_settings');
 
@@ -40903,7 +40972,7 @@ var CanvasText = function () {
                 px_size /= 6.25;
             }
 
-            px_size = parseFloat(px_size);
+            px_size = _style_parser2.default.parsePositiveNumber(px_size);
             px_size *= _utils2.default.device_pixel_ratio;
             return px_size;
         }
@@ -41246,7 +41315,7 @@ var Line = function () {
     return Line;
 }();
 
-},{"../../gl/texture":208,"../../utils/debug_settings":255,"../../utils/log":259,"../../utils/task":266,"../../utils/utils":269,"./font_manager":247}],247:[function(_dereq_,module,exports){
+},{"../../gl/texture":207,"../../utils/debug_settings":254,"../../utils/log":258,"../../utils/task":265,"../../utils/utils":268,"../style_parser":244,"./font_manager":246}],246:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41419,7 +41488,7 @@ var FontManager = {
 
 exports.default = FontManager;
 
-},{"../../utils/log":259,"../../utils/utils":269,"fontfaceobserver":79}],248:[function(_dereq_,module,exports){
+},{"../../utils/log":258,"../../utils/utils":268,"fontfaceobserver":79}],247:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41734,7 +41803,7 @@ Object.assign(TextStyle, {
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures
 
-},{"../../geo":201,"../../gl/constants":202,"../../gl/vertex_layout":213,"../../labels/collision":214,"../../labels/label_line":217,"../../labels/label_point":218,"../points/points":240,"../style":243}],249:[function(_dereq_,module,exports){
+},{"../../geo":200,"../../gl/constants":201,"../../gl/vertex_layout":212,"../../labels/collision":213,"../../labels/label_line":216,"../../labels/label_point":217,"../points/points":239,"../style":242}],248:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41745,6 +41814,8 @@ exports.TextLabels = undefined;
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; // Text label rendering methods, can be mixed into a rendering style
 
 var _style_parser = _dereq_('../style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _geo = _dereq_('../../geo');
 
@@ -42050,35 +42121,29 @@ var TextLabels = exports.TextLabels = {
         }
 
         // Colors
-        draw.font.fill = _style_parser.StyleParser.createPropertyCache(draw.font.fill);
+        draw.font.fill = _style_parser2.default.createPropertyCache(draw.font.fill);
         if (draw.font.stroke) {
-            draw.font.stroke.color = _style_parser.StyleParser.createPropertyCache(draw.font.stroke.color);
+            draw.font.stroke.color = _style_parser2.default.createPropertyCache(draw.font.stroke.color);
         }
 
         // Convert font and text stroke sizes
-        draw.font.px_size = _style_parser.StyleParser.createPropertyCache(draw.font.size || _text_settings2.default.defaults.size, _canvas_text2.default.fontPixelSize);
+        draw.font.px_size = _style_parser2.default.createPropertyCache(draw.font.size || _text_settings2.default.defaults.size, _canvas_text2.default.fontPixelSize);
         if (draw.font.stroke && draw.font.stroke.width != null) {
-            draw.font.stroke.width = _style_parser.StyleParser.createPropertyCache(draw.font.stroke.width, parseFloat);
+            draw.font.stroke.width = _style_parser2.default.createPropertyCache(draw.font.stroke.width, _style_parser2.default.parsePositiveNumber);
         }
 
         // Offset (2d array)
-        draw.offset = _style_parser.StyleParser.createPropertyCache(draw.offset, function (v) {
-            return Array.isArray(v) && v.map(parseFloat).map(function (v) {
-                return isNaN(v) ? 0 : v;
-            }) || [0, 0];
+        draw.offset = _style_parser2.default.createPropertyCache(draw.offset, function (v) {
+            return Array.isArray(v) && v.map(_style_parser2.default.parseNumber);
         });
 
         // Buffer (1d value or or 2d array) - must be >= 0
-        draw.buffer = _style_parser.StyleParser.createPropertyCache(draw.buffer, function (v) {
-            return (Array.isArray(v) ? v : [v, v]).map(function (v) {
-                return Math.max(parseFloat(v), 0);
-            }).map(function (v) {
-                return isNaN(v) ? 0 : v;
-            }) || [0, 0];
+        draw.buffer = _style_parser2.default.createPropertyCache(draw.buffer, function (v) {
+            return (Array.isArray(v) ? v : [v, v]).map(_style_parser2.default.parsePositiveNumber);
         });
 
         // Repeat rules - for text labels, defaults to tile size
-        draw.repeat_distance = _style_parser.StyleParser.createPropertyCache(draw.repeat_distance || _geo2.default.tile_size, parseFloat);
+        draw.repeat_distance = _style_parser2.default.createPropertyCache(draw.repeat_distance || _geo2.default.tile_size, _style_parser2.default.parsePositiveNumber);
 
         return draw;
     },
@@ -42124,7 +42189,7 @@ var TextLabels = exports.TextLabels = {
     }
 };
 
-},{"../../geo":201,"../../labels/collision":214,"../../utils/log":259,"../../utils/thread":267,"../../utils/worker_broker":271,"../style_parser":245,"../text/canvas_text":246,"../text/text_settings":250}],250:[function(_dereq_,module,exports){
+},{"../../geo":200,"../../labels/collision":213,"../../utils/log":258,"../../utils/thread":266,"../../utils/worker_broker":270,"../style_parser":244,"../text/canvas_text":245,"../text/text_settings":249}],249:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42140,6 +42205,8 @@ var _geo = _dereq_('../../geo');
 var _geo2 = _interopRequireDefault(_geo);
 
 var _style_parser = _dereq_('../style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -42176,7 +42243,7 @@ exports.default = TextSettings = {
         style.can_articulate = draw.can_articulate;
 
         // Use fill if specified, or default
-        style.fill = draw.font.fill && _utils2.default.toCSSColor(_style_parser.StyleParser.evalCachedColorProperty(draw.font.fill, context)) || this.defaults.fill;
+        style.fill = draw.font.fill && _utils2.default.toCSSColor(_style_parser2.default.evalCachedColorProperty(draw.font.fill, context)) || this.defaults.fill;
 
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
@@ -42202,12 +42269,12 @@ exports.default = TextSettings = {
 
         // calculated pixel size
         style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
-        style.px_size = _style_parser.StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample;
+        style.px_size = _style_parser2.default.evalCachedProperty(draw.font.px_size, context) * style.supersample;
 
         // Use stroke if specified
         if (draw.font.stroke && draw.font.stroke.color) {
-            style.stroke = _utils2.default.toCSSColor(_style_parser.StyleParser.evalCachedColorProperty(draw.font.stroke.color, context) || this.defaults.stroke);
-            style.stroke_width = _style_parser.StyleParser.evalCachedProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
+            style.stroke = _utils2.default.toCSSColor(_style_parser2.default.evalCachedColorProperty(draw.font.stroke.color, context) || this.defaults.stroke);
+            style.stroke_width = _style_parser2.default.evalCachedProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
         }
 
         style.font_css = this.fontCSS(style);
@@ -42249,7 +42316,7 @@ exports.default = TextSettings = {
     }
 };
 
-},{"../../geo":201,"../../utils/utils":269,"../style_parser":245}],251:[function(_dereq_,module,exports){
+},{"../../geo":200,"../../utils/utils":268,"../style_parser":244}],250:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42277,6 +42344,8 @@ var _geo2 = _interopRequireDefault(_geo);
 var _style = _dereq_('./styles/style');
 
 var _style_parser = _dereq_('./styles/style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 var _collision = _dereq_('./labels/collision');
 
@@ -42806,7 +42875,7 @@ var Tile = function () {
                             continue; // skip features w/o geometry (valid GeoJSON)
                         }
 
-                        var context = _style_parser.StyleParser.getFeatureParseContext(feature, tile, global);
+                        var context = _style_parser2.default.getFeatureParseContext(feature, tile, global);
                         context.winding = tile.default_winding;
                         context.source = tile.source; // add data source name
                         context.layer = source_layer.layer; // add data source layer name
@@ -43065,7 +43134,7 @@ function addDebugLayers(node, tree) {
     }
 }
 
-},{"./geo":201,"./gl/texture":208,"./labels/collision":214,"./styles/style":243,"./styles/style_parser":245,"./utils/gl-matrix":257,"./utils/log":259,"./utils/merge":261,"./utils/task":266,"./utils/utils":269,"./utils/worker_broker":271}],252:[function(_dereq_,module,exports){
+},{"./geo":200,"./gl/texture":207,"./labels/collision":213,"./styles/style":242,"./styles/style_parser":244,"./utils/gl-matrix":256,"./utils/log":258,"./utils/merge":260,"./utils/task":265,"./utils/utils":268,"./utils/worker_broker":270}],251:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43581,7 +43650,7 @@ var TileManager = function () {
 
 exports.default = TileManager;
 
-},{"./geo":201,"./tile":251,"./tile_pyramid":253,"./utils/log":259,"./utils/worker_broker":271}],253:[function(_dereq_,module,exports){
+},{"./geo":200,"./tile":250,"./tile_pyramid":252,"./utils/log":258,"./utils/worker_broker":270}],252:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43768,7 +43837,7 @@ var TilePyramid = function () {
 
 exports.default = TilePyramid;
 
-},{"./geo":201,"./tile":251}],254:[function(_dereq_,module,exports){
+},{"./geo":200,"./tile":250}],253:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -43791,7 +43860,7 @@ function debounce(func, wait) {
     };
 }
 
-},{}],255:[function(_dereq_,module,exports){
+},{}],254:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -43820,7 +43889,7 @@ function mergeDebugSettings(settings) {
     Object.assign(debugSettings, settings);
 }
 
-},{}],256:[function(_dereq_,module,exports){
+},{}],255:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43849,7 +43918,7 @@ var MethodNotImplemented = exports.MethodNotImplemented = function (_Error) {
     return MethodNotImplemented;
 }(Error);
 
-},{}],257:[function(_dereq_,module,exports){
+},{}],256:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43936,7 +44005,7 @@ exports.vec3 = vec3;
 exports.mat3 = mat3;
 exports.mat4 = mat4;
 
-},{"gl-mat3/invert":88,"gl-mat3/normal-from-mat4":89,"gl-mat4/copy":90,"gl-mat4/identity":91,"gl-mat4/lookAt":92,"gl-mat4/multiply":93,"gl-mat4/perspective":94,"gl-mat4/scale":95,"gl-mat4/translate":96}],258:[function(_dereq_,module,exports){
+},{"gl-mat3/invert":88,"gl-mat3/normal-from-mat4":89,"gl-mat4/copy":90,"gl-mat4/identity":91,"gl-mat4/lookAt":92,"gl-mat4/multiply":93,"gl-mat4/perspective":94,"gl-mat4/scale":95,"gl-mat4/translate":96}],257:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -43962,7 +44031,7 @@ function hashString(string) {
     return hash;
 }
 
-},{}],259:[function(_dereq_,module,exports){
+},{}],258:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44062,7 +44131,7 @@ if (_thread2.default.is_main) {
 _worker_broker2.default.addTarget('_logProxy', log); // proxy log messages from worker to main thread
 _worker_broker2.default.addTarget('_logSetLevelProxy', log.setLevel); // proxy log level setting from main to worker thread
 
-},{"./thread":267,"./version":270,"./worker_broker":271}],260:[function(_dereq_,module,exports){
+},{"./thread":266,"./version":269,"./worker_broker":270}],259:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44079,6 +44148,8 @@ var _log2 = _interopRequireDefault(_log);
 var _urls = _dereq_('./urls');
 
 var _style_parser = _dereq_('../styles/style_parser');
+
+var _style_parser2 = _interopRequireDefault(_style_parser);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -44147,7 +44218,7 @@ var MediaCapture = function () {
                 // Optional background to blend with (only RGB, alpha is ignored)
                 var background = this.queue_screenshot.background;
                 if (background && background !== 'transparent') {
-                    background = _style_parser.StyleParser.parseColor(background).slice(0, 3).map(function (c) {
+                    background = _style_parser2.default.parseColor(background).slice(0, 3).map(function (c) {
                         return c * 255;
                     });
                 } else {
@@ -44290,7 +44361,7 @@ var MediaCapture = function () {
 
 exports.default = MediaCapture;
 
-},{"../styles/style_parser":245,"./log":259,"./urls":268}],261:[function(_dereq_,module,exports){
+},{"../styles/style_parser":244,"./log":258,"./urls":267}],260:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44334,7 +44405,7 @@ function mergeObjects(dest) {
     return dest;
 }
 
-},{}],262:[function(_dereq_,module,exports){
+},{}],261:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44451,7 +44522,7 @@ var OBB = function () {
 
 exports.default = OBB;
 
-},{"../vector":272}],263:[function(_dereq_,module,exports){
+},{"../vector":271}],262:[function(_dereq_,module,exports){
 'use strict';
 
 _dereq_('core-js/es6/promise');
@@ -44528,7 +44599,7 @@ if (perf && typeof perf.now !== 'function') {
     };
 }
 
-},{"core-js/es6/promise":11}],264:[function(_dereq_,module,exports){
+},{"core-js/es6/promise":11}],263:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -44543,7 +44614,7 @@ function sliceObject(obj, keys) {
     return sliced;
 }
 
-},{}],265:[function(_dereq_,module,exports){
+},{}],264:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44603,7 +44674,7 @@ function subscribeMixin(target) {
     });
 }
 
-},{"./log":259}],266:[function(_dereq_,module,exports){
+},{"./log":258}],265:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -44727,7 +44798,7 @@ var Task = {
 
 exports.default = Task;
 
-},{}],267:[function(_dereq_,module,exports){
+},{}],266:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -44759,7 +44830,7 @@ try {
     }
 }
 
-},{}],268:[function(_dereq_,module,exports){
+},{}],267:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44979,7 +45050,7 @@ function getURLParameter(name, url) {
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
 
-},{"./log":259}],269:[function(_dereq_,module,exports){
+},{"./log":258}],268:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45295,18 +45366,18 @@ Utils.pointInTile = function (point) {
     return point[0] >= 0 && point[1] > -_geo2.default.tile_scale && point[0] < _geo2.default.tile_scale && point[1] <= 0;
 };
 
-},{"../geo":201,"./log":259,"./thread":267,"./worker_broker":271}],270:[function(_dereq_,module,exports){
+},{"../geo":200,"./log":258,"./thread":266,"./worker_broker":270}],269:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.14.1\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"1.3.7\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.14.2\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
-},{}],271:[function(_dereq_,module,exports){
+},{}],270:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45875,7 +45946,7 @@ if (_thread2.default.is_worker) {
     setupWorkerThread();
 }
 
-},{"./log":259,"./thread":267}],272:[function(_dereq_,module,exports){
+},{"./log":258,"./thread":266}],271:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46088,7 +46159,7 @@ Vector.dot = function (v1, v2) {
     return n;
 };
 
-},{}],273:[function(_dereq_,module,exports){
+},{}],272:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46521,6 +46592,6 @@ var View = function () {
 
 exports.default = View;
 
-},{"./camera":200,"./geo":201,"./tile":251,"./utils/log":259,"./utils/subscribe":265,"./utils/utils":269}]},{},[225])(225)
+},{"./camera":199,"./geo":200,"./tile":250,"./utils/log":258,"./utils/subscribe":264,"./utils/utils":268}]},{},[224])(224)
 });})();
 //# sourceMappingURL=tangram.debug.js.map
