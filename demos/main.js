@@ -81,11 +81,10 @@
                     info = getFeaturePropsHTML(feature);
                 }
                 else {
-                    var name = feature.properties.name || feature.properties.kind;
-                    if (name) {
-                        name = '<b>'+name+'</b>';
-                        name += '<br>(click for details)';
-                    }
+                    var name = feature.properties.name || feature.properties.kind ||
+                        (Object.keys(feature.properties).length+' properties');
+                    name = '<b>'+name+'</b>';
+                    name += '<br>(click for details)';
                     name = '<span class="labelInner">' + name + '</span>';
                     info = name;
                 }
