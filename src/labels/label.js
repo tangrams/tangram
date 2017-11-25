@@ -7,6 +7,7 @@ import OBB from '../utils/obb';
 export default class Label {
 
     constructor (size, layout = {}) {
+        this.id = Label.nextLabelId();
         this.size = size;
         this.layout = layout;
         this.position = null;
@@ -86,5 +87,12 @@ export default class Label {
         return this.occluded(bboxes, exclude);
     }
 }
+
+Label.id = 0;
+Label.id_prefix = ''; // id prefix scoped to worker thread
+
+Label.nextLabelId = function () {
+    return Label.id_prefix + '/' + (Label.id++);
+};
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding

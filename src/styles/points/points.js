@@ -714,7 +714,8 @@ Object.assign(Points, {
 
         // TODO: instead of passing null, pass arrays with fingerprintable values
         // This value is checked in the shader to determine whether to apply curving logic
-        return this.buildQuad(
+        let start = mesh.vertex_data.offset;
+        let geom_count = this.buildQuad(
             [label.position],               // position
             size,                           // size in pixels
             angle,                          // angle in radians
@@ -726,6 +727,15 @@ Object.assign(Points, {
             false,                          // if curved boolean
             mesh.vertex_data, vertex_template    // VBO and data for current vertex
         );
+
+        // track label mesh offset data
+        mesh.labels = mesh.labels || {};
+        mesh.labels[label.id] = mesh.labels[label.id] || [];
+        mesh.labels[label.id].push([
+            // TODO label JSON
+            start,
+            geom_count
+        ]);
     },
 
     buildArticulatedLabel (label, style, mesh, context) {
@@ -758,7 +768,8 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            geom_count += this.buildQuad(
+            let start = mesh.vertex_data.offset;
+            let seg_count = this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
@@ -770,6 +781,16 @@ Object.assign(Points, {
                 true,                           // if curved
                 mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
             );
+            geom_count += seg_count;
+
+            // track label mesh offset data
+            mesh.labels = mesh.labels || {};
+            mesh.labels[label.id] = mesh.labels[label.id] || [];
+            mesh.labels[label.id].push([
+                // TODO label JSON
+                start,
+                seg_count
+            ]);
         }
 
         // pass for fill
@@ -794,7 +815,8 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            geom_count += this.buildQuad(
+            let start = mesh.vertex_data.offset;
+            let seg_count = this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
@@ -806,6 +828,16 @@ Object.assign(Points, {
                 true,                           // if curved
                 mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
             );
+            geom_count += seg_count;
+
+            // track label mesh offset data
+            mesh.labels = mesh.labels || {};
+            mesh.labels[label.id] = mesh.labels[label.id] || [];
+            mesh.labels[label.id].push([
+                // TODO label JSON
+                start,
+                seg_count
+            ]);
         }
 
         return geom_count;

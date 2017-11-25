@@ -50,6 +50,7 @@ export default LabelLine;
 // Base class for a labels.
 class LabelLineBase {
     constructor (layout) {
+        this.id = Label.nextLabelId();
         this.layout = layout;
         this.position = [];
         this.angle = 0;
