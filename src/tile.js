@@ -437,8 +437,14 @@ export default class Tile {
                         mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
                         mesh_options.variant = mesh_variant.variant;
 
+                        // for labels, keep buffer data on CPU so they can be modified later
+                        if (mesh_variant.labels) {
+                            mesh_options.retain = true;
+                        }
+
                         let mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
                         mesh.variant = mesh_options.variant;
+                        mesh.labels = mesh_variant.labels;
                         meshes[s] = meshes[s] || [];
                         meshes[s].push(mesh);
                         this.debug.buffer_size += mesh.buffer_size;
