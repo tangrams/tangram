@@ -342,6 +342,7 @@ Object.assign(Points, {
                     point_objs.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
+                        this.feature_style.linked = q.linked;
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
                 }),
@@ -358,6 +359,7 @@ Object.assign(Points, {
                         // setup styling object expected by Style class
                         let style = this.feature_style;
                         style.label = q.label;
+                        style.linked = q.linked;
                         style.size = text_info.size.logical_size;
                         style.angle = 0; // text attached to point is always upright
                         style.texcoords = text_info.align[q.label.align].texcoords;
@@ -671,19 +673,19 @@ Object.assign(Points, {
     build (style, mesh, context) {
         let label = style.label;
         if (label.type === 'curved') {
-            return this.buildArticulatedLabel(label, style, mesh, context);
+            return this.buildCurvedLabel(label, style, mesh, context);
         }
         else {
-            return this.buildLabel(label, style, mesh, context);
+            return this.buildStraightLabel(label, style, mesh, context);
         }
     },
 
-    buildLabel (label, style, mesh, context) {
+    buildStraightLabel (label, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle || style.angle;
 
         let size, texcoords;
-        if (label.type){
+        if (label.type !== 'point') {
             size = style.size[label.type];
             texcoords = style.texcoords[label.type].texcoord;
         }
@@ -730,15 +732,24 @@ Object.assign(Points, {
 
         // track label mesh offset data
         mesh.labels = mesh.labels || {};
-        mesh.labels[label.id] = mesh.labels[label.id] || [];
-        mesh.labels[label.id].push([
-            // TODO label JSON
+        mesh.labels[label.id] = mesh.labels[label.id] || {
+            object: {
+                label: label.toJSON(),
+                layout: {
+                    priority: label.layout.priority,
+                    collide: label.layout.collide
+                },
+                linked: (style.linked && style.linked.label.id)
+            },
+            ranges: [],
+        };
+        mesh.labels[label.id].ranges.push([
             start,
             geom_count
         ]);
     },
 
-    buildArticulatedLabel (label, style, mesh, context) {
+    buildCurvedLabel (label, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle;
         let geom_count = 0;
@@ -785,9 +796,18 @@ Object.assign(Points, {
 
             // track label mesh offset data
             mesh.labels = mesh.labels || {};
-            mesh.labels[label.id] = mesh.labels[label.id] || [];
-            mesh.labels[label.id].push([
-                // TODO label JSON
+            mesh.labels[label.id] = mesh.labels[label.id] || {
+                object: {
+                    label: label.toJSON(),
+                    layout: {
+                        priority: label.layout.priority,
+                        collide: label.layout.collide
+                    },
+                    linked: (style.linked && style.linked.label.id)
+                },
+                ranges: []
+            };
+            mesh.labels[label.id].ranges.push([
                 start,
                 seg_count
             ]);
@@ -832,9 +852,18 @@ Object.assign(Points, {
 
             // track label mesh offset data
             mesh.labels = mesh.labels || {};
-            mesh.labels[label.id] = mesh.labels[label.id] || [];
-            mesh.labels[label.id].push([
-                // TODO label JSON
+            mesh.labels[label.id] = mesh.labels[label.id] || {
+                object: {
+                    label: label.toJSON(),
+                    layout: {
+                        priority: label.layout.priority,
+                        collide: label.layout.collide
+                    },
+                    linked: (style.linked && style.linked.label.id)
+                },
+                ranges: []
+            };
+            mesh.labels[label.id].ranges.push([
                 start,
                 seg_count
             ]);

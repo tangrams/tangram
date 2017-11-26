@@ -8,6 +8,7 @@ export default class Label {
 
     constructor (size, layout = {}) {
         this.id = Label.nextLabelId();
+        this.type = ''; // set by subclass
         this.size = size;
         this.layout = layout;
         this.position = null;
@@ -18,6 +19,16 @@ export default class Label {
         this.obb = null;
         this.align = 'center';
         this.throw_away = false;    // if label does not fit (exceeds tile boundary, etc) this boolean will be true
+    }
+
+    // Minimal representation of label
+    toJSON () {
+        return {
+            id: this.id,
+            type: this.type,
+            aabb: this.aabb,
+            obb: this.obb
+        };
     }
 
     update () {
