@@ -61,6 +61,16 @@ class LabelLineBase {
         this.throw_away = false; // boolean that determines if label should be discarded
     }
 
+    // Minimal representation of label
+    toJSON () {
+        return {
+            id: this.id,
+            type: this.type,
+            aabbs: this.aabbs,
+            obbs: this.obbs
+        };
+    }
+
     // Given a line, find the longest series of segments that maintains a constant orientation in the x-direction.
     // This assures us that the line has no orientation flip, so text would not appear upside-down.
     // If the line's orientation is reversed, the flip return value will be true, otherwise false
