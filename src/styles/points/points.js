@@ -340,6 +340,11 @@ Object.assign(Points, {
                 // Points
                 Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
                     point_objs.forEach(q => {
+                        // convert back to original tile space position
+                        const layout = q.style;
+                        q.label.position[0] = (q.label.position[0] - layout.tile_min.x) * layout.units_per_meter;
+                        q.label.position[1] = (q.label.position[1] - layout.tile_min.y) * layout.units_per_meter;
+
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
                         this.feature_style.linked = q.linked;
@@ -355,6 +360,10 @@ Object.assign(Points, {
                     labels.forEach(q => {
                         let text_settings_key = q.text_settings_key;
                         let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+
+                        // convert back to original tile space position
+                        q.label.position[0] = (q.label.position[0] - q.layout.tile_min.x) * q.layout.units_per_meter;
+                        q.label.position[1] = (q.label.position[1] - q.layout.tile_min.y) * q.layout.units_per_meter;
 
                         // setup styling object expected by Style class
                         let style = this.feature_style;
@@ -451,14 +460,18 @@ Object.assign(Points, {
         return draw;
     },
 
-    // Default to trying all anchor placements
+    // Default to trying cardinal anchor placements
     default_anchor: ['bottom', 'top', 'right', 'left'],
 
     // Compute label layout-related properties
     computeLayout (target, feature, draw, context, tile) {
         let layout = target || {};
         layout.id = feature;
-        layout.units_per_pixel = tile.units_per_pixel || 1;
+        layout.units_per_pixel = tile.units_per_pixel || 1; // TODO: is fallback value for testing?
+        layout.meters_per_pixel = tile.meters_per_pixel;
+        layout.units_per_meter = tile.units_per_meter;
+        layout.tile_min = tile.min;
+        layout.tile_max = tile.max;
 
         // collision flag
         layout.collide = (draw.collide === false) ? false : true;
@@ -516,7 +529,8 @@ Object.assign(Points, {
             let fq = feature_queue[f];
             let text_info = this.texts[tile.id][fq.text_settings_key][fq.text];
             let size = text_info.size.collision_size;
-            fq.label = new LabelPoint(fq.point_label.position, size, fq.layout);
+            // fq.label = new LabelPoint(fq.point_label.position, size, fq.layout);
+            fq.label = new LabelPoint(fq.point_label.position_original, size, fq.layout);
             labels.push(fq);
         }
         return labels;
@@ -669,7 +683,7 @@ Object.assign(Points, {
         );
     },
 
-    // Build quad for point sprite
+    // Build quads for sprite or label
     build (style, mesh, context) {
         let label = style.label;
         if (label.type === 'curved') {
@@ -680,6 +694,7 @@ Object.assign(Points, {
         }
     },
 
+    // Build a point label, or straight line label
     buildStraightLabel (label, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle || style.angle;
@@ -712,8 +727,6 @@ Object.assign(Points, {
             mesh.uniforms.u_apply_color_blocks = true;
         }
 
-        let offset = label.offset;
-
         // TODO: instead of passing null, pass arrays with fingerprintable values
         // This value is checked in the shader to determine whether to apply curving logic
         let start = mesh.vertex_data.offset;
@@ -723,7 +736,7 @@ Object.assign(Points, {
             angle,                          // angle in radians
             null,                           // placeholder for multiple angles
             null,                           // placeholder for multiple pre_angles
-            offset,                         // offset from center in pixels
+            label.offset,                   // offset from center in pixels
             null,                           // placeholder for multiple offsets
             texcoords,                      // texture UVs
             false,                          // if curved boolean
@@ -749,6 +762,7 @@ Object.assign(Points, {
         ]);
     },
 
+    // Build a curved line label
     buildCurvedLabel (label, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle;
@@ -803,7 +817,7 @@ Object.assign(Points, {
                         priority: label.layout.priority,
                         collide: label.layout.collide
                     },
-                    linked: (style.linked && style.linked.label.id)
+                    linked: (style.linked && style.linked.label.id) // NB: linked not currently used for curved labels
                 },
                 ranges: []
             };
@@ -859,7 +873,7 @@ Object.assign(Points, {
                         priority: label.layout.priority,
                         collide: label.layout.collide
                     },
-                    linked: (style.linked && style.linked.label.id)
+                    linked: (style.linked && style.linked.label.id) // NB: linked not currently used for curved labels
                 },
                 ranges: []
             };
