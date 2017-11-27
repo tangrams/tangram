@@ -1,3 +1,4 @@
+import Label from './label';
 import RepeatGroup from './repeat_group';
 import log from '../utils/log';
 
@@ -162,7 +163,7 @@ export default Collision = {
         if (repeat) {
             RepeatGroup.add(label, label.layout, tile);
         }
-        label.add(this.tiles[tile].bboxes);
+        Label.add(label, this.tiles[tile].bboxes);
     }
 
 };
