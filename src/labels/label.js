@@ -6,7 +6,7 @@ import OBB from '../utils/obb';
 
 export default class Label {
 
-    constructor (size, layout) {
+    constructor (size, layout = {}) {
         this.id = Label.nextLabelId();
         this.type = ''; // set by subclass
         this.size = size;
@@ -81,13 +81,9 @@ export default class Label {
         let min = [ this.aabb[0], this.aabb[1] ];
         let max = [ this.aabb[2], this.aabb[3] ];
 
-        // TODO: broken with switch to meters for collision space
-        // if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
-        // const {tile_min, tile_max} = this.layout;
-        // if (min[0] < tile_min.x || min[0] > tile_max.x || min[1] < tile_min.y || min[1] > tile_max.y ||
-        //     max[0] < tile_min.x || max[0] > tile_max.x || max[1] < tile_min.y || max[1] > tile_max.y) {
-        //     return false;
-        // }
+        if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
+            return false;
+        }
 
         return true;
     }
@@ -109,4 +105,4 @@ Label.nextLabelId = function () {
     return Label.id_prefix + '/' + (Label.id++);
 };
 
-Label.epsilon = 0.99999999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
+Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding

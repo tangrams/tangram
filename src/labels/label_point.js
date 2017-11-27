@@ -9,12 +9,8 @@ export default class LabelPoint extends Label {
     constructor (position, size, layout) {
         super(size, layout);
         this.type = 'point';
-        this.parent = this.layout.parent;
         this.position = [position[0], position[1]];
-        this.position_original = [position[0], position[1]];
-        this.position[0] = this.position[0] / layout.units_per_meter + layout.tile_min.x;
-        this.position[1] = this.position[1] / layout.units_per_meter + layout.tile_min.y;
-
+        this.parent = this.layout.parent;
         this.update();
 
         this.start_anchor_index = 1;
@@ -52,18 +48,17 @@ export default class LabelPoint extends Label {
     }
 
     updateBBoxes () {
-        const upp = this.layout.meters_per_pixel;
-        let width = (this.size[0] + this.layout.buffer[0] * 2) * upp * Label.epsilon;
-        let height = (this.size[1] + this.layout.buffer[1] * 2) * upp * Label.epsilon;
+        let width = (this.size[0] + this.layout.buffer[0] * 2) * this.layout.units_per_pixel * Label.epsilon;
+        let height = (this.size[1] + this.layout.buffer[1] * 2) * this.layout.units_per_pixel * Label.epsilon;
 
         // fudge width value as text may overflow bounding box if it has italic, bold, etc style
         if (this.layout.italic){
-            width += 5 * upp;
+            width += 5 * this.layout.units_per_pixel;
         }
 
         let p = [
-            this.position[0] + (this.offset[0] * upp),
-            this.position[1] - (this.offset[1] * upp)
+            this.position[0] + (this.offset[0] * this.layout.units_per_pixel),
+            this.position[1] - (this.offset[1] * this.layout.units_per_pixel)
         ];
 
         this.obb = new OBB(p[0], p[1], 0, width, height);
