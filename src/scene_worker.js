@@ -295,7 +295,7 @@ Object.assign(self, {
                     if (geometry === true) {
                         // Transform back to lat lng (copy geometry to avoid local modification)
                         subset.geometry = Geo.copyGeometry(feature.geometry);
-                        Geo.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min, tile.max);
+                        Geo.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min);
                     }
 
                     features.push(subset);
