@@ -53,7 +53,7 @@ void main (void) {
             color *= texture2D(u_texture, v_texcoord);
         }
         else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture
-            color = texture2D(u_texture, v_texcoord);
+            color *= texture2D(u_texture, v_texcoord);
             color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
         }
         else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
@@ -77,7 +77,7 @@ void main (void) {
         }
     #else
         // If shader points not supported, assume label texture
-        color = texture2D(u_texture, v_texcoord);
+        color *= texture2D(u_texture, v_texcoord);
         color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
     #endif
 
