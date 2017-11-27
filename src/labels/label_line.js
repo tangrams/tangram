@@ -66,8 +66,7 @@ class LabelLineBase {
         return {
             id: this.id,
             type: this.type,
-            aabbs: this.aabbs,
-            obbs: this.obbs
+            obbs: this.obbs.map(o => o.toJSON())
         };
     }
 
