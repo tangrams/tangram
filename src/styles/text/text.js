@@ -121,10 +121,6 @@ Object.assign(TextStyle, {
                             this.texts[tile.id][text_settings_key] &&
                             this.texts[tile.id][text_settings_key][q.text];
 
-                        // convert back to original tile space position
-                        q.label.position[0] = (q.label.position[0] - q.layout.tile_min.x) * q.layout.units_per_meter;
-                        q.label.position[1] = (q.label.position[1] - q.layout.tile_min.y) * q.layout.units_per_meter;
-
                         // setup styling object expected by Style class
                         let style = this.feature_style;
                         style.label = q.label;
