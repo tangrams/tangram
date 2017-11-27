@@ -69,13 +69,6 @@ export default class Label {
         return intersect;
     }
 
-    // Add this label's bounding box to the provided set
-    add (bboxes) {
-        this.placed = true;
-        bboxes.aabb.push(this.aabb);
-        bboxes.obb.push(this.obb);
-    }
-
     // checks whether the label is within the tile boundaries
     inTileBounds () {
         let min = [ this.aabb[0], this.aabb[1] ];
@@ -97,6 +90,24 @@ export default class Label {
         return this.occluded(bboxes, exclude);
     }
 }
+
+// Generic label placement function, adds a label's bounding boxes to the currently placed set
+//  Supports single or multiple collision boxes
+Label.add = function (label, bboxes) {
+    label.placed = true;
+
+    if (label.aabb) {
+        bboxes.aabb.push(label.aabb);
+        bboxes.obb.push(label.obb);
+    }
+
+    if (label.aabbs) {
+        for (let i = 0; i < label.aabbs.length; i++) {
+            bboxes.aabb.push(label.aabbs[i]);
+            bboxes.obb.push(label.obbs[i]);
+        }
+    }
+};
 
 Label.id = 0;
 Label.id_prefix = ''; // id prefix scoped to worker thread

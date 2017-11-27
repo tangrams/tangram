@@ -154,17 +154,6 @@ class LabelLineBase {
         return [longest_line, flip];
     }
 
-    // Add each bounding box to the collision pass
-    add(bboxes) {
-        this.placed = true;
-        for (let i = 0; i < this.aabbs.length; i++) {
-            let aabb = this.aabbs[i];
-            let obb = this.obbs[i];
-            let obj = { aabb, obb };
-            Label.prototype.add.call(obj, bboxes);
-        }
-    }
-
     // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
     discard(bboxes, exclude = null) {
         if (this.throw_away) {
