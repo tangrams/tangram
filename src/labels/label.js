@@ -26,8 +26,7 @@ export default class Label {
         return {
             id: this.id,
             type: this.type,
-            aabb: this.aabb,
-            obb: this.obb
+            obb: this.obb.toJSON()
         };
     }
 

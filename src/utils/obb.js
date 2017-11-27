@@ -12,6 +12,16 @@ export default class OBB {
         this.update();
     }
 
+    toJSON () {
+        return {
+            x: this.centroid[0],
+            y: this.centroid[1],
+            a: this.angle,
+            w: this.dimension[0],
+            h: this.dimension[1]
+        };
+    }
+
     getExtent () {
     	let aabb = [Infinity, Infinity, -Infinity, -Infinity];
 
