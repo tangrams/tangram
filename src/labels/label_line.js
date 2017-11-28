@@ -66,7 +66,11 @@ class LabelLineBase {
         return {
             id: this.id,
             type: this.type,
-            obbs: this.obbs.map(o => o.toJSON())
+            obbs: this.obbs.map(o => o.toJSON()),
+            layout: {
+                priority: this.layout.priority,
+                collide: this.layout.collide
+            }
         };
     }
 
@@ -302,9 +306,9 @@ class LabelLineStraight extends LabelLineBase {
 
                     this.updateBBoxes(this.position, size, this.angle, this.angle, this.offset);
 
-                    if (this.inTileBounds()) {
+                    // if (this.inTileBounds()) {
                         return true;
-                    }
+                    // }
                 }
 
                 prev_angle = next_angle;

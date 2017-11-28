@@ -26,7 +26,11 @@ export default class Label {
         return {
             id: this.id,
             type: this.type,
-            obb: this.obb.toJSON()
+            obb: this.obb.toJSON(),
+            layout: {
+                priority: this.layout.priority,
+                collide: this.layout.collide
+            }
         };
     }
 

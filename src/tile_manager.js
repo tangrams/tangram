@@ -1,6 +1,7 @@
 import Tile from './tile';
 import TilePyramid from './tile_pyramid';
 import Geo from './geo';
+import mainThreadLabelCollisionPass from './labels/main_pass';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker';
 
@@ -16,6 +17,7 @@ export default class TileManager {
         this.building_tiles = null;
         this.renderable_tiles = [];
         this.active_styles = [];
+        this.mainThreadLabelCollisionPass = mainThreadLabelCollisionPass;
 
         // Provide a hook for this object to be called from worker threads
         this.main_thread_target = ['TileManager', this.scene.id].join('_');

@@ -338,7 +338,7 @@ Object.assign(Points, {
         return Promise.
             all([
                 // Points
-                Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
+                Collision.collide(point_objs, this.collision_group_points, tile.id).then(({keep:point_objs}) => {
                     point_objs.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
@@ -733,19 +733,15 @@ Object.assign(Points, {
         // track label mesh offset data
         mesh.labels = mesh.labels || {};
         mesh.labels[label.id] = mesh.labels[label.id] || {
-            object: {
+            container: {
                 label: label.toJSON(),
-                layout: {
-                    priority: label.layout.priority,
-                    collide: label.layout.collide
-                },
                 linked: (style.linked && style.linked.label.id)
             },
             ranges: [],
         };
         mesh.labels[label.id].ranges.push([
             start,
-            geom_count
+            geom_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
         ]);
     },
 
@@ -797,19 +793,15 @@ Object.assign(Points, {
             // track label mesh offset data
             mesh.labels = mesh.labels || {};
             mesh.labels[label.id] = mesh.labels[label.id] || {
-                object: {
+                container: {
                     label: label.toJSON(),
-                    layout: {
-                        priority: label.layout.priority,
-                        collide: label.layout.collide
-                    },
                     linked: (style.linked && style.linked.label.id)
                 },
                 ranges: []
             };
             mesh.labels[label.id].ranges.push([
                 start,
-                seg_count
+                seg_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
             ]);
         }
 
@@ -853,19 +845,15 @@ Object.assign(Points, {
             // track label mesh offset data
             mesh.labels = mesh.labels || {};
             mesh.labels[label.id] = mesh.labels[label.id] || {
-                object: {
+                container: {
                     label: label.toJSON(),
-                    layout: {
-                        priority: label.layout.priority,
-                        collide: label.layout.collide
-                    },
                     linked: (style.linked && style.linked.label.id)
                 },
                 ranges: []
             };
             mesh.labels[label.id].ranges.push([
                 start,
-                seg_count
+                seg_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
             ]);
         }
 

@@ -98,32 +98,34 @@ export default class LabelPoint extends Label {
     }
 
     getNextFit() {
-        if (!this.layout.cull_from_tile || this.inTileBounds()) {
-            return true;
-        }
+        return true;
 
-        if (this.layout.move_into_tile){
-            this.moveIntoTile();
-            return true;
-        }
-        else {
-            if (Array.isArray(this.layout.anchor)) {
-                // Start on second anchor (first anchor was set on creation)
-                for (let i = 1; i < this.layout.anchor.length; i++) {
-                    this.anchor = this.layout.anchor[i];
-                    this.update();
+        // if (!this.layout.cull_from_tile || this.inTileBounds()) {
+        //     return true;
+        // }
 
-                    this.start_anchor_index = i;
+        // if (this.layout.move_into_tile){
+        //     this.moveIntoTile();
+        //     return true;
+        // }
+        // else {
+        //     if (Array.isArray(this.layout.anchor)) {
+        //         // Start on second anchor (first anchor was set on creation)
+        //         for (let i = 1; i < this.layout.anchor.length; i++) {
+        //             this.anchor = this.layout.anchor[i];
+        //             this.update();
 
-                    if (this.inTileBounds()) {
-                        return true;
-                    }
-                }
-            }
+        //             this.start_anchor_index = i;
 
-            // no anchors result in fit
-            return false;
-        }
+        //             if (this.inTileBounds()) {
+        //                 return true;
+        //             }
+        //         }
+        //     }
+
+        //     // no anchors result in fit
+        //     return false;
+        // }
     }
 
     discard (bboxes, exclude = null) {
@@ -139,9 +141,9 @@ export default class LabelPoint extends Label {
                     this.anchor = this.layout.anchor[i];
                     this.update();
 
-                    if (this.layout.cull_from_tile && !this.inTileBounds()) {
-                        continue;
-                    }
+                    // if (this.layout.cull_from_tile && !this.inTileBounds()) {
+                    //     continue;
+                    // }
 
                     if (!super.discard(bboxes, exclude)) {
                         return false;
