@@ -8,7 +8,7 @@ export default Collision = {
 
     tiles: {},
 
-    startTile (tile, repeat = true) {
+    startTile (tile, { apply_repeat_groups = true, return_discarded = false } = {}) {
         let state = this.tiles[tile] = {
             bboxes: {           // current set of placed bounding boxes
                 aabb: [],
@@ -16,8 +16,10 @@ export default Collision = {
             },
             objects: {},        // objects to collide, grouped by priority, then by style
             keep: {},           // objects that were kept after collision, grouped by style
+            discard: {},
             styles: {},         // styles contributing collision objects
-            repeat
+            repeat: apply_repeat_groups,
+            return_discarded
         };
 
         // Promise resolved when all registered styles have added objects
@@ -72,7 +74,10 @@ export default Collision = {
         // Wait for objects to be added from all styles
         return state.complete.then(() => {
             state.resolve = null;
-            return state.keep[style] || [];
+            return {
+                keep: state.keep[style] || [],
+                discard: (state.return_discarded && (state.discard[style] || []))
+            };
         });
     },
 
@@ -81,6 +86,7 @@ export default Collision = {
     endTile (tile) {
         let state = this.tiles[tile];
         let keep = state.keep;
+        let discard = state.discard;
 
         if (state.repeat) {
             RepeatGroup.clear(tile);
@@ -98,6 +104,7 @@ export default Collision = {
             for (let style in style_objects) {
                 let objects = style_objects[style];
                 keep[style] = keep[style] || [];
+                discard[style] = discard[style] || [];
 
                 for (let i = 0; i < objects.length; i++) {
                     let object = objects[i];
@@ -113,6 +120,12 @@ export default Collision = {
                             this.place(object, tile, state.repeat);
                             this.place(object.linked, tile, state.repeat);
                         }
+                        else if (state.return_discarded) {
+                            discard[style].push(object);
+                        }
+                    }
+                    else if (state.return_discarded) {
+                        discard[style].push(object);
                     }
                 }
             }

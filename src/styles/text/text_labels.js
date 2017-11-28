@@ -169,7 +169,7 @@ export const TextLabels = {
                 return Promise.resolve({});
             }
 
-            return Collision.collide(labels, collision_group, tile.id).then(labels => {
+            return Collision.collide(labels, collision_group, tile.id).then(({keep:labels}) => {
                 if (tile.canceled) {
                     log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
                     return {};
