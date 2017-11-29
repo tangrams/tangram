@@ -10,7 +10,7 @@ function makePrefix(sourceMapFile) {
         prefix += 'var target = (typeof self === "undefined" || !(typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope)) && ((typeof module !== "undefined" && module.exports) || (typeof window !== "undefined"));';
         prefix += 'if (target) {';
         prefix += 'var ' + source_var + ' = arguments.callee.toString();';
-        prefix += 'var ' + source_origin_var + ' = typeof document !== "undefined" && document.currentScript !== undefined ? document.currentScript.src : \'\';';
+        prefix += 'var ' + source_origin_var + ' = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : \'\';';
         prefix += 'var ' + source_map_var + ' = \'' + sourceMapFile + '\';';
         prefix += '};';
     return prefix;
