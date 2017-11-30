@@ -41,8 +41,7 @@ export default class VBOMesh  {
             this.geometry_count = this.vertex_count / this.vertices_per_geometry;
         }
 
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertex_buffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
+        this.upload();
 
         if (!this.retain) {
             delete this.vertex_data;
@@ -104,6 +103,12 @@ export default class VBOMesh  {
                 this.vertex_layout.enable(this.gl, program, force);
             });
         }
+    }
+
+    // Upload buffer data to GPU
+    upload() {
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertex_buffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
     }
 
     destroy() {
