@@ -55,6 +55,7 @@ class LabelLineBase {
         this.position = [];
         this.angle = 0;
         this.offset = layout.offset.slice();
+        this.unit_scale = this.layout.units_per_pixel;
         this.obbs = [];
         this.aabbs = [];
         this.type = ''; // "curved" or "straight" to be set by child class
@@ -222,7 +223,7 @@ class LabelLineStraight extends LabelLineBase {
     // A straight label is generally placed at segment midpoints, but can "look ahead" to further segments
     // if they are within an angle bound given by STRAIGHT_ANGLE_TOLERANCE and place at the midpoint between non-consecutive segments
     fit (size, line, layout, tolerance){
-        let upp = layout.units_per_pixel;
+        let upp = this.unit_scale;
         let flipped; // boolean indicating if orientation of line is changed
 
         // Make new copy of line, with consistent orientation
@@ -321,7 +322,7 @@ class LabelLineStraight extends LabelLineBase {
 
     // Calculate bounding boxes
     updateBBoxes(position, size, angle, angle_offset, offset) {
-        let upp = this.layout.units_per_pixel;
+        let upp = this.unit_scale;
 
         // reset bounding boxes
         this.obbs = [];
@@ -357,7 +358,7 @@ class LabelLineCurved extends LabelLineBase {
     // Determine if the curved label can fit the geometry.
     // No tolerance is provided because the label must fit entirely within the line geometry.
     fit (size, line, layout){
-        let upp = layout.units_per_pixel;
+        let upp = this.unit_scale;
         let flipped; // boolean determining if the line orientation is reversed
 
         let height_px = Math.max(...size.map(s => s[1])); // use max segment height
