@@ -48,17 +48,17 @@ export default class LabelPoint extends Label {
     }
 
     updateBBoxes () {
-        let width = (this.size[0] + this.layout.buffer[0] * 2) * this.layout.units_per_pixel * Label.epsilon;
-        let height = (this.size[1] + this.layout.buffer[1] * 2) * this.layout.units_per_pixel * Label.epsilon;
+        let width = (this.size[0] + this.layout.buffer[0] * 2) * this.unit_scale * Label.epsilon;
+        let height = (this.size[1] + this.layout.buffer[1] * 2) * this.unit_scale * Label.epsilon;
 
         // fudge width value as text may overflow bounding box if it has italic, bold, etc style
         if (this.layout.italic){
-            width += 5 * this.layout.units_per_pixel;
+            width += 5 * this.unit_scale;
         }
 
         let p = [
-            this.position[0] + (this.offset[0] * this.layout.units_per_pixel),
-            this.position[1] - (this.offset[1] * this.layout.units_per_pixel)
+            this.position[0] + (this.offset[0] * this.unit_scale),
+            this.position[1] - (this.offset[1] * this.unit_scale)
         ];
 
         this.obb = new OBB(p[0], p[1], 0, width, height);

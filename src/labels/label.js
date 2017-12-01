@@ -15,6 +15,7 @@ export default class Label {
         this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
         this.placed = null;
         this.offset = layout.offset;
+        this.unit_scale = this.layout.units_per_pixel;
         this.aabb = null;
         this.obb = null;
         this.align = 'center';
