@@ -46,8 +46,7 @@ export default class CanvasText {
         return FontManager.loadFonts().then(() => {
             return Task.add({
                 type: 'textSizes',
-                target: this,
-                method: 'processTextSizesTask',
+                run: this.processTextSizesTask.bind(this),
                 texts,
                 tile_id,
                 cursor: {
@@ -268,9 +267,8 @@ export default class CanvasText {
     rasterize (texts, textures, tile_id, texture_prefix, gl) {
         return Task.add({
             type: 'rasterizeLabels',
-            target: this,
-            method: 'processRasterizeTask',
-            cancel: 'cancelRasterizeTask',
+            run: this.processRasterizeTask.bind(this),
+            cancel: this.cancelRasterizeTask.bind(this),
             pause_factor: 2,         // pause 2 frames when task run past allowed time
             user_moving_view: false, // don't run task when user is moving view
             texts,
