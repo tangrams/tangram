@@ -1,32 +1,14 @@
-import Geo from '../geo';
-
 export default class RepeatGroup {
 
-    constructor (key, repeat_dist, max_repeat_dist) {
+    constructor (key, repeat_dist) {
         this.key = key;
         this.repeat_dist = repeat_dist;
         this.repeat_dist_sq = this.repeat_dist * this.repeat_dist;
-        this.max_repeat_dist_sq = max_repeat_dist * max_repeat_dist;
-        this.one_per_group = (this.repeat_dist_sq >= this.max_repeat_dist_sq) ? true : false;
         this.positions = [];
     }
 
     // Check an object to see if it's a repeat in this group
     check (obj) {
-        // If only one object allowed per group, shortcut distance logic
-        if (this.one_per_group) {
-            if (this.positions.length > 0) {
-                // reported distance maxes out at threshold in this case
-                // (not true dist value since we skipped calculating it)
-                return {
-                    dist_sq: this.max_repeat_dist_sq,
-                    repeat_dist_sq: this.repeat_dist_sq,
-                    one_per_group: this.one_per_group
-                };
-            }
-            return; // no object for this group yet
-        }
-
         // Check distance from new object to objects already in group
         let p1 = obj.position;
         for (let i=0; i < this.positions.length; i++) {
@@ -71,11 +53,7 @@ export default class RepeatGroup {
     static add (obj, layout, tile) {
         if (layout.repeat_distance && layout.repeat_group) {
             if (this.groups[tile][layout.repeat_group] == null) {
-                this.groups[tile][layout.repeat_group] = new RepeatGroup(
-                    layout.repeat_group,
-                    layout.repeat_distance,
-                    RepeatGroup.max_repeat_dist
-                );
+                this.groups[tile][layout.repeat_group] = new RepeatGroup(layout.repeat_group, layout.repeat_distance);
             }
             this.groups[tile][layout.repeat_group].add(obj);
         }
@@ -85,7 +63,3 @@ export default class RepeatGroup {
 
 // Current set of repeat groups, grouped and keyed by tile
 RepeatGroup.groups = {};
-
-// Max repeat dist: for groups with a repeat dist beyond this threshold, only one label
-// will be allowed per group, e.g. set to tile size for one-label-per-tile
-RepeatGroup.max_repeat_dist = Geo.tile_scale;
