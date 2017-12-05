@@ -28,6 +28,7 @@ export default class Tile {
         this.view = view;
         this.source = source;
         this.generation = null;
+        this.valid = true;
 
         this.visible = false;
         this.proxy_for = null;
@@ -145,6 +146,7 @@ export default class Tile {
         this.workerMessage('self.removeTile', this.key);
         this.freeResources();
         this.worker = null;
+        this.valid = false;
     }
 
     buildAsMessage() {
