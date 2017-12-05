@@ -338,11 +338,11 @@ Object.assign(Points, {
         return Promise.
             all([
                 // Points
-                Collision.collide(point_objs, this.collision_group_points, tile.id).then(({keep:point_objs}) => {
+                Collision.collide(point_objs, this.collision_group_points, tile.id).then(({show:point_objs}) => {
                     point_objs.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
-                        this.feature_style.linked = q.linked;
+                        this.feature_style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
                 }),
@@ -359,7 +359,7 @@ Object.assign(Points, {
                         // setup styling object expected by Style class
                         let style = this.feature_style;
                         style.label = q.label;
-                        style.linked = q.linked;
+                        style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
                         style.size = text_info.size.logical_size;
                         style.angle = 0; // text attached to point is always upright
                         style.texcoords = text_info.align[q.label.align].texcoords;
@@ -490,7 +490,8 @@ Object.assign(Points, {
                 layout.repeat_group = draw.repeat_group;
             }
             else {
-                layout.repeat_group = draw.key; // default to unique set of matching layers
+                // layout.repeat_group = draw.key; // default to unique set of matching layers
+                layout.repeat_group = draw.layers.join('-'); // TODO cache this in draw group
             }
         }
 
@@ -606,8 +607,9 @@ Object.assign(Points, {
         // layer order - w coord of 'position' attribute (for packing efficiency)
         this.fillVertexTemplate(vertex_layout, 'a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
 
-        // scaling vector - (x, y) components per pixel, z = angle
-        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 3 }); // NB: w coord is currently unused, change size: 4 if needed
+        // scaling vector - (x, y) components per pixel, z = angle, w = show/hide
+        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 1, offset: 3 }); // mark all points/labels initially hidden
 
         // texture coords
         this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, { size: 2 });
@@ -738,6 +740,12 @@ Object.assign(Points, {
                 linked: (style.linked && style.linked.label.id)
             },
             ranges: [],
+            debug: {
+                id: context.feature.properties.id,
+                name: context.feature.properties.name,
+                props: JSON.stringify(context.feature.properties),
+                point_type: mesh.uniforms.u_point_type
+            }
         };
         mesh.labels[label.id].ranges.push([
             start,
@@ -797,7 +805,13 @@ Object.assign(Points, {
                     label: label.toJSON(),
                     linked: (style.linked && style.linked.label.id)
                 },
-                ranges: []
+                ranges: [],
+                debug: {
+                    id: context.feature.properties.id,
+                    name: context.feature.properties.name,
+                    props: JSON.stringify(context.feature.properties),
+                    point_type: mesh.uniforms.u_point_type
+                }
             };
             mesh.labels[label.id].ranges.push([
                 start,
@@ -849,7 +863,13 @@ Object.assign(Points, {
                     label: label.toJSON(),
                     linked: (style.linked && style.linked.label.id)
                 },
-                ranges: []
+                ranges: [],
+                debug: {
+                    id: context.feature.properties.id,
+                    name: context.feature.properties.name,
+                    props: JSON.stringify(context.feature.properties),
+                    point_type: mesh.uniforms.u_point_type
+                }
             };
             mesh.labels[label.id].ranges.push([
                 start,

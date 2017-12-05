@@ -4,6 +4,7 @@ import Geo from './geo';
 import mainThreadLabelCollisionPass from './labels/main_pass';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker';
+import Task from './utils/task';
 
 export default class TileManager {
 
@@ -16,8 +17,8 @@ export default class TileManager {
         this.queued_coords = [];
         this.building_tiles = null;
         this.renderable_tiles = [];
+        this.collision = { tiles: [], mesh_counts: [], zoom: null };
         this.active_styles = [];
-        this.mainThreadLabelCollisionPass = mainThreadLabelCollisionPass;
 
         // Provide a hook for this object to be called from worker threads
         this.main_thread_target = ['TileManager', this.scene.id].join('_');
@@ -112,6 +113,45 @@ export default class TileManager {
         this.view.pruneTilesForView();
         this.updateRenderableTiles();
         this.updateActiveStyles();
+        this.updateLabels();
+    }
+
+    updateLabels ({ force = false, show = false } = {}) {
+        // if (!force && this.isLoadingVisibleTiles()) {
+        //     return Promise.resolve({});
+        // }
+
+        // const tiles = this.renderable_tiles.filter(t => t.style_zoom === this.view.tile_zoom);
+        const tiles = this.renderable_tiles.filter(t => t.valid);//.filter(t => !t.isProxy());
+        if (!force &&
+            this.view.zoom === this.collision.zoom &&
+            tiles.every(t => {
+                let i = this.collision.tiles.indexOf(t);
+                return i > -1 && this.collision.mesh_counts[i] === Object.keys(t.meshes).length;
+            })) {
+            return Promise.resolve({});
+        }
+        this.collision.tiles = tiles;
+        this.collision.mesh_counts = tiles.map(t => Object.keys(t.meshes).length);
+        this.collision.zoom = this.view.zoom;
+        log('debug', '*** update label collisions ***');
+
+        if (!this.collision.task || force) {
+            this.collision.task = {
+                type: 'tileManagerUpdateLabels',
+                run: (task) => {
+                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.zoom, { show: task.show }).then(results => {
+                        this.scene.requestRedraw();
+                        this.collision.task = null;
+                        Task.finish(task, results);
+                    });
+                },
+                user_moving_view: false, // don't run task when user is moving view
+                show
+            };
+            Task.add(this.collision.task);
+        }
+        return this.collision.task.promise;
     }
 
     updateProxyTiles () {

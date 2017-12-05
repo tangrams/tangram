@@ -863,6 +863,7 @@ export default class Scene {
                     this.initial_build_time = (+new Date()) - this.start_time;
                     log('debug', `Scene: initial build time: ${this.initial_build_time}`);
                 }
+                this.tile_manager.updateLabels({ force: true });
                 this.building.resolve(true);
             }
 

@@ -69,9 +69,21 @@ vec2 rotate2D(vec2 _st, float _angle) {
     }
 #endif
 
+varying float hide;
+
 void main() {
     // Initialize globals
     #pragma tangram: setup
+
+    // discard hidden labels by collapsing into degenerate triangle
+    if (a_shape.w == 0.) {
+        gl_Position = vec4(0., 0., 0., 1.);
+        return;
+        // hide = 1.; // label debug testing
+    }
+    // else {
+    //     hide = 0.;
+    // }
 
     v_alpha_factor = 1.0;
     v_color = a_color;

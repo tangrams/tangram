@@ -41,6 +41,8 @@ varying float v_alpha_factor;
     }
 #endif
 
+varying float hide;
+
 void main (void) {
     // Initialize globals
     #pragma tangram: setup
@@ -53,7 +55,7 @@ void main (void) {
             color *= texture2D(u_texture, v_texcoord);
         }
         else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture
-            color *= texture2D(u_texture, v_texcoord);
+            color = texture2D(u_texture, v_texcoord);
             color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
         }
         else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
@@ -77,7 +79,7 @@ void main (void) {
         }
     #else
         // If shader points not supported, assume label texture
-        color *= texture2D(u_texture, v_texcoord);
+        color = texture2D(u_texture, v_texcoord);
         color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
     #endif
 
@@ -89,6 +91,11 @@ void main (void) {
     }
 
     color.a *= v_alpha_factor;
+
+    if (hide > 0.) {
+        color.a *= 0.5;
+        color.rgb = vec3(1., 0., 0.);
+    }
 
     // If blending is off, use alpha discard as a lower-quality substitute
     #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)

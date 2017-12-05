@@ -48,7 +48,7 @@ let LabelLine = {
 export default LabelLine;
 
 // Base class for a labels.
-class LabelLineBase {
+export class LabelLineBase {
     constructor (layout) {
         this.id = Label.nextLabelId();
         this.layout = layout;
@@ -68,9 +68,17 @@ class LabelLineBase {
             id: this.id,
             type: this.type,
             obbs: this.obbs.map(o => o.toJSON()),
+            position: this.position,
+            size: this.size,
+            offset: this.offset,
+            angle: this.angle,
             layout: {
                 priority: this.layout.priority,
-                collide: this.layout.collide
+                collide: this.layout.collide,
+                repeat_distance: this.layout.repeat_distance,
+                repeat_group: this.layout.repeat_group,
+                buffer: this.layout.buffer,
+                italic: this.layout.italic
             }
         };
     }
@@ -212,10 +220,11 @@ class LabelLineBase {
 
 // Class for straight labels.
 // Extends base LabelLine class.
-class LabelLineStraight extends LabelLineBase {
+export class LabelLineStraight extends LabelLineBase {
     constructor (size, line, layout, tolerance){
         super(layout);
         this.type = 'straight';
+        this.size = size;
         this.throw_away = !this.fit(size, line, layout, tolerance);
     }
 
@@ -351,8 +360,35 @@ class LabelLineCurved extends LabelLineBase {
         this.pre_angles = [];
         this.offsets = [];
         this.num_segments = segment_sizes.length;
+        this.sizes = segment_sizes;
 
-        this.throw_away = !this.fit(segment_sizes, line, layout);
+        this.throw_away = !this.fit(this.sizes, line, layout);
+    }
+
+    // Minimal representation of label
+    toJSON () {
+        return {
+            id: this.id,
+            type: this.type,
+            obbs: this.obbs.map(o => o.toJSON()),
+            position: this.position,
+            size: this.size,
+            offset: this.offset,
+            angle: this.angle,
+            angles: this.angles,
+            pre_angles: this.pre_angles,
+            offsets: this.offsets,
+            sizes: this.sizes,
+            obb_stops: this.obb_stops,
+            layout: {
+                priority: this.layout.priority,
+                collide: this.layout.collide,
+                repeat_distance: this.layout.repeat_distance,
+                repeat_group: this.layout.repeat_group,
+                buffer: this.layout.buffer,
+                italic: this.layout.italic
+            }
+        };
     }
 
     // Determine if the curved label can fit the geometry.
@@ -395,7 +431,8 @@ class LabelLineCurved extends LabelLineBase {
         // find start and end indices that the label can fit on without overlapping tile boundaries
         // TODO: there is a small probability of a tile boundary crossing on an internal line segment
         // another option is to create a buffer around the line and check if it overlaps a tile boundary
-        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp);
+        // let [start_index, end_index] = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp);
+        let start_index = 0, end_index = line.length-1;
 
         // need two line segments for a curved label
         if (end_index - start_index < 2){
@@ -472,47 +509,47 @@ class LabelLineCurved extends LabelLineBase {
     // Test if line intersects tile boundary. Return indices at beginning and end of line that are within tile.
     // Burn candle from both ends strategy - meaning shift and pop until vertices are within tile, but an interior vertex
     // may still be outside of tile (can potentially result in label collision across tiles).
-    static checkTileBoundary(line, widths, height, offset, upp){
-        let start = 0;
-        let end = line.length - 1;
+    // static checkTileBoundary(line, widths, height, offset, upp){
+    //     let start = 0;
+    //     let end = line.length - 1;
 
-        height *= Label.epsilon;
+    //     height *= Label.epsilon;
 
-        let start_width = widths[start] * Label.epsilon;
-        let end_width = widths[widths.length - 1] * Label.epsilon;
+    //     let start_width = widths[start] * Label.epsilon;
+    //     let end_width = widths[widths.length - 1] * Label.epsilon;
 
-        // Burn candle from start
-        while (start < end){
-            let angle = getAngleForSegment(line[start], line[start + 1]);
-            let position = Vector.add(Vector.rot([start_width/2, 0], angle), line[start]);
-            let obb = LabelLineBase.createOBB(position, start_width, height, -angle, -angle, offset, upp);
-            let aabb = obb.getExtent();
-            let in_tile = Label.prototype.inTileBounds.call({ aabb });
-            if (in_tile) {
-                break;
-            }
-            else {
-                start++;
-            }
-        }
+    //     // Burn candle from start
+    //     while (start < end){
+    //         let angle = getAngleForSegment(line[start], line[start + 1]);
+    //         let position = Vector.add(Vector.rot([start_width/2, 0], angle), line[start]);
+    //         let obb = LabelLineBase.createOBB(position, start_width, height, -angle, -angle, offset, upp);
+    //         let aabb = obb.getExtent();
+    //         let in_tile = Label.prototype.inTileBounds.call({ aabb });
+    //         if (in_tile) {
+    //             break;
+    //         }
+    //         else {
+    //             start++;
+    //         }
+    //     }
 
-        // Burn candle from end
-        while (end > start){
-            let angle = getAngleForSegment(line[end - 1], line[end]);
-            let position = Vector.add(Vector.rot([-end_width/2, 0], angle), line[end]);
-            let obb = LabelLineBase.createOBB(position, end_width, height, -angle, -angle, offset, upp);
-            let aabb = obb.getExtent();
-            let in_tile = Label.prototype.inTileBounds.call({ aabb });
-            if (in_tile) {
-                break;
-            }
-            else {
-                end--;
-            }
-        }
+    //     // Burn candle from end
+    //     while (end > start){
+    //         let angle = getAngleForSegment(line[end - 1], line[end]);
+    //         let position = Vector.add(Vector.rot([-end_width/2, 0], angle), line[end]);
+    //         let obb = LabelLineBase.createOBB(position, end_width, height, -angle, -angle, offset, upp);
+    //         let aabb = obb.getExtent();
+    //         let in_tile = Label.prototype.inTileBounds.call({ aabb });
+    //         if (in_tile) {
+    //             break;
+    //         }
+    //         else {
+    //             end--;
+    //         }
+    //     }
 
-        return [start, end];
-    }
+    //     return [start, end];
+    // }
 
     // Find optimal starting segment for placing a curved label along a line within provided tolerances
     // This is determined by calculating the curvature at each interior vertex of a line
