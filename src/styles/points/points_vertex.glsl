@@ -115,10 +115,6 @@ void main() {
     #ifdef TANGRAM_CURVED_LABEL
         //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
         if (a_offsets[0] != 0.){
-            #ifdef TANGRAM_FADE_ON_ZOOM_IN
-                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);
-            #endif
-
             vec4 angles_scaled = (PI / 16384.) * a_angles;
             vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;
             vec4 offsets_scaled = (1. / 64.) * a_offsets;
