@@ -209,7 +209,7 @@ export default class Tile {
         tile.debug.feature_count = 0;
         tile.debug.layers = null;
 
-        Collision.startTile(tile.id);
+        Collision.startTile(tile.id, { apply_repeat_groups: false });
 
         // Process each top-level layer
         for (let layer_name in layers) {
@@ -551,6 +551,10 @@ export default class Tile {
             this.proxy_for = null;
             this.proxy_depth = 0;
         }
+    }
+
+    isProxy () {
+        return this.proxy_for != null;
     }
 
     // Proxy tiles only need to render a specific style if any of the tiles they are proxying *for*

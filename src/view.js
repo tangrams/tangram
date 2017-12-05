@@ -264,7 +264,7 @@ export default class View {
 
         this.scene.tile_manager.removeTiles(tile => {
             // Ignore visible tiles
-            if (tile.visible || tile.proxy_for) {
+            if (tile.visible || tile.isProxy()) {
                 return false;
             }
 

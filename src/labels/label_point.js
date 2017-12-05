@@ -98,34 +98,38 @@ export default class LabelPoint extends Label {
     }
 
     getNextFit() {
-        return true;
+        // return true;
 
-        // if (!this.layout.cull_from_tile || this.inTileBounds()) {
-        //     return true;
-        // }
+        if (!this.layout.cull_from_tile || this.inTileBounds()) {
+            return true;
+        }
 
         // if (this.layout.move_into_tile){
         //     this.moveIntoTile();
         //     return true;
         // }
         // else {
-        //     if (Array.isArray(this.layout.anchor)) {
-        //         // Start on second anchor (first anchor was set on creation)
-        //         for (let i = 1; i < this.layout.anchor.length; i++) {
-        //             this.anchor = this.layout.anchor[i];
-        //             this.update();
+            if (Array.isArray(this.layout.anchor)) {
+                // Start on second anchor (first anchor was set on creation)
+                for (let i = 1; i < this.layout.anchor.length; i++) {
+                    this.anchor = this.layout.anchor[i];
+                    this.update();
 
-        //             this.start_anchor_index = i;
+                    this.start_anchor_index = i;
 
-        //             if (this.inTileBounds()) {
-        //                 return true;
-        //             }
-        //         }
-        //     }
+                    if (this.inTileBounds()) { // TODO: keep initial tile bounds check?
+                        return true;
+                    }
+                }
+            }
+            // else {
+            //     return true; // allow label to be out of tile bounds if no anchors
+            // }
 
-        //     // no anchors result in fit
-        //     return false;
+            // no anchors result in fit
+            // return false;
         // }
+        return true; // still return true even if all anchors breach tile
     }
 
     discard (bboxes, exclude = null) {

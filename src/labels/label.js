@@ -28,9 +28,16 @@ export default class Label {
             id: this.id,
             type: this.type,
             obb: this.obb.toJSON(),
-            layout: {
+            position: this.position,
+            size: this.size,
+            offset: this.offset,
+            layout: { // TODO: move outside label - couples non-label logic
                 priority: this.layout.priority,
-                collide: this.layout.collide
+                collide: this.layout.collide,
+                repeat_distance: this.layout.repeat_distance,
+                repeat_group: this.layout.repeat_group,
+                buffer: this.layout.buffer,
+                italic: this.layout.italic
             }
         };
     }

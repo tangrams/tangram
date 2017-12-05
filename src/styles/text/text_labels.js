@@ -169,7 +169,7 @@ export const TextLabels = {
                 return Promise.resolve({});
             }
 
-            return Collision.collide(labels, collision_group, tile.id).then(({keep:labels}) => {
+            return Collision.collide(labels, collision_group, tile.id).then(({show:labels}) => {
                 if (tile.canceled) {
                     log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
                     return {};
@@ -331,6 +331,7 @@ export const TextLabels = {
         layout.align = draw.align;
 
         // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
+        // TODO rename to more generic, not italic-specific (bold)
         layout.italic = (text_settings.style !== 'normal');
 
         // used to determine orientation of text if the text_source has a `left` or `right` key
