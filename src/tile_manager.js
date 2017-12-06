@@ -124,7 +124,7 @@ export default class TileManager {
         // const tiles = this.renderable_tiles.filter(t => t.style_zoom === this.view.tile_zoom);
         const tiles = this.renderable_tiles.filter(t => t.valid);//.filter(t => !t.isProxy());
         if (!force &&
-            this.view.zoom === this.collision.zoom &&
+            roundPrecision(this.view.zoom, 4) === this.collision.zoom &&
             tiles.every(t => {
                 let i = this.collision.tiles.indexOf(t);
                 return i > -1 && this.collision.mesh_counts[i] === Object.keys(t.meshes).length;
@@ -133,7 +133,7 @@ export default class TileManager {
         }
         this.collision.tiles = tiles;
         this.collision.mesh_counts = tiles.map(t => Object.keys(t.meshes).length);
-        this.collision.zoom = this.view.zoom;
+        this.collision.zoom = roundPrecision(this.view.zoom, 4);
         log('debug', '*** update label collisions ***');
 
         if (!this.collision.task || force) {
@@ -438,4 +438,10 @@ export default class TileManager {
         return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
     }
 
+}
+
+// Round a number to given number of decimal divisions
+// e.g. roundPrecision(x, 4) rounds a number to increments of 0.25
+function roundPrecision (x, d) {
+    return Math.floor(x * d) / d;
 }
