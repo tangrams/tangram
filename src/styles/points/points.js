@@ -609,7 +609,7 @@ Object.assign(Points, {
 
         // scaling vector - (x, y) components per pixel, z = angle, w = show/hide
         this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 4 });
-        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 1, offset: 3 }); // mark all points/labels initially hidden
+        this.fillVertexTemplate(vertex_layout, 'a_shape', style.label.layout.collide ? 0 : 1, { size: 1, offset: 3 }); // set initial label hide/show state
 
         // texture coords
         this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, { size: 2 });
@@ -733,24 +733,26 @@ Object.assign(Points, {
         );
 
         // track label mesh offset data
-        mesh.labels = mesh.labels || {};
-        mesh.labels[label.id] = mesh.labels[label.id] || {
-            container: {
-                label: label.toJSON(),
-                linked: (style.linked && style.linked.label.id)
-            },
-            ranges: [],
-            debug: {
-                id: context.feature.properties.id,
-                name: context.feature.properties.name,
-                props: JSON.stringify(context.feature.properties),
-                point_type: mesh.uniforms.u_point_type
-            }
-        };
-        mesh.labels[label.id].ranges.push([
-            start,
-            geom_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
-        ]);
+        if (label.layout.collide) {
+            mesh.labels = mesh.labels || {};
+            mesh.labels[label.id] = mesh.labels[label.id] || {
+                container: {
+                    label: label.toJSON(),
+                    linked: (style.linked && style.linked.label.id)
+                },
+                ranges: [],
+                debug: {
+                    id: context.feature.properties.id,
+                    name: context.feature.properties.name,
+                    props: JSON.stringify(context.feature.properties),
+                    point_type: mesh.uniforms.u_point_type
+                }
+            };
+            mesh.labels[label.id].ranges.push([
+                start,
+                geom_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
+            ]);
+        }
     },
 
     buildCurvedLabel (label, style, mesh, context) {
@@ -799,24 +801,26 @@ Object.assign(Points, {
             geom_count += seg_count;
 
             // track label mesh offset data
-            mesh.labels = mesh.labels || {};
-            mesh.labels[label.id] = mesh.labels[label.id] || {
-                container: {
-                    label: label.toJSON(),
-                    linked: (style.linked && style.linked.label.id)
-                },
-                ranges: [],
-                debug: {
-                    id: context.feature.properties.id,
-                    name: context.feature.properties.name,
-                    props: JSON.stringify(context.feature.properties),
-                    point_type: mesh.uniforms.u_point_type
-                }
-            };
-            mesh.labels[label.id].ranges.push([
-                start,
-                seg_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
-            ]);
+            if (label.layout.collide) {
+                mesh.labels = mesh.labels || {};
+                mesh.labels[label.id] = mesh.labels[label.id] || {
+                    container: {
+                        label: label.toJSON(),
+                        linked: (style.linked && style.linked.label.id)
+                    },
+                    ranges: [],
+                    debug: {
+                        id: context.feature.properties.id,
+                        name: context.feature.properties.name,
+                        props: JSON.stringify(context.feature.properties),
+                        point_type: mesh.uniforms.u_point_type
+                    }
+                };
+                mesh.labels[label.id].ranges.push([
+                    start,
+                    seg_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
+                ]);
+            }
         }
 
         // pass for fill
@@ -857,24 +861,26 @@ Object.assign(Points, {
             geom_count += seg_count;
 
             // track label mesh offset data
-            mesh.labels = mesh.labels || {};
-            mesh.labels[label.id] = mesh.labels[label.id] || {
-                container: {
-                    label: label.toJSON(),
-                    linked: (style.linked && style.linked.label.id)
-                },
-                ranges: [],
-                debug: {
-                    id: context.feature.properties.id,
-                    name: context.feature.properties.name,
-                    props: JSON.stringify(context.feature.properties),
-                    point_type: mesh.uniforms.u_point_type
-                }
-            };
-            mesh.labels[label.id].ranges.push([
-                start,
-                seg_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
-            ]);
+            if (label.layout.collide) {
+                mesh.labels = mesh.labels || {};
+                mesh.labels[label.id] = mesh.labels[label.id] || {
+                    container: {
+                        label: label.toJSON(),
+                        linked: (style.linked && style.linked.label.id)
+                    },
+                    ranges: [],
+                    debug: {
+                        id: context.feature.properties.id,
+                        name: context.feature.properties.name,
+                        props: JSON.stringify(context.feature.properties),
+                        point_type: mesh.uniforms.u_point_type
+                    }
+                };
+                mesh.labels[label.id].ranges.push([
+                    start,
+                    seg_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
+                ]);
+            }
         }
 
         return geom_count;
