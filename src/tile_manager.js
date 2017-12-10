@@ -130,14 +130,16 @@ export default class TileManager {
                 let i = this.collision.tiles.indexOf(t);
                 return i > -1 && this.collision.mesh_counts[i] === Object.keys(t.meshes).length;
             })) {
+            log('debug', `*** SKIP label layout due to same tile/meshes (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.mesh_counts)})`);
             return Promise.resolve({});
         }
-        this.collision.tiles = tiles;
-        this.collision.mesh_counts = tiles.map(t => Object.keys(t.meshes).length);
-        this.collision.zoom = roundPrecision(this.view.zoom, 4);
-        log('debug', '*** update label collisions ***');
 
         if (!this.collision.task || force) {
+            this.collision.tiles = tiles;
+            this.collision.mesh_counts = tiles.map(t => Object.keys(t.meshes).length);
+            this.collision.zoom = roundPrecision(this.view.zoom, 4);
+            log('debug', `*** update label collisions (zoom ${this.collision.zoom}, force ${force}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.mesh_counts)})`);
+
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
                 run: (task) => {
@@ -151,6 +153,9 @@ export default class TileManager {
                 show
             };
             Task.add(this.collision.task);
+        }
+        else {
+            log('debug', `*** SKIP label layout due to on-going layout (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.mesh_counts)})`);
         }
         return this.collision.task.promise;
     }
