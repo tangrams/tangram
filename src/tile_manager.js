@@ -17,7 +17,7 @@ export default class TileManager {
         this.queued_coords = [];
         this.building_tiles = null;
         this.renderable_tiles = [];
-        this.collision = { tiles: [], mesh_counts: [], zoom: null };
+        this.collision = { tiles: [], mesh_counts: [], zoom: null, zoom_steps: 3 };
         this.active_styles = [];
 
         // Provide a hook for this object to be called from worker threads
@@ -125,7 +125,7 @@ export default class TileManager {
         // const tiles = this.renderable_tiles.filter(t => t.style_zoom === this.view.tile_zoom);
         const tiles = this.renderable_tiles.filter(t => t.valid);//.filter(t => !t.isProxy());
         if (!force &&
-            roundPrecision(this.view.zoom, 4) === this.collision.zoom &&
+            roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
             tiles.every(t => {
                 let i = this.collision.tiles.indexOf(t);
                 return i > -1 && this.collision.mesh_counts[i] === Object.keys(t.meshes).length;
@@ -137,7 +137,7 @@ export default class TileManager {
         if (!this.collision.task || force) {
             this.collision.tiles = tiles;
             this.collision.mesh_counts = tiles.map(t => Object.keys(t.meshes).length);
-            this.collision.zoom = roundPrecision(this.view.zoom, 4);
+            this.collision.zoom = roundPrecision(this.view.zoom, this.collision.zoom_steps);
             log('debug', `*** update label collisions (zoom ${this.collision.zoom}, force ${force}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.mesh_counts)})`);
 
             this.collision.task = {
