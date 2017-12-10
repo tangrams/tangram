@@ -198,43 +198,69 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, { show }
 
     return Collision.collide(containers, 'main', 'main').then(labels => {
         let meshes = [];
-        labels.hide.forEach(c => c.ranges.forEach(r => {
-            let mesh = c.mesh;
-            let off = mesh.vertex_layout.attribs.find(a => a.name === 'a_shape').offset; // TODO replace find (or polyfill)
-            let stride = mesh.vertex_layout.stride;
-            for (let i=0; i < r[1]; i++) {
-                mesh.vertex_data[r[0] + i * stride + off + 3*2] = show ? 1 : 0; // NB: *2 is because attribute is a short int
-            }
+        labels.hide.forEach(c => {
+            let changed = true;
 
-            // debug: color in semi-transparent red
-            if (show) {
-                off = mesh.vertex_layout.attribs.find(a => a.name === 'a_color').offset;
-                stride = mesh.vertex_layout.stride;
-                for (let i=0; i < r[1]; i++) {
-                    mesh.vertex_data[r[0] + i * stride + off + 3] = 128;
-                    mesh.vertex_data[r[0] + i * stride + off + 0] = 255;
-                    mesh.vertex_data[r[0] + i * stride + off + 1] = 0;
-                    mesh.vertex_data[r[0] + i * stride + off + 2] = 0;
+            c.ranges.forEach(r => {
+                if (!changed) {
+                    return; // skip rest of label if state hasn't changed
                 }
-            }
 
-            if (meshes.indexOf(mesh) === -1) {
-                meshes.push(mesh);
-            }
-        }));
+                let mesh = c.mesh;
+                let off = mesh.vertex_layout.attribs.find(a => a.name === 'a_shape').offset; // TODO replace find (or polyfill)
+                let stride = mesh.vertex_layout.stride;
 
-        labels.show.forEach(c => c.ranges.forEach(r => {
-            let mesh = c.mesh;
-            let off = mesh.vertex_layout.attribs.find(a => a.name === 'a_shape').offset;
-            let stride = mesh.vertex_layout.stride;
-            for (let i=0; i < r[1]; i++) {
-                mesh.vertex_data[r[0] + i * stride + off + 3*2] = 1; // NB: *2 is because attribute is a short int
-            }
+                for (let i=0; i < r[1]; i++) {
+                    if (mesh.vertex_data[r[0] + i * stride + off + 3*2] === 0) {
+                        changed = false;
+                        return; // label hasn't changed states, skip further updates
+                    }
+                    mesh.vertex_data[r[0] + i * stride + off + 3*2] = show ? 1 : 0; // NB: *2 is because attribute is a short int
+                }
 
-            if (meshes.indexOf(mesh) === -1) {
-                meshes.push(mesh);
-            }
-        }));
+                // debug: color in semi-transparent red
+                if (show) {
+                    off = mesh.vertex_layout.attribs.find(a => a.name === 'a_color').offset;
+                    stride = mesh.vertex_layout.stride;
+                    for (let i=0; i < r[1]; i++) {
+                        mesh.vertex_data[r[0] + i * stride + off + 3] = 128;
+                        mesh.vertex_data[r[0] + i * stride + off + 0] = 255;
+                        mesh.vertex_data[r[0] + i * stride + off + 1] = 0;
+                        mesh.vertex_data[r[0] + i * stride + off + 2] = 0;
+                    }
+                }
+
+                if (meshes.indexOf(mesh) === -1) {
+                    meshes.push(mesh);
+                }
+            });
+        });
+
+        labels.show.forEach(c => {
+            let changed = true;
+
+            c.ranges.forEach(r => {
+                if (!changed) {
+                    return; // skip rest of label if state hasn't changed
+                }
+
+                let mesh = c.mesh;
+                let off = mesh.vertex_layout.attribs.find(a => a.name === 'a_shape').offset;
+                let stride = mesh.vertex_layout.stride;
+                for (let i=0; i < r[1]; i++) {
+                    if (mesh.vertex_data[r[0] + i * stride + off + 3*2] === 1) {
+                        changed = false;
+                        return; // label hasn't changed states, skip further updates
+                    }
+
+                    mesh.vertex_data[r[0] + i * stride + off + 3*2] = 1; // NB: *2 is because attribute is a short int
+                }
+
+                if (meshes.indexOf(mesh) === -1) {
+                    meshes.push(mesh);
+                }
+            });
+        });
 
         meshes.forEach(mesh => mesh.upload());
         return { labels, containers };
