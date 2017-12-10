@@ -117,9 +117,10 @@ export default class TileManager {
     }
 
     updateLabels ({ force = false, show = false } = {}) {
-        // if (!force && this.isLoadingVisibleTiles()) {
-        //     return Promise.resolve({});
-        // }
+        if (!force && (this.isLoadingVisibleTiles() || this.scene.building)) {
+            log('debug', `*** SKIP label layout due to loading (loading visible ${this.isLoadingVisibleTiles()}, building ${this.scene.building != null})`);
+            return Promise.resolve({});
+        }
 
         // const tiles = this.renderable_tiles.filter(t => t.style_zoom === this.view.tile_zoom);
         const tiles = this.renderable_tiles.filter(t => t.valid);//.filter(t => !t.isProxy());
