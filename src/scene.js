@@ -584,40 +584,55 @@ export default class Scene {
 
         // Render tile GL geometries
         let renderable_tiles = this.tile_manager.getRenderableTiles();
-        for (let t=0; t < renderable_tiles.length; t++) {
-            let tile = renderable_tiles[t];
 
-            if (tile.meshes[style_name] == null) {
-                continue;
-            }
+        // Mesh variants must be rendered in requested order across tiles, to prevent labels that cross
+        // tile boundaries from rendering over adjacent tile features meant to be underneath
+        let max_mesh_variant_order =
+            Math.max(...renderable_tiles.map(t => {
+                return t.meshes[style_name] ?
+                    Math.max(...t.meshes[style_name].map(m => m.variant.order)) : -1;
+                })
+            );
 
-            // Style-specific state
-            // Only setup style if rendering for first time this frame
-            // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-            if (first_for_style === true) {
-                first_for_style = false;
-                program = this.setupStyle(style, program_key);
-                if (!program) {
-                    return 0;
+        // One pass per mesh variant order (loop goes to max value +1 because 0 is a valid order value)
+        for (let mo=0; mo < max_mesh_variant_order + 1; mo++) {
+            for (let t=0; t < renderable_tiles.length; t++) {
+                let tile = renderable_tiles[t];
+
+                if (tile.meshes[style_name] == null) {
+                    continue;
+                }
+
+                // Skip proxy tiles if new tiles have finished loading this style
+                if (!tile.shouldProxyForStyle(style_name)) {
+                    // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
+                    continue;
+                }
+
+                // Render current mesh variant for current style for current tile
+                let mesh = tile.meshes[style_name].find(m => m.variant.order === mo); // find mesh by variant order
+                if (mesh) {
+                    // Style-specific state
+                    // Only setup style if rendering for first time this frame
+                    // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+                    if (first_for_style === true) {
+                        first_for_style = false;
+                        program = this.setupStyle(style, program_key);
+                        if (!program) {
+                            return 0;
+                        }
+                    }
+
+                    // Tile-specific state
+                    this.view.setupTile(tile, program);
+
+                    // Render this mesh variant
+                    if (style.render(mesh)) {
+                        this.requestRedraw();
+                    }
+                    render_count += mesh.geometry_count;
                 }
             }
-
-            // Skip proxy tiles if new tiles have finished loading this style
-            if (!tile.shouldProxyForStyle(style_name)) {
-                // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
-                continue;
-            }
-
-            // Tile-specific state
-            this.view.setupTile(tile, program);
-
-            // Render tile
-            tile.meshes[style_name].forEach(mesh => {
-                if (style.render(mesh)) {
-                    this.requestRedraw();
-                }
-                render_count += mesh.geometry_count;
-            });
         }
 
         return render_count;

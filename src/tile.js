@@ -449,6 +449,10 @@ export default class Tile {
                         mesh.labels = mesh_variant.labels;
                         meshes[s] = meshes[s] || [];
                         meshes[s].push(mesh);
+                        if (mesh.variant.order == null) {
+                            mesh.variant.order = meshes[s].length - 1; // assign default variant render order
+                        }
+
                         this.debug.buffer_size += mesh.buffer_size;
                         this.debug.geometry_count += mesh.geometry_count;
                     }
