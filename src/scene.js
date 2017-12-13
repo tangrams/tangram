@@ -878,7 +878,6 @@ export default class Scene {
                     this.initial_build_time = (+new Date()) - this.start_time;
                     log('debug', `Scene: initial build time: ${this.initial_build_time}`);
                 }
-                this.tile_manager.updateLabels({ force: true });
                 this.building.resolve(true);
             }
 
@@ -888,6 +887,9 @@ export default class Scene {
             if (queued) {
                 log('debug', `Scene: starting queued rebuild() request`);
                 this.rebuild(queued.options).then(queued.resolve, queued.reject);
+            }
+            else {
+                this.tile_manager.updateLabels(); // refresh label if nothing to rebuild
             }
         }
     }
