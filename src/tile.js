@@ -38,6 +38,7 @@ export default class Tile {
         this.loading = false;
         this.loaded = false;
         this.built = false;
+        this.labeled = false;
         this.error = null;
         this.debug = {};
 
@@ -61,6 +62,7 @@ export default class Tile {
         this.textures = []; // textures that the tile owns (labels, etc.)
         this.previous_textures = []; // textures retained by the tile in the previous build generation
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
+        this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
     }
 
     static coord(c) {
@@ -134,6 +136,13 @@ export default class Tile {
         }
         this.meshes = {};
 
+        if (this.pending_label_meshes) {
+            for (let m in this.pending_label_meshes) {
+                this.pending_label_meshes[m].forEach(m => m.destroy());
+            }
+        }
+        this.pending_label_meshes = null;
+
         this.textures.forEach(t => Texture.release(t));
         this.textures = [];
 
@@ -179,6 +188,7 @@ export default class Tile {
         if (!this.loaded) {
             this.loading = true;
             this.built = false;
+            this.labeled = false;
         }
         return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
@@ -487,11 +497,20 @@ export default class Tile {
 
         // New meshes
         for (let m in meshes) {
-            if (this.meshes[m]) {
-                this.meshes[m].forEach(m => m.destroy()); // free old meshes
+            // swap in non-collision meshes right away
+            if (!styles[m].collision) {
+                if (this.meshes[m]) {
+                    this.meshes[m].forEach(m => m.destroy()); // free old meshes
+                }
+
+                this.meshes[m] = meshes[m]; // set new mesh
+                this.new_mesh_styles.push(m);
             }
-            this.meshes[m] = meshes[m]; // set new mesh
-            this.new_mesh_styles.push(m);
+            // keep label meshes out of view until collision is complete
+            else {
+                this.pending_label_meshes = this.pending_label_meshes || {};
+                this.pending_label_meshes[m] = meshes[m];
+              }
         }
 
         // New textures
@@ -500,20 +519,41 @@ export default class Tile {
         if (progress.done) {
             // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
             for (let m in this.meshes) {
-                if (this.new_mesh_styles.indexOf(m) === -1) {
+                if (this.new_mesh_styles.indexOf(m) === -1 && (!this.pending_label_meshes || this.pending_label_meshes[m] == null)) {
                     this.meshes[m].forEach(m => m.destroy());
                     delete this.meshes[m];
                 }
             }
             this.new_mesh_styles = [];
 
-            // Release old textures
-            this.previous_textures.forEach(t => Texture.release(t));
-            this.previous_textures = [];
-
             this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
             this.printDebug();
         }
+    }
+
+    // How many styles are currently pending label collision
+    pendingLabelStyleCount () {
+        return this.pending_label_meshes ? Object.keys(this.pending_label_meshes).length : 0;
+    }
+
+    // Swap label style meshes after collision is complete
+    swapPendingLabels () {
+        this.labeled = true; // mark as labeled
+
+        if (this.pending_label_meshes) {
+            for (let m in this.pending_label_meshes) {
+                if (this.meshes[m]) {
+                    this.meshes[m].forEach(m => m.destroy()); // free old meshes
+                }
+
+                this.meshes[m] = this.pending_label_meshes[m]; // set new mesh
+            }
+            this.pending_label_meshes = null;
+        }
+
+        // Release old textures
+        this.previous_textures.forEach(t => Texture.release(t));
+        this.previous_textures = [];
     }
 
     /**

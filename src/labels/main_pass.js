@@ -263,7 +263,9 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, { show }
         });
 
         meshes.forEach(mesh => mesh.upload());
-        return { labels, containers };
+        tiles.forEach(t => t.swapPendingLabels());
+
+        return { labels, containers }; // currently returned for debugging
     });
 }
 
