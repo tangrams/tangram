@@ -53,7 +53,7 @@ export default class RepeatGroup {
     static add (obj, layout, tile) {
         if (layout.repeat_distance && layout.repeat_group) {
             if (this.groups[tile][layout.repeat_group] == null) {
-                this.groups[tile][layout.repeat_group] = new RepeatGroup(layout.repeat_group, layout.repeat_distance);
+                this.groups[tile][layout.repeat_group] = new RepeatGroup(layout.repeat_group, layout.repeat_distance * layout.repeat_scale);
             }
             this.groups[tile][layout.repeat_group].add(obj);
         }

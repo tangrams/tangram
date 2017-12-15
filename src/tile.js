@@ -219,7 +219,7 @@ export default class Tile {
         tile.debug.feature_count = 0;
         tile.debug.layers = null;
 
-        Collision.startTile(tile.id, { apply_repeat_groups: false });
+        Collision.startTile(tile.id, { apply_repeat_groups: true });
 
         // Process each top-level layer
         for (let layer_name in layers) {

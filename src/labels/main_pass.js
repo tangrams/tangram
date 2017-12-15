@@ -37,6 +37,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom) {
 
                             Object.assign(label, params);
                             label.layout = Object.assign({}, params.layout); // TODO: ideally remove need to copy props here
+                            label.layout.repeat_scale = 0.75; // looser second pass on repeat groups, to weed out repeats near tile edges
                             label.layout.repeat_distance = label.layout.repeat_distance || 0;
                             label.layout.repeat_distance /= size_scale; // TODO: where should this be scaled?
 
@@ -97,7 +98,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom) {
 
     // Collide all labels in a single group
     // TODO: maybe rename tile and style to group/subgroup?
-    Collision.startTile('main', { repeat_group_max_dist: Infinity, apply_repeat_groups: true, return_hidden: true });
+    Collision.startTile('main', { apply_repeat_groups: true, return_hidden: true });
     Collision.addStyle('main', 'main');
 
     return Collision.collide(containers, 'main', 'main').then(labels => {
