@@ -482,6 +482,7 @@ Object.assign(Points, {
         layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
         if (layout.repeat_distance) {
             layout.repeat_distance *= layout.units_per_pixel;
+            layout.repeat_scale = 1; // initial repeat pass in tile with full scale
 
             if (typeof draw.repeat_group === 'function') {
                 layout.repeat_group = draw.repeat_group(context);
