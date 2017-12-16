@@ -11,7 +11,7 @@ import * as topojson from 'topojson-client';
 export class TopoJSONSource extends GeoJSONSource {
 
     parseSourceData (tile, source, response) {
-        let data = JSON.parse(response);
+        let data = typeof response === 'string' ? JSON.parse(response) : response;
         data = this.toGeoJSON(data);
 
         let layers = this.getLayers(data);
@@ -69,7 +69,7 @@ export class TopoJSONTileSource extends GeoJSONTileSource {
     }
 
     parseSourceData (tile, source, response) {
-        let data = JSON.parse(response);
+        let data = typeof response === 'string' ? JSON.parse(response) : response;
         data = TopoJSONSource.prototype.toGeoJSON(data);
         this.prepareGeoJSON(data, tile, source);
     }
