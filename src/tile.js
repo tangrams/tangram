@@ -59,8 +59,6 @@ export default class Tile {
         this.units_per_meter_overzoom = Geo.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
 
         this.meshes = {}; // renderable VBO meshes keyed by style
-        this.textures = []; // textures that the tile owns (labels, etc.)
-        this.previous_textures = []; // textures retained by the tile in the previous build generation
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
         this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
     }
@@ -142,12 +140,6 @@ export default class Tile {
             }
         }
         this.pending_label_meshes = null;
-
-        this.textures.forEach(t => Texture.release(t));
-        this.textures = [];
-
-        this.previous_textures.forEach(t => Texture.release(t));
-        this.previous_textures = [];
     }
 
     destroy() {
@@ -432,7 +424,7 @@ export default class Tile {
         }
 
         // Create VBOs
-        let meshes = {}, textures = []; // new data to be added to tile
+        let meshes = {}; // new data to be added to tile
         let mesh_data = this.mesh_data;
         if (mesh_data) {
             for (let s in mesh_data) {
@@ -476,24 +468,9 @@ export default class Tile {
                         return (ao == null ? 1 : (bo == null ? -1 : (ao < bo ? -1 : 1)));
                     });
                 }
-
-                // Assign texture ownership to tiles
-                // Note that it's valid for a single texture to be referenced from multiple styles
-                // (e.g. same raster texture attached to multiple sources). This means the same
-                // texture may be added to the tile's texture list more than once, which ensures
-                // that it is properly released (to match its retain count).
-                if (mesh_data[s].textures) {
-                    textures.push(...mesh_data[s].textures);
-                }
             }
         }
         delete this.mesh_data;
-
-        // Initialize tracking for this tile generation
-        if (progress.start) {
-            this.previous_textures = [...this.textures]; // copy old list of textures
-            this.textures = [];
-        }
 
         // New meshes
         for (let m in meshes) {
@@ -512,9 +489,6 @@ export default class Tile {
                 this.pending_label_meshes[m] = meshes[m];
               }
         }
-
-        // New textures
-        this.textures.push(...textures);
 
         if (progress.done) {
             // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
@@ -550,10 +524,6 @@ export default class Tile {
             }
             this.pending_label_meshes = null;
         }
-
-        // Release old textures
-        this.previous_textures.forEach(t => Texture.release(t));
-        this.previous_textures = [];
     }
 
     /**
