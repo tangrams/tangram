@@ -282,8 +282,12 @@ export default class TileManager {
         return this.active_styles;
     }
 
-    isLoadingVisibleTiles() {
+    isLoadingVisibleTiles () {
         return Object.keys(this.tiles).some(k => this.tiles[k].visible && !this.tiles[k].built);
+    }
+
+    allVisibleTilesLabeled () {
+        return this.renderable_tiles.every(t => t.labeled);
     }
 
     // Queue a tile for load
