@@ -24,7 +24,7 @@ export default class TileManager {
             style_counts: [],
             pending_label_style_counts: [],
             zoom: null,
-            zoom_steps: 3
+            zoom_steps: 2
         };
 
         // Provide a hook for this object to be called from worker threads
