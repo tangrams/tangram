@@ -124,15 +124,43 @@ export default class TileManager {
     }
 
     updateLabels ({ force = false } = {}) {
-        if (!force && (this.isLoadingVisibleTiles() || this.scene.building)) {
-            // log('debug', `Skip label layout due to loading (loading visible ${this.isLoadingVisibleTiles()}, building ${this.scene.building != null})`);
+        // if (!force && (this.isLoadingVisibleTiles() || this.scene.building)) {
+        //     // log('debug', `Skip label layout due to loading (loading visible ${this.isLoadingVisibleTiles()}, building ${this.scene.building != null})`);
+        //     return Promise.resolve({});
+        // }
+
+        if (!force && this.scene.building && !this.scene.building.initial) {
+            // log('debug', `Skip label layout due to on-going scene rebuild`);
             return Promise.resolve({});
         }
 
         // get current visible tiles and sort by key for consistency collision order
         const tiles = this.renderable_tiles
             .filter(t => t.valid)
-            .sort((a, b) => a.key < b.key ? -1 : (a.key > b.key ? 1 : 0));
+            .filter(t => t.built);
+            // .sort((a, b) => b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1))
+            // .sort((a, b) => b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? (a.key < b.key ? -1 : (a.key > b.key ? 1 : 0)) : 1))
+            // .sort((a, b) => a.key < b.key ? -1 : (a.key > b.key ? 1 : 0));
+
+        // let tiles = [];
+        // for (let source in this.scene.sources) {
+        //     const source_tiles = Object.keys(this.tiles)
+        //         .map(t => this.tiles[t])
+        //         .filter(t => t.source.name === source)
+        //         .filter(t => t.valid)
+        //         .filter(t => t.visible);
+        //         // .filter(t => t.built);
+
+        //     if (source_tiles.every(t => t.built)) {
+        //         tiles.push(...source_tiles);
+        //     }
+        // }
+
+        // if (tiles.length === 0) {
+        //     return Promise.resolve({});
+        // }
+
+        tiles.sort((a, b) => a.key < b.key ? -1 : (a.key > b.key ? 1 : 0));
 
         // check if tile set has changed (in ways that affect collision)
         if (!force &&
@@ -155,7 +183,7 @@ export default class TileManager {
             this.collision.style_counts = tiles.map(t => Object.keys(t.meshes).length);
             this.collision.pending_label_style_counts = tiles.map(t => t.pendingLabelStyleCount());
             this.collision.zoom = roundPrecision(this.view.zoom, this.collision.zoom_steps);
-            log('trace', `Update label collisions (zoom ${this.collision.zoom}, force ${force}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+            log('debug', `Update label collisions (zoom ${this.collision.zoom}, force ${force}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
 
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
@@ -287,7 +315,10 @@ export default class TileManager {
     }
 
     allVisibleTilesLabeled () {
-        return this.renderable_tiles.every(t => t.labeled);
+        // return this.renderable_tiles.every(t => t.labeled);
+        return this.renderable_tiles.every(t => !t.pending_label_meshes);
+        // return this.renderable_tiles.length > 0 && this.renderable_tiles.every(t => t.labeled);
+        // !Object.keys(this.tiles).some(k => this.tiles[k].visible && !this.tiles[k].labeled);
     }
 
     // Queue a tile for load
