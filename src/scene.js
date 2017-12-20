@@ -809,7 +809,7 @@ export default class Scene {
     // Rebuild all tiles, without re-parsing the config or re-compiling styles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuild({ new_generation = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
+    rebuild({ initial = false, new_generation = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -821,14 +821,14 @@ export default class Scene {
                 }
 
                 // Save queued request
-                let options = { new_generation, sources, serialize_funcs, profile, fade_in };
+                let options = { initial, new_generation, sources, serialize_funcs, profile, fade_in };
                 this.building.queued = { resolve, reject, options };
                 log('trace', `Scene.rebuild(): queuing request`);
                 return;
             }
 
             // Track tile build state
-            this.building = { resolve, reject };
+            this.building = { resolve, reject, initial };
 
             // Profiling
             if (profile) {
@@ -1134,7 +1134,7 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuild(Object.assign({ new_generation: false, serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
+            this.rebuild(Object.assign({ initial: load_event, new_generation: false, serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
             this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
@@ -1217,10 +1217,14 @@ export default class Scene {
     // Fires event when rendered tile set or style changes
     updateViewComplete () {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
-            !this.tile_manager.isLoadingVisibleTiles() &&
-            this.tile_manager.allVisibleTilesLabeled()) {
+            this.render_count > 0 &&
+            // !this.building &&
+            !this.tile_manager.isLoadingVisibleTiles()) {
+            // !this.tile_manager.isLoadingVisibleTiles() &&
+            // this.tile_manager.allVisibleTilesLabeled()) {
             this.last_complete_generation = this.generation;
             this.trigger('view_complete');
+            console.log(`view_complete renderable tile count ${this.tile_manager.renderable_tiles.length}, total tiles ${Object.keys(this.tile_manager.tiles).length}, render count ${this.render_count}, gen ${this.generation}`);
         }
     }
 
