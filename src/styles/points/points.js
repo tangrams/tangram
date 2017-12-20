@@ -415,6 +415,9 @@ Object.assign(Points, {
 
         // Repeat rules - no repeat limitation for points by default
         draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, StyleParser.parseNumber);
+        if (draw.repeat_group == null) {
+            draw.repeat_group = draw.layers.join('-');
+        }
 
         // Placement strategies
         draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
@@ -485,14 +488,10 @@ Object.assign(Points, {
             layout.repeat_scale = 1; // initial repeat pass in tile with full scale
 
             if (typeof draw.repeat_group === 'function') {
-                layout.repeat_group = draw.repeat_group(context);
-            }
-            else if (typeof draw.repeat_group === 'string') {
-                layout.repeat_group = draw.repeat_group;
+                layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
             }
             else {
-                // layout.repeat_group = draw.key; // default to unique set of matching layers
-                layout.repeat_group = draw.layers.join('-'); // TODO cache this in draw group
+                layout.repeat_group = draw.repeat_group; // pre-computer repeat group
             }
         }
 
