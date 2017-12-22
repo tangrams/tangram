@@ -15,8 +15,7 @@ export default Collision = {
                 obb: []
             },
             objects: {},        // objects to collide, grouped by priority, then by style
-            show: {},           // objects that were kept after collision, grouped by style
-            hide: {},
+            labels: {},         // objects post-collision, grouped by style, marked as show/hide
             styles: {},         // styles contributing collision objects
             repeat: apply_repeat_groups,
             return_hidden
@@ -37,7 +36,7 @@ export default Collision = {
 
     abortTile (tile) {
         if (this.tiles[tile] && this.tiles[tile].resolve) {
-            this.tiles[tile].resolve({ show: [], hide: [] });
+            this.tiles[tile].resolve([]);
         }
         this.resetTile(tile);
     },
@@ -52,7 +51,7 @@ export default Collision = {
         let state = this.tiles[tile];
         if (!state) {
             log('trace', 'Collision.collide() called with null tile', tile, this.tiles, style, objects);
-            return Promise.resolve({ show: [], hide: [] });
+            return Promise.resolve([]);
         }
 
         // Group by priority and style
@@ -74,10 +73,7 @@ export default Collision = {
         // Wait for objects to be added from all styles
         return state.complete.then(() => {
             state.resolve = null;
-            return {
-                show: state.show[style] || [],
-                hide: (state.return_hidden && (state.hide[style] || []))
-            };
+            return state.labels[style] || [];
         });
     },
 
@@ -85,8 +81,7 @@ export default Collision = {
     // When two collide, hide the lower-priority label
     endTile (tile) {
         let state = this.tiles[tile];
-        let show = state.show;
-        let hide = state.hide;
+        let labels = state.labels;
 
         if (state.repeat) {
             RepeatGroup.clear(tile);
@@ -103,29 +98,32 @@ export default Collision = {
             // For each style
             for (let style in style_objects) {
                 let objects = style_objects[style];
-                show[style] = show[style] || [];
-                hide[style] = hide[style] || [];
+                labels[style] = labels[style] || [];
 
                 for (let i = 0; i < objects.length; i++) {
                     let object = objects[i];
                     if (this.canBePlaced(object, tile, object.linked, state)) {
                         // show object if it isn't dependent on a parent object
                         if (!object.linked) {
-                            show[style].push(object);
+                            object.show = true;
+                            labels[style].push(object);
                             this.place(object, tile, state);
                         }
                         // If object is dependent on a parent, only show if both can be placed
                         else if (this.canBePlaced(object.linked, tile, object, state)) {
-                            show[style].push(object);
+                            object.show = true;
+                            labels[style].push(object);
                             this.place(object, tile, state);
                             this.place(object.linked, tile, state);
                         }
                         else if (state.return_hidden) {
-                            hide[style].push(object);
+                            object.show = false;
+                            labels[style].push(object);
                         }
                     }
                     else if (state.return_hidden) {
-                        hide[style].push(object);
+                        object.show = false;
+                        labels[style].push(object);
                     }
                 }
             }

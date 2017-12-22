@@ -338,7 +338,7 @@ Object.assign(Points, {
         return Promise.
             all([
                 // Points
-                Collision.collide(point_objs, this.collision_group_points, tile.id).then(({show:point_objs}) => {
+                Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
                     point_objs.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
