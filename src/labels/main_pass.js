@@ -103,51 +103,26 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom) {
 
     return Collision.collide(containers, 'main', 'main').then(labels => {
         let meshes = [];
-        labels.hide.forEach(c => {
+        labels.forEach(container => {
             let changed = true;
+            let show = (container.show === true) ? 1 : 0;
 
-            c.ranges.forEach(r => {
+            container.ranges.forEach(r => {
                 if (!changed) {
                     return; // skip rest of label if state hasn't changed
                 }
 
-                let mesh = c.mesh;
+                let mesh = container.mesh;
                 let off = mesh.vertex_layout.attribs.find(a => a.name === 'a_shape').offset; // TODO replace find (or polyfill)
                 let stride = mesh.vertex_layout.stride;
 
                 for (let i=0; i < r[1]; i++) {
                     // NB: +6 is because attribute is a short int (2 bytes each), and we're skipping to 3rd element, 6=3*2
-                    if (mesh.vertex_data[r[0] + i * stride + off + 6] === 0) {
+                    if (mesh.vertex_data[r[0] + i * stride + off + 6] === show) {
                         changed = false;
                         return; // label hasn't changed states, skip further updates
                     }
-                    mesh.vertex_data[r[0] + i * stride + off + 6] = 0;
-                }
-
-                if (meshes.indexOf(mesh) === -1) {
-                    meshes.push(mesh);
-                }
-            });
-        });
-
-        labels.show.forEach(c => {
-            let changed = true;
-
-            c.ranges.forEach(r => {
-                if (!changed) {
-                    return; // skip rest of label if state hasn't changed
-                }
-
-                let mesh = c.mesh;
-                let off = mesh.vertex_layout.attribs.find(a => a.name === 'a_shape').offset;
-                let stride = mesh.vertex_layout.stride;
-                for (let i=0; i < r[1]; i++) {
-                    // NB: +6 is because attribute is a short int (2 bytes each), and we're skipping to 3rd element, 6=3*2
-                    if (mesh.vertex_data[r[0] + i * stride + off + 6] === 1) {
-                        changed = false;
-                        return; // label hasn't changed states, skip further updates
-                    }
-                    mesh.vertex_data[r[0] + i * stride + off + 6] = 1;
+                    mesh.vertex_data[r[0] + i * stride + off + 6] = show;
                 }
 
                 if (meshes.indexOf(mesh) === -1) {
