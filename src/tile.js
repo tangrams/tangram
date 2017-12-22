@@ -627,7 +627,7 @@ export default class Tile {
     merge (other) {
         this.loading = other.loading;
         this.loaded = other.loaded;
-        this.generation = other.loaded;
+        this.generation = other.generation;
         this.error = other.error;
         this.mesh_data = other.mesh_data;
         this.debug = mergeObjects(this.debug, other.debug);
