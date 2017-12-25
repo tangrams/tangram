@@ -10,7 +10,8 @@ export default class VertexLayout {
         this.attribs = attribs; // array of attributes, specified as standard GL attrib options
         this.dynamic_attribs = this.attribs.filter(x => !x.static); // attributes with per-vertex values, used to build VBOs
         this.components = [];   // list of type and offset info about each attribute component
-        this.index = {};        // linear buffer index of each attribute component, e.g. this.index.position.x
+        this.index = {};        // JS buffer index of each attribute component, e.g. this.index.position
+        this.offset = {};       // VBO buffer byte offset of each attribute component, e.g. this.offset.color
         this.stride = 0;        // byte stride of a single vertex
 
         let index = 0, count = 0;
@@ -54,9 +55,12 @@ export default class VertexLayout {
                     });
                 }
 
-                // Provide an index into the vertex data buffer for each attribute component
+                // Provide an index into the vertex data buffer for each attribute by name
                 this.index[attrib.name] = index;
                 index += attrib.size;
+
+                // Store byte offset of each attribute by name
+                this.offset[attrib.name] = attrib.offset;
             }
             // Static attribute
             else {
