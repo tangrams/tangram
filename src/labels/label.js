@@ -1,6 +1,5 @@
 import PointAnchor from './point_anchor';
 import {boxIntersectsList} from './intersect';
-import Utils from '../utils/utils';
 import OBB from '../utils/obb';
 // import log from '../utils/log';
 
@@ -79,18 +78,6 @@ export default class Label {
             });
         }
         return intersect;
-    }
-
-    // checks whether the label is within the tile boundaries
-    inTileBounds () {
-        let min = [ this.aabb[0], this.aabb[1] ];
-        let max = [ this.aabb[2], this.aabb[3] ];
-
-        if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
-            return false;
-        }
-
-        return true;
     }
 
     // Whether the label should be discarded

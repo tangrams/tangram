@@ -311,12 +311,6 @@ export const TextLabels = {
         // common settings w/points
         layout = this.computeLayout(layout, feature, draw, context, tile);
 
-        // tile boundary handling
-        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
-
-        // standalone text can move into tile if specified
-        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
-
         // repeat rules include the text
         if (layout.repeat_distance) {
             if (repeat_group_prefix) {

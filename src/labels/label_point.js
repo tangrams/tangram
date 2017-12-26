@@ -15,7 +15,7 @@ export default class LabelPoint extends Label {
 
         this.start_anchor_index = 1;
         this.degenerate = !this.size[0] && !this.size[1] && !this.layout.buffer[0] && !this.layout.buffer[1];
-        this.throw_away = !this.getNextFit();
+        this.throw_away = false;
     }
 
     update() {
@@ -97,41 +97,6 @@ export default class LabelPoint extends Label {
         return updated;
     }
 
-    getNextFit() {
-        // return true;
-
-        if (!this.layout.cull_from_tile || this.inTileBounds()) {
-            return true;
-        }
-
-        // if (this.layout.move_into_tile){
-        //     this.moveIntoTile();
-        //     return true;
-        // }
-        // else {
-            if (Array.isArray(this.layout.anchor)) {
-                // Start on second anchor (first anchor was set on creation)
-                for (let i = 1; i < this.layout.anchor.length; i++) {
-                    this.anchor = this.layout.anchor[i];
-                    this.update();
-
-                    this.start_anchor_index = i;
-
-                    if (this.inTileBounds()) { // TODO: keep initial tile bounds check?
-                        return true;
-                    }
-                }
-            }
-            // else {
-            //     return true; // allow label to be out of tile bounds if no anchors
-            // }
-
-            // no anchors result in fit
-            // return false;
-        // }
-        return true; // still return true even if all anchors breach tile
-    }
-
     discard (bboxes, exclude = null) {
         if (this.degenerate) {
             return false;
@@ -144,10 +109,6 @@ export default class LabelPoint extends Label {
                 for (let i=this.start_anchor_index; i < this.layout.anchor.length; i++) {
                     this.anchor = this.layout.anchor[i];
                     this.update();
-
-                    // if (this.layout.cull_from_tile && !this.inTileBounds()) {
-                    //     continue;
-                    // }
 
                     if (!super.discard(bboxes, exclude)) {
                         return false;
