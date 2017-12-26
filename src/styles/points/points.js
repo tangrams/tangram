@@ -718,7 +718,6 @@ Object.assign(Points, {
 
         // TODO: instead of passing null, pass arrays with fingerprintable values
         // This value is checked in the shader to determine whether to apply curving logic
-        let start = mesh.vertex_data.offset;
         let geom_count = this.buildQuad(
             [label.position],               // position
             size,                           // size in pixels
@@ -732,27 +731,9 @@ Object.assign(Points, {
             mesh.vertex_data, vertex_template    // VBO and data for current vertex
         );
 
-        // track label mesh offset data
-        if (label.layout.collide) {
-            mesh.labels = mesh.labels || {};
-            mesh.labels[label.id] = mesh.labels[label.id] || {
-                container: {
-                    label: label.toJSON(),
-                    linked: (style.linked && style.linked.label.id)
-                },
-                ranges: [],
-                debug: {
-                    id: context.feature.properties.id,
-                    name: context.feature.properties.name,
-                    props: JSON.stringify(context.feature.properties),
-                    point_type: mesh.uniforms.u_point_type
-                }
-            };
-            mesh.labels[label.id].ranges.push([
-                start,
-                geom_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
-            ]);
-        }
+        // track label mesh buffer data
+        const linked = (style.linked && style.linked.label.id);
+        this.trackLabel(label, linked, mesh, geom_count);
     },
 
     buildCurvedLabel (label, style, mesh, context) {
@@ -785,7 +766,6 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            let start = mesh.vertex_data.offset;
             let seg_count = this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
@@ -800,27 +780,9 @@ Object.assign(Points, {
             );
             geom_count += seg_count;
 
-            // track label mesh offset data
-            if (label.layout.collide) {
-                mesh.labels = mesh.labels || {};
-                mesh.labels[label.id] = mesh.labels[label.id] || {
-                    container: {
-                        label: label.toJSON(),
-                        linked: (style.linked && style.linked.label.id)
-                    },
-                    ranges: [],
-                    debug: {
-                        id: context.feature.properties.id,
-                        name: context.feature.properties.name,
-                        props: JSON.stringify(context.feature.properties),
-                        point_type: mesh.uniforms.u_point_type
-                    }
-                };
-                mesh.labels[label.id].ranges.push([
-                    start,
-                    seg_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
-                ]);
-            }
+            // track label mesh buffer data
+            const linked = (style.linked && style.linked.label.id);
+            this.trackLabel(label, linked, mesh, seg_count);
         }
 
         // pass for fill
@@ -845,7 +807,6 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            let start = mesh.vertex_data.offset;
             let seg_count = this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
@@ -860,30 +821,39 @@ Object.assign(Points, {
             );
             geom_count += seg_count;
 
-            // track label mesh offset data
-            if (label.layout.collide) {
-                mesh.labels = mesh.labels || {};
-                mesh.labels[label.id] = mesh.labels[label.id] || {
-                    container: {
-                        label: label.toJSON(),
-                        linked: (style.linked && style.linked.label.id)
-                    },
-                    ranges: [],
-                    debug: {
-                        id: context.feature.properties.id,
-                        name: context.feature.properties.name,
-                        props: JSON.stringify(context.feature.properties),
-                        point_type: mesh.uniforms.u_point_type
-                    }
-                };
-                mesh.labels[label.id].ranges.push([
-                    start,
-                    seg_count * 2 // geom count is triangles: 2 triangles = 1 quad = 4 vertices
-                ]);
-            }
+            // track label mesh buffer data
+            const linked = (style.linked && style.linked.label.id);
+            this.trackLabel(label, linked, mesh, seg_count);
         }
 
         return geom_count;
+    },
+
+    // track mesh data for label (byte ranges occupied by label in VBO)
+    trackLabel (label, linked, mesh, geom_count) {
+        if (label.layout.collide) {
+            mesh.labels = mesh.labels || {};
+            mesh.labels[label.id] = mesh.labels[label.id] || {
+                container: {
+                    label: label.toJSON(),
+                    linked,
+                },
+                ranges: [],
+                // debug: { // uncomment and pass in context for debugging
+                //     id: context.feature.properties.id,
+                //     name: context.feature.properties.name,
+                //     props: JSON.stringify(context.feature.properties),
+                //     point_type: mesh.uniforms.u_point_type
+                // }
+            };
+
+            const vertex_count = geom_count * 2; // geom count is triangles: 2 triangles = 1 quad = 4 vertices
+            const start = mesh.vertex_data.offset - mesh.vertex_data.stride * vertex_count; // start offset of byte range
+            mesh.labels[label.id].ranges.push([
+                start,
+                vertex_count
+            ]);
+        }
     },
 
     // Override to pass-through to generic point builder
