@@ -186,19 +186,6 @@ export class LabelLineBase {
         return false;
     }
 
-    // Checks each segment to see if it is within the tile. If any segment fails this test, they all fail.
-    inTileBounds() {
-        for (let i = 0; i < this.aabbs.length; i++) {
-            let aabb = this.aabbs[i];
-            let obj = { aabb };
-            let in_bounds = Label.prototype.inTileBounds.call(obj);
-            if (!in_bounds) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     // Method to calculate oriented bounding box
     // "angle" is the angle of the text segment, "angle_offset" is the angle applied to the offset.
     // Offset angle is constant for the entire label, while segment angles are not.
@@ -313,12 +300,8 @@ export class LabelLineStraight extends LabelLineBase {
                     }
 
                     this.position = curr_midpt;
-
                     this.updateBBoxes(this.position, size, this.angle, this.angle, this.offset);
-
-                    // if (this.inTileBounds()) {
-                        return true;
-                    // }
+                    return true; // use this placement
                 }
 
                 prev_angle = next_angle;
@@ -428,13 +411,9 @@ class LabelLineCurved extends LabelLineBase {
             return false;
         }
 
-        // find start and end indices that the label can fit on without overlapping tile boundaries
-        // TODO: there is a small probability of a tile boundary crossing on an internal line segment
-        // another option is to create a buffer around the line and check if it overlaps a tile boundary
-        // let [start_index, end_index] = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp);
-        let start_index = 0, end_index = line.length-1;
-
         // need two line segments for a curved label
+        // NB: single segment lines should still be labeled if possible during straight label placement pass
+        let start_index = 0, end_index = line.length-1;
         if (end_index - start_index < 2){
             return false;
         }
@@ -505,51 +484,6 @@ class LabelLineCurved extends LabelLineBase {
 
         return true;
     }
-
-    // Test if line intersects tile boundary. Return indices at beginning and end of line that are within tile.
-    // Burn candle from both ends strategy - meaning shift and pop until vertices are within tile, but an interior vertex
-    // may still be outside of tile (can potentially result in label collision across tiles).
-    // static checkTileBoundary(line, widths, height, offset, upp){
-    //     let start = 0;
-    //     let end = line.length - 1;
-
-    //     height *= Label.epsilon;
-
-    //     let start_width = widths[start] * Label.epsilon;
-    //     let end_width = widths[widths.length - 1] * Label.epsilon;
-
-    //     // Burn candle from start
-    //     while (start < end){
-    //         let angle = getAngleForSegment(line[start], line[start + 1]);
-    //         let position = Vector.add(Vector.rot([start_width/2, 0], angle), line[start]);
-    //         let obb = LabelLineBase.createOBB(position, start_width, height, -angle, -angle, offset, upp);
-    //         let aabb = obb.getExtent();
-    //         let in_tile = Label.prototype.inTileBounds.call({ aabb });
-    //         if (in_tile) {
-    //             break;
-    //         }
-    //         else {
-    //             start++;
-    //         }
-    //     }
-
-    //     // Burn candle from end
-    //     while (end > start){
-    //         let angle = getAngleForSegment(line[end - 1], line[end]);
-    //         let position = Vector.add(Vector.rot([-end_width/2, 0], angle), line[end]);
-    //         let obb = LabelLineBase.createOBB(position, end_width, height, -angle, -angle, offset, upp);
-    //         let aabb = obb.getExtent();
-    //         let in_tile = Label.prototype.inTileBounds.call({ aabb });
-    //         if (in_tile) {
-    //             break;
-    //         }
-    //         else {
-    //             end--;
-    //         }
-    //     }
-
-    //     return [start, end];
-    // }
 
     // Find optimal starting segment for placing a curved label along a line within provided tolerances
     // This is determined by calculating the curvature at each interior vertex of a line

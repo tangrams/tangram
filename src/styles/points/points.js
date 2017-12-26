@@ -466,12 +466,6 @@ Object.assign(Points, {
         // collision flag
         layout.collide = (draw.collide === false) ? false : true;
 
-        // tile boundary handling
-        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : false;
-
-        // points should not move into tile if over tile boundary
-        layout.move_into_tile = false;
-
         // label anchors (point labels only)
         // label position will be adjusted in the given direction, relative to its original point
         // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
