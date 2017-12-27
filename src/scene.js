@@ -610,7 +610,7 @@ export default class Scene {
                 }
 
                 // Render current mesh variant for current style for current tile
-                let mesh = tile.meshes[style_name].find(m => m.variant.order === mo); // find mesh by variant order
+                let mesh = tile.meshes[style_name].filter(m => m.variant.order === mo)[0]; // find mesh by variant order
                 if (mesh) {
                     // Style-specific state
                     // Only setup style if rendering for first time this frame
