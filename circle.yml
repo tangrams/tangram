@@ -1,7 +1,3 @@
 test:
   override:
     - npm run test-ci
-  post:
-    # For Precog. This should run even if tests fail.
-    - npm run build
-    - cp -R dist demos index.html $CIRCLE_ARTIFACTS
