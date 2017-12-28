@@ -264,9 +264,13 @@ export class NetworkSource extends DataSource {
                     body = this.preprocess(body);
                 }
 
-                this.parseSourceData(dest, source_data, body);
-                dest.debug.parsing = +new Date() - dest.debug.parsing;
-                resolve(dest);
+                // Return data immediately, or after user-returned promise resolves
+                body = (body instanceof Promise) ? body : Promise.resolve(body);
+                body.then(body => {
+                    this.parseSourceData(dest, source_data, body);
+                    dest.debug.parsing = +new Date() - dest.debug.parsing;
+                    resolve(dest);
+                });
             }).catch((error) => {
                 source_data.error = error.stack;
                 resolve(dest); // resolve request but pass along error
