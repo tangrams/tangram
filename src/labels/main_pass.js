@@ -4,7 +4,6 @@ import {LabelLineStraight} from './label_line';
 import Collision from './collision';
 import OBB from '../utils/obb';
 import Geo from '../geo';
-// import Tile from '../tile';
 
 export default function mainThreadLabelCollisionPass (tiles, view_zoom) {
     const labels = {};
@@ -28,8 +27,6 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom) {
                             const linked = mesh.labels[label_id].container.linked;
                             const ranges = mesh.labels[label_id].ranges;
                             const debug = Object.assign({}, mesh.labels[label_id].debug, {tile, params, label_id});
-
-                            // if (debug.id == 37043262) debugger;
 
                             let label = labels[label_id] = {};
                             label.discard = discard.bind(label);

@@ -24,6 +24,10 @@ varying float v_alpha_factor;
     varying float v_aa_offset;
 #endif
 
+#ifdef TANGRAM_SHOW_HIDDEN_LABELS
+    varying float v_label_hidden;
+#endif
+
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
 #pragma tangram: camera
@@ -40,8 +44,6 @@ varying float v_alpha_factor;
         return 1. - smoothstep(low, high, l);
     }
 #endif
-
-varying float hide;
 
 void main (void) {
     // Initialize globals
@@ -92,10 +94,13 @@ void main (void) {
 
     color.a *= v_alpha_factor;
 
-    if (hide > 0.) {
-        color.a *= 0.5;
-        color.rgb = vec3(1., 0., 0.);
-    }
+    // highlight hidden label in fragment shader for debugging
+    #ifdef TANGRAM_SHOW_HIDDEN_LABELS
+        if (v_label_hidden > 0.) {
+            color.a *= 0.5;
+            color.rgb = vec3(1., 0., 0.);
+        }
+    #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute
     #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)

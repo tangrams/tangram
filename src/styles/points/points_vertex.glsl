@@ -43,6 +43,10 @@ varying float v_alpha_factor;
     varying float v_aa_offset;
 #endif
 
+#ifdef TANGRAM_SHOW_HIDDEN_LABELS
+    varying float v_label_hidden;
+#endif
+
 #define PI 3.14159265359
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
@@ -69,21 +73,26 @@ vec2 rotate2D(vec2 _st, float _angle) {
     }
 #endif
 
-varying float hide;
-
 void main() {
     // Initialize globals
     #pragma tangram: setup
 
     // discard hidden labels by collapsing into degenerate triangle
-    if (a_shape.w == 0.) {
-        gl_Position = vec4(0., 0., 0., 1.);
-        return;
-        // hide = 1.; // label debug testing
-    }
-    // else {
-    //     hide = 0.;
-    // }
+    #ifndef TANGRAM_SHOW_HIDDEN_LABELS
+        if (a_shape.w == 0.) {
+            gl_Position = vec4(0., 0., 0., 1.);
+            return;
+        }
+    #else
+        // highlight hidden label in fragment shader for debugging
+        if (a_shape.w == 0.) {
+            v_label_hidden = 1.; // label debug testing
+        }
+        else {
+            v_label_hidden = 0.;
+        }
+    #endif
+
 
     v_alpha_factor = 1.0;
     v_color = a_color;
