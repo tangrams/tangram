@@ -13,7 +13,6 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom) {
     // Collect labels from each tile and turn into new label instances
     tiles.forEach(tile => {
         const units_per_meter = Geo.unitsPerMeter(tile.coords.z);    // scale from tile units to mercator meters
-        // const zf = Math.min(Math.max(view_zoom - tile.style_zoom, 0), 0.99);
         const zoom_scale = Math.pow(2, view_zoom - tile.style_zoom); // adjust label size by view zoom
         const size_scale = units_per_meter * zoom_scale;             // scale from tile units to zoom-adjusted meters
         const meters_per_pixel = Geo.metersPerPixel(view_zoom);
