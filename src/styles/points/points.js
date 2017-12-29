@@ -120,6 +120,11 @@ Object.assign(Points, {
         if (debugSettings.suppress_label_snap_animation !== true) {
             this.defines.TANGRAM_VIEW_PAN_SNAP_RATE = 1 / VIEW_PAN_SNAP_TIME; // inverse time in seconds
         }
+
+        // Show hidden labels for debugging
+        if (debugSettings.show_hidden_labels === true) {
+            this.defines.TANGRAM_SHOW_HIDDEN_LABELS = true;
+        }
     },
 
     reset () {
