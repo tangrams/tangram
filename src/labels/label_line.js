@@ -1,4 +1,4 @@
-import Label from './label';
+import Label, {textLayoutToJSON} from './label';
 import Vector from '../vector';
 import OBB from '../utils/obb';
 
@@ -67,19 +67,11 @@ export class LabelLineBase {
         return {
             id: this.id,
             type: this.type,
-            obbs: this.obbs.map(o => o.toJSON()),
             position: this.position,
             size: this.size,
             offset: this.offset,
             angle: this.angle,
-            layout: {
-                priority: this.layout.priority,
-                collide: this.layout.collide,
-                repeat_distance: this.layout.repeat_distance,
-                repeat_group: this.layout.repeat_group,
-                buffer: this.layout.buffer,
-                italic: this.layout.italic
-            }
+            layout: textLayoutToJSON(this.layout)
         };
     }
 
@@ -355,22 +347,7 @@ class LabelLineCurved extends LabelLineBase {
             type: this.type,
             obbs: this.obbs.map(o => o.toJSON()),
             position: this.position,
-            size: this.size,
-            offset: this.offset,
-            angle: this.angle,
-            angles: this.angles,
-            pre_angles: this.pre_angles,
-            offsets: this.offsets,
-            sizes: this.sizes,
-            obb_stops: this.obb_stops,
-            layout: {
-                priority: this.layout.priority,
-                collide: this.layout.collide,
-                repeat_distance: this.layout.repeat_distance,
-                repeat_group: this.layout.repeat_group,
-                buffer: this.layout.buffer,
-                italic: this.layout.italic
-            }
+            layout: textLayoutToJSON(this.layout)
         };
     }
 

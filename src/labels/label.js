@@ -30,14 +30,7 @@ export default class Label {
             position: this.position,
             size: this.size,
             offset: this.offset,
-            layout: { // TODO: move outside label - couples non-label logic
-                priority: this.layout.priority,
-                collide: this.layout.collide,
-                repeat_distance: this.layout.repeat_distance,
-                repeat_group: this.layout.repeat_group,
-                buffer: this.layout.buffer,
-                italic: this.layout.italic
-            }
+            layout: textLayoutToJSON(this.layout)
         };
     }
 
@@ -116,3 +109,15 @@ Label.nextLabelId = function () {
 };
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
+
+// Minimal representation of text layout, sent to main thread for label collisions
+export function textLayoutToJSON (layout) {
+    return {
+        priority: layout.priority,
+        collide: layout.collide,
+        repeat_distance: layout.repeat_distance,
+        repeat_group: layout.repeat_group,
+        buffer: layout.buffer,
+        italic: layout.italic // affects bounding box size
+    };
+}
