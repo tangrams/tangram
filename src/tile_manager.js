@@ -123,13 +123,13 @@ export default class TileManager {
         return this.updateLabels();
     }
 
-    updateLabels ({ force = false } = {}) {
-        // if (!force && (this.isLoadingVisibleTiles() || this.scene.building)) {
+    updateLabels () {
+        // if (this.isLoadingVisibleTiles() || this.scene.building) {
         //     // log('debug', `Skip label layout due to loading (loading visible ${this.isLoadingVisibleTiles()}, building ${this.scene.building != null})`);
         //     return Promise.resolve({});
         // }
 
-        if (!force && this.scene.building && !this.scene.building.initial) {
+        if (this.scene.building && !this.scene.building.initial) {
             // log('debug', `Skip label layout due to on-going scene rebuild`);
             return Promise.resolve({});
         }
@@ -163,8 +163,7 @@ export default class TileManager {
         tiles.sort((a, b) => a.key < b.key ? -1 : (a.key > b.key ? 1 : 0));
 
         // check if tile set has changed (in ways that affect collision)
-        if (!force &&
-            roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
+        if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
             tiles.every(t => {
                 let i = this.collision.tiles.indexOf(t);
                 return i > -1 &&
@@ -177,13 +176,13 @@ export default class TileManager {
         }
 
         // update collision if not already updating
-        if (!this.collision.task || force) {
+        if (!this.collision.task) {
             this.collision.tiles = tiles;
             this.collision.generations = tiles.map(t => t.generation);
             this.collision.style_counts = tiles.map(t => Object.keys(t.meshes).length);
             this.collision.pending_label_style_counts = tiles.map(t => t.pendingLabelStyleCount());
             this.collision.zoom = roundPrecision(this.view.zoom, this.collision.zoom_steps);
-            // log('debug', `Update label collisions (zoom ${this.collision.zoom}, force ${force}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+            // log('debug', `Update label collisions (zoom ${this.collision.zoom}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
 
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
