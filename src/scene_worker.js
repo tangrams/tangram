@@ -39,12 +39,12 @@ Object.assign(self, {
         VertexElements.setElementIndexUint(has_element_index_unit);
         FeatureSelection.setPrefix(self._worker_id);
         self.style_manager = new StyleManager();
-        self.importCustomScripts(external_scripts);
+        self.importExternalScripts(external_scripts);
         return worker_id;
     },
 
-    // Import custom scripts
-    importCustomScripts(scripts) {
+    // Import custom external scripts
+    importExternalScripts(scripts) {
         if (scripts.length === 0) {
             return;
         }
