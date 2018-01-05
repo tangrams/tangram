@@ -340,6 +340,7 @@ export default class Scene {
     }
 
     destroyWorkers() {
+        this.selection = null; // selection needs to be re-initialized when workers are
         if (Array.isArray(this.workers)) {
             log.setWorkers(null);
             this.workers.forEach((worker) => {
