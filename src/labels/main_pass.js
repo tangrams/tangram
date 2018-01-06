@@ -5,7 +5,7 @@ import Collision from './collision';
 import OBB from '../utils/obb';
 import Geo from '../geo';
 
-export default function mainThreadLabelCollisionPass (tiles, view_zoom) {
+export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_breach = false) {
     const labels = {};
     let containers = {};
 
@@ -101,7 +101,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom) {
         let meshes = [];
         labels.forEach(container => {
             let changed = true;
-            let show = (container.show === true) ? 1 : 0;
+            let show = (container.show === true && (!hide_breach || !container.label.breach)) ? 1 : 0;
 
             container.ranges.forEach(r => {
                 if (!changed) {
