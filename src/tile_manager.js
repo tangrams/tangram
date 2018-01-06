@@ -156,9 +156,9 @@ export default class TileManager {
         //     }
         // }
 
-        // if (tiles.length === 0) {
-        //     return Promise.resolve({});
-        // }
+        if (tiles.length === 0) {
+            return Promise.resolve({});
+        }
 
         tiles.sort((a, b) => a.key < b.key ? -1 : (a.key > b.key ? 1 : 0));
 
@@ -187,7 +187,7 @@ export default class TileManager {
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
                 run: (task) => {
-                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.zoom).then(results => {
+                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.zoom, this.isLoadingVisibleTiles()).then(results => {
                         this.collision.task = null;
                         Task.finish(task, results);
                         this.updateTileStates().then(() => this.scene.immediateRedraw());

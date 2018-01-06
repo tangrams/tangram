@@ -71,6 +71,7 @@ export class LabelLineBase {
             size: this.size,
             offset: this.offset,
             angle: this.angle,
+            breach: this.breach,
             layout: textLayoutToJSON(this.layout)
         };
     }
@@ -176,6 +177,19 @@ export class LabelLineBase {
             }
         }
         return false;
+    }
+
+    // Checks each segment to see if it is within the tile. If any segment fails this test, they all fail.
+    inTileBounds() {
+        for (let i = 0; i < this.aabbs.length; i++) {
+            let aabb = this.aabbs[i];
+            let obj = { aabb };
+            let in_bounds = Label.prototype.inTileBounds.call(obj);
+            if (!in_bounds) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Method to calculate oriented bounding box
@@ -320,6 +334,9 @@ export class LabelLineStraight extends LabelLineBase {
 
         this.obbs.push(obb);
         this.aabbs.push(aabb);
+        if (this.inTileBounds) {
+            this.breach = !this.inTileBounds();
+        }
     }
 }
 
@@ -347,6 +364,7 @@ class LabelLineCurved extends LabelLineBase {
             type: this.type,
             obbs: this.obbs.map(o => o.toJSON()),
             position: this.position,
+            breach: this.breach,
             layout: textLayoutToJSON(this.layout)
         };
     }

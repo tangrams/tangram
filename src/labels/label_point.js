@@ -63,6 +63,9 @@ export default class LabelPoint extends Label {
 
         this.obb = new OBB(p[0], p[1], 0, width, height);
         this.aabb = this.obb.getExtent();
+        if (this.inTileBounds) {
+            this.breach = !this.inTileBounds();
+        }
     }
 
     // Try to move the label into the tile bounds
