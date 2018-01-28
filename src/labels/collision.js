@@ -112,6 +112,14 @@ export default Collision = {
                         // If object is dependent on a parent, only show if both can be placed
                         else if (this.canBePlaced(object.linked, tile, object, state)) {
                             object.show = true;
+
+                            // If a label is breach, its linked label should be considered breach as well
+                            // (this keeps linked labels from staying (in)visible in tandem)
+                            if (object.label.breach || object.linked.label.breach) {
+                                object.label.breach = true;
+                                object.linked.label.breach = true;
+                            }
+
                             labels[style].push(object);
                             this.place(object, tile, state);
                             this.place(object.linked, tile, state);
