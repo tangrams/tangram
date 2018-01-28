@@ -5,7 +5,13 @@ import Collision from './collision';
 import OBB from '../utils/obb';
 import Geo from '../geo';
 
+let visible = {};       // currently visible labels
+let prev_visible = {};  // previously visible labels (in last collision run)
+
 export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_breach = false) {
+    prev_visible = visible; // save last visible label set
+    visible = {};           // initialize new visible label set
+
     const labels = {};
     let containers = {};
 
@@ -100,8 +106,20 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
     return Collision.collide(containers, 'main', 'main').then(labels => {
         let meshes = [];
         labels.forEach(container => {
-            let changed = true;
-            let show = (container.show === true && (!hide_breach || !container.label.breach)) ? 1 : 0;
+            // Hide breach labels (those that cross tile boundaries) while tiles are loading, unless they
+            // were previously visible (otherwise fully loaded/collided breach labels will flicker in and out
+            // when new tiles load, even if they aren't adjacent)
+            let show = 0;
+            if (container.show === true &&
+                (!hide_breach || !container.label.breach || prev_visible[container.label.id])) {
+                show = 1;
+            }
+
+            if (show) {
+                visible[container.label.id] = container; // track visible labels
+            }
+
+            let changed = true; // check if label visibility changed on this collision pass
 
             container.ranges.forEach(r => {
                 if (!changed) {
