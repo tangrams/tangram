@@ -36,6 +36,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
 
                             let label = labels[label_id] = {};
                             label.discard = discard.bind(label);
+                            label.build_id = tile.build_id; // original order in which tiles were built
 
                             Object.assign(label, params);
                             label.layout = Object.assign({}, params.layout); // TODO: ideally remove need to copy props here

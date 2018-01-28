@@ -12,6 +12,7 @@ import Texture from './gl/texture';
 import {mat4, vec3} from './utils/gl-matrix';
 
 let id = 0; // unique tile id
+let build_id = 0; // id tracking order in which tiles were build
 
 export default class Tile {
 
@@ -416,6 +417,8 @@ export default class Tile {
         if (this.error) {
             return;
         }
+
+        this.build_id = build_id++; // record order in which tile was built
 
         // Debug
         if (progress.start) {
