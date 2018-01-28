@@ -160,7 +160,9 @@ export default class TileManager {
             return Promise.resolve({});
         }
 
-        tiles.sort((a, b) => a.key < b.key ? -1 : (a.key > b.key ? 1 : 0));
+        // Evaluate labels in order of tile build, to prevent previously visible labels
+        // from disappearing, e.g. due to a newly loaded repeat label nearby
+        tiles.sort((a, b) => a.build_id < b.build_id ? -1 : (a.build_id > b.build_id ? 1 : 0));
 
         // check if tile set has changed (in ways that affect collision)
         if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
