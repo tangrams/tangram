@@ -732,7 +732,7 @@ Object.assign(Points, {
 
         // track label mesh buffer data
         const linked = (style.linked && style.linked.label.id);
-        this.trackLabel(label, linked, mesh, geom_count);
+        this.trackLabel(label, linked, mesh, geom_count, context);
     },
 
     buildCurvedLabel (label, style, mesh, context) {
@@ -781,7 +781,7 @@ Object.assign(Points, {
 
             // track label mesh buffer data
             const linked = (style.linked && style.linked.label.id);
-            this.trackLabel(label, linked, mesh, seg_count);
+            this.trackLabel(label, linked, mesh, seg_count, context);
         }
 
         // pass for fill
@@ -822,14 +822,14 @@ Object.assign(Points, {
 
             // track label mesh buffer data
             const linked = (style.linked && style.linked.label.id);
-            this.trackLabel(label, linked, mesh, seg_count);
+            this.trackLabel(label, linked, mesh, seg_count, context);
         }
 
         return geom_count;
     },
 
     // track mesh data for label (byte ranges occupied by label in VBO)
-    trackLabel (label, linked, mesh, geom_count) {
+    trackLabel (label, linked, mesh, geom_count, context) {
         if (label.layout.collide) {
             mesh.labels = mesh.labels || {};
             mesh.labels[label.id] = mesh.labels[label.id] || {
