@@ -1217,12 +1217,10 @@ export default class Scene {
     // Fires event when rendered tile set or style changes
     updateViewComplete () {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
-            // !this.building &&
             !this.tile_manager.isLoadingVisibleTiles() &&
             this.tile_manager.allVisibleTilesLabeled()) {
             this.last_complete_generation = this.generation;
             this.trigger('view_complete');
-            console.log(`view_complete renderable tile count ${this.tile_manager.renderable_tiles.length}, total tiles ${Object.keys(this.tile_manager.tiles).length}, render count ${this.render_count}, gen ${this.generation}`);
         }
     }
 

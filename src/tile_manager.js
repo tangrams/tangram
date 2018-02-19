@@ -124,11 +124,6 @@ export default class TileManager {
     }
 
     updateLabels () {
-        // if (this.isLoadingVisibleTiles() || this.scene.building) {
-        //     // log('debug', `Skip label layout due to loading (loading visible ${this.isLoadingVisibleTiles()}, building ${this.scene.building != null})`);
-        //     return Promise.resolve({});
-        // }
-
         if (this.scene.building && !this.scene.building.initial) {
             // log('debug', `Skip label layout due to on-going scene rebuild`);
             return Promise.resolve({});
@@ -138,23 +133,6 @@ export default class TileManager {
         const tiles = this.renderable_tiles
             .filter(t => t.valid)
             .filter(t => t.built);
-            // .sort((a, b) => b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1))
-            // .sort((a, b) => b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? (a.key < b.key ? -1 : (a.key > b.key ? 1 : 0)) : 1))
-            // .sort((a, b) => a.key < b.key ? -1 : (a.key > b.key ? 1 : 0));
-
-        // let tiles = [];
-        // for (let source in this.scene.sources) {
-        //     const source_tiles = Object.keys(this.tiles)
-        //         .map(t => this.tiles[t])
-        //         .filter(t => t.source.name === source)
-        //         .filter(t => t.valid)
-        //         .filter(t => t.visible);
-        //         // .filter(t => t.built);
-
-        //     if (source_tiles.every(t => t.built)) {
-        //         tiles.push(...source_tiles);
-        //     }
-        // }
 
         if (tiles.length === 0) {
             return Promise.resolve({});
@@ -316,10 +294,7 @@ export default class TileManager {
     }
 
     allVisibleTilesLabeled () {
-        // return this.renderable_tiles.every(t => t.labeled);
-        return this.renderable_tiles.every(t => !t.pending_label_meshes);
-        // return this.renderable_tiles.length > 0 && this.renderable_tiles.every(t => t.labeled);
-        // !Object.keys(this.tiles).some(k => this.tiles[k].visible && !this.tiles[k].labeled);
+        return this.renderable_tiles.every(t => t.labeled);
     }
 
     // Queue a tile for load
