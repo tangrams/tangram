@@ -1,3 +1,4 @@
+import Label from './label';
 import RepeatGroup from './repeat_group';
 import log from '../utils/log';
 
@@ -7,15 +8,17 @@ export default Collision = {
 
     tiles: {},
 
-    startTile (tile) {
+    startTile (tile, { apply_repeat_groups = true, return_hidden = false } = {}) {
         let state = this.tiles[tile] = {
             bboxes: {           // current set of placed bounding boxes
                 aabb: [],
                 obb: []
             },
             objects: {},        // objects to collide, grouped by priority, then by style
-            keep: {},           // objects that were kept after collision, grouped by style
-            styles: {}          // styles contributing collision objects
+            labels: {},         // objects post-collision, grouped by style, marked as show/hide
+            styles: {},         // styles contributing collision objects
+            repeat: apply_repeat_groups,
+            return_hidden
         };
 
         // Promise resolved when all registered styles have added objects
@@ -70,17 +73,19 @@ export default Collision = {
         // Wait for objects to be added from all styles
         return state.complete.then(() => {
             state.resolve = null;
-            return state.keep[style] || [];
+            return state.labels[style] || [];
         });
     },
 
     // Test labels for collisions, higher to lower priority
-    // When two collide, discard the lower-priority label
+    // When two collide, hide the lower-priority label
     endTile (tile) {
         let state = this.tiles[tile];
-        let keep = state.keep;
+        let labels = state.labels;
 
-        RepeatGroup.clear(tile);
+        if (state.repeat) {
+            RepeatGroup.clear(tile);
+        }
 
         // Process labels by priority, then by style
         let priorities = Object.keys(state.objects).sort((a, b) => a - b);
@@ -93,22 +98,40 @@ export default Collision = {
             // For each style
             for (let style in style_objects) {
                 let objects = style_objects[style];
-                keep[style] = keep[style] || [];
+                labels[style] = labels[style] || [];
 
                 for (let i = 0; i < objects.length; i++) {
                     let object = objects[i];
-                    if (this.canBePlaced(object, tile, object.linked)) {
-                        // Keep object if it isn't dependent on a parent object
+                    if (this.canBePlaced(object, tile, object.linked, state)) {
+                        // show object if it isn't dependent on a parent object
                         if (!object.linked) {
-                            keep[style].push(object);
-                            this.place(object, tile);
+                            object.show = true;
+                            labels[style].push(object);
+                            this.place(object, tile, state);
                         }
-                        // If object is dependent on a parent, only keep if both can be placed
-                        else if (this.canBePlaced(object.linked, tile, object)) {
-                            keep[style].push(object);
-                            this.place(object, tile);
-                            this.place(object.linked, tile);
+                        // If object is dependent on a parent, only show if both can be placed
+                        else if (this.canBePlaced(object.linked, tile, object, state)) {
+                            object.show = true;
+
+                            // If a label is breach, its linked label should be considered breach as well
+                            // (this keeps linked labels from staying (in)visible in tandem)
+                            if (object.label.breach || object.linked.label.breach) {
+                                object.label.breach = true;
+                                object.linked.label.breach = true;
+                            }
+
+                            labels[style].push(object);
+                            this.place(object, tile, state);
+                            this.place(object.linked, tile, state);
                         }
+                        else if (state.return_hidden) {
+                            object.show = false;
+                            labels[style].push(object);
+                        }
+                    }
+                    else if (state.return_hidden) {
+                        object.show = false;
+                        labels[style].push(object);
                     }
                 }
             }
@@ -119,7 +142,7 @@ export default Collision = {
     },
 
     // Run collision and repeat check to see if label can currently be placed
-    canBePlaced (object, tile, exclude = null) {
+    canBePlaced (object, tile, exclude = null, { repeat = true } = {}) {
         let label = object.label;
         let layout = object.label.layout;
 
@@ -132,9 +155,9 @@ export default Collision = {
         let bboxes = this.tiles[tile].bboxes;
         if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
             // check for repeats
-            let repeat = RepeatGroup.check(label, layout, tile);
-            if (repeat) {
-                // log('trace', `discard label '${label.text}', (one_per_group: ${repeat.one_per_group}), dist ${Math.sqrt(repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(repeat.repeat_dist_sq)/layout.units_per_pixel}`);
+            let is_repeat = repeat && RepeatGroup.check(label, layout, tile);
+            if (is_repeat) {
+                // log('trace', `hide label '${label.text}', dist ${Math.sqrt(is_repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(is_repeat.repeat_dist_sq)/layout.units_per_pixel}`);
                 label.placed = false;
             }
             else {
@@ -142,22 +165,24 @@ export default Collision = {
             }
         }
         else if (layout.collide) {
-            // log('trace', `discard label '${label.text}' due to collision`);
+            // log('trace', `hide label '${label.text}' due to collision`);
             label.placed = false;
         }
         return label.placed;
     },
 
     // Place label
-    place ({ label }, tile) {
+    place ({ label }, tile, { repeat = true }) {
         // Skip if already processed (e.g. by parent object)
         if (label.placed != null) {
             return;
         }
 
         // Register as placed for future collision and repeat culling
-        RepeatGroup.add(label, label.layout, tile);
-        label.add(this.tiles[tile].bboxes);
+        if (repeat) {
+            RepeatGroup.add(label, label.layout, tile);
+        }
+        Label.add(label, this.tiles[tile].bboxes);
     }
 
 };

@@ -13,5 +13,9 @@ dist/tangram.debug.temp.js.map
 # OS misc
 .DS_Store
 
+#
+*.sublime-project
+*.sublime-workspace
+
 # storing some screenshots here
 screenshots

@@ -14,6 +14,7 @@ import {parseLayers, FilterOptions} from './styles/layer';
 import {buildFilter} from './styles/filter';
 import Texture from './gl/texture';
 import VertexElements from './gl/vertex_elements';
+import Label from './labels/label';
 
 export var SceneWorker = self;
 
@@ -40,6 +41,7 @@ Object.assign(self, {
         FeatureSelection.setPrefix(self._worker_id);
         self.style_manager = new StyleManager();
         self.importExternalScripts(external_scripts);
+        Label.id_prefix = worker_id;
         return worker_id;
     },
 
@@ -293,7 +295,7 @@ Object.assign(self, {
                     if (geometry === true) {
                         // Transform back to lat lng (copy geometry to avoid local modification)
                         subset.geometry = Geo.copyGeometry(feature.geometry);
-                        Geo.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min, tile.max);
+                        Geo.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min);
                     }
 
                     features.push(subset);

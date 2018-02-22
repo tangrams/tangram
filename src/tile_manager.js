@@ -1,8 +1,10 @@
 import Tile from './tile';
 import TilePyramid from './tile_pyramid';
 import Geo from './geo';
+import mainThreadLabelCollisionPass from './labels/main_pass';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker';
+import Task from './utils/task';
 
 export default class TileManager {
 
@@ -16,6 +18,14 @@ export default class TileManager {
         this.building_tiles = null;
         this.renderable_tiles = [];
         this.active_styles = [];
+        this.collision = {
+            tiles: [],
+            generations: [],
+            style_counts: [],
+            pending_label_style_counts: [],
+            zoom: null,
+            zoom_steps: 2
+        };
 
         // Provide a hook for this object to be called from worker threads
         this.main_thread_target = ['TileManager', this.scene.id].join('_');
@@ -110,6 +120,68 @@ export default class TileManager {
         this.view.pruneTilesForView();
         this.updateRenderableTiles();
         this.updateActiveStyles();
+        return this.updateLabels();
+    }
+
+    updateLabels () {
+        if (this.scene.building && !this.scene.building.initial) {
+            // log('debug', `Skip label layout due to on-going scene rebuild`);
+            return Promise.resolve({});
+        }
+
+        // get current visible tiles and sort by key for consistency collision order
+        const tiles = this.renderable_tiles
+            .filter(t => t.valid)
+            .filter(t => t.built);
+
+        if (tiles.length === 0) {
+            return Promise.resolve({});
+        }
+
+        // Evaluate labels in order of tile build, to prevent previously visible labels
+        // from disappearing, e.g. due to a newly loaded repeat label nearby
+        tiles.sort((a, b) => a.build_id < b.build_id ? -1 : (a.build_id > b.build_id ? 1 : 0));
+
+        // check if tile set has changed (in ways that affect collision)
+        if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
+            tiles.every(t => {
+                let i = this.collision.tiles.indexOf(t);
+                return i > -1 &&
+                    this.collision.generations[i] === t.generation &&
+                    this.collision.style_counts[i] === Object.keys(t.meshes).length &&
+                    this.collision.pending_label_style_counts[i] === t.pendingLabelStyleCount();
+            })) {
+            // log('debug', `Skip label layout due to same tile/meshes (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+            return Promise.resolve({});
+        }
+
+        // update collision if not already updating
+        if (!this.collision.task) {
+            this.collision.tiles = tiles;
+            this.collision.generations = tiles.map(t => t.generation);
+            this.collision.style_counts = tiles.map(t => Object.keys(t.meshes).length);
+            this.collision.pending_label_style_counts = tiles.map(t => t.pendingLabelStyleCount());
+            this.collision.zoom = roundPrecision(this.view.zoom, this.collision.zoom_steps);
+            // log('debug', `Update label collisions (zoom ${this.collision.zoom}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+
+            this.collision.task = {
+                type: 'tileManagerUpdateLabels',
+                run: (task) => {
+                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.zoom, this.isLoadingVisibleTiles()).then(results => {
+                        this.collision.task = null;
+                        Task.finish(task, results);
+                        this.updateTileStates().then(() => this.scene.immediateRedraw());
+
+                    });
+                },
+                user_moving_view: false // don't run task when user is moving view
+            };
+            Task.add(this.collision.task);
+        }
+        // else {
+        //     log('debug', `Skip label layout due to on-going layout (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+        // }
+        return this.collision.task.promise;
     }
 
     updateProxyTiles () {
@@ -123,7 +195,7 @@ export default class TileManager {
         let proxy = false;
         this.forEachTile(tile => {
             if (this.view.zoom_direction === 1) {
-                if (tile.visible && !tile.built) {
+                if (tile.visible && !tile.labeled) {
                     const parent = this.pyramid.getAncestor(tile);
                     if (parent) {
                         parent.setProxyFor(tile);
@@ -132,7 +204,7 @@ export default class TileManager {
                 }
             }
             else if (this.view.zoom_direction === -1) {
-                if (tile.visible && !tile.built) {
+                if (tile.visible && !tile.labeled) {
                     const descendants = this.pyramid.getDescendants(tile);
                     for (let i=0; i < descendants.length; i++) {
                         descendants[i].setProxyFor(tile);
@@ -217,8 +289,12 @@ export default class TileManager {
         return this.active_styles;
     }
 
-    isLoadingVisibleTiles() {
+    isLoadingVisibleTiles () {
         return Object.keys(this.tiles).some(k => this.tiles[k].visible && !this.tiles[k].built);
+    }
+
+    allVisibleTilesLabeled () {
+        return this.renderable_tiles.every(t => t.labeled);
     }
 
     // Queue a tile for load
@@ -396,4 +472,10 @@ export default class TileManager {
         return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
     }
 
+}
+
+// Round a number to given number of decimal divisions
+// e.g. roundPrecision(x, 4) rounds a number to increments of 0.25
+function roundPrecision (x, d, places = 2) {
+    return (Math.floor(x * d) / d).toFixed(places);
 }

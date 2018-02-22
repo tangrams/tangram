@@ -1,4 +1,4 @@
-import Label from './label';
+import Label, {textLayoutToJSON} from './label';
 import Vector from '../vector';
 import OBB from '../utils/obb';
 
@@ -48,16 +48,32 @@ let LabelLine = {
 export default LabelLine;
 
 // Base class for a labels.
-class LabelLineBase {
+export class LabelLineBase {
     constructor (layout) {
+        this.id = Label.nextLabelId();
         this.layout = layout;
         this.position = [];
         this.angle = 0;
         this.offset = layout.offset.slice();
+        this.unit_scale = this.layout.units_per_pixel;
         this.obbs = [];
         this.aabbs = [];
         this.type = ''; // "curved" or "straight" to be set by child class
         this.throw_away = false; // boolean that determines if label should be discarded
+    }
+
+    // Minimal representation of label
+    toJSON () {
+        return {
+            id: this.id,
+            type: this.type,
+            position: this.position,
+            size: this.size,
+            offset: this.offset,
+            angle: this.angle,
+            breach: this.breach,
+            layout: textLayoutToJSON(this.layout)
+        };
     }
 
     // Given a line, find the longest series of segments that maintains a constant orientation in the x-direction.
@@ -144,17 +160,6 @@ class LabelLineBase {
         return [longest_line, flip];
     }
 
-    // Add each bounding box to the collision pass
-    add(bboxes) {
-        this.placed = true;
-        for (let i = 0; i < this.aabbs.length; i++) {
-            let aabb = this.aabbs[i];
-            let obb = this.obbs[i];
-            let obj = { aabb, obb };
-            Label.prototype.add.call(obj, bboxes);
-        }
-    }
-
     // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
     discard(bboxes, exclude = null) {
         if (this.throw_away) {
@@ -208,10 +213,11 @@ class LabelLineBase {
 
 // Class for straight labels.
 // Extends base LabelLine class.
-class LabelLineStraight extends LabelLineBase {
+export class LabelLineStraight extends LabelLineBase {
     constructor (size, line, layout, tolerance){
         super(layout);
         this.type = 'straight';
+        this.size = size;
         this.throw_away = !this.fit(size, line, layout, tolerance);
     }
 
@@ -219,7 +225,7 @@ class LabelLineStraight extends LabelLineBase {
     // A straight label is generally placed at segment midpoints, but can "look ahead" to further segments
     // if they are within an angle bound given by STRAIGHT_ANGLE_TOLERANCE and place at the midpoint between non-consecutive segments
     fit (size, line, layout, tolerance){
-        let upp = layout.units_per_pixel;
+        let upp = this.unit_scale;
         let flipped; // boolean indicating if orientation of line is changed
 
         // Make new copy of line, with consistent orientation
@@ -300,12 +306,8 @@ class LabelLineStraight extends LabelLineBase {
                     }
 
                     this.position = curr_midpt;
-
                     this.updateBBoxes(this.position, size, this.angle, this.angle, this.offset);
-
-                    if (this.inTileBounds()) {
-                        return true;
-                    }
+                    return true; // use this placement
                 }
 
                 prev_angle = next_angle;
@@ -318,7 +320,7 @@ class LabelLineStraight extends LabelLineBase {
 
     // Calculate bounding boxes
     updateBBoxes(position, size, angle, angle_offset, offset) {
-        let upp = this.layout.units_per_pixel;
+        let upp = this.unit_scale;
 
         // reset bounding boxes
         this.obbs = [];
@@ -332,6 +334,9 @@ class LabelLineStraight extends LabelLineBase {
 
         this.obbs.push(obb);
         this.aabbs.push(aabb);
+        if (this.inTileBounds) {
+            this.breach = !this.inTileBounds();
+        }
     }
 }
 
@@ -347,14 +352,27 @@ class LabelLineCurved extends LabelLineBase {
         this.pre_angles = [];
         this.offsets = [];
         this.num_segments = segment_sizes.length;
+        this.sizes = segment_sizes;
 
-        this.throw_away = !this.fit(segment_sizes, line, layout);
+        this.throw_away = !this.fit(this.sizes, line, layout);
+    }
+
+    // Minimal representation of label
+    toJSON () {
+        return {
+            id: this.id,
+            type: this.type,
+            obbs: this.obbs.map(o => o.toJSON()),
+            position: this.position,
+            breach: this.breach,
+            layout: textLayoutToJSON(this.layout)
+        };
     }
 
     // Determine if the curved label can fit the geometry.
     // No tolerance is provided because the label must fit entirely within the line geometry.
     fit (size, line, layout){
-        let upp = layout.units_per_pixel;
+        let upp = this.unit_scale;
         let flipped; // boolean determining if the line orientation is reversed
 
         let height_px = Math.max(...size.map(s => s[1])); // use max segment height
@@ -388,12 +406,9 @@ class LabelLineCurved extends LabelLineBase {
             return false;
         }
 
-        // find start and end indices that the label can fit on without overlapping tile boundaries
-        // TODO: there is a small probability of a tile boundary crossing on an internal line segment
-        // another option is to create a buffer around the line and check if it overlaps a tile boundary
-        let [start_index, end_index] = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp);
-
         // need two line segments for a curved label
+        // NB: single segment lines should still be labeled if possible during straight label placement pass
+        let start_index = 0, end_index = line.length-1;
         if (end_index - start_index < 2){
             return false;
         }
@@ -463,51 +478,6 @@ class LabelLineCurved extends LabelLineBase {
         }
 
         return true;
-    }
-
-    // Test if line intersects tile boundary. Return indices at beginning and end of line that are within tile.
-    // Burn candle from both ends strategy - meaning shift and pop until vertices are within tile, but an interior vertex
-    // may still be outside of tile (can potentially result in label collision across tiles).
-    static checkTileBoundary(line, widths, height, offset, upp){
-        let start = 0;
-        let end = line.length - 1;
-
-        height *= Label.epsilon;
-
-        let start_width = widths[start] * Label.epsilon;
-        let end_width = widths[widths.length - 1] * Label.epsilon;
-
-        // Burn candle from start
-        while (start < end){
-            let angle = getAngleForSegment(line[start], line[start + 1]);
-            let position = Vector.add(Vector.rot([start_width/2, 0], angle), line[start]);
-            let obb = LabelLineBase.createOBB(position, start_width, height, -angle, -angle, offset, upp);
-            let aabb = obb.getExtent();
-            let in_tile = Label.prototype.inTileBounds.call({ aabb });
-            if (in_tile) {
-                break;
-            }
-            else {
-                start++;
-            }
-        }
-
-        // Burn candle from end
-        while (end > start){
-            let angle = getAngleForSegment(line[end - 1], line[end]);
-            let position = Vector.add(Vector.rot([-end_width/2, 0], angle), line[end]);
-            let obb = LabelLineBase.createOBB(position, end_width, height, -angle, -angle, offset, upp);
-            let aabb = obb.getExtent();
-            let in_tile = Label.prototype.inTileBounds.call({ aabb });
-            if (in_tile) {
-                break;
-            }
-            else {
-                end--;
-            }
-        }
-
-        return [start, end];
     }
 
     // Find optimal starting segment for placing a curved label along a line within provided tolerances

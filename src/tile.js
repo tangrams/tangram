@@ -12,6 +12,7 @@ import Texture from './gl/texture';
 import {mat4, vec3} from './utils/gl-matrix';
 
 let id = 0; // unique tile id
+let build_id = 0; // id tracking order in which tiles were build
 
 export default class Tile {
 
@@ -28,6 +29,7 @@ export default class Tile {
         this.view = view;
         this.source = source;
         this.generation = null;
+        this.valid = true;
 
         this.visible = false;
         this.proxy_for = null;
@@ -37,6 +39,7 @@ export default class Tile {
         this.loading = false;
         this.loaded = false;
         this.built = false;
+        this.labeled = false;
         this.error = null;
         this.debug = {};
 
@@ -57,9 +60,8 @@ export default class Tile {
         this.units_per_meter_overzoom = Geo.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
 
         this.meshes = {}; // renderable VBO meshes keyed by style
-        this.textures = []; // textures that the tile owns (labels, etc.)
-        this.previous_textures = []; // textures retained by the tile in the previous build generation
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
+        this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
     }
 
     static coord(c) {
@@ -133,11 +135,12 @@ export default class Tile {
         }
         this.meshes = {};
 
-        this.textures.forEach(t => Texture.release(t));
-        this.textures = [];
-
-        this.previous_textures.forEach(t => Texture.release(t));
-        this.previous_textures = [];
+        if (this.pending_label_meshes) {
+            for (let m in this.pending_label_meshes) {
+                this.pending_label_meshes[m].forEach(m => m.destroy());
+            }
+        }
+        this.pending_label_meshes = null;
     }
 
     destroy() {
@@ -145,6 +148,7 @@ export default class Tile {
         this.workerMessage('self.removeTile', this.key);
         this.freeResources();
         this.worker = null;
+        this.valid = false;
     }
 
     buildAsMessage() {
@@ -177,6 +181,7 @@ export default class Tile {
         if (!this.loaded) {
             this.loading = true;
             this.built = false;
+            this.labeled = false;
         }
         return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
@@ -207,7 +212,7 @@ export default class Tile {
         tile.debug.feature_count = 0;
         tile.debug.layers = null;
 
-        Collision.startTile(tile.id);
+        Collision.startTile(tile.id, { apply_repeat_groups: true });
 
         // Process each top-level layer
         for (let layer_name in layers) {
@@ -413,6 +418,8 @@ export default class Tile {
             return;
         }
 
+        this.build_id = build_id++; // record order in which tile was built
+
         // Debug
         if (progress.start) {
             this.debug.geometry_count = 0;
@@ -420,7 +427,7 @@ export default class Tile {
         }
 
         // Create VBOs
-        let meshes = {}, textures = []; // new data to be added to tile
+        let meshes = {}; // new data to be added to tile
         let mesh_data = this.mesh_data;
         if (mesh_data) {
             for (let s in mesh_data) {
@@ -437,10 +444,20 @@ export default class Tile {
                         mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
                         mesh_options.variant = mesh_variant.variant;
 
+                        // for labels, keep buffer data on CPU so they can be modified later
+                        if (mesh_variant.labels) {
+                            mesh_options.retain = true;
+                        }
+
                         let mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
                         mesh.variant = mesh_options.variant;
+                        mesh.labels = mesh_variant.labels;
                         meshes[s] = meshes[s] || [];
                         meshes[s].push(mesh);
+                        if (mesh.variant.order == null) {
+                            mesh.variant.order = meshes[s].length - 1; // assign default variant render order
+                        }
+
                         this.debug.buffer_size += mesh.buffer_size;
                         this.debug.geometry_count += mesh.geometry_count;
                     }
@@ -454,53 +471,61 @@ export default class Tile {
                         return (ao == null ? 1 : (bo == null ? -1 : (ao < bo ? -1 : 1)));
                     });
                 }
-
-                // Assign texture ownership to tiles
-                // Note that it's valid for a single texture to be referenced from multiple styles
-                // (e.g. same raster texture attached to multiple sources). This means the same
-                // texture may be added to the tile's texture list more than once, which ensures
-                // that it is properly released (to match its retain count).
-                if (mesh_data[s].textures) {
-                    textures.push(...mesh_data[s].textures);
-                }
             }
         }
         delete this.mesh_data;
 
-        // Initialize tracking for this tile generation
-        if (progress.start) {
-            this.previous_textures = [...this.textures]; // copy old list of textures
-            this.textures = [];
-        }
-
         // New meshes
         for (let m in meshes) {
-            if (this.meshes[m]) {
-                this.meshes[m].forEach(m => m.destroy()); // free old meshes
-            }
-            this.meshes[m] = meshes[m]; // set new mesh
-            this.new_mesh_styles.push(m);
-        }
+            // swap in non-collision meshes right away
+            if (!styles[m].collision) {
+                if (this.meshes[m]) {
+                    this.meshes[m].forEach(m => m.destroy()); // free old meshes
+                }
 
-        // New textures
-        this.textures.push(...textures);
+                this.meshes[m] = meshes[m]; // set new mesh
+                this.new_mesh_styles.push(m);
+            }
+            // keep label meshes out of view until collision is complete
+            else {
+                this.pending_label_meshes = this.pending_label_meshes || {};
+                this.pending_label_meshes[m] = meshes[m];
+              }
+        }
 
         if (progress.done) {
             // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
             for (let m in this.meshes) {
-                if (this.new_mesh_styles.indexOf(m) === -1) {
+                if (this.new_mesh_styles.indexOf(m) === -1 && (!this.pending_label_meshes || this.pending_label_meshes[m] == null)) {
                     this.meshes[m].forEach(m => m.destroy());
                     delete this.meshes[m];
                 }
             }
             this.new_mesh_styles = [];
 
-            // Release old textures
-            this.previous_textures.forEach(t => Texture.release(t));
-            this.previous_textures = [];
-
             this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
             this.printDebug();
+        }
+    }
+
+    // How many styles are currently pending label collision
+    pendingLabelStyleCount () {
+        return this.pending_label_meshes ? Object.keys(this.pending_label_meshes).length : 0;
+    }
+
+    // Swap label style meshes after collision is complete
+    swapPendingLabels () {
+        this.labeled = true; // mark as labeled
+
+        if (this.pending_label_meshes) {
+            for (let m in this.pending_label_meshes) {
+                if (this.meshes[m]) {
+                    this.meshes[m].forEach(m => m.destroy()); // free old meshes
+                }
+
+                this.meshes[m] = this.pending_label_meshes[m]; // set new mesh
+            }
+            this.pending_label_meshes = null;
         }
     }
 
@@ -543,6 +568,10 @@ export default class Tile {
             this.proxy_for = null;
             this.proxy_depth = 0;
         }
+    }
+
+    isProxy () {
+        return this.proxy_for != null;
     }
 
     // Proxy tiles only need to render a specific style if any of the tiles they are proxying *for*
@@ -601,7 +630,7 @@ export default class Tile {
     merge (other) {
         this.loading = other.loading;
         this.loaded = other.loaded;
-        this.generation = other.loaded;
+        this.generation = other.generation;
         this.error = other.error;
         this.mesh_data = other.mesh_data;
         this.debug = mergeObjects(this.debug, other.debug);

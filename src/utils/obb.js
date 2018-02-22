@@ -12,15 +12,18 @@ export default class OBB {
         this.update();
     }
 
-    move (px, py) {
-    	this.centroid = [px, py];
-
-    	this.update();
+    toJSON () {
+        return {
+            x: this.centroid[0],
+            y: this.centroid[1],
+            a: this.angle,
+            w: this.dimension[0],
+            h: this.dimension[1]
+        };
     }
 
     getExtent () {
-    	let inf = 1e6;
-    	let aabb = [inf, inf, -inf, -inf];
+    	let aabb = [Infinity, Infinity, -Infinity, -Infinity];
 
     	for (let i = 0; i < 4; ++i) {
             aabb[0] = Math.min(this.quad[i][0], aabb[0]);
@@ -53,9 +56,8 @@ export default class OBB {
     }
 
     static projectToAxis (obb, axis) {
-    	let inf = 1e6;
-    	let min = inf;
-    	let max = -inf;
+        let min = Infinity;
+        let max = -Infinity;
 
     	let quad = obb.quad;
 
@@ -86,4 +88,3 @@ export default class OBB {
     }
 
 }
-

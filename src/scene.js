@@ -606,40 +606,55 @@ export default class Scene {
 
         // Render tile GL geometries
         let renderable_tiles = this.tile_manager.getRenderableTiles();
-        for (let t=0; t < renderable_tiles.length; t++) {
-            let tile = renderable_tiles[t];
 
-            if (tile.meshes[style_name] == null) {
-                continue;
-            }
+        // Mesh variants must be rendered in requested order across tiles, to prevent labels that cross
+        // tile boundaries from rendering over adjacent tile features meant to be underneath
+        let max_mesh_variant_order =
+            Math.max(...renderable_tiles.map(t => {
+                return t.meshes[style_name] ?
+                    Math.max(...t.meshes[style_name].map(m => m.variant.order)) : -1;
+                })
+            );
 
-            // Style-specific state
-            // Only setup style if rendering for first time this frame
-            // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-            if (first_for_style === true) {
-                first_for_style = false;
-                program = this.setupStyle(style, program_key);
-                if (!program) {
-                    return 0;
+        // One pass per mesh variant order (loop goes to max value +1 because 0 is a valid order value)
+        for (let mo=0; mo < max_mesh_variant_order + 1; mo++) {
+            for (let t=0; t < renderable_tiles.length; t++) {
+                let tile = renderable_tiles[t];
+
+                if (tile.meshes[style_name] == null) {
+                    continue;
+                }
+
+                // Skip proxy tiles if new tiles have finished loading this style
+                if (!tile.shouldProxyForStyle(style_name)) {
+                    // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
+                    continue;
+                }
+
+                // Render current mesh variant for current style for current tile
+                let mesh = tile.meshes[style_name].filter(m => m.variant.order === mo)[0]; // find mesh by variant order
+                if (mesh) {
+                    // Style-specific state
+                    // Only setup style if rendering for first time this frame
+                    // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+                    if (first_for_style === true) {
+                        first_for_style = false;
+                        program = this.setupStyle(style, program_key);
+                        if (!program) {
+                            return 0;
+                        }
+                    }
+
+                    // Tile-specific state
+                    this.view.setupTile(tile, program);
+
+                    // Render this mesh variant
+                    if (style.render(mesh)) {
+                        this.requestRedraw();
+                    }
+                    render_count += mesh.geometry_count;
                 }
             }
-
-            // Skip proxy tiles if new tiles have finished loading this style
-            if (!tile.shouldProxyForStyle(style_name)) {
-                // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
-                continue;
-            }
-
-            // Tile-specific state
-            this.view.setupTile(tile, program);
-
-            // Render tile
-            tile.meshes[style_name].forEach(mesh => {
-                if (style.render(mesh)) {
-                    this.requestRedraw();
-                }
-                render_count += mesh.geometry_count;
-            });
         }
 
         return render_count;
@@ -816,7 +831,7 @@ export default class Scene {
     // Rebuild all tiles, without re-parsing the config or re-compiling styles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuild({ new_generation = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
+    rebuild({ initial = false, new_generation = true, sources = null, serialize_funcs, profile = false, fade_in = false } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -828,14 +843,14 @@ export default class Scene {
                 }
 
                 // Save queued request
-                let options = { new_generation, sources, serialize_funcs, profile, fade_in };
+                let options = { initial, new_generation, sources, serialize_funcs, profile, fade_in };
                 this.building.queued = { resolve, reject, options };
                 log('trace', `Scene.rebuild(): queuing request`);
                 return;
             }
 
             // Track tile build state
-            this.building = { resolve, reject };
+            this.building = { resolve, reject, initial };
 
             // Profiling
             if (profile) {
@@ -894,6 +909,9 @@ export default class Scene {
             if (queued) {
                 log('debug', `Scene: starting queued rebuild() request`);
                 this.rebuild(queued.options).then(queued.resolve, queued.reject);
+            }
+            else {
+                this.tile_manager.updateLabels(); // refresh label if nothing to rebuild
             }
         }
     }
@@ -1138,7 +1156,7 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuild(Object.assign({ new_generation: false, serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
+            this.rebuild(Object.assign({ initial: load_event, new_generation: false, serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
             this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
@@ -1221,7 +1239,8 @@ export default class Scene {
     // Fires event when rendered tile set or style changes
     updateViewComplete () {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
-            !this.tile_manager.isLoadingVisibleTiles()) {
+            !this.tile_manager.isLoadingVisibleTiles() &&
+            this.tile_manager.allVisibleTilesLabeled()) {
             this.last_complete_generation = this.generation;
             this.trigger('view_complete');
         }

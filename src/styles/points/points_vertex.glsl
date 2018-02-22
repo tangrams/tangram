@@ -43,6 +43,10 @@ varying float v_alpha_factor;
     varying float v_aa_offset;
 #endif
 
+#ifdef TANGRAM_SHOW_HIDDEN_LABELS
+    varying float v_label_hidden;
+#endif
+
 #define PI 3.14159265359
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
@@ -72,6 +76,23 @@ vec2 rotate2D(vec2 _st, float _angle) {
 void main() {
     // Initialize globals
     #pragma tangram: setup
+
+    // discard hidden labels by collapsing into degenerate triangle
+    #ifndef TANGRAM_SHOW_HIDDEN_LABELS
+        if (a_shape.w == 0.) {
+            gl_Position = vec4(0., 0., 0., 1.);
+            return;
+        }
+    #else
+        // highlight hidden label in fragment shader for debugging
+        if (a_shape.w == 0.) {
+            v_label_hidden = 1.; // label debug testing
+        }
+        else {
+            v_label_hidden = 0.;
+        }
+    #endif
+
 
     v_alpha_factor = 1.0;
     v_color = a_color;
@@ -103,10 +124,6 @@ void main() {
     #ifdef TANGRAM_CURVED_LABEL
         //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
         if (a_offsets[0] != 0.){
-            #ifdef TANGRAM_FADE_ON_ZOOM_IN
-                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);
-            #endif
-
             vec4 angles_scaled = (PI / 16384.) * a_angles;
             vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;
             vec4 offsets_scaled = (1. / 64.) * a_offsets;

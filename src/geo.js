@@ -98,7 +98,7 @@ Geo.latLngToMeters = function([x, y]) {
 };
 
 // Transform from local tile coordinats to lat lng
-Geo.tileSpaceToLatlng = function (geometry, z, min, max) {
+Geo.tileSpaceToLatlng = function (geometry, z, min) {
     const units_per_meter = Geo.unitsPerMeter(z);
     Geo.transformGeometry(geometry, coord => {
         coord[0] = (coord[0] / units_per_meter) + min.x;

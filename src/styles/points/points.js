@@ -120,6 +120,11 @@ Object.assign(Points, {
         if (debugSettings.suppress_label_snap_animation !== true) {
             this.defines.TANGRAM_VIEW_PAN_SNAP_RATE = 1 / VIEW_PAN_SNAP_TIME; // inverse time in seconds
         }
+
+        // Show hidden labels for debugging
+        if (debugSettings.show_hidden_labels === true) {
+            this.defines.TANGRAM_SHOW_HIDDEN_LABELS = true;
+        }
     },
 
     reset () {
@@ -342,6 +347,7 @@ Object.assign(Points, {
                     point_objs.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
+                        this.feature_style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
                 }),
@@ -358,6 +364,7 @@ Object.assign(Points, {
                         // setup styling object expected by Style class
                         let style = this.feature_style;
                         style.label = q.label;
+                        style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
                         style.size = text_info.size.logical_size;
                         style.angle = 0; // text attached to point is always upright
                         style.texcoords = text_info.align[q.label.align].texcoords;
@@ -413,6 +420,9 @@ Object.assign(Points, {
 
         // Repeat rules - no repeat limitation for points by default
         draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, StyleParser.parseNumber);
+        if (draw.repeat_group == null) {
+            draw.repeat_group = draw.layers.join('-');
+        }
 
         // Placement strategies
         draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
@@ -461,12 +471,6 @@ Object.assign(Points, {
         // collision flag
         layout.collide = (draw.collide === false) ? false : true;
 
-        // tile boundary handling
-        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : false;
-
-        // points should not move into tile if over tile boundary
-        layout.move_into_tile = false;
-
         // label anchors (point labels only)
         // label position will be adjusted in the given direction, relative to its original point
         // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
@@ -480,15 +484,13 @@ Object.assign(Points, {
         layout.repeat_distance = StyleParser.evalCachedProperty(draw.repeat_distance, context);
         if (layout.repeat_distance) {
             layout.repeat_distance *= layout.units_per_pixel;
+            layout.repeat_scale = 1; // initial repeat pass in tile with full scale
 
             if (typeof draw.repeat_group === 'function') {
-                layout.repeat_group = draw.repeat_group(context);
-            }
-            else if (typeof draw.repeat_group === 'string') {
-                layout.repeat_group = draw.repeat_group;
+                layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
             }
             else {
-                layout.repeat_group = draw.key; // default to unique set of matching layers
+                layout.repeat_group = draw.repeat_group; // pre-computer repeat group
             }
         }
 
@@ -604,8 +606,9 @@ Object.assign(Points, {
         // layer order - w coord of 'position' attribute (for packing efficiency)
         this.fillVertexTemplate(vertex_layout, 'a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
 
-        // scaling vector - (x, y) components per pixel, z = angle
-        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 3 }); // NB: w coord is currently unused, change size: 4 if needed
+        // scaling vector - (x, y) components per pixel, z = angle, w = show/hide
+        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_shape', style.label.layout.collide ? 0 : 1, { size: 1, offset: 3 }); // set initial label hide/show state
 
         // texture coords
         this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, { size: 2 });
@@ -671,19 +674,19 @@ Object.assign(Points, {
     build (style, mesh, context) {
         let label = style.label;
         if (label.type === 'curved') {
-            return this.buildArticulatedLabel(label, style, mesh, context);
+            return this.buildCurvedLabel(label, style, mesh, context);
         }
         else {
-            return this.buildLabel(label, style, mesh, context);
+            return this.buildStraightLabel(label, style, mesh, context);
         }
     },
 
-    buildLabel (label, style, mesh, context) {
+    buildStraightLabel (label, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle || style.angle;
 
         let size, texcoords;
-        if (label.type){
+        if (label.type !== 'point') {
             size = style.size[label.type];
             texcoords = style.texcoords[label.type].texcoord;
         }
@@ -714,7 +717,7 @@ Object.assign(Points, {
 
         // TODO: instead of passing null, pass arrays with fingerprintable values
         // This value is checked in the shader to determine whether to apply curving logic
-        return this.buildQuad(
+        let geom_count = this.buildQuad(
             [label.position],               // position
             size,                           // size in pixels
             angle,                          // angle in radians
@@ -726,9 +729,13 @@ Object.assign(Points, {
             false,                          // if curved boolean
             mesh.vertex_data, vertex_template    // VBO and data for current vertex
         );
+
+        // track label mesh buffer data
+        const linked = (style.linked && style.linked.label.id);
+        this.trackLabel(label, linked, mesh, geom_count, context);
     },
 
-    buildArticulatedLabel (label, style, mesh, context) {
+    buildCurvedLabel (label, style, mesh, context) {
         let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle;
         let geom_count = 0;
@@ -758,7 +765,7 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            geom_count += this.buildQuad(
+            let seg_count = this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
@@ -770,6 +777,11 @@ Object.assign(Points, {
                 true,                           // if curved
                 mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
             );
+            geom_count += seg_count;
+
+            // track label mesh buffer data
+            const linked = (style.linked && style.linked.label.id);
+            this.trackLabel(label, linked, mesh, seg_count, context);
         }
 
         // pass for fill
@@ -794,7 +806,7 @@ Object.assign(Points, {
             let offsets = label.offsets[i];
             let pre_angles = label.pre_angles[i];
 
-            geom_count += this.buildQuad(
+            let seg_count = this.buildQuad(
                 [position],                     // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
@@ -806,9 +818,41 @@ Object.assign(Points, {
                 true,                           // if curved
                 mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
             );
+            geom_count += seg_count;
+
+            // track label mesh buffer data
+            const linked = (style.linked && style.linked.label.id);
+            this.trackLabel(label, linked, mesh, seg_count, context);
         }
 
         return geom_count;
+    },
+
+    // track mesh data for label (byte ranges occupied by label in VBO)
+    trackLabel (label, linked, mesh, geom_count, context) {
+        if (label.layout.collide) {
+            mesh.labels = mesh.labels || {};
+            mesh.labels[label.id] = mesh.labels[label.id] || {
+                container: {
+                    label: label.toJSON(),
+                    linked,
+                },
+                ranges: [],
+                // debug: { // uncomment and pass in context for debugging
+                //     id: context.feature.properties.id,
+                //     name: context.feature.properties.name,
+                //     props: JSON.stringify(context.feature.properties),
+                //     point_type: mesh.uniforms.u_point_type
+                // }
+            };
+
+            const vertex_count = geom_count * 2; // geom count is triangles: 2 triangles = 1 quad = 4 vertices
+            const start = mesh.vertex_data.offset - mesh.vertex_data.stride * vertex_count; // start offset of byte range
+            mesh.labels[label.id].ranges.push([
+                start,
+                vertex_count
+            ]);
+        }
     },
 
     // Override to pass-through to generic point builder

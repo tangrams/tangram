@@ -7,16 +7,33 @@ import OBB from '../utils/obb';
 export default class Label {
 
     constructor (size, layout = {}) {
+        this.id = Label.nextLabelId();
+        this.type = ''; // set by subclass
         this.size = size;
         this.layout = layout;
         this.position = null;
         this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
         this.placed = null;
         this.offset = layout.offset;
+        this.unit_scale = this.layout.units_per_pixel;
         this.aabb = null;
         this.obb = null;
         this.align = 'center';
         this.throw_away = false;    // if label does not fit (exceeds tile boundary, etc) this boolean will be true
+    }
+
+    // Minimal representation of label
+    toJSON () {
+        return {
+            id: this.id,
+            type: this.type,
+            obb: this.obb.toJSON(),
+            position: this.position,
+            size: this.size,
+            offset: this.offset,
+            breach: this.breach,
+            layout: textLayoutToJSON(this.layout)
+        };
     }
 
     update () {
@@ -58,13 +75,6 @@ export default class Label {
         return intersect;
     }
 
-    // Add this label's bounding box to the provided set
-    add (bboxes) {
-        this.placed = true;
-        bboxes.aabb.push(this.aabb);
-        bboxes.obb.push(this.obb);
-    }
-
     // checks whether the label is within the tile boundaries
     inTileBounds () {
         let min = [ this.aabb[0], this.aabb[1] ];
@@ -87,4 +97,41 @@ export default class Label {
     }
 }
 
+// Generic label placement function, adds a label's bounding boxes to the currently placed set
+//  Supports single or multiple collision boxes
+Label.add = function (label, bboxes) {
+    label.placed = true;
+
+    if (label.aabb) {
+        bboxes.aabb.push(label.aabb);
+        bboxes.obb.push(label.obb);
+    }
+
+    if (label.aabbs) {
+        for (let i = 0; i < label.aabbs.length; i++) {
+            bboxes.aabb.push(label.aabbs[i]);
+            bboxes.obb.push(label.obbs[i]);
+        }
+    }
+};
+
+Label.id = 0;
+Label.id_prefix = ''; // id prefix scoped to worker thread
+
+Label.nextLabelId = function () {
+    return Label.id_prefix + '/' + (Label.id++);
+};
+
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
+
+// Minimal representation of text layout, sent to main thread for label collisions
+export function textLayoutToJSON (layout) {
+    return {
+        priority: layout.priority,
+        collide: layout.collide,
+        repeat_distance: layout.repeat_distance,
+        repeat_group: layout.repeat_group,
+        buffer: layout.buffer,
+        italic: layout.italic // affects bounding box size
+    };
+}

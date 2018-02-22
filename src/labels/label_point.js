@@ -8,13 +8,14 @@ export default class LabelPoint extends Label {
 
     constructor (position, size, layout) {
         super(size, layout);
+        this.type = 'point';
         this.position = [position[0], position[1]];
         this.parent = this.layout.parent;
         this.update();
 
         this.start_anchor_index = 1;
         this.degenerate = !this.size[0] && !this.size[1] && !this.layout.buffer[0] && !this.layout.buffer[1];
-        this.throw_away = !this.getNextFit();
+        this.throw_away = false;
     }
 
     update() {
@@ -47,21 +48,24 @@ export default class LabelPoint extends Label {
     }
 
     updateBBoxes () {
-        let width = (this.size[0] + this.layout.buffer[0] * 2) * this.layout.units_per_pixel * Label.epsilon;
-        let height = (this.size[1] + this.layout.buffer[1] * 2) * this.layout.units_per_pixel * Label.epsilon;
+        let width = (this.size[0] + this.layout.buffer[0] * 2) * this.unit_scale * Label.epsilon;
+        let height = (this.size[1] + this.layout.buffer[1] * 2) * this.unit_scale * Label.epsilon;
 
         // fudge width value as text may overflow bounding box if it has italic, bold, etc style
         if (this.layout.italic){
-            width += 5 * this.layout.units_per_pixel;
+            width += 5 * this.unit_scale;
         }
 
         let p = [
-            this.position[0] + (this.offset[0] * this.layout.units_per_pixel),
-            this.position[1] - (this.offset[1] * this.layout.units_per_pixel)
+            this.position[0] + (this.offset[0] * this.unit_scale),
+            this.position[1] - (this.offset[1] * this.unit_scale)
         ];
 
         this.obb = new OBB(p[0], p[1], 0, width, height);
         this.aabb = this.obb.getExtent();
+        if (this.inTileBounds) {
+            this.breach = !this.inTileBounds();
+        }
     }
 
     // Try to move the label into the tile bounds
@@ -96,35 +100,6 @@ export default class LabelPoint extends Label {
         return updated;
     }
 
-    getNextFit() {
-        if (!this.layout.cull_from_tile || this.inTileBounds()) {
-            return true;
-        }
-
-        if (this.layout.move_into_tile){
-            this.moveIntoTile();
-            return true;
-        }
-        else {
-            if (Array.isArray(this.layout.anchor)) {
-                // Start on second anchor (first anchor was set on creation)
-                for (let i = 1; i < this.layout.anchor.length; i++) {
-                    this.anchor = this.layout.anchor[i];
-                    this.update();
-
-                    this.start_anchor_index = i;
-
-                    if (this.inTileBounds()) {
-                        return true;
-                    }
-                }
-            }
-
-            // no anchors result in fit
-            return false;
-        }
-    }
-
     discard (bboxes, exclude = null) {
         if (this.degenerate) {
             return false;
@@ -137,10 +112,6 @@ export default class LabelPoint extends Label {
                 for (let i=this.start_anchor_index; i < this.layout.anchor.length; i++) {
                     this.anchor = this.layout.anchor[i];
                     this.update();
-
-                    if (this.layout.cull_from_tile && !this.inTileBounds()) {
-                        continue;
-                    }
 
                     if (!super.discard(bboxes, exclude)) {
                         return false;

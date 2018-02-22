@@ -16,6 +16,7 @@ const Task = {
             task.reject = reject;
         });
         task.promise = promise;
+
         task.total_elapsed = 0;
         task.stats = { calls: 0 };
         this.queue.push(task);
@@ -54,7 +55,7 @@ const Task = {
 
         task.stats.calls++;
         task.start_time = performance.now(); // start task timer
-        return task.target[task.method](task);
+        return task.run(task);
     },
 
     processAll () {
@@ -94,8 +95,8 @@ const Task = {
     cancel (task) {
         let val;
 
-        if (task.cancel && task.target[task.cancel] instanceof Function) {
-            val = task.target[task.cancel](task); // optional cancel function
+        if (task.cancel instanceof Function) {
+            val = task.cancel(task); // optional cancel function
         }
 
         task.resolve(val || {}); // resolve with result of cancel function, or empty object
