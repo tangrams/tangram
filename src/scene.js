@@ -278,21 +278,43 @@ export default class Scene {
         return worker_url;
     }
 
-    // Update list of any custom data source scripts (if any)
-    updateDataSourceScripts () {
-        let prev_scripts = [...(this.data_source_scripts||[])]; // save list of previously loaded scripts
-        let scripts = Object.keys(this.config.sources).map(s => this.config.sources[s].scripts).filter(x => x);
-        this.data_source_scripts = [].concat(...scripts).sort();
+    // Update list of any custom scripts (either at scene-level or data-source-level)
+    updateExternalScripts () {
+        let prev_scripts = [...(this.external_scripts||[])]; // save list of previously loaded scripts
+        let scripts = [];
+
+        // scene-level scripts
+        if (this.config.scene.scripts) {
+            for (let f in this.config.scene.scripts) {
+                if (scripts.indexOf(this.config.scene.scripts[f]) === -1) {
+                    scripts.push(this.config.scene.scripts[f]);
+                }
+            }
+        }
+
+        // data-source-level scripts
+        for (let s in this.config.sources) {
+            let source = this.config.sources[s];
+            if (source.scripts) {
+                for (let f in source.scripts) {
+                    if (scripts.indexOf(source.scripts[f]) === -1) {
+                        scripts.push(source.scripts[f]);
+                    }
+                }
+            }
+        }
+
+        this.external_scripts = scripts;
 
         // Scripts changed?
-        return !(this.data_source_scripts.length === prev_scripts.length &&
-            this.data_source_scripts.every((v, i) => v === prev_scripts[i]));
+        return !(this.external_scripts.length === prev_scripts.length &&
+            this.external_scripts.every((v, i) => v === prev_scripts[i]));
     }
 
     // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
     createWorkers() {
         // Reset old workers (if any) if we need to re-instantiate with new external scripts
-        if (this.updateDataSourceScripts()) {
+        if (this.updateExternalScripts()) {
             this.destroyWorkers();
         }
 
@@ -318,7 +340,7 @@ export default class Scene {
 
             log('debug', `Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio, has_element_index_uint, this.data_source_scripts).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, Utils.device_pixel_ratio, has_element_index_uint, this.external_scripts).then(
                 (id) => {
                     log('debug', `Scene.makeWorkers: initialized worker ${id}`);
                     return id;
