@@ -23,6 +23,12 @@ export default class DataSource {
             });
         }
 
+        // Optional function to preprocess source data
+        this.preprocess = config.preprocess;
+        if (typeof this.preprocess === 'function') {
+            this.preprocess.bind(this);
+        }
+
         // Optional function to transform source data
         this.transform = config.transform;
         if (typeof this.transform === 'function') {
@@ -252,9 +258,19 @@ export class NetworkSource extends DataSource {
                 dest.debug.response_size = body.length || body.byteLength;
                 dest.debug.network = +new Date() - dest.debug.network;
                 dest.debug.parsing = +new Date();
-                this.parseSourceData(dest, source_data, body);
-                dest.debug.parsing = +new Date() - dest.debug.parsing;
-                resolve(dest);
+
+                // Apply optional data transform on raw network response
+                if (typeof this.preprocess === 'function') {
+                    body = this.preprocess(body);
+                }
+
+                // Return data immediately, or after user-returned promise resolves
+                body = (body instanceof Promise) ? body : Promise.resolve(body);
+                body.then(body => {
+                    this.parseSourceData(dest, source_data, body);
+                    dest.debug.parsing = +new Date() - dest.debug.parsing;
+                    resolve(dest);
+                });
             }).catch((error) => {
                 source_data.error = error.stack;
                 resolve(dest); // resolve request but pass along error

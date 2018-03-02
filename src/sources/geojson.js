@@ -112,8 +112,8 @@ export class GeoJSONSource extends NetworkSource {
     }
 
     parseSourceData (tile, source, response) {
-        let parsed_response = JSON.parse(response);
-        let layers = this.getLayers(parsed_response);
+        let data = typeof response === 'string' ? JSON.parse(response) : response;
+        let layers = this.getLayers(data);
         source.layers = this.preprocessLayers(layers);
     }
 
@@ -229,7 +229,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
     }
 
     parseSourceData (tile, source, response) {
-        let data = JSON.parse(response);
+        let data = typeof response === 'string' ? JSON.parse(response) : response;
         this.prepareGeoJSON(data, tile, source);
     }
 
