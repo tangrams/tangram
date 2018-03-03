@@ -33,37 +33,87 @@
     }
 
     function setScene(gui) {
+        // NOTE: using previous version of Mapzen/Nextzen basemaps, until some issues are
+        // resolved in current versions (syntax errors on shields, etc.)
         var scenes = {
             // Default style
             'Simple': 'demos/scene.yaml',
 
-            // Mapzen basemaps
+            // Nextzen (nee Mapzen) basemaps
             'Bubble Wrap': {
                 import: [
-                    'https://mapzen.com/carto/bubble-wrap-style/bubble-wrap-style.zip',
-                    'https://mapzen.com/carto/bubble-wrap-style/themes/label-10.zip'
-                ]
+                    'https://www.nextzen.org/carto/bubble-wrap-style/8/bubble-wrap-style.zip',
+                    'https://www.nextzen.org/carto/bubble-wrap-style/8/themes/label-10.zip'
+                ],
+                sources: {
+                    mapzen: {
+                        type: 'MVT',
+                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
+                        url_subdomains: ['a', 'b', 'c', 'd'],
+                        tile_size: 512,
+                        max_zoom: 15
+                    }
+                }
             },
 
             'Walkabout': {
                 import: [
-                    'https://mapzen.com/carto/walkabout-style/walkabout-style.zip',
-                    'https://mapzen.com/carto/walkabout-style/themes/label-10.zip'
-                ]
+                    'https://www.nextzen.org/carto/walkabout-style/6/walkabout-style.zip',
+                    'https://www.nextzen.org/carto/walkabout-style/6/themes/label-10.zip'
+                ],
+                sources: {
+                    mapzen: {
+                        type: 'TopoJSON',
+                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson',
+                        url_subdomains: ['a', 'b', 'c', 'd'],
+                        tile_size: 512,
+                        max_zoom: 15
+                    },
+                    normals: {
+                        url: 'https://{s}.tile.nextzen.org/tilezen/terrain/v1/512/normal/{z}/{x}/{y}.png',
+                        url_subdomains: ['a', 'b', 'c', 'd'],
+                        tile_size: 512,
+                        max_zoom: 14
+                    }
+                }
             },
 
             'Refill': {
                 import: [
-                    'https://mapzen.com/carto/refill-style/refill-style.zip',
-                    'https://mapzen.com/carto/refill-style/themes/label-10.zip'
-                ]
+                    'https://www.nextzen.org/carto/refill-style/10/refill-style.zip',
+                    'https://www.nextzen.org/carto/refill-style/10/themes/label-10.zip'
+                ],
+                sources: {
+                    mapzen: {
+                        type: 'MVT',
+                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
+                        url_subdomains: ['a', 'b', 'c', 'd'],
+                        tile_size: 512,
+                        max_zoom: 15
+                    }
+                }
             },
 
             'Tron': {
                 import: [
-                    'https://mapzen.com/carto/tron-style/tron-style.zip',
-                    'https://mapzen.com/carto/tron-style/themes/label-10.zip'
-                ]
+                    'https://www.nextzen.org/carto/tron-style/5/tron-style.zip',
+                    'https://www.nextzen.org/carto/tron-style/5/themes/label-10.zip'
+                ],
+                sources: {
+                    mapzen: {
+                        type: 'MVT',
+                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
+                        url_subdomains: ['a', 'b', 'c', 'd'],
+                        tile_size: 512,
+                        max_zoom: 15
+                    },
+                    'normals-elevation': {
+                        url: 'https://{s}.tile.nextzen.org/tilezen/terrain/v1/512/normal/{z}/{x}/{y}.png',
+                        url_subdomains: ['a', 'b', 'c', 'd'],
+                        tile_size: 512,
+                        max_zoom: 14
+                    }
+                }
             },
 
             // Crosshatch style (texture/shader demos)

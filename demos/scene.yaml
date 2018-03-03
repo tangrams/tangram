@@ -92,11 +92,11 @@ styles:
             interactive: true
 
 sources:
-    mapzen:
+    tilezen:
         type: TopoJSON
-        url: https://tile.mapzen.com/mapzen/vector/v1/512/all/{z}/{x}/{y}.topojson
+        url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
         tile_size: 512
-        max_zoom: 16
+        max_zoom: 15
         # # Data filtering demo with 'scripts' and 'transform' properties:
         # # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
         # # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
@@ -138,7 +138,7 @@ sources:
 layers:
 
     earth:
-        data: { source: mapzen }
+        data: { source: tilezen }
 
         labels:
             filter: { kind: continent, $geometry: point }
@@ -155,7 +155,7 @@ layers:
 
 
     landuse:
-        data: { source: mapzen }
+        data: { source: tilezen }
         filter:
             - { $zoom: { min: 16 } }
             - { area: { min: 500px2 } }
@@ -195,7 +195,7 @@ layers:
                         color: [[7, lightgrey], [9, [.88, .88, .88]]]
 
     water:
-        data: { source: mapzen }
+        data: { source: tilezen }
         draw:
             polygons:
                 interactive: true
@@ -234,7 +234,7 @@ layers:
                         style: italic
 
     roads:
-        data: { source: mapzen }
+        data: { source: tilezen }
         filter: { not: { kind: rail } }
         draw:
             lines:
@@ -439,7 +439,7 @@ layers:
                         repeat_distance: 75px
 
     buildings:
-        data: { source: mapzen }
+        data: { source: tilezen }
         filter: { $zoom: { min: 14 } }
 
         # building footprints and extrusions
@@ -490,7 +490,7 @@ layers:
                         stroke: { color: white, width: 3 }
 
     pois:
-        data: { source: mapzen }
+        data: { source: tilezen }
 
         # all POIs are interactive
         draw:
@@ -599,7 +599,7 @@ layers:
                     draw: { points: { sprite: bookstore } }
 
     boundaries:
-        data: { source: mapzen}
+        data: { source: tilezen}
         filter: { maritime_boundary: false }
         draw:
             lines:
@@ -643,7 +643,7 @@ layers:
                             right: global.language_text_source_right
 
     places:
-        data: { source: mapzen }
+        data: { source: tilezen }
 
         # city labels with points
         city-points:
@@ -742,7 +742,7 @@ layers:
                             fill: rgba(136, 45, 23, 0.9)
 
     transit:
-        data: { source: mapzen }
+        data: { source: tilezen }
         filter: { $zoom: { min: 15 } }
         draw:
             lines:

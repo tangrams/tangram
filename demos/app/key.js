@@ -12,14 +12,14 @@
     });
 
     function injectAPIKey(config) {
-        var demo_key = 'mapzen-T3tPjn7';
-        if (config.global.sdk_mapzen_api_key) {
-            config.global.sdk_mapzen_api_key = demo_key;
+        var demo_key = 'NaqqS33fTUmyQcvbuIUCKA';
+        if (config.global.sdk_api_key) {
+            config.global.sdk_api_key = demo_key;
         }
         else {
             for (var name in config.sources) {
                 var source = config.sources[name];
-                if (source.url.search('mapzen.com')) {
+                if (source.url.search('nextzen.org')) {
                     source.url_params = source.url_params || {};
                     source.url_params.api_key = demo_key;
                 }
