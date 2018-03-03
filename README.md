@@ -18,8 +18,11 @@ Tangram is instantiated as a [Leaflet](http://leafletjs.com/) plugin for integra
 The current version of Tangram can be included in your page with:
 
 ```html
-<script src="https://mapzen.com/tangram/tangram.min.js"></script>
+<script src="https://unpkg.com/tangram/dist/tangram.min.js"></script>
 ```
+
+Specific library versions can be loaded with `@version` (see [unpkg](https://unpkg.com/) for details), e.g.
+```https://unpkg.com/tangram@0.14.0/dist/tangram.min.js```
 
 The library includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.
 
@@ -33,7 +36,7 @@ var layer = Tangram.leafletLayer({ scene: 'scene.yaml' });
 layer.addTo(map);
 ```
 
-Read on for more info, or see the [documentation](https://mapzen.com/documentation/tangram/).
+Read on for more info, or see the [documentation](https://github.com/tangrams/tangram-docs/).
 
 ## Demos
 
@@ -47,25 +50,25 @@ Read on for more info, or see the [documentation](https://mapzen.com/documentati
 
 [**Tangram-sandbox**](http://github.com/tangrams/tangram-sandbox) - More complex glsl shaders
 
-More examples are available on our documentation's [Demos](https://mapzen.com/documentation/tangram/Demos/) page.
+More examples are [available here](https://github.com/tangrams?utf8=%E2%9C%93&q=demo&type=&language=).
 
 ## Vector Tiles
 
 Instead of loading traditional bitmap tiles, Tangram draws its own tiles from scratch, based on *vector tiles* that contain the source data.
 
-Mapzen provides a free [vector tile service](https://mapzen.com/documentation/vector-tiles/) based on open data from [OpenStreetMap](https://openstreetmap.org/), [Natural Earth](http://www.naturalearthdata.com/), [Who's On First](https://whosonfirst.mapzen.com/) and other projects,  with worldwide coverage updated continuously -- [sign up for an API key here](https://mapzen.com/developers).
+[Nextzen](https://www.nextzen.org/) provides a free [vector tile service](https://developers.nextzen.org/about.html) based on open data from [OpenStreetMap](https://openstreetmap.org/), [Natural Earth](http://www.naturalearthdata.com/), [Who's On First](https://whosonfirst.org/) and other projects,  with worldwide coverage updated continuously -- [sign up for an API key here](https://developers.nextzen.org/).
 
-Tangram currently supports [GeoJSON](http://geojson.org/) & [TopoJSON](https://github.com/mbostock/topojson)-based tiles, as well as Mapbox's [binary format](https://github.com/mapbox/vector-tile-spec), all of which are available from the [Mapzen vector tile service](http://mapzen.com/vector/). (Here's an [example GeoJSON tile](http://tile.mapzen.com/mapzen/vector/v1/all/14/4826/6161.json).)
+Tangram currently supports [GeoJSON](http://geojson.org/) & [TopoJSON](https://github.com/mbostock/topojson)-based tiles, as well as Mapbox's [binary format](https://github.com/mapbox/vector-tile-spec).
 
 ## Styling
 
-The *scene file* is where you specify data sources and layers, filter the data, and define and apply styles. (In our demos, this file is named scene.yaml.) The rules for doing these things are many and various, but the basics are pretty easy, and they are all meticulously documented in the [Tangram Documentation](https://mapzen.com/documentation/tangram/).
+The *scene file* is where you specify data sources and layers, filter the data, and define and apply styles. (In our demos, this file is named scene.yaml.) The rules for doing these things are many and various, but the basics are pretty easy, and they are all meticulously documented in the [Tangram Documentation](https://github.com/tangrams/tangram-docs/).
 
 The scene file is written in YAML, which is a data-serialization format like JSON, but with less punctuation. Instead, data structures are specified with whitespace, like Python. One neat side benefit is that the format is super friendly to strings, which means you can write inline JavaScript and GLSL code straight into the scene file, without needing to wrap it in quotes or concatenate anything.
 
 ## Support
 
-For technical reference and concept overviews, see the [Tangram Documentation](https://mapzen.com/documentation/tangram).
+For technical reference and concept overviews, see the [Tangram Documentation](https://github.com/tangrams/tangram-docs/).
 
 For questions, comments, suggestions, or to report a bug, please open a [new issue](https://github.com/tangrams/tangram/issues).
 
@@ -84,8 +87,8 @@ Tangram JS should also run in any browser with WebGL support.
 
 ## Contributions Welcome
 
-Tangram is open-source, and we eagerly welcome feedback, feature requests, and contributions. We’re especially interested to see your maps, no matter how simple! Send screenshots, links, and any questions to tangram@mapzen.com.
+Tangram is open-source, and we eagerly welcome feedback, feature requests, and contributions. We’re especially interested to see your maps, no matter how simple! Post screenshots, links, and any questions to our [gitter chat](https://gitter.im/tangrams/tangram-chat).
 
 For instructions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Tangram is an open-source project sponsored by [Mapzen](http://mapzen.com).
+Mapzen sponsored Tangram's develompent until its closure in February 2018.
