@@ -102,6 +102,31 @@
                 }
             },
 
+            'Refill Blue Terrain': {
+                import: [
+                    'https://www.nextzen.org/carto/refill-style/10/refill-style.zip',
+                    'https://www.nextzen.org/carto/refill-style/10/themes/label-10.zip',
+                    'https://www.nextzen.org/carto/refill-style/10/themes/color-blue.zip',
+                    'https://www.nextzen.org/carto/refill-style/10/themes/no-texture.zip',
+                    'https://www.nextzen.org/carto/refill-style/10/themes/terrain-shading-dark.zip'
+                ],
+                sources: {
+                    mapzen: {
+                        type: 'TopoJSON',
+                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson',
+                        url_subdomains: ['a', 'b', 'c', 'd'],
+                        tile_size: 512,
+                        max_zoom: 15
+                    },
+                    normals: {
+                        url: 'https://{s}.tile.nextzen.org/tilezen/terrain/v1/512/normal/{z}/{x}/{y}.png',
+                        url_subdomains: ['a', 'b', 'c', 'd'],
+                        tile_size: 512,
+                        max_zoom: 14
+                    }
+                }
+            },
+
             'Tron': {
                 import: [
                     'https://www.nextzen.org/carto/tron-style/5/tron-style.zip',
