@@ -3,6 +3,14 @@
     var scene_key = 'Simple';
 
     window.addEventListener('load', function () {
+        // Add search control
+        L.control.geocoder('ge-3d066b6b1c398181', {
+            url: 'https://api.geocode.earth/v1',
+            layers: 'coarse',
+            expanded: true,
+            markers: false
+        }).addTo(window.map);
+
         // Add GUI on scene load
         layer.scene.subscribe({
             load: function (msg) {
