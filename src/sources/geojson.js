@@ -120,7 +120,7 @@ export class GeoJSONSource extends NetworkSource {
     preprocessLayers (layers){
         for (let key in layers) {
             let layer = layers[key];
-            this.preprocessFeatures(layer.features);
+            layer.features = this.preprocessFeatures(layer.features);
         }
 
         // Apply optional data transform
@@ -138,6 +138,9 @@ export class GeoJSONSource extends NetworkSource {
 
     // Preprocess features. Currently used to add a new "centroid" feature for polygon labeling
     preprocessFeatures (features) {
+        // Remove features without geometry (which is valid GeoJSON)
+        features = features.filter(f => f.geometry != null);
+
         // Define centroids for polygons for centroid label placement
         // Avoids redundant label placement for each generated tile at higher zoom levels
         if (this.config.generate_label_centroids){
@@ -145,10 +148,6 @@ export class GeoJSONSource extends NetworkSource {
             let centroid_properties = {"label_placement" : true};
 
             features.forEach(feature => {
-                if (feature.geometry == null) {
-                    return; // no geometry (which is valid GeoJSON)
-                }
-
                 let coordinates, centroid_feature;
                 switch (feature.geometry.type) {
                     case 'Polygon':
