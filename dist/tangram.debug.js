@@ -1,4 +1,4 @@
-(function(){var target = (typeof self === "undefined" || !(typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope)) && ((typeof module !== "undefined" && module.exports) || (typeof window !== "undefined"));if (target) {var __worker_src__ = arguments.callee.toString();var __worker_src_origin__ = typeof document !== "undefined" && document.currentScript !== undefined ? document.currentScript.src : '';var __worker_src_map__ = 'tangram.debug.js.map';};(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Tangram = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+(function(){var target = (typeof self === "undefined" || !(typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope)) && ((typeof module !== "undefined" && module.exports) || (typeof window !== "undefined"));if (target) {var __worker_src__ = arguments.callee.toString();var __worker_src_origin__ = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : '';var __worker_src_map__ = 'tangram.debug.js.map';};(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Tangram = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = Point;
@@ -21956,6 +21956,7 @@ Pbf.prototype = {
     // === READING =================================================================
 
     readFields: function(readField, result, end) {
+        // debugger
         end = end || this.length;
 
         while (this.pos < end) {
@@ -22117,6 +22118,8 @@ Pbf.prototype = {
         else if (type === Pbf.Fixed32) this.pos += 4;
         else if (type === Pbf.Fixed64) this.pos += 8;
         else throw new Error('Unimplemented type: ' + type);
+        // else console.log('Unimplemented type: ' + type);
+        // else debugger
     },
 
     // === WRITING =================================================================
@@ -24015,7 +24018,7 @@ function triangulatePolygon(data) {
     return (0, _earcut2.default)(data.vertices, data.holes, data.dimensions);
 }
 
-},{"../geo":200,"../vector":271,"./common":195,"earcut":77}],198:[function(_dereq_,module,exports){
+},{"../geo":200,"../vector":272,"./common":195,"earcut":77}],198:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -24692,7 +24695,7 @@ function permuteLine(line, startIndex) {
     return newLine;
 }
 
-},{"../geo":200,"../vector":271,"./common":195}],199:[function(_dereq_,module,exports){
+},{"../geo":200,"../vector":272,"./common":195}],199:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -25059,7 +25062,7 @@ var FlatCamera = function (_IsometricCamera) {
     return FlatCamera;
 }(IsometricCamera);
 
-},{"./gl/shader_program":206,"./utils/gl-matrix":256,"./utils/utils":268}],200:[function(_dereq_,module,exports){
+},{"./gl/shader_program":206,"./utils/gl-matrix":257,"./utils/utils":269}],200:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -25184,7 +25187,7 @@ Geo.latLngToMeters = function (_ref6) {
 };
 
 // Transform from local tile coordinats to lat lng
-Geo.tileSpaceToLatlng = function (geometry, z, min, max) {
+Geo.tileSpaceToLatlng = function (geometry, z, min) {
     var units_per_meter = Geo.unitsPerMeter(z);
     Geo.transformGeometry(geometry, function (coord) {
         coord[0] = coord[0] / units_per_meter + min.x;
@@ -26741,7 +26744,7 @@ ShaderProgram.createShader = function (gl, source, stype) {
     return shader;
 };
 
-},{"../utils/hash":257,"../utils/log":258,"./extensions":203,"./glsl":204,"./texture":207,"gl-shader-errors":97,"strip-comments":189}],207:[function(_dereq_,module,exports){
+},{"../utils/hash":258,"../utils/log":259,"./extensions":203,"./glsl":204,"./texture":207,"gl-shader-errors":97,"strip-comments":189}],207:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27311,7 +27314,7 @@ Texture.activeUnit = null;
 _worker_broker2.default.addTarget('Texture', Texture);
 (0, _subscribe2.default)(Texture);
 
-},{"../utils/log":258,"../utils/subscribe":264,"../utils/utils":268,"../utils/worker_broker":270}],208:[function(_dereq_,module,exports){
+},{"../utils/log":259,"../utils/subscribe":265,"../utils/utils":269,"../utils/worker_broker":271}],208:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27410,7 +27413,7 @@ exports.default = {
     }
 };
 
-},{"../utils/log":258,"./extensions":203}],209:[function(_dereq_,module,exports){
+},{"../utils/log":259,"./extensions":203}],209:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27427,6 +27430,10 @@ var _shader_program2 = _interopRequireDefault(_shader_program);
 var _vao = _dereq_('./vao');
 
 var _vao2 = _interopRequireDefault(_vao);
+
+var _texture = _dereq_('./texture');
+
+var _texture2 = _interopRequireDefault(_texture);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -27449,6 +27456,7 @@ var VBOMesh = function () {
         this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
         this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
         this.uniforms = options.uniforms;
+        this.textures = options.textures; // any textures owned by this mesh
         this.retain = options.retain || false; // whether to retain mesh data in CPU after uploading to GPU
         this.created_at = +new Date();
         this.fade_in_time = options.fade_in_time || 0; // optional time to fade in mesh
@@ -27471,8 +27479,7 @@ var VBOMesh = function () {
             this.geometry_count = this.vertex_count / this.vertices_per_geometry;
         }
 
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertex_buffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
+        this.upload();
 
         if (!this.retain) {
             delete this.vertex_data;
@@ -27544,6 +27551,15 @@ var VBOMesh = function () {
                 });
             }
         }
+
+        // Upload buffer data to GPU
+
+    }, {
+        key: 'upload',
+        value: function upload() {
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertex_buffer);
+            this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
+        }
     }, {
         key: 'destroy',
         value: function destroy() {
@@ -27567,6 +27583,12 @@ var VBOMesh = function () {
             delete this.vertex_data;
             delete this.element_data;
 
+            if (this.textures) {
+                this.textures.forEach(function (t) {
+                    return _texture2.default.release(t);
+                });
+            }
+
             return true;
         }
     }]);
@@ -27576,7 +27598,7 @@ var VBOMesh = function () {
 
 exports.default = VBOMesh;
 
-},{"./shader_program":206,"./vao":208}],210:[function(_dereq_,module,exports){
+},{"./shader_program":206,"./texture":207,"./vao":208}],210:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27722,7 +27744,7 @@ exports.default = VertexData;
 
 VertexData.array_pool = []; // pool of currently available (previously used) buffers (uint8)
 
-},{"../utils/log":258,"./constants":201,"./vertex_elements":211}],211:[function(_dereq_,module,exports){
+},{"../utils/log":259,"./constants":201,"./vertex_elements":211}],211:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27831,7 +27853,8 @@ var VertexLayout = function () {
             return !x.static;
         }); // attributes with per-vertex values, used to build VBOs
         this.components = []; // list of type and offset info about each attribute component
-        this.index = {}; // linear buffer index of each attribute component, e.g. this.index.position.x
+        this.index = {}; // JS buffer index of each attribute component, e.g. this.index.position
+        this.offset = {}; // VBO buffer byte offset of each attribute component, e.g. this.offset.color
         this.stride = 0; // byte stride of a single vertex
 
         var index = 0,
@@ -27877,9 +27900,12 @@ var VertexLayout = function () {
                     });
                 }
 
-                // Provide an index into the vertex data buffer for each attribute component
+                // Provide an index into the vertex data buffer for each attribute by name
                 this.index[attrib.name] = index;
                 index += attrib.size;
+
+                // Store byte offset of each attribute by name
+                this.offset[attrib.name] = attrib.offset;
             }
             // Static attribute
             else {
@@ -28019,12 +28045,16 @@ VertexLayout.enabled_attribs = {};
 // Functions to add plain JS vertex array to typed VBO arrays
 VertexLayout.add_vertex_funcs = {}; // keyed by unique set of attributes
 
-},{"../utils/hash":257,"./constants":201,"./vertex_data":210}],213:[function(_dereq_,module,exports){
+},{"../utils/hash":258,"./constants":201,"./vertex_data":210}],213:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+var _label = _dereq_('./label');
+
+var _label2 = _interopRequireDefault(_label);
 
 var _repeat_group = _dereq_('./repeat_group');
 
@@ -28043,14 +28073,22 @@ exports.default = Collision = {
     tiles: {},
 
     startTile: function startTile(tile) {
+        var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+            _ref$apply_repeat_gro = _ref.apply_repeat_groups,
+            apply_repeat_groups = _ref$apply_repeat_gro === undefined ? true : _ref$apply_repeat_gro,
+            _ref$return_hidden = _ref.return_hidden,
+            return_hidden = _ref$return_hidden === undefined ? false : _ref$return_hidden;
+
         var state = this.tiles[tile] = {
             bboxes: { // current set of placed bounding boxes
                 aabb: [],
                 obb: []
             },
             objects: {}, // objects to collide, grouped by priority, then by style
-            keep: {}, // objects that were kept after collision, grouped by style
-            styles: {} // styles contributing collision objects
+            labels: {}, // objects post-collision, grouped by style, marked as show/hide
+            styles: {}, // styles contributing collision objects
+            repeat: apply_repeat_groups,
+            return_hidden: return_hidden
         };
 
         // Promise resolved when all registered styles have added objects
@@ -28105,18 +28143,20 @@ exports.default = Collision = {
         // Wait for objects to be added from all styles
         return state.complete.then(function () {
             state.resolve = null;
-            return state.keep[style] || [];
+            return state.labels[style] || [];
         });
     },
 
 
     // Test labels for collisions, higher to lower priority
-    // When two collide, discard the lower-priority label
+    // When two collide, hide the lower-priority label
     endTile: function endTile(tile) {
         var state = this.tiles[tile];
-        var keep = state.keep;
+        var labels = state.labels;
 
-        _repeat_group2.default.clear(tile);
+        if (state.repeat) {
+            _repeat_group2.default.clear(tile);
+        }
 
         // Process labels by priority, then by style
         var priorities = Object.keys(state.objects).sort(function (a, b) {
@@ -28132,22 +28172,38 @@ exports.default = Collision = {
             // For each style
             for (var style in style_objects) {
                 var objects = style_objects[style];
-                keep[style] = keep[style] || [];
+                labels[style] = labels[style] || [];
 
                 for (var i = 0; i < objects.length; i++) {
                     var object = objects[i];
-                    if (this.canBePlaced(object, tile, object.linked)) {
-                        // Keep object if it isn't dependent on a parent object
+                    if (this.canBePlaced(object, tile, object.linked, state)) {
+                        // show object if it isn't dependent on a parent object
                         if (!object.linked) {
-                            keep[style].push(object);
-                            this.place(object, tile);
+                            object.show = true;
+                            labels[style].push(object);
+                            this.place(object, tile, state);
                         }
-                        // If object is dependent on a parent, only keep if both can be placed
-                        else if (this.canBePlaced(object.linked, tile, object)) {
-                                keep[style].push(object);
-                                this.place(object, tile);
-                                this.place(object.linked, tile);
+                        // If object is dependent on a parent, only show if both can be placed
+                        else if (this.canBePlaced(object.linked, tile, object, state)) {
+                                object.show = true;
+
+                                // If a label is breach, its linked label should be considered breach as well
+                                // (this keeps linked labels from staying (in)visible in tandem)
+                                if (object.label.breach || object.linked.label.breach) {
+                                    object.label.breach = true;
+                                    object.linked.label.breach = true;
+                                }
+
+                                labels[style].push(object);
+                                this.place(object, tile, state);
+                                this.place(object.linked, tile, state);
+                            } else if (state.return_hidden) {
+                                object.show = false;
+                                labels[style].push(object);
                             }
+                    } else if (state.return_hidden) {
+                        object.show = false;
+                        labels[style].push(object);
                     }
                 }
             }
@@ -28162,6 +28218,10 @@ exports.default = Collision = {
     canBePlaced: function canBePlaced(object, tile) {
         var exclude = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
 
+        var _ref2 = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {},
+            _ref2$repeat = _ref2.repeat,
+            repeat = _ref2$repeat === undefined ? true : _ref2$repeat;
+
         var label = object.label;
         var layout = object.label.layout;
 
@@ -28174,15 +28234,15 @@ exports.default = Collision = {
         var bboxes = this.tiles[tile].bboxes;
         if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
             // check for repeats
-            var repeat = _repeat_group2.default.check(label, layout, tile);
-            if (repeat) {
-                // log('trace', `discard label '${label.text}', (one_per_group: ${repeat.one_per_group}), dist ${Math.sqrt(repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(repeat.repeat_dist_sq)/layout.units_per_pixel}`);
+            var is_repeat = repeat && _repeat_group2.default.check(label, layout, tile);
+            if (is_repeat) {
+                // log('trace', `hide label '${label.text}', dist ${Math.sqrt(is_repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(is_repeat.repeat_dist_sq)/layout.units_per_pixel}`);
                 label.placed = false;
             } else {
                 return true;
             }
         } else if (layout.collide) {
-            // log('trace', `discard label '${label.text}' due to collision`);
+            // log('trace', `hide label '${label.text}' due to collision`);
             label.placed = false;
         }
         return label.placed;
@@ -28190,8 +28250,10 @@ exports.default = Collision = {
 
 
     // Place label
-    place: function place(_ref, tile) {
-        var label = _ref.label;
+    place: function place(_ref3, tile, _ref4) {
+        var label = _ref3.label;
+        var _ref4$repeat = _ref4.repeat,
+            repeat = _ref4$repeat === undefined ? true : _ref4$repeat;
 
         // Skip if already processed (e.g. by parent object)
         if (label.placed != null) {
@@ -28199,12 +28261,14 @@ exports.default = Collision = {
         }
 
         // Register as placed for future collision and repeat culling
-        _repeat_group2.default.add(label, label.layout, tile);
-        label.add(this.tiles[tile].bboxes);
+        if (repeat) {
+            _repeat_group2.default.add(label, label.layout, tile);
+        }
+        _label2.default.add(label, this.tiles[tile].bboxes);
     }
 };
 
-},{"../utils/log":258,"./repeat_group":220}],214:[function(_dereq_,module,exports){
+},{"../utils/log":259,"./label":215,"./repeat_group":221}],214:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -28247,6 +28311,8 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+exports.textLayoutToJSON = textLayoutToJSON;
+
 var _point_anchor = _dereq_('./point_anchor');
 
 var _point_anchor2 = _interopRequireDefault(_point_anchor);
@@ -28273,19 +28339,39 @@ var Label = function () {
 
         _classCallCheck(this, Label);
 
+        this.id = Label.nextLabelId();
+        this.type = ''; // set by subclass
         this.size = size;
         this.layout = layout;
         this.position = null;
         this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
         this.placed = null;
         this.offset = layout.offset;
+        this.unit_scale = this.layout.units_per_pixel;
         this.aabb = null;
         this.obb = null;
         this.align = 'center';
         this.throw_away = false; // if label does not fit (exceeds tile boundary, etc) this boolean will be true
     }
 
+    // Minimal representation of label
+
+
     _createClass(Label, [{
+        key: 'toJSON',
+        value: function toJSON() {
+            return {
+                id: this.id,
+                type: this.type,
+                obb: this.obb.toJSON(),
+                position: this.position,
+                size: this.size,
+                offset: this.offset,
+                breach: this.breach,
+                layout: textLayoutToJSON(this.layout)
+            };
+        }
+    }, {
         key: 'update',
         value: function update() {
             this.align = this.layout.align || _point_anchor2.default.alignForAnchor(this.anchor);
@@ -28333,16 +28419,6 @@ var Label = function () {
             return intersect;
         }
 
-        // Add this label's bounding box to the provided set
-
-    }, {
-        key: 'add',
-        value: function add(bboxes) {
-            this.placed = true;
-            bboxes.aabb.push(this.aabb);
-            bboxes.obb.push(this.obb);
-        }
-
         // checks whether the label is within the tile boundaries
 
     }, {
@@ -28376,17 +28452,55 @@ var Label = function () {
     return Label;
 }();
 
-exports.default = Label;
+// Generic label placement function, adds a label's bounding boxes to the currently placed set
+//  Supports single or multiple collision boxes
 
+
+exports.default = Label;
+Label.add = function (label, bboxes) {
+    label.placed = true;
+
+    if (label.aabb) {
+        bboxes.aabb.push(label.aabb);
+        bboxes.obb.push(label.obb);
+    }
+
+    if (label.aabbs) {
+        for (var i = 0; i < label.aabbs.length; i++) {
+            bboxes.aabb.push(label.aabbs[i]);
+            bboxes.obb.push(label.obbs[i]);
+        }
+    }
+};
+
+Label.id = 0;
+Label.id_prefix = ''; // id prefix scoped to worker thread
+
+Label.nextLabelId = function () {
+    return Label.id_prefix + '/' + Label.id++;
+};
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
 
-},{"../utils/obb":261,"../utils/utils":268,"./intersect":214,"./point_anchor":218}],216:[function(_dereq_,module,exports){
+// Minimal representation of text layout, sent to main thread for label collisions
+function textLayoutToJSON(layout) {
+    return {
+        priority: layout.priority,
+        collide: layout.collide,
+        repeat_distance: layout.repeat_distance,
+        repeat_group: layout.repeat_group,
+        buffer: layout.buffer,
+        italic: layout.italic // affects bounding box size
+    };
+}
+
+},{"../utils/obb":262,"../utils/utils":269,"./intersect":214,"./point_anchor":219}],216:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+exports.LabelLineStraight = exports.LabelLineBase = undefined;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
@@ -28400,9 +28514,9 @@ var _vector = _dereq_('../vector');
 
 var _vector2 = _interopRequireDefault(_vector);
 
-var _obb2 = _dereq_('../utils/obb');
+var _obb = _dereq_('../utils/obb');
 
-var _obb3 = _interopRequireDefault(_obb2);
+var _obb2 = _interopRequireDefault(_obb);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -28456,44 +28570,49 @@ exports.default = LabelLine;
 
 // Base class for a labels.
 
-var LabelLineBase = function () {
+var LabelLineBase = exports.LabelLineBase = function () {
     function LabelLineBase(layout) {
         _classCallCheck(this, LabelLineBase);
 
+        this.id = _label2.default.nextLabelId();
         this.layout = layout;
         this.position = [];
         this.angle = 0;
         this.offset = layout.offset.slice();
+        this.unit_scale = this.layout.units_per_pixel;
         this.obbs = [];
         this.aabbs = [];
         this.type = ''; // "curved" or "straight" to be set by child class
         this.throw_away = false; // boolean that determines if label should be discarded
     }
 
-    // Given a line, find the longest series of segments that maintains a constant orientation in the x-direction.
-    // This assures us that the line has no orientation flip, so text would not appear upside-down.
-    // If the line's orientation is reversed, the flip return value will be true, otherwise false
+    // Minimal representation of label
 
 
     _createClass(LabelLineBase, [{
-        key: 'add',
-
-
-        // Add each bounding box to the collision pass
-        value: function add(bboxes) {
-            this.placed = true;
-            for (var i = 0; i < this.aabbs.length; i++) {
-                var aabb = this.aabbs[i];
-                var obb = this.obbs[i];
-                var obj = { aabb: aabb, obb: obb };
-                _label2.default.prototype.add.call(obj, bboxes);
-            }
+        key: 'toJSON',
+        value: function toJSON() {
+            return {
+                id: this.id,
+                type: this.type,
+                position: this.position,
+                size: this.size,
+                offset: this.offset,
+                angle: this.angle,
+                breach: this.breach,
+                layout: (0, _label.textLayoutToJSON)(this.layout)
+            };
         }
 
-        // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
+        // Given a line, find the longest series of segments that maintains a constant orientation in the x-direction.
+        // This assures us that the line has no orientation flip, so text would not appear upside-down.
+        // If the line's orientation is reversed, the flip return value will be true, otherwise false
 
     }, {
         key: 'discard',
+
+
+        // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
         value: function discard(bboxes) {
             var exclude = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
 
@@ -28625,7 +28744,7 @@ var LabelLineBase = function () {
             }
 
             // the angle of the obb is negative since it's the tile system y axis is pointing down
-            return new _obb3.default(p0, p1, -angle, width, height);
+            return new _obb2.default(p0, p1, -angle, width, height);
         }
     }]);
 
@@ -28636,7 +28755,7 @@ var LabelLineBase = function () {
 // Extends base LabelLine class.
 
 
-var LabelLineStraight = function (_LabelLineBase) {
+var LabelLineStraight = exports.LabelLineStraight = function (_LabelLineBase) {
     _inherits(LabelLineStraight, _LabelLineBase);
 
     function LabelLineStraight(size, line, layout, tolerance) {
@@ -28645,6 +28764,7 @@ var LabelLineStraight = function (_LabelLineBase) {
         var _this = _possibleConstructorReturn(this, (LabelLineStraight.__proto__ || Object.getPrototypeOf(LabelLineStraight)).call(this, layout));
 
         _this.type = 'straight';
+        _this.size = size;
         _this.throw_away = !_this.fit(size, line, layout, tolerance);
         return _this;
     }
@@ -28657,7 +28777,7 @@ var LabelLineStraight = function (_LabelLineBase) {
     _createClass(LabelLineStraight, [{
         key: 'fit',
         value: function fit(size, line, layout, tolerance) {
-            var upp = layout.units_per_pixel;
+            var upp = this.unit_scale;
             var flipped = void 0; // boolean indicating if orientation of line is changed
 
             // Make new copy of line, with consistent orientation
@@ -28743,12 +28863,8 @@ var LabelLineStraight = function (_LabelLineBase) {
                         }
 
                         this.position = curr_midpt;
-
                         this.updateBBoxes(this.position, size, this.angle, this.angle, this.offset);
-
-                        if (this.inTileBounds()) {
-                            return true;
-                        }
+                        return true; // use this placement
                     }
 
                     prev_angle = next_angle;
@@ -28764,7 +28880,7 @@ var LabelLineStraight = function (_LabelLineBase) {
     }, {
         key: 'updateBBoxes',
         value: function updateBBoxes(position, size, angle, angle_offset, offset) {
-            var upp = this.layout.units_per_pixel;
+            var upp = this.unit_scale;
 
             // reset bounding boxes
             this.obbs = [];
@@ -28778,6 +28894,9 @@ var LabelLineStraight = function (_LabelLineBase) {
 
             this.obbs.push(obb);
             this.aabbs.push(aabb);
+            if (this.inTileBounds) {
+                this.breach = !this.inTileBounds();
+            }
         }
     }]);
 
@@ -28803,19 +28922,37 @@ var LabelLineCurved = function (_LabelLineBase2) {
         _this2.pre_angles = [];
         _this2.offsets = [];
         _this2.num_segments = segment_sizes.length;
+        _this2.sizes = segment_sizes;
 
-        _this2.throw_away = !_this2.fit(segment_sizes, line, layout);
+        _this2.throw_away = !_this2.fit(_this2.sizes, line, layout);
         return _this2;
     }
 
-    // Determine if the curved label can fit the geometry.
-    // No tolerance is provided because the label must fit entirely within the line geometry.
+    // Minimal representation of label
 
 
     _createClass(LabelLineCurved, [{
+        key: 'toJSON',
+        value: function toJSON() {
+            return {
+                id: this.id,
+                type: this.type,
+                obbs: this.obbs.map(function (o) {
+                    return o.toJSON();
+                }),
+                position: this.position,
+                breach: this.breach,
+                layout: (0, _label.textLayoutToJSON)(this.layout)
+            };
+        }
+
+        // Determine if the curved label can fit the geometry.
+        // No tolerance is provided because the label must fit entirely within the line geometry.
+
+    }, {
         key: 'fit',
         value: function fit(size, line, layout) {
-            var upp = layout.units_per_pixel;
+            var upp = this.unit_scale;
             var flipped = void 0; // boolean determining if the line orientation is reversed
 
             var height_px = Math.max.apply(Math, _toConsumableArray(size.map(function (s) {
@@ -28862,18 +28999,10 @@ var LabelLineCurved = function (_LabelLineBase2) {
                 return false;
             }
 
-            // find start and end indices that the label can fit on without overlapping tile boundaries
-            // TODO: there is a small probability of a tile boundary crossing on an internal line segment
-            // another option is to create a buffer around the line and check if it overlaps a tile boundary
-
-            var _LabelLineCurved$chec = LabelLineCurved.checkTileBoundary(line, line_lengths, height, this.offset, upp),
-                _LabelLineCurved$chec2 = _slicedToArray(_LabelLineCurved$chec, 2),
-                start_index = _LabelLineCurved$chec2[0],
-                end_index = _LabelLineCurved$chec2[1];
-
             // need two line segments for a curved label
-
-
+            // NB: single segment lines should still be labeled if possible during straight label placement pass
+            var start_index = 0,
+                end_index = line.length - 1;
             if (end_index - start_index < 2) {
                 return false;
             }
@@ -28934,11 +29063,11 @@ var LabelLineCurved = function (_LabelLineBase2) {
                         });
 
                         // calculate bounding boxes for collision at zoom level 0
-                        for (var _i2 = 0; _i2 < positions.length; _i2++) {
-                            var position = positions[_i2];
-                            var pre_angle = pre_angles[_i2];
-                            var width = label_lengths[_i2];
-                            var angle_segment = pre_angle + angles[_i2];
+                        for (var _i = 0; _i < positions.length; _i++) {
+                            var position = positions[_i];
+                            var pre_angle = pre_angles[_i];
+                            var width = label_lengths[_i];
+                            var angle_segment = pre_angle + angles[_i];
                             var angle_offset = this.angle;
 
                             var obb = LabelLineBase.createOBB(position, width, height, angle_segment, angle_offset, this.offset, upp);
@@ -28959,59 +29088,13 @@ var LabelLineCurved = function (_LabelLineBase2) {
             return true;
         }
 
-        // Test if line intersects tile boundary. Return indices at beginning and end of line that are within tile.
-        // Burn candle from both ends strategy - meaning shift and pop until vertices are within tile, but an interior vertex
-        // may still be outside of tile (can potentially result in label collision across tiles).
-
-    }], [{
-        key: 'checkTileBoundary',
-        value: function checkTileBoundary(line, widths, height, offset, upp) {
-            var start = 0;
-            var end = line.length - 1;
-
-            height *= _label2.default.epsilon;
-
-            var start_width = widths[start] * _label2.default.epsilon;
-            var end_width = widths[widths.length - 1] * _label2.default.epsilon;
-
-            // Burn candle from start
-            while (start < end) {
-                var angle = getAngleForSegment(line[start], line[start + 1]);
-                var position = _vector2.default.add(_vector2.default.rot([start_width / 2, 0], angle), line[start]);
-                var obb = LabelLineBase.createOBB(position, start_width, height, -angle, -angle, offset, upp);
-                var aabb = obb.getExtent();
-                var in_tile = _label2.default.prototype.inTileBounds.call({ aabb: aabb });
-                if (in_tile) {
-                    break;
-                } else {
-                    start++;
-                }
-            }
-
-            // Burn candle from end
-            while (end > start) {
-                var _angle = getAngleForSegment(line[end - 1], line[end]);
-                var _position = _vector2.default.add(_vector2.default.rot([-end_width / 2, 0], _angle), line[end]);
-                var _obb = LabelLineBase.createOBB(_position, end_width, height, -_angle, -_angle, offset, upp);
-                var _aabb = _obb.getExtent();
-                var _in_tile = _label2.default.prototype.inTileBounds.call({ aabb: _aabb });
-                if (_in_tile) {
-                    break;
-                } else {
-                    end--;
-                }
-            }
-
-            return [start, end];
-        }
-
         // Find optimal starting segment for placing a curved label along a line within provided tolerances
         // This is determined by calculating the curvature at each interior vertex of a line
         // then construct a "window" whose breadth is the length of the label. Place this label at each vertex
         // and add the curvatures of each vertex within the window. The vertex mimimizing this value is the "best" placement.
         // Return -1 is no placement found.
 
-    }, {
+    }], [{
         key: 'curvaturePlacement',
         value: function curvaturePlacement(line, total_line_length, line_lengths, label_length, start_index, end_index) {
             start_index = start_index || 0;
@@ -29047,8 +29130,8 @@ var LabelLineCurved = function (_LabelLineBase2) {
             var line_index = start_index;
             var position = 0;
 
-            for (var _i3 = 0; _i3 < start_index; _i3++) {
-                position += line_lengths[_i3];
+            for (var _i2 = 0; _i2 < start_index; _i2++) {
+                position += line_lengths[_i2];
             }
 
             // move window along line, starting at first vertex
@@ -29310,7 +29393,7 @@ function getAbsAngleDiff(angle1, angle2) {
     return Math.abs(big - small);
 }
 
-},{"../utils/obb":261,"../vector":271,"./label":215}],217:[function(_dereq_,module,exports){
+},{"../utils/obb":262,"../vector":272,"./label":215}],217:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29357,13 +29440,14 @@ var LabelPoint = function (_Label) {
 
         var _this = _possibleConstructorReturn(this, (LabelPoint.__proto__ || Object.getPrototypeOf(LabelPoint)).call(this, size, layout));
 
+        _this.type = 'point';
         _this.position = [position[0], position[1]];
         _this.parent = _this.layout.parent;
         _this.update();
 
         _this.start_anchor_index = 1;
         _this.degenerate = !_this.size[0] && !_this.size[1] && !_this.layout.buffer[0] && !_this.layout.buffer[1];
-        _this.throw_away = !_this.getNextFit();
+        _this.throw_away = false;
         return _this;
     }
 
@@ -29403,18 +29487,21 @@ var LabelPoint = function (_Label) {
     }, {
         key: 'updateBBoxes',
         value: function updateBBoxes() {
-            var width = (this.size[0] + this.layout.buffer[0] * 2) * this.layout.units_per_pixel * _label2.default.epsilon;
-            var height = (this.size[1] + this.layout.buffer[1] * 2) * this.layout.units_per_pixel * _label2.default.epsilon;
+            var width = (this.size[0] + this.layout.buffer[0] * 2) * this.unit_scale * _label2.default.epsilon;
+            var height = (this.size[1] + this.layout.buffer[1] * 2) * this.unit_scale * _label2.default.epsilon;
 
             // fudge width value as text may overflow bounding box if it has italic, bold, etc style
             if (this.layout.italic) {
-                width += 5 * this.layout.units_per_pixel;
+                width += 5 * this.unit_scale;
             }
 
-            var p = [this.position[0] + this.offset[0] * this.layout.units_per_pixel, this.position[1] - this.offset[1] * this.layout.units_per_pixel];
+            var p = [this.position[0] + this.offset[0] * this.unit_scale, this.position[1] - this.offset[1] * this.unit_scale];
 
             this.obb = new _obb2.default(p[0], p[1], 0, width, height);
             this.aabb = this.obb.getExtent();
+            if (this.inTileBounds) {
+                this.breach = !this.inTileBounds();
+            }
         }
 
         // Try to move the label into the tile bounds
@@ -29452,35 +29539,6 @@ var LabelPoint = function (_Label) {
             return updated;
         }
     }, {
-        key: 'getNextFit',
-        value: function getNextFit() {
-            if (!this.layout.cull_from_tile || this.inTileBounds()) {
-                return true;
-            }
-
-            if (this.layout.move_into_tile) {
-                this.moveIntoTile();
-                return true;
-            } else {
-                if (Array.isArray(this.layout.anchor)) {
-                    // Start on second anchor (first anchor was set on creation)
-                    for (var i = 1; i < this.layout.anchor.length; i++) {
-                        this.anchor = this.layout.anchor[i];
-                        this.update();
-
-                        this.start_anchor_index = i;
-
-                        if (this.inTileBounds()) {
-                            return true;
-                        }
-                    }
-                }
-
-                // no anchors result in fit
-                return false;
-            }
-        }
-    }, {
         key: 'discard',
         value: function discard(bboxes) {
             var exclude = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
@@ -29496,10 +29554,6 @@ var LabelPoint = function (_Label) {
                     for (var i = this.start_anchor_index; i < this.layout.anchor.length; i++) {
                         this.anchor = this.layout.anchor[i];
                         this.update();
-
-                        if (this.layout.cull_from_tile && !this.inTileBounds()) {
-                            continue;
-                        }
 
                         if (!_get(LabelPoint.prototype.__proto__ || Object.getPrototypeOf(LabelPoint.prototype), 'discard', this).call(this, bboxes, exclude)) {
                             return false;
@@ -29526,7 +29580,222 @@ LabelPoint.PLACEMENT = {
     CENTROID: 3 // place labels at center of polygons
 };
 
-},{"../geo":200,"../styles/style_parser":244,"../utils/obb":261,"./label":215,"./point_anchor":218}],218:[function(_dereq_,module,exports){
+},{"../geo":200,"../styles/style_parser":245,"../utils/obb":262,"./label":215,"./point_anchor":219}],218:[function(_dereq_,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = mainThreadLabelCollisionPass;
+
+var _label = _dereq_('./label');
+
+var _label2 = _interopRequireDefault(_label);
+
+var _label_point = _dereq_('./label_point');
+
+var _label_point2 = _interopRequireDefault(_label_point);
+
+var _label_line = _dereq_('./label_line');
+
+var _collision = _dereq_('./collision');
+
+var _collision2 = _interopRequireDefault(_collision);
+
+var _obb = _dereq_('../utils/obb');
+
+var _obb2 = _interopRequireDefault(_obb);
+
+var _geo = _dereq_('../geo');
+
+var _geo2 = _interopRequireDefault(_geo);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var visible = {}; // currently visible labels
+var prev_visible = {}; // previously visible labels (in last collision run)
+
+function mainThreadLabelCollisionPass(tiles, view_zoom) {
+    var hide_breach = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+    prev_visible = visible; // save last visible label set
+    visible = {}; // initialize new visible label set
+
+    var labels = {};
+    var containers = {};
+
+    // Collect labels from each tile and turn into new label instances
+    tiles.forEach(function (tile) {
+        var units_per_meter = _geo2.default.unitsPerMeter(tile.coords.z); // scale from tile units to mercator meters
+        var zoom_scale = Math.pow(2, view_zoom - tile.style_zoom); // adjust label size by view zoom
+        var size_scale = units_per_meter * zoom_scale; // scale from tile units to zoom-adjusted meters
+        var meters_per_pixel = _geo2.default.metersPerPixel(view_zoom);
+
+        // First pass: create label instances and centralize collision containers
+        for (var style in tile.meshes) {
+            var meshes = tile.meshes[style];
+            meshes.forEach(function (mesh) {
+                if (mesh.labels) {
+                    for (var label_id in mesh.labels) {
+                        if (!labels[label_id]) {
+                            var params = mesh.labels[label_id].container.label;
+                            var linked = mesh.labels[label_id].container.linked;
+                            var ranges = mesh.labels[label_id].ranges;
+                            var debug = Object.assign({}, mesh.labels[label_id].debug, { tile: tile, params: params, label_id: label_id });
+
+                            var label = labels[label_id] = {};
+                            label.discard = discard.bind(label);
+                            label.build_id = tile.build_id; // original order in which tiles were built
+
+                            Object.assign(label, params);
+                            label.layout = Object.assign({}, params.layout); // TODO: ideally remove need to copy props here
+                            label.layout.repeat_scale = 0.75; // looser second pass on repeat groups, to weed out repeats near tile edges
+                            label.layout.repeat_distance = label.layout.repeat_distance || 0;
+                            label.layout.repeat_distance /= size_scale; // TODO: where should this be scaled?
+
+                            label.position = [// don't overwrite referenced values
+                            label.position[0] / units_per_meter + tile.min.x, label.position[1] / units_per_meter + tile.min.y];
+                            label.unit_scale = meters_per_pixel;
+
+                            // if (params.obb) {
+                            if (label.type === 'point') {
+                                // TODO: move to integer constants to avoid excess string copies
+                                _label_point2.default.prototype.updateBBoxes.call(label);
+                            } else if (label.type === 'straight') {
+                                _label_line.LabelLineStraight.prototype.updateBBoxes.call(label, label.position, label.size, label.angle, label.angle, label.offset);
+                            } else if (params.obbs) {
+                                // NB: this is a very rough approximation of curved label collision at intermediate zooms,
+                                // becuase the position/scale of each collision box isn't correctly updated; however,
+                                // it's good enough to provide some additional label coverage, with less overhead
+                                var obbs = params.obbs.map(function (o) {
+                                    var x = o.x,
+                                        y = o.y,
+                                        a = o.a,
+                                        w = o.w,
+                                        h = o.h;
+
+                                    x = x / units_per_meter + tile.min.x;
+                                    y = y / units_per_meter + tile.min.y;
+                                    w /= size_scale;
+                                    h /= size_scale;
+                                    return new _obb2.default(x, y, a, w, h);
+                                });
+                                label.obbs = obbs;
+                                label.aabbs = obbs.map(function (o) {
+                                    return o.getExtent();
+                                });
+                            }
+
+                            containers[label_id] = {
+                                label: label,
+                                linked: linked,
+                                ranges: ranges,
+                                mesh: mesh,
+                                debug: debug
+                            };
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    // Resolve links between label containers
+    for (var c in containers) {
+        var container = containers[c];
+        if (container.linked) {
+            container.linked = containers[container.linked];
+        }
+        // NB: if linked label not found, it was discarded in initial tile collision pass
+    }
+
+    // Convert container map to array
+    containers = Object.keys(containers).map(function (k) {
+        return containers[k];
+    });
+
+    // Collide all labels in a single group
+    // TODO: maybe rename tile and style to group/subgroup?
+    _collision2.default.startTile('main', { apply_repeat_groups: true, return_hidden: true });
+    _collision2.default.addStyle('main', 'main');
+
+    return _collision2.default.collide(containers, 'main', 'main').then(function (labels) {
+        var meshes = [];
+        labels.forEach(function (container) {
+            // Hide breach labels (those that cross tile boundaries) while tiles are loading, unless they
+            // were previously visible (otherwise fully loaded/collided breach labels will flicker in and out
+            // when new tiles load, even if they aren't adjacent)
+            var show = 0;
+            if (container.show === true && (!hide_breach || !container.label.breach || prev_visible[container.label.id])) {
+                show = 1;
+            }
+
+            if (show) {
+                visible[container.label.id] = container; // track visible labels
+            }
+
+            var changed = true; // check if label visibility changed on this collision pass
+
+            container.ranges.forEach(function (r) {
+                if (!changed) {
+                    return; // skip rest of label if state hasn't changed
+                }
+
+                var mesh = container.mesh;
+                var off = mesh.vertex_layout.offset.a_shape; // byte offset (within each vertex) of attribute
+                var stride = mesh.vertex_layout.stride; // byte stride per vertex
+
+                for (var i = 0; i < r[1]; i++) {
+                    // NB: +6 is because attribute is a short int (2 bytes each), and we're skipping to 3rd element, 6=3*2
+                    if (mesh.vertex_data[r[0] + i * stride + off + 6] === show) {
+                        changed = false;
+                        return; // label hasn't changed states, skip further updates
+                    }
+                    mesh.vertex_data[r[0] + i * stride + off + 6] = show;
+                }
+
+                if (meshes.indexOf(mesh) === -1) {
+                    meshes.push(mesh);
+                }
+            });
+        });
+
+        meshes.forEach(function (mesh) {
+            return mesh.upload();
+        });
+        tiles.forEach(function (t) {
+            return t.swapPendingLabels();
+        });
+
+        return { labels: labels, containers: containers }; // currently returned for debugging
+    });
+}
+
+// Generic discard function for labels, does simple occlusion with one or more bounding boxes
+// (no additional logic to try alternate anchors or other layour options, etc.)
+function discard(bboxes) {
+    var exclude = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+    if (this.obb) {
+        // single collision box
+        return _label2.default.prototype.occluded.call(this, bboxes, exclude);
+    } else if (this.obbs) {
+        // mutliple collision boxes
+        for (var i = 0; i < this.obbs.length; i++) {
+            var aabb = this.aabbs[i];
+            var obb = this.obbs[i];
+            var obj = { aabb: aabb, obb: obb };
+
+            var should_discard = _label2.default.prototype.occluded.call(obj, bboxes, exclude);
+            if (should_discard) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+},{"../geo":200,"../utils/obb":262,"./collision":213,"./label":215,"./label_line":216,"./label_point":217}],219:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29609,7 +29878,7 @@ exports.default = PointAnchor = {
 
 };
 
-},{}],219:[function(_dereq_,module,exports){
+},{}],220:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -29772,8 +30041,8 @@ function interpolateSegment(p, q, distance) {
     return [ratio * p[0] + (1 - ratio) * q[0], ratio * p[1] + (1 - ratio) * q[1]];
 }
 
-},{"../builders/common":195,"./label_point":217}],220:[function(_dereq_,module,exports){
-'use strict';
+},{"../builders/common":195,"./label_point":217}],221:[function(_dereq_,module,exports){
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -29781,23 +30050,15 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _geo = _dereq_('../geo');
-
-var _geo2 = _interopRequireDefault(_geo);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var RepeatGroup = function () {
-    function RepeatGroup(key, repeat_dist, max_repeat_dist) {
+    function RepeatGroup(key, repeat_dist) {
         _classCallCheck(this, RepeatGroup);
 
         this.key = key;
         this.repeat_dist = repeat_dist;
         this.repeat_dist_sq = this.repeat_dist * this.repeat_dist;
-        this.max_repeat_dist_sq = max_repeat_dist * max_repeat_dist;
-        this.one_per_group = this.repeat_dist_sq >= this.max_repeat_dist_sq ? true : false;
         this.positions = [];
     }
 
@@ -29805,22 +30066,8 @@ var RepeatGroup = function () {
 
 
     _createClass(RepeatGroup, [{
-        key: 'check',
+        key: "check",
         value: function check(obj) {
-            // If only one object allowed per group, shortcut distance logic
-            if (this.one_per_group) {
-                if (this.positions.length > 0) {
-                    // reported distance maxes out at threshold in this case
-                    // (not true dist value since we skipped calculating it)
-                    return {
-                        dist_sq: this.max_repeat_dist_sq,
-                        repeat_dist_sq: this.repeat_dist_sq,
-                        one_per_group: this.one_per_group
-                    };
-                }
-                return; // no object for this group yet
-            }
-
             // Check distance from new object to objects already in group
             var p1 = obj.position;
             for (var i = 0; i < this.positions.length; i++) {
@@ -29842,7 +30089,7 @@ var RepeatGroup = function () {
         // Add object to this group
 
     }, {
-        key: 'add',
+        key: "add",
         value: function add(obj) {
             // only store object's position, to save space / prevent unnecessary references
             if (obj && obj.position) {
@@ -29855,7 +30102,7 @@ var RepeatGroup = function () {
         // Reset all groups for this tile
 
     }], [{
-        key: 'clear',
+        key: "clear",
         value: function clear(tile) {
             this.groups[tile] = {};
         }
@@ -29863,7 +30110,7 @@ var RepeatGroup = function () {
         // Check an object to see if it's a repeat within its designated group
 
     }, {
-        key: 'check',
+        key: "check",
         value: function check(obj, layout, tile) {
             if (layout.repeat_distance && layout.repeat_group && this.groups[tile][layout.repeat_group]) {
                 return this.groups[tile][layout.repeat_group].check(obj);
@@ -29873,11 +30120,11 @@ var RepeatGroup = function () {
         // Add an object to its designated group
 
     }, {
-        key: 'add',
+        key: "add",
         value: function add(obj, layout, tile) {
             if (layout.repeat_distance && layout.repeat_group) {
                 if (this.groups[tile][layout.repeat_group] == null) {
-                    this.groups[tile][layout.repeat_group] = new RepeatGroup(layout.repeat_group, layout.repeat_distance, RepeatGroup.max_repeat_dist);
+                    this.groups[tile][layout.repeat_group] = new RepeatGroup(layout.repeat_group, layout.repeat_distance * layout.repeat_scale);
                 }
                 this.groups[tile][layout.repeat_group].add(obj);
             }
@@ -29893,11 +30140,7 @@ var RepeatGroup = function () {
 exports.default = RepeatGroup;
 RepeatGroup.groups = {};
 
-// Max repeat dist: for groups with a repeat dist beyond this threshold, only one label
-// will be allowed per group, e.g. set to tile size for one-label-per-tile
-RepeatGroup.max_repeat_dist = _geo2.default.tile_scale;
-
-},{"../geo":200}],221:[function(_dereq_,module,exports){
+},{}],222:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30460,7 +30703,7 @@ function extendLeaflet(options) {
     }
 }
 
-},{"./geo":200,"./scene":225,"./utils/debounce":253,"./utils/debug_settings":254,"./utils/thread":266}],222:[function(_dereq_,module,exports){
+},{"./geo":200,"./scene":226,"./utils/debounce":254,"./utils/debug_settings":255,"./utils/thread":267}],223:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -30895,7 +31138,7 @@ var SpotLight = function (_PointLight) {
 
 Light.types['spotlight'] = SpotLight;
 
-},{"./geo":200,"./gl/glsl":204,"./gl/shader_program":206,"./styles/style_parser":244,"./vector":271}],223:[function(_dereq_,module,exports){
+},{"./geo":200,"./gl/glsl":204,"./gl/shader_program":206,"./styles/style_parser":245,"./vector":272}],224:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -31058,7 +31301,7 @@ exports.default = Material;
 
 Material.block = 'material';
 
-},{"./gl/glsl":204,"./styles/style_parser":244}],224:[function(_dereq_,module,exports){
+},{"./gl/glsl":204,"./styles/style_parser":245}],225:[function(_dereq_,module,exports){
 'use strict';
 
 _dereq_('./utils/polyfills');
@@ -31222,7 +31465,7 @@ module.exports = {
     version: _version2.default
 };
 
-},{"./geo":200,"./gl/glsl":204,"./gl/shader_program":206,"./gl/texture":207,"./gl/vertex_data":210,"./labels/collision":213,"./leaflet_layer":221,"./light":222,"./material":223,"./scene":225,"./scene_worker":228,"./selection":229,"./sources/data_source":230,"./sources/geojson":231,"./sources/mvt":232,"./sources/raster":233,"./sources/topojson":234,"./styles/layer":236,"./styles/style_manager":243,"./styles/style_parser":244,"./styles/text/canvas_text":245,"./utils/debug_settings":254,"./utils/log":258,"./utils/polyfills":262,"./utils/thread":266,"./utils/utils":268,"./utils/version":269,"./utils/worker_broker":270,"./vector":271,"js-yaml":102,"jszip":138}],225:[function(_dereq_,module,exports){
+},{"./geo":200,"./gl/glsl":204,"./gl/shader_program":206,"./gl/texture":207,"./gl/vertex_data":210,"./labels/collision":213,"./leaflet_layer":222,"./light":223,"./material":224,"./scene":226,"./scene_worker":229,"./selection":230,"./sources/data_source":231,"./sources/geojson":232,"./sources/mvt":233,"./sources/raster":234,"./sources/topojson":235,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./utils/debug_settings":255,"./utils/log":259,"./utils/polyfills":263,"./utils/thread":267,"./utils/utils":269,"./utils/version":270,"./utils/worker_broker":271,"./vector":272,"js-yaml":102,"jszip":138}],226:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -31600,24 +31843,39 @@ var Scene = function () {
             return worker_url;
         }
 
-        // Update list of any custom data source scripts (if any)
+        // Update list of any custom scripts (either at scene-level or data-source-level)
 
     }, {
-        key: 'updateDataSourceScripts',
-        value: function updateDataSourceScripts() {
-            var _this2 = this,
-                _ref;
+        key: 'updateExternalScripts',
+        value: function updateExternalScripts() {
+            var prev_scripts = [].concat(_toConsumableArray(this.external_scripts || [])); // save list of previously loaded scripts
+            var scripts = [];
 
-            var prev_scripts = [].concat(_toConsumableArray(this.data_source_scripts || [])); // save list of previously loaded scripts
-            var scripts = Object.keys(this.config.sources).map(function (s) {
-                return _this2.config.sources[s].scripts;
-            }).filter(function (x) {
-                return x;
-            });
-            this.data_source_scripts = (_ref = []).concat.apply(_ref, _toConsumableArray(scripts)).sort();
+            // scene-level scripts
+            if (this.config.scene.scripts) {
+                for (var f in this.config.scene.scripts) {
+                    if (scripts.indexOf(this.config.scene.scripts[f]) === -1) {
+                        scripts.push(this.config.scene.scripts[f]);
+                    }
+                }
+            }
+
+            // data-source-level scripts
+            for (var s in this.config.sources) {
+                var source = this.config.sources[s];
+                if (source.scripts) {
+                    for (var _f in source.scripts) {
+                        if (scripts.indexOf(source.scripts[_f]) === -1) {
+                            scripts.push(source.scripts[_f]);
+                        }
+                    }
+                }
+            }
+
+            this.external_scripts = scripts;
 
             // Scripts changed?
-            return !(this.data_source_scripts.length === prev_scripts.length && this.data_source_scripts.every(function (v, i) {
+            return !(this.external_scripts.length === prev_scripts.length && this.external_scripts.every(function (v, i) {
                 return v === prev_scripts[i];
             }));
         }
@@ -31628,7 +31886,7 @@ var Scene = function () {
         key: 'createWorkers',
         value: function createWorkers() {
             // Reset old workers (if any) if we need to re-instantiate with new external scripts
-            if (this.updateDataSourceScripts()) {
+            if (this.updateExternalScripts()) {
                 this.destroyWorkers();
             }
 
@@ -31643,7 +31901,7 @@ var Scene = function () {
     }, {
         key: 'makeWorkers',
         value: function makeWorkers(url) {
-            var _this3 = this;
+            var _this2 = this;
 
             // Let VertexElements know if 32 bit indices for element arrays are available
             var has_element_index_uint = this.gl.getExtension("OES_element_index_uint") ? true : false;
@@ -31653,13 +31911,13 @@ var Scene = function () {
 
             var _loop = function _loop(id) {
                 var worker = new Worker(url);
-                _this3.workers[id] = worker;
+                _this2.workers[id] = worker;
 
                 _worker_broker2.default.addWorker(worker);
 
                 (0, _log2.default)('debug', 'Scene.makeWorkers: initializing worker ' + id);
                 var _id = id;
-                queue.push(_worker_broker2.default.postMessage(worker, 'self.init', _this3.id, id, _this3.num_workers, _this3.log_level, _utils2.default.device_pixel_ratio, has_element_index_uint, _this3.data_source_scripts).then(function (id) {
+                queue.push(_worker_broker2.default.postMessage(worker, 'self.init', _this2.id, id, _this2.num_workers, _this2.log_level, _utils2.default.device_pixel_ratio, has_element_index_uint, _this2.external_scripts).then(function (id) {
                     (0, _log2.default)('debug', 'Scene.makeWorkers: initialized worker ' + id);
                     return id;
                 }, function (error) {
@@ -31674,7 +31932,7 @@ var Scene = function () {
 
             this.next_worker = 0;
             return Promise.all(queue).then(function () {
-                _log2.default.setWorkers(_this3.workers);
+                _log2.default.setWorkers(_this2.workers);
 
                 // Free memory after worker initialization
                 URLs.revokeObjectURL(url);
@@ -31683,6 +31941,7 @@ var Scene = function () {
     }, {
         key: 'destroyWorkers',
         value: function destroyWorkers() {
+            this.selection = null; // selection needs to be re-initialized when workers are
             if (Array.isArray(this.workers)) {
                 _log2.default.setWorkers(null);
                 this.workers.forEach(function (worker) {
@@ -31708,13 +31967,13 @@ var Scene = function () {
     }, {
         key: 'updateDevicePixelRatio',
         value: function updateDevicePixelRatio() {
-            var _this4 = this;
+            var _this3 = this;
 
             if (_utils2.default.updateDevicePixelRatio()) {
                 _worker_broker2.default.postMessage(this.workers, 'self.updateDevicePixelRatio', _utils2.default.device_pixel_ratio).then(function () {
-                    return _this4.rebuild();
+                    return _this3.rebuild();
                 }).then(function () {
-                    return _this4.resizeMap(_this4.view.size.css.width, _this4.view.size.css.height);
+                    return _this3.resizeMap(_this3.view.size.css.width, _this3.view.size.css.height);
                 });
             }
         }
@@ -31778,11 +32037,11 @@ var Scene = function () {
     }, {
         key: 'setupRenderLoop',
         value: function setupRenderLoop() {
-            var _this5 = this;
+            var _this4 = this;
 
             if (!this.render_loop_active) {
                 setTimeout(function () {
-                    _this5.renderLoop();
+                    _this4.renderLoop();
                 }, 0); // delay start by one tick
             }
         }
@@ -31829,17 +32088,17 @@ var Scene = function () {
 
     }, {
         key: 'render',
-        value: function render(_ref2) {
-            var _this6 = this;
+        value: function render(_ref) {
+            var _this5 = this;
 
-            var main = _ref2.main,
-                selection = _ref2.selection;
+            var main = _ref.main,
+                selection = _ref.selection;
 
             var gl = this.gl;
 
             // Update styles, camera, lights
             Object.keys(this.lights).forEach(function (i) {
-                return _this6.lights[i].update();
+                return _this5.lights[i].update();
             });
 
             // Render main pass
@@ -31879,7 +32138,7 @@ var Scene = function () {
                 this.getFeatureSelectionMapSize().then(function (size) {
                     if (size) {
                         // returns undefined if previous request pending
-                        (0, _log2.default)('info', 'Scene: rendered ' + _this6.render_count + ' primitives (' + size + ' features in selection map)');
+                        (0, _log2.default)('info', 'Scene: rendered ' + _this5.render_count + ' primitives (' + size + ' features in selection map)');
                     }
                 });
             }
@@ -31894,12 +32153,12 @@ var Scene = function () {
     }, {
         key: 'renderPass',
         value: function renderPass() {
-            var _this7 = this;
+            var _this6 = this;
 
             var program_key = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'program';
 
-            var _ref3 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-                allow_blend = _ref3.allow_blend;
+            var _ref2 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+                allow_blend = _ref2.allow_blend;
 
             // optionally force alpha off (e.g. for selection pass)
             allow_blend = allow_blend == null ? true : allow_blend;
@@ -31908,7 +32167,7 @@ var Scene = function () {
 
             // Sort styles by blend order
             var styles = this.tile_manager.getActiveStyles().map(function (s) {
-                return _this7.styles[s];
+                return _this6.styles[s];
             }).filter(function (s) {
                 return s;
             }). // guard against missing styles, such as while loading a new scene
@@ -31961,7 +32220,7 @@ var Scene = function () {
     }, {
         key: 'renderStyle',
         value: function renderStyle(style_name, program_key) {
-            var _this8 = this;
+            var _this7 = this;
 
             var style = this.styles[style_name];
             var first_for_style = true;
@@ -31970,40 +32229,65 @@ var Scene = function () {
 
             // Render tile GL geometries
             var renderable_tiles = this.tile_manager.getRenderableTiles();
-            for (var t = 0; t < renderable_tiles.length; t++) {
-                var tile = renderable_tiles[t];
 
-                if (tile.meshes[style_name] == null) {
-                    continue;
-                }
+            // Mesh variants must be rendered in requested order across tiles, to prevent labels that cross
+            // tile boundaries from rendering over adjacent tile features meant to be underneath
+            var max_mesh_variant_order = Math.max.apply(Math, _toConsumableArray(renderable_tiles.map(function (t) {
+                return t.meshes[style_name] ? Math.max.apply(Math, _toConsumableArray(t.meshes[style_name].map(function (m) {
+                    return m.variant.order;
+                }))) : -1;
+            })));
 
-                // Style-specific state
-                // Only setup style if rendering for first time this frame
-                // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-                if (first_for_style === true) {
-                    first_for_style = false;
-                    program = this.setupStyle(style, program_key);
-                    if (!program) {
-                        return 0;
+            // One pass per mesh variant order (loop goes to max value +1 because 0 is a valid order value)
+
+            var _loop2 = function _loop2(mo) {
+                for (var t = 0; t < renderable_tiles.length; t++) {
+                    var tile = renderable_tiles[t];
+
+                    if (tile.meshes[style_name] == null) {
+                        continue;
+                    }
+
+                    // Skip proxy tiles if new tiles have finished loading this style
+                    if (!tile.shouldProxyForStyle(style_name)) {
+                        // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
+                        continue;
+                    }
+
+                    // Render current mesh variant for current style for current tile
+                    var mesh = tile.meshes[style_name].filter(function (m) {
+                        return m.variant.order === mo;
+                    })[0]; // find mesh by variant order
+                    if (mesh) {
+                        // Style-specific state
+                        // Only setup style if rendering for first time this frame
+                        // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+                        if (first_for_style === true) {
+                            first_for_style = false;
+                            program = _this7.setupStyle(style, program_key);
+                            if (!program) {
+                                return {
+                                    v: 0
+                                };
+                            }
+                        }
+
+                        // Tile-specific state
+                        _this7.view.setupTile(tile, program);
+
+                        // Render this mesh variant
+                        if (style.render(mesh)) {
+                            _this7.requestRedraw();
+                        }
+                        render_count += mesh.geometry_count;
                     }
                 }
+            };
 
-                // Skip proxy tiles if new tiles have finished loading this style
-                if (!tile.shouldProxyForStyle(style_name)) {
-                    // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
-                    continue;
-                }
+            for (var mo = 0; mo < max_mesh_variant_order + 1; mo++) {
+                var _ret2 = _loop2(mo);
 
-                // Tile-specific state
-                this.view.setupTile(tile, program);
-
-                // Render tile
-                tile.meshes[style_name].forEach(function (mesh) {
-                    if (style.render(mesh)) {
-                        _this8.requestRedraw();
-                    }
-                    render_count += mesh.geometry_count;
-                });
+                if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
             }
 
             return render_count;
@@ -32051,11 +32335,11 @@ var Scene = function () {
     }, {
         key: 'setRenderState',
         value: function setRenderState() {
-            var _ref4 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                depth_test = _ref4.depth_test,
-                depth_write = _ref4.depth_write,
-                cull_face = _ref4.cull_face,
-                blend = _ref4.blend;
+            var _ref3 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                depth_test = _ref3.depth_test,
+                depth_write = _ref3.depth_write,
+                cull_face = _ref3.cull_face,
+                blend = _ref3.blend;
 
             if (!this.initialized) {
                 return;
@@ -32118,8 +32402,8 @@ var Scene = function () {
     }, {
         key: 'getFeatureAt',
         value: function getFeatureAt(pixel) {
-            var _ref5 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-                radius = _ref5.radius;
+            var _ref4 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+                radius = _ref4.radius;
 
             if (!this.initialized) {
                 (0, _log2.default)('debug', "Scene.getFeatureAt() called before scene was initialized");
@@ -32153,16 +32437,16 @@ var Scene = function () {
     }, {
         key: 'queryFeatures',
         value: function queryFeatures() {
-            var _ref6 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                filter = _ref6.filter,
-                _ref6$unique = _ref6.unique,
-                unique = _ref6$unique === undefined ? true : _ref6$unique,
-                _ref6$group_by = _ref6.group_by,
-                group_by = _ref6$group_by === undefined ? null : _ref6$group_by,
-                _ref6$visible = _ref6.visible,
-                visible = _ref6$visible === undefined ? null : _ref6$visible,
-                _ref6$geometry = _ref6.geometry,
-                geometry = _ref6$geometry === undefined ? false : _ref6$geometry;
+            var _ref5 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                filter = _ref5.filter,
+                _ref5$unique = _ref5.unique,
+                unique = _ref5$unique === undefined ? true : _ref5$unique,
+                _ref5$group_by = _ref5.group_by,
+                group_by = _ref5$group_by === undefined ? null : _ref5$group_by,
+                _ref5$visible = _ref5.visible,
+                visible = _ref5$visible === undefined ? null : _ref5$visible,
+                _ref5$geometry = _ref5.geometry,
+                geometry = _ref5$geometry === undefined ? false : _ref5$geometry;
 
             filter = _utils2.default.serializeWithFunctions(filter);
             var tile_keys = this.tile_manager.getRenderableTiles().map(function (t) {
@@ -32217,71 +32501,73 @@ var Scene = function () {
     }, {
         key: 'rebuild',
         value: function rebuild() {
-            var _this9 = this;
+            var _this8 = this;
 
-            var _ref7 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref7$new_generation = _ref7.new_generation,
-                new_generation = _ref7$new_generation === undefined ? true : _ref7$new_generation,
-                _ref7$sources = _ref7.sources,
-                sources = _ref7$sources === undefined ? null : _ref7$sources,
-                serialize_funcs = _ref7.serialize_funcs,
-                _ref7$profile = _ref7.profile,
-                profile = _ref7$profile === undefined ? false : _ref7$profile,
-                _ref7$fade_in = _ref7.fade_in,
-                fade_in = _ref7$fade_in === undefined ? false : _ref7$fade_in;
+            var _ref6 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref6$initial = _ref6.initial,
+                initial = _ref6$initial === undefined ? false : _ref6$initial,
+                _ref6$new_generation = _ref6.new_generation,
+                new_generation = _ref6$new_generation === undefined ? true : _ref6$new_generation,
+                _ref6$sources = _ref6.sources,
+                sources = _ref6$sources === undefined ? null : _ref6$sources,
+                serialize_funcs = _ref6.serialize_funcs,
+                _ref6$profile = _ref6.profile,
+                profile = _ref6$profile === undefined ? false : _ref6$profile,
+                _ref6$fade_in = _ref6.fade_in,
+                fade_in = _ref6$fade_in === undefined ? false : _ref6$fade_in;
 
             return new Promise(function (resolve, reject) {
                 // Skip rebuild if already in progress
-                if (_this9.building) {
+                if (_this8.building) {
                     // Queue up to one rebuild call at a time, only save last request
-                    if (_this9.building.queued && _this9.building.queued.reject) {
+                    if (_this8.building.queued && _this8.building.queued.reject) {
                         // notify previous request that it did not complete
                         (0, _log2.default)('debug', 'Scene.rebuild: request superceded by a newer call');
-                        _this9.building.queued.resolve(false); // false flag indicates rebuild request was superceded
+                        _this8.building.queued.resolve(false); // false flag indicates rebuild request was superceded
                     }
 
                     // Save queued request
-                    var options = { new_generation: new_generation, sources: sources, serialize_funcs: serialize_funcs, profile: profile, fade_in: fade_in };
-                    _this9.building.queued = { resolve: resolve, reject: reject, options: options };
+                    var options = { initial: initial, new_generation: new_generation, sources: sources, serialize_funcs: serialize_funcs, profile: profile, fade_in: fade_in };
+                    _this8.building.queued = { resolve: resolve, reject: reject, options: options };
                     (0, _log2.default)('trace', 'Scene.rebuild(): queuing request');
                     return;
                 }
 
                 // Track tile build state
-                _this9.building = { resolve: resolve, reject: reject };
+                _this8.building = { resolve: resolve, reject: reject, initial: initial };
 
                 // Profiling
                 if (profile) {
-                    _this9._profile('Scene.rebuild');
+                    _this8._profile('Scene.rebuild');
                 }
 
                 // Increment generation to ensure style/tile building stay in sync
                 // (skipped if calling function already incremented)
                 if (new_generation) {
-                    _this9.generation = ++Scene.generation;
-                    for (var style in _this9.styles) {
-                        _this9.styles[style].setGeneration(_this9.generation);
+                    _this8.generation = ++Scene.generation;
+                    for (var style in _this8.styles) {
+                        _this8.styles[style].setGeneration(_this8.generation);
                     }
                 }
 
                 // Update config (in case JS objects were manipulated directly)
-                _this9.syncConfigToWorker({ serialize_funcs: serialize_funcs });
-                _this9.resetFeatureSelection(sources);
-                _this9.resetTime();
+                _this8.syncConfigToWorker({ serialize_funcs: serialize_funcs });
+                _this8.resetFeatureSelection(sources);
+                _this8.resetTime();
 
                 // Rebuild visible tiles
-                _this9.tile_manager.pruneToVisibleTiles();
-                _this9.tile_manager.forEachTile(function (tile) {
+                _this8.tile_manager.pruneToVisibleTiles();
+                _this8.tile_manager.forEachTile(function (tile) {
                     if (!sources || sources.indexOf(tile.source.name) > -1) {
-                        _this9.tile_manager.buildTile(tile, { fade_in: fade_in });
+                        _this8.tile_manager.buildTile(tile, { fade_in: fade_in });
                     }
                 });
-                _this9.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
-                _this9.tile_manager.checkBuildQueue(); // resolve immediately if no tiles to build
+                _this8.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
+                _this8.tile_manager.checkBuildQueue(); // resolve immediately if no tiles to build
             }).then(function () {
                 // Profiling
                 if (profile) {
-                    _this9._profileEnd('Scene.rebuild');
+                    _this8._profileEnd('Scene.rebuild');
                 }
             });
         }
@@ -32310,6 +32596,8 @@ var Scene = function () {
                 if (queued) {
                     (0, _log2.default)('debug', 'Scene: starting queued rebuild() request');
                     this.rebuild(queued.options).then(queued.resolve, queued.reject);
+                } else {
+                    this.tile_manager.updateLabels(); // refresh label if nothing to rebuild
                 }
             }
         }
@@ -32322,13 +32610,13 @@ var Scene = function () {
     }, {
         key: 'loadScene',
         value: function loadScene() {
-            var _this10 = this;
+            var _this9 = this;
 
             var config_source = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
 
-            var _ref8 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-                base_path = _ref8.base_path,
-                file_type = _ref8.file_type;
+            var _ref7 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+                base_path = _ref7.base_path,
+                file_type = _ref7.file_type;
 
             this.config_source = config_source || this.config_source;
             this.config_globals_applied = [];
@@ -32343,13 +32631,13 @@ var Scene = function () {
             // TODO: schedule for deprecation
             this.config_path = this.base_path;
 
-            return _scene_loader2.default.loadScene(this.config_source, { path: this.base_path, type: file_type }).then(function (_ref9) {
-                var config = _ref9.config,
-                    bundle = _ref9.bundle;
+            return _scene_loader2.default.loadScene(this.config_source, { path: this.base_path, type: file_type }).then(function (_ref8) {
+                var config = _ref8.config,
+                    bundle = _ref8.bundle;
 
-                _this10.config = config;
-                _this10.config_bundle = bundle;
-                return _this10.config;
+                _this9.config = config;
+                _this9.config_bundle = bundle;
+                return _this9.config;
             });
         }
 
@@ -32393,7 +32681,7 @@ var Scene = function () {
     }, {
         key: 'createDataSources',
         value: function createDataSources() {
-            var _this11 = this;
+            var _this10 = this;
 
             var reset = []; // sources to reset
             var prev_source_names = Object.keys(this.sources);
@@ -32424,8 +32712,8 @@ var Scene = function () {
 
             // Sources that were removed
             prev_source_names.forEach(function (s) {
-                if (!_this11.config.sources[s]) {
-                    delete _this11.sources[s]; // TODO: remove from workers too?
+                if (!_this10.config.sources[s]) {
+                    delete _this10.sources[s]; // TODO: remove from workers too?
                     reset.push(s);
                 }
             });
@@ -32452,10 +32740,10 @@ var Scene = function () {
     }, {
         key: 'loadTextures',
         value: function loadTextures() {
-            var _this12 = this;
+            var _this11 = this;
 
             return _texture2.default.createFromObject(this.gl, this.config.textures).then(function () {
-                return _texture2.default.createDefault(_this12.gl);
+                return _texture2.default.createDefault(_this11.gl);
             }); // create a 'default' texture for placeholders
         }
 
@@ -32552,13 +32840,13 @@ var Scene = function () {
     }, {
         key: 'setIntrospection',
         value: function setIntrospection(val) {
-            var _this13 = this;
+            var _this12 = this;
 
             if (val !== this.introspection) {
                 this.introspection = val || false;
                 this.updating++;
                 return this.updateConfig({ normalize: false }).then(function () {
-                    return _this13.updating--;
+                    return _this12.updating--;
                 });
             }
             return Promise.resolve();
@@ -32570,16 +32858,16 @@ var Scene = function () {
     }, {
         key: 'updateConfig',
         value: function updateConfig() {
-            var _ref10 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref10$load_event = _ref10.load_event,
-                load_event = _ref10$load_event === undefined ? false : _ref10$load_event,
-                _ref10$rebuild = _ref10.rebuild,
-                rebuild = _ref10$rebuild === undefined ? true : _ref10$rebuild,
-                serialize_funcs = _ref10.serialize_funcs,
-                _ref10$normalize = _ref10.normalize,
-                normalize = _ref10$normalize === undefined ? true : _ref10$normalize,
-                _ref10$fade_in = _ref10.fade_in,
-                fade_in = _ref10$fade_in === undefined ? false : _ref10$fade_in;
+            var _ref9 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref9$load_event = _ref9.load_event,
+                load_event = _ref9$load_event === undefined ? false : _ref9$load_event,
+                _ref9$rebuild = _ref9.rebuild,
+                rebuild = _ref9$rebuild === undefined ? true : _ref9$rebuild,
+                serialize_funcs = _ref9.serialize_funcs,
+                _ref9$normalize = _ref9.normalize,
+                normalize = _ref9$normalize === undefined ? true : _ref9$normalize,
+                _ref9$fade_in = _ref9.fade_in,
+                fade_in = _ref9$fade_in === undefined ? false : _ref9$fade_in;
 
             this.generation = ++Scene.generation;
             this.updating++;
@@ -32609,7 +32897,7 @@ var Scene = function () {
             this.updateStyles();
 
             // Optionally rebuild geometry
-            var done = rebuild ? this.rebuild(Object.assign({ new_generation: false, serialize_funcs: serialize_funcs, fade_in: fade_in }, (typeof rebuild === 'undefined' ? 'undefined' : _typeof(rebuild)) === 'object' && rebuild)) : this.syncConfigToWorker({ serialize_funcs: serialize_funcs }); // rebuild() also syncs config
+            var done = rebuild ? this.rebuild(Object.assign({ initial: load_event, new_generation: false, serialize_funcs: serialize_funcs, fade_in: fade_in }, (typeof rebuild === 'undefined' ? 'undefined' : _typeof(rebuild)) === 'object' && rebuild)) : this.syncConfigToWorker({ serialize_funcs: serialize_funcs }); // rebuild() also syncs config
 
             // Finish by updating bounds and re-rendering
             this.updating--;
@@ -32624,9 +32912,9 @@ var Scene = function () {
     }, {
         key: 'syncConfigToWorker',
         value: function syncConfigToWorker() {
-            var _ref11 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref11$serialize_func = _ref11.serialize_funcs,
-                serialize_funcs = _ref11$serialize_func === undefined ? true : _ref11$serialize_func;
+            var _ref10 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref10$serialize_func = _ref10.serialize_funcs,
+                serialize_funcs = _ref10$serialize_func === undefined ? true : _ref10$serialize_func;
 
             // Tell workers we're about to rebuild (so they can update styles, etc.)
             var config_serialized = serialize_funcs ? _utils2.default.serializeWithFunctions(this.config) : JSON.stringify(this.config);
@@ -32642,30 +32930,30 @@ var Scene = function () {
     }, {
         key: 'createListeners',
         value: function createListeners() {
-            var _this14 = this;
+            var _this13 = this;
 
             this.listeners = {};
 
             this.listeners.view = {
                 move: function move() {
-                    return _this14.trigger('move');
+                    return _this13.trigger('move');
                 }
             };
             this.view.subscribe(this.listeners.view);
 
             this.listeners.texture = {
                 update: function update() {
-                    return _this14.dirty = true;
+                    return _this13.dirty = true;
                 },
                 warning: function warning(data) {
-                    return _this14.trigger('warning', Object.assign({ type: 'textures' }, data));
+                    return _this13.trigger('warning', Object.assign({ type: 'textures' }, data));
                 }
             };
             _texture2.default.subscribe(this.listeners.texture);
 
             this.listeners.scene_loader = {
                 error: function error(data) {
-                    return _this14.trigger('error', Object.assign({ type: 'scene' }, data));
+                    return _this13.trigger('error', Object.assign({ type: 'scene' }, data));
                 }
             };
             _scene_loader2.default.subscribe(this.listeners.scene_loader);
@@ -32682,13 +32970,13 @@ var Scene = function () {
     }, {
         key: 'resetFeatureSelection',
         value: function resetFeatureSelection() {
-            var _this15 = this;
+            var _this14 = this;
 
             var sources = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
 
             if (!this.selection) {
                 this.selection = new _selection2.default(this.gl, this.workers, function () {
-                    return _this15.building;
+                    return _this14.building;
                 });
             } else if (this.workers) {
                 _worker_broker2.default.postMessage(this.workers, 'self.resetFeatureSelection', sources);
@@ -32700,7 +32988,7 @@ var Scene = function () {
     }, {
         key: 'getFeatureSelectionMapSize',
         value: function getFeatureSelectionMapSize() {
-            var _this16 = this;
+            var _this15 = this;
 
             if (this.fetching_selection_map) {
                 return Promise.resolve(); // return undefined if already pending
@@ -32708,7 +32996,7 @@ var Scene = function () {
             this.fetching_selection_map = true;
 
             return _worker_broker2.default.postMessage(this.workers, 'self.getFeatureSelectionMapSize').then(function (sizes) {
-                _this16.fetching_selection_map = false;
+                _this15.fetching_selection_map = false;
                 return sizes.reduce(function (a, b) {
                     return a + b;
                 });
@@ -32728,7 +33016,8 @@ var Scene = function () {
     }, {
         key: 'updateViewComplete',
         value: function updateViewComplete() {
-            if ((this.render_count_changed || this.generation !== this.last_complete_generation) && !this.tile_manager.isLoadingVisibleTiles()) {
+            if ((this.render_count_changed || this.generation !== this.last_complete_generation) && !this.tile_manager.isLoadingVisibleTiles() && this.tile_manager.allVisibleTilesLabeled()) {
+                this.tile_manager.updateLabels();
                 this.last_complete_generation = this.generation;
                 this.trigger('view_complete');
             }
@@ -32746,9 +33035,9 @@ var Scene = function () {
     }, {
         key: 'screenshot',
         value: function screenshot() {
-            var _ref12 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-                _ref12$background = _ref12.background,
-                background = _ref12$background === undefined ? 'white' : _ref12$background;
+            var _ref11 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+                _ref11$background = _ref11.background,
+                background = _ref11$background === undefined ? 'white' : _ref11$background;
 
             this.requestRedraw();
             return this.media_capture.screenshot({ background: background });
@@ -32818,7 +33107,7 @@ var Scene = function () {
                 geometryCountByStyle: function geometryCountByStyle() {
                     var counts = {};
                     scene.tile_manager.getRenderableTiles().forEach(function (tile) {
-                        var _loop2 = function _loop2(style) {
+                        var _loop3 = function _loop3(style) {
                             counts[style] = counts[style] || 0;
                             tile.meshes[style].forEach(function (mesh) {
                                 counts[style] += mesh.geometry_count;
@@ -32826,7 +33115,7 @@ var Scene = function () {
                         };
 
                         for (var style in tile.meshes) {
-                            _loop2(style);
+                            _loop3(style);
                         }
                     });
                     return counts;
@@ -32844,7 +33133,7 @@ var Scene = function () {
                 geometrySizeByStyle: function geometrySizeByStyle() {
                     var sizes = {};
                     scene.tile_manager.getRenderableTiles().forEach(function (tile) {
-                        var _loop3 = function _loop3(style) {
+                        var _loop4 = function _loop4(style) {
                             sizes[style] = sizes[style] || 0;
                             tile.meshes[style].forEach(function (mesh) {
                                 sizes[style] += mesh.buffer_size;
@@ -32852,7 +33141,7 @@ var Scene = function () {
                         };
 
                         for (var style in tile.meshes) {
-                            _loop3(style);
+                            _loop4(style);
                         }
                     });
                     return sizes;
@@ -32883,11 +33172,11 @@ var Scene = function () {
     }, {
         key: 'animated',
         get: function get() {
-            var _this17 = this;
+            var _this16 = this;
 
             // Use explicitly set scene animation flag if defined, otherwise enabled animation if any animated styles are in view
             return this.config.scene.animated !== undefined ? this.config.scene.animated : this.tile_manager.getActiveStyles().some(function (s) {
-                return _this17.styles[s].animated;
+                return _this16.styles[s].animated;
             });
         }
     }], [{
@@ -32908,7 +33197,7 @@ exports.default = Scene;
 Scene.id = 0; // unique id for a scene instance
 Scene.generation = 0; // id that is incremented each time a scene config is re-parsed
 
-},{"./gl/context":202,"./gl/render_state":205,"./gl/shader_program":206,"./gl/texture":207,"./gl/vao":208,"./light":222,"./scene_loader":227,"./selection":229,"./sources/data_source":230,"./styles/style":242,"./styles/style_manager":243,"./styles/style_parser":244,"./styles/text/canvas_text":245,"./styles/text/font_manager":246,"./tile":250,"./tile_manager":251,"./utils/debug_settings":254,"./utils/log":258,"./utils/media_capture":259,"./utils/slice":263,"./utils/subscribe":264,"./utils/task":265,"./utils/urls":267,"./utils/utils":268,"./utils/worker_broker":270,"./view":272}],226:[function(_dereq_,module,exports){
+},{"./gl/context":202,"./gl/render_state":205,"./gl/shader_program":206,"./gl/texture":207,"./gl/vao":208,"./light":223,"./scene_loader":228,"./selection":230,"./sources/data_source":231,"./styles/style":243,"./styles/style_manager":244,"./styles/style_parser":245,"./styles/text/canvas_text":246,"./styles/text/font_manager":247,"./tile":251,"./tile_manager":252,"./utils/debug_settings":255,"./utils/log":259,"./utils/media_capture":260,"./utils/slice":264,"./utils/subscribe":265,"./utils/task":266,"./utils/urls":268,"./utils/utils":269,"./utils/worker_broker":271,"./view":273}],227:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33232,7 +33521,7 @@ function loadResource(source) {
     });
 }
 
-},{"./utils/urls":267,"./utils/utils":268,"js-yaml":102,"jszip":138}],227:[function(_dereq_,module,exports){
+},{"./utils/urls":268,"./utils/utils":269,"js-yaml":102,"jszip":138}],228:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33393,10 +33682,18 @@ exports.default = SceneLoader = {
     normalizeDataSource: function normalizeDataSource(source, bundle) {
         source.url = bundle.urlFor(source.url);
 
-        if (Array.isArray(source.scripts)) {
-            source.scripts = source.scripts.map(function (url) {
-                return bundle.urlFor(url);
-            });
+        if (source.scripts) {
+            // convert legacy array-style scripts to object format (script URL is used as both key and value)
+            if (Array.isArray(source.scripts)) {
+                source.scripts = source.scripts.reduce(function (val, cur) {
+                    val[cur] = cur;return val;
+                }, {});
+            }
+
+            // resolve URLs for external scripts
+            for (var s in source.scripts) {
+                source.scripts[s] = bundle.urlFor(source.scripts[s]);
+            }
         }
 
         return source;
@@ -33705,7 +34002,7 @@ function flattenProperties(obj) {
 
 (0, _subscribe2.default)(SceneLoader);
 
-},{"./gl/glsl":204,"./scene_bundle":226,"./styles/layer":236,"./utils/log":258,"./utils/merge":260,"./utils/subscribe":264,"./utils/urls":267}],228:[function(_dereq_,module,exports){
+},{"./gl/glsl":204,"./scene_bundle":227,"./styles/layer":237,"./utils/log":259,"./utils/merge":261,"./utils/subscribe":265,"./utils/urls":268}],229:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -33765,6 +34062,10 @@ var _vertex_elements = _dereq_('./gl/vertex_elements');
 
 var _vertex_elements2 = _interopRequireDefault(_vertex_elements);
 
+var _label = _dereq_('./labels/label');
+
+var _label2 = _interopRequireDefault(_label);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } /*jshint worker: true*/
@@ -33795,13 +34096,14 @@ if (_thread2.default.is_worker) {
             _vertex_elements2.default.setElementIndexUint(has_element_index_unit);
             _selection2.default.setPrefix(self._worker_id);
             self.style_manager = new _style_manager.StyleManager();
-            self.importCustomScripts(external_scripts);
+            self.importExternalScripts(external_scripts);
+            _label2.default.id_prefix = worker_id;
             return worker_id;
         },
 
 
-        // Import custom scripts
-        importCustomScripts: function importCustomScripts(scripts) {
+        // Import custom external scripts
+        importExternalScripts: function importExternalScripts(scripts) {
             if (scripts.length === 0) {
                 return;
             }
@@ -34067,7 +34369,7 @@ if (_thread2.default.is_worker) {
                         if (geometry === true) {
                             // Transform back to lat lng (copy geometry to avoid local modification)
                             subset.geometry = _geo2.default.copyGeometry(feature.geometry);
-                            _geo2.default.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min, tile.max);
+                            _geo2.default.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min);
                         }
 
                         features.push(subset);
@@ -34144,7 +34446,7 @@ if (_thread2.default.is_worker) {
     _worker_broker2.default.addTarget('self', self);
 }
 
-},{"./geo":200,"./gl/texture":207,"./gl/vertex_elements":211,"./selection":229,"./sources/data_source":230,"./styles/filter":235,"./styles/layer":236,"./styles/style_manager":243,"./styles/style_parser":244,"./tile":250,"./utils/debug_settings":254,"./utils/log":258,"./utils/thread":266,"./utils/utils":268,"./utils/worker_broker":270}],229:[function(_dereq_,module,exports){
+},{"./geo":200,"./gl/texture":207,"./gl/vertex_elements":211,"./labels/label":215,"./selection":230,"./sources/data_source":231,"./styles/filter":236,"./styles/layer":237,"./styles/style_manager":244,"./styles/style_parser":245,"./tile":251,"./utils/debug_settings":255,"./utils/log":259,"./utils/thread":267,"./utils/utils":269,"./utils/worker_broker":271}],230:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -34566,7 +34868,7 @@ FeatureSelection.map_entry = 0;
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];
 
-},{"./gl/texture":207,"./utils/log":258,"./utils/worker_broker":270}],230:[function(_dereq_,module,exports){
+},{"./gl/texture":207,"./utils/log":259,"./utils/worker_broker":271}],231:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -34631,6 +34933,12 @@ var DataSource = function () {
                     _this.rasters.push(r);
                 }
             });
+        }
+
+        // Optional function to preprocess source data
+        this.preprocess = config.preprocess;
+        if (typeof this.preprocess === 'function') {
+            this.preprocess.bind(this);
         }
 
         // Optional function to transform source data
@@ -34918,9 +35226,19 @@ var NetworkSource = exports.NetworkSource = function (_DataSource) {
                     dest.debug.response_size = body.length || body.byteLength;
                     dest.debug.network = +new Date() - dest.debug.network;
                     dest.debug.parsing = +new Date();
-                    _this4.parseSourceData(dest, source_data, body);
-                    dest.debug.parsing = +new Date() - dest.debug.parsing;
-                    resolve(dest);
+
+                    // Apply optional data transform on raw network response
+                    if (typeof _this4.preprocess === 'function') {
+                        body = _this4.preprocess(body);
+                    }
+
+                    // Return data immediately, or after user-returned promise resolves
+                    body = body instanceof Promise ? body : Promise.resolve(body);
+                    body.then(function (body) {
+                        _this4.parseSourceData(dest, source_data, body);
+                        dest.debug.parsing = +new Date() - dest.debug.parsing;
+                        resolve(dest);
+                    });
                 }).catch(function (error) {
                     source_data.error = error.stack;
                     resolve(dest); // resolve request but pass along error
@@ -35067,7 +35385,7 @@ var NetworkTileSource = exports.NetworkTileSource = function (_NetworkSource) {
     return NetworkTileSource;
 }(NetworkSource);
 
-},{"../geo":200,"../utils/errors":255,"../utils/log":258,"../utils/urls":267,"../utils/utils":268}],231:[function(_dereq_,module,exports){
+},{"../geo":200,"../utils/errors":256,"../utils/log":259,"../utils/urls":268,"../utils/utils":269}],232:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35228,8 +35546,8 @@ var GeoJSONSource = exports.GeoJSONSource = function (_NetworkSource) {
     }, {
         key: 'parseSourceData',
         value: function parseSourceData(tile, source, response) {
-            var parsed_response = JSON.parse(response);
-            var layers = this.getLayers(parsed_response);
+            var data = typeof response === 'string' ? JSON.parse(response) : response;
+            var layers = this.getLayers(data);
             source.layers = this.preprocessLayers(layers);
         }
     }, {
@@ -35366,7 +35684,7 @@ var GeoJSONTileSource = exports.GeoJSONTileSource = function (_NetworkTileSource
     _createClass(GeoJSONTileSource, [{
         key: 'parseSourceData',
         value: function parseSourceData(tile, source, response) {
-            var data = JSON.parse(response);
+            var data = typeof response === 'string' ? JSON.parse(response) : response;
             this.prepareGeoJSON(data, tile, source);
         }
     }, {
@@ -35416,7 +35734,7 @@ function getCentroidFeatureForPolygon(coordinates, properties, newProperties) {
     };
 }
 
-},{"../geo":200,"../utils/log":258,"./data_source":230,"./mvt":232,"geojson-vt":83}],232:[function(_dereq_,module,exports){
+},{"../geo":200,"../utils/log":259,"./data_source":231,"./mvt":233,"geojson-vt":83}],233:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35585,7 +35903,7 @@ function decodeMultiPolygon(geom) {
 
 _data_source2.default.register(MVTSource, 'MVT');
 
-},{"../geo":200,"./data_source":230,"@mapbox/vector-tile":2,"pbf":186}],233:[function(_dereq_,module,exports){
+},{"../geo":200,"./data_source":231,"@mapbox/vector-tile":2,"pbf":186}],234:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35683,7 +36001,7 @@ var RasterTileSource = exports.RasterTileSource = function (_NetworkTileSource) 
 
 _data_source2.default.register(RasterTileSource, 'Raster');
 
-},{"../geo":200,"../tile":250,"./data_source":230}],234:[function(_dereq_,module,exports){
+},{"../geo":200,"../tile":251,"./data_source":231}],235:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35732,7 +36050,7 @@ var TopoJSONSource = exports.TopoJSONSource = function (_GeoJSONSource) {
     _createClass(TopoJSONSource, [{
         key: 'parseSourceData',
         value: function parseSourceData(tile, source, response) {
-            var data = JSON.parse(response);
+            var data = typeof response === 'string' ? JSON.parse(response) : response;
             data = this.toGeoJSON(data);
 
             var layers = this.getLayers(data);
@@ -35800,7 +36118,7 @@ var TopoJSONTileSource = exports.TopoJSONTileSource = function (_GeoJSONTileSour
     _createClass(TopoJSONTileSource, [{
         key: 'parseSourceData',
         value: function parseSourceData(tile, source, response) {
-            var data = JSON.parse(response);
+            var data = typeof response === 'string' ? JSON.parse(response) : response;
             data = TopoJSONSource.prototype.toGeoJSON(data);
             this.prepareGeoJSON(data, tile, source);
         }
@@ -35811,7 +36129,7 @@ var TopoJSONTileSource = exports.TopoJSONTileSource = function (_GeoJSONTileSour
 
 _data_source2.default.register(TopoJSONTileSource, 'TopoJSON'); // prefered shorter name
 
-},{"./data_source":230,"./geojson":231,"topojson-client":190}],235:[function(_dereq_,module,exports){
+},{"./data_source":231,"./geojson":232,"topojson-client":190}],236:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35968,7 +36286,7 @@ function buildFilter(filter, options) {
     return new Function('context', 'return ' + filterToString(parseFilter(filter, options)) + ';');
 }
 
-},{}],236:[function(_dereq_,module,exports){
+},{}],237:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -36581,7 +36899,7 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
     return matched;
 }
 
-},{"../utils/log":258,"../utils/merge":260,"../utils/utils":268,"./filter":235,"./style_parser":244}],237:[function(_dereq_,module,exports){
+},{"../utils/log":259,"../utils/merge":261,"../utils/utils":269,"./filter":236,"./style_parser":245}],238:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -36632,7 +36950,7 @@ function renderDashArray(pattern) {
     return { pixels: pixels, length: length };
 }
 
-},{}],238:[function(_dereq_,module,exports){
+},{}],239:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37230,7 +37548,7 @@ Object.assign(Lines, {
     }
 });
 
-},{"../../builders/polylines":198,"../../geo":200,"../../gl/constants":201,"../../gl/texture":207,"../../gl/vertex_layout":212,"../../utils/hash":257,"../../utils/log":258,"../../utils/worker_broker":270,"../polygons/polygons":240,"../style":242,"../style_parser":244,"./dasharray":237}],239:[function(_dereq_,module,exports){
+},{"../../builders/polylines":198,"../../geo":200,"../../gl/constants":201,"../../gl/texture":207,"../../gl/vertex_layout":212,"../../utils/hash":258,"../../utils/log":259,"../../utils/worker_broker":271,"../polygons/polygons":241,"../style":243,"../style_parser":245,"./dasharray":238}],240:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37300,8 +37618,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 
-var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            #ifdef TANGRAM_FADE_ON_ZOOM_IN\n                v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_IN_RATE - TANGRAM_FADE_ON_ZOOM_IN_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n            #endif\n\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
-var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n            // Distance to this fragment from the center.\n            float l = length(v_texcoord);\n            // Mask of outermost circle, either outline or point boundary.\n            float outer_alpha  = _tangram_antialias(l, 1.);\n            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+var shaderSrc_pointsVertex = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var shaderSrc_pointsFragment = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n            // Distance to this fragment from the center.\n            float l = length(v_texcoord);\n            // Mask of outermost circle, either outline or point boundary.\n            float outer_alpha  = _tangram_antialias(l, 1.);\n            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var PLACEMENT = _label_point2.default.PLACEMENT;
 
@@ -37397,6 +37715,11 @@ Object.assign(Points, {
         // Snap points to pixel grid after panning stop
         if (_debug_settings2.default.suppress_label_snap_animation !== true) {
             this.defines.TANGRAM_VIEW_PAN_SNAP_RATE = 1 / _view.VIEW_PAN_SNAP_TIME; // inverse time in seconds
+        }
+
+        // Show hidden labels for debugging
+        if (_debug_settings2.default.show_hidden_labels === true) {
+            this.defines.TANGRAM_SHOW_HIDDEN_LABELS = true;
         }
     },
     reset: function reset() {
@@ -37611,6 +37934,7 @@ Object.assign(Points, {
             point_objs.forEach(function (q) {
                 _this.feature_style = q.style;
                 _this.feature_style.label = q.label;
+                _this.feature_style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
                 _style.Style.addFeature.call(_this, q.feature, q.draw, q.context);
             });
         }),
@@ -37632,6 +37956,7 @@ Object.assign(Points, {
                     // setup styling object expected by Style class
                     var style = _this.feature_style;
                     style.label = q.label;
+                    style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
                     style.size = text_info.size.logical_size;
                     style.angle = 0; // text attached to point is always upright
                     style.texcoords = text_info.align[q.label.align].texcoords;
@@ -37686,6 +38011,9 @@ Object.assign(Points, {
 
         // Repeat rules - no repeat limitation for points by default
         draw.repeat_distance = _style_parser2.default.createPropertyCache(draw.repeat_distance, _style_parser2.default.parseNumber);
+        if (draw.repeat_group == null) {
+            draw.repeat_group = draw.layers.join('-');
+        }
 
         // Placement strategies
         draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
@@ -37734,12 +38062,6 @@ Object.assign(Points, {
         // collision flag
         layout.collide = draw.collide === false ? false : true;
 
-        // tile boundary handling
-        layout.cull_from_tile = draw.cull_from_tile != null ? draw.cull_from_tile : false;
-
-        // points should not move into tile if over tile boundary
-        layout.move_into_tile = false;
-
         // label anchors (point labels only)
         // label position will be adjusted in the given direction, relative to its original point
         // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
@@ -37753,13 +38075,12 @@ Object.assign(Points, {
         layout.repeat_distance = _style_parser2.default.evalCachedProperty(draw.repeat_distance, context);
         if (layout.repeat_distance) {
             layout.repeat_distance *= layout.units_per_pixel;
+            layout.repeat_scale = 1; // initial repeat pass in tile with full scale
 
             if (typeof draw.repeat_group === 'function') {
-                layout.repeat_group = draw.repeat_group(context);
-            } else if (typeof draw.repeat_group === 'string') {
-                layout.repeat_group = draw.repeat_group;
+                layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
             } else {
-                layout.repeat_group = draw.key; // default to unique set of matching layers
+                layout.repeat_group = draw.repeat_group; // pre-computer repeat group
             }
         }
 
@@ -37871,8 +38192,9 @@ Object.assign(Points, {
         // layer order - w coord of 'position' attribute (for packing efficiency)
         this.fillVertexTemplate(vertex_layout, 'a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
 
-        // scaling vector - (x, y) components per pixel, z = angle
-        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 3 }); // NB: w coord is currently unused, change size: 4 if needed
+        // scaling vector - (x, y) components per pixel, z = angle, w = show/hide
+        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 4 });
+        this.fillVertexTemplate(vertex_layout, 'a_shape', style.label.layout.collide ? 0 : 1, { size: 1, offset: 3 }); // set initial label hide/show state
 
         // texture coords
         this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, { size: 2 });
@@ -37932,18 +38254,18 @@ Object.assign(Points, {
     build: function build(style, mesh, context) {
         var label = style.label;
         if (label.type === 'curved') {
-            return this.buildArticulatedLabel(label, style, mesh, context);
+            return this.buildCurvedLabel(label, style, mesh, context);
         } else {
-            return this.buildLabel(label, style, mesh, context);
+            return this.buildStraightLabel(label, style, mesh, context);
         }
     },
-    buildLabel: function buildLabel(label, style, mesh, context) {
+    buildStraightLabel: function buildStraightLabel(label, style, mesh, context) {
         var vertex_template = this.makeVertexTemplate(style, mesh);
         var angle = label.angle || style.angle;
 
         var size = void 0,
             texcoords = void 0;
-        if (label.type) {
+        if (label.type !== 'point') {
             size = style.size[label.type];
             texcoords = style.texcoords[label.type].texcoord;
         } else {
@@ -37971,7 +38293,7 @@ Object.assign(Points, {
 
         // TODO: instead of passing null, pass arrays with fingerprintable values
         // This value is checked in the shader to determine whether to apply curving logic
-        return this.buildQuad([label.position], // position
+        var geom_count = this.buildQuad([label.position], // position
         size, // size in pixels
         angle, // angle in radians
         null, // placeholder for multiple angles
@@ -37982,8 +38304,12 @@ Object.assign(Points, {
         false, // if curved boolean
         mesh.vertex_data, vertex_template // VBO and data for current vertex
         );
+
+        // track label mesh buffer data
+        var linked = style.linked && style.linked.label.id;
+        this.trackLabel(label, linked, mesh, geom_count, context);
     },
-    buildArticulatedLabel: function buildArticulatedLabel(label, style, mesh, context) {
+    buildCurvedLabel: function buildCurvedLabel(label, style, mesh, context) {
         var vertex_template = this.makeVertexTemplate(style, mesh);
         var angle = label.angle;
         var geom_count = 0;
@@ -38013,7 +38339,7 @@ Object.assign(Points, {
             var offsets = label.offsets[i];
             var pre_angles = label.pre_angles[i];
 
-            geom_count += this.buildQuad([position], // position
+            var seg_count = this.buildQuad([position], // position
             size, // size in pixels
             angle, // angle in degrees
             angles, // angles per segment
@@ -38024,6 +38350,11 @@ Object.assign(Points, {
             true, // if curved
             mesh_data.vertex_data, vertex_template // VBO and data for current vertex
             );
+            geom_count += seg_count;
+
+            // track label mesh buffer data
+            var linked = style.linked && style.linked.label.id;
+            this.trackLabel(label, linked, mesh, seg_count, context);
         }
 
         // pass for fill
@@ -38048,7 +38379,7 @@ Object.assign(Points, {
             var _offsets = label.offsets[_i5];
             var _pre_angles = label.pre_angles[_i5];
 
-            geom_count += this.buildQuad([_position], // position
+            var _seg_count = this.buildQuad([_position], // position
             _size, // size in pixels
             angle, // angle in degrees
             _angles, // angles per segment
@@ -38059,9 +38390,39 @@ Object.assign(Points, {
             true, // if curved
             _mesh_data.vertex_data, vertex_template // VBO and data for current vertex
             );
+            geom_count += _seg_count;
+
+            // track label mesh buffer data
+            var _linked = style.linked && style.linked.label.id;
+            this.trackLabel(label, _linked, mesh, _seg_count, context);
         }
 
         return geom_count;
+    },
+
+
+    // track mesh data for label (byte ranges occupied by label in VBO)
+    trackLabel: function trackLabel(label, linked, mesh, geom_count, context) {
+        if (label.layout.collide) {
+            mesh.labels = mesh.labels || {};
+            mesh.labels[label.id] = mesh.labels[label.id] || {
+                container: {
+                    label: label.toJSON(),
+                    linked: linked
+                },
+                ranges: []
+                // debug: { // uncomment and pass in context for debugging
+                //     id: context.feature.properties.id,
+                //     name: context.feature.properties.name,
+                //     props: JSON.stringify(context.feature.properties),
+                //     point_type: mesh.uniforms.u_point_type
+                // }
+            };
+
+            var vertex_count = geom_count * 2; // geom count is triangles: 2 triangles = 1 quad = 4 vertices
+            var start = mesh.vertex_data.offset - mesh.vertex_data.stride * vertex_count; // start offset of byte range
+            mesh.labels[label.id].ranges.push([start, vertex_count]);
+        }
     },
 
 
@@ -38107,7 +38468,7 @@ Object.assign(Points, {
     }
 });
 
-},{"../../builders/points":196,"../../geo":200,"../../gl/constants":201,"../../gl/texture":207,"../../gl/vertex_layout":212,"../../labels/collision":213,"../../labels/label_point":217,"../../labels/point_placement":219,"../../utils/debug_settings":254,"../../utils/log":258,"../../vector":271,"../../view":272,"../style":242,"../style_parser":244,"../text/text_labels":248}],240:[function(_dereq_,module,exports){
+},{"../../builders/points":196,"../../geo":200,"../../gl/constants":201,"../../gl/texture":207,"../../gl/vertex_layout":212,"../../labels/collision":213,"../../labels/label_point":217,"../../labels/point_placement":220,"../../utils/debug_settings":255,"../../utils/log":259,"../../vector":272,"../../view":273,"../style":243,"../style_parser":245,"../text/text_labels":249}],241:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38281,7 +38642,7 @@ Object.assign(Polygons, {
     }
 });
 
-},{"../../builders/polygons":197,"../../geo":200,"../../gl/constants":201,"../../gl/vertex_layout":212,"../style":242,"../style_parser":244}],241:[function(_dereq_,module,exports){
+},{"../../builders/polygons":197,"../../geo":200,"../../gl/constants":201,"../../gl/vertex_layout":212,"../style":243,"../style_parser":245}],242:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38321,7 +38682,7 @@ Object.assign(RasterStyle, {
     }
 });
 
-},{"../polygons/polygons":240,"../style_parser":244}],242:[function(_dereq_,module,exports){
+},{"../polygons/polygons":241,"../style_parser":245}],243:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39134,7 +39495,7 @@ function addLayerDebugEntry(target, layer, faeture_count, geom_count, styles, ba
     }
 }
 
-},{"../gl/shader_program":206,"../gl/texture":207,"../gl/vbo_mesh":209,"../light":222,"../material":223,"../selection":229,"../sources/raster":233,"../utils/debug_settings":254,"../utils/log":258,"../utils/merge":260,"../utils/thread":266,"../utils/worker_broker":270,"./style_parser":244}],243:[function(_dereq_,module,exports){
+},{"../gl/shader_program":206,"../gl/texture":207,"../gl/vbo_mesh":209,"../light":223,"../material":224,"../selection":230,"../sources/raster":234,"../utils/debug_settings":255,"../utils/log":259,"../utils/merge":261,"../utils/thread":267,"../utils/worker_broker":271,"./style_parser":245}],244:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39658,7 +40019,7 @@ var StyleManager = exports.StyleManager = function () {
     return StyleManager;
 }();
 
-},{"../geo":200,"../gl/shader_program":206,"../utils/log":258,"../utils/merge":260,"./lines/lines":238,"./points/points":239,"./polygons/polygons":240,"./raster/raster":241,"./text/text":247}],244:[function(_dereq_,module,exports){
+},{"../geo":200,"../gl/shader_program":206,"../utils/log":259,"../utils/merge":261,"./lines/lines":239,"./points/points":240,"./polygons/polygons":241,"./raster/raster":242,"./text/text":248}],245:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40220,7 +40581,7 @@ StyleParser.evalProperty = function (prop, context) {
     return prop;
 };
 
-},{"../geo":200,"../utils/utils":268,"csscolorparser":76}],245:[function(_dereq_,module,exports){
+},{"../geo":200,"../utils/utils":269,"csscolorparser":76}],246:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40322,8 +40683,7 @@ var CanvasText = function () {
             return _font_manager2.default.loadFonts().then(function () {
                 return _task2.default.add({
                     type: 'textSizes',
-                    target: _this,
-                    method: 'processTextSizesTask',
+                    run: _this.processTextSizesTask.bind(_this),
                     texts: texts,
                     tile_id: tile_id,
                     cursor: {
@@ -40574,9 +40934,8 @@ var CanvasText = function () {
         value: function rasterize(texts, textures, tile_id, texture_prefix, gl) {
             return _task2.default.add({
                 type: 'rasterizeLabels',
-                target: this,
-                method: 'processRasterizeTask',
-                cancel: 'cancelRasterizeTask',
+                run: this.processRasterizeTask.bind(this),
+                cancel: this.cancelRasterizeTask.bind(this),
                 pause_factor: 2, // pause 2 frames when task run past allowed time
                 user_moving_view: false, // don't run task when user is moving view
                 texts: texts,
@@ -41315,7 +41674,7 @@ var Line = function () {
     return Line;
 }();
 
-},{"../../gl/texture":207,"../../utils/debug_settings":254,"../../utils/log":258,"../../utils/task":265,"../../utils/utils":268,"../style_parser":244,"./font_manager":246}],246:[function(_dereq_,module,exports){
+},{"../../gl/texture":207,"../../utils/debug_settings":255,"../../utils/log":259,"../../utils/task":266,"../../utils/utils":269,"../style_parser":245,"./font_manager":247}],247:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41488,7 +41847,7 @@ var FontManager = {
 
 exports.default = FontManager;
 
-},{"../../utils/log":258,"../../utils/utils":268,"fontfaceobserver":79}],247:[function(_dereq_,module,exports){
+},{"../../utils/log":259,"../../utils/utils":269,"fontfaceobserver":79}],248:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41803,7 +42162,7 @@ Object.assign(TextStyle, {
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures
 
-},{"../../geo":200,"../../gl/constants":201,"../../gl/vertex_layout":212,"../../labels/collision":213,"../../labels/label_line":216,"../../labels/label_point":217,"../points/points":239,"../style":242}],248:[function(_dereq_,module,exports){
+},{"../../geo":200,"../../gl/constants":201,"../../gl/vertex_layout":212,"../../labels/collision":213,"../../labels/label_line":216,"../../labels/label_point":217,"../points/points":240,"../style":243}],249:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42156,12 +42515,6 @@ var TextLabels = exports.TextLabels = {
         // common settings w/points
         layout = this.computeLayout(layout, feature, draw, context, tile);
 
-        // tile boundary handling
-        layout.cull_from_tile = draw.cull_from_tile != null ? draw.cull_from_tile : true;
-
-        // standalone text can move into tile if specified
-        layout.move_into_tile = draw.move_into_tile != null ? draw.move_into_tile : true;
-
         // repeat rules include the text
         if (layout.repeat_distance) {
             if (repeat_group_prefix) {
@@ -42176,6 +42529,7 @@ var TextLabels = exports.TextLabels = {
         layout.align = draw.align;
 
         // used to fudge width value as text may overflow bounding box if it has italic, bold, etc style
+        // TODO rename to more generic, not italic-specific (bold)
         layout.italic = text_settings.style !== 'normal';
 
         // used to determine orientation of text if the text_source has a `left` or `right` key
@@ -42189,7 +42543,7 @@ var TextLabels = exports.TextLabels = {
     }
 };
 
-},{"../../geo":200,"../../labels/collision":213,"../../utils/log":258,"../../utils/thread":266,"../../utils/worker_broker":270,"../style_parser":244,"../text/canvas_text":245,"../text/text_settings":249}],249:[function(_dereq_,module,exports){
+},{"../../geo":200,"../../labels/collision":213,"../../utils/log":259,"../../utils/thread":267,"../../utils/worker_broker":271,"../style_parser":245,"../text/canvas_text":246,"../text/text_settings":250}],250:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42316,7 +42670,7 @@ exports.default = TextSettings = {
     }
 };
 
-},{"../../geo":200,"../../utils/utils":268,"../style_parser":244}],250:[function(_dereq_,module,exports){
+},{"../../geo":200,"../../utils/utils":269,"../style_parser":245}],251:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42372,6 +42726,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var id = 0; // unique tile id
+var build_id = 0; // id tracking order in which tiles were build
 
 var Tile = function () {
 
@@ -42396,6 +42751,7 @@ var Tile = function () {
         this.view = view;
         this.source = source;
         this.generation = null;
+        this.valid = true;
 
         this.visible = false;
         this.proxy_for = null;
@@ -42405,6 +42761,7 @@ var Tile = function () {
         this.loading = false;
         this.loaded = false;
         this.built = false;
+        this.labeled = false;
         this.error = null;
         this.debug = {};
 
@@ -42424,9 +42781,8 @@ var Tile = function () {
         this.units_per_meter_overzoom = _geo2.default.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
 
         this.meshes = {}; // renderable VBO meshes keyed by style
-        this.textures = []; // textures that the tile owns (labels, etc.)
-        this.previous_textures = []; // textures retained by the tile in the previous build generation
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
+        this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
     }
 
     _createClass(Tile, [{
@@ -42442,15 +42798,14 @@ var Tile = function () {
             }
             this.meshes = {};
 
-            this.textures.forEach(function (t) {
-                return _texture2.default.release(t);
-            });
-            this.textures = [];
-
-            this.previous_textures.forEach(function (t) {
-                return _texture2.default.release(t);
-            });
-            this.previous_textures = [];
+            if (this.pending_label_meshes) {
+                for (var _m in this.pending_label_meshes) {
+                    this.pending_label_meshes[_m].forEach(function (m) {
+                        return m.destroy();
+                    });
+                }
+            }
+            this.pending_label_meshes = null;
         }
     }, {
         key: 'destroy',
@@ -42459,6 +42814,7 @@ var Tile = function () {
             this.workerMessage('self.removeTile', this.key);
             this.freeResources();
             this.worker = null;
+            this.valid = false;
         }
     }, {
         key: 'buildAsMessage',
@@ -42502,6 +42858,7 @@ var Tile = function () {
             if (!this.loaded) {
                 this.loading = true;
                 this.built = false;
+                this.labeled = false;
             }
             return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(function (e) {
                 throw e;
@@ -42523,11 +42880,11 @@ var Tile = function () {
            for a single tile.
         */
         value: function buildMeshes(styles, progress) {
-            var _textures;
-
             if (this.error) {
                 return;
             }
+
+            this.build_id = build_id++; // record order in which tile was built
 
             // Debug
             if (progress.start) {
@@ -42536,8 +42893,7 @@ var Tile = function () {
             }
 
             // Create VBOs
-            var meshes = {},
-                textures = []; // new data to be added to tile
+            var meshes = {}; // new data to be added to tile
             var mesh_data = this.mesh_data;
             if (mesh_data) {
                 for (var s in mesh_data) {
@@ -42554,10 +42910,20 @@ var Tile = function () {
                             mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
                             mesh_options.variant = mesh_variant.variant;
 
+                            // for labels, keep buffer data on CPU so they can be modified later
+                            if (mesh_variant.labels) {
+                                mesh_options.retain = true;
+                            }
+
                             var mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
                             mesh.variant = mesh_options.variant;
+                            mesh.labels = mesh_variant.labels;
                             meshes[s] = meshes[s] || [];
                             meshes[s].push(mesh);
+                            if (mesh.variant.order == null) {
+                                mesh.variant.order = meshes[s].length - 1; // assign default variant render order
+                            }
+
                             this.debug.buffer_size += mesh.buffer_size;
                             this.debug.geometry_count += mesh.geometry_count;
                         }
@@ -42572,59 +42938,73 @@ var Tile = function () {
                             return ao == null ? 1 : bo == null ? -1 : ao < bo ? -1 : 1;
                         });
                     }
-
-                    // Assign texture ownership to tiles
-                    // Note that it's valid for a single texture to be referenced from multiple styles
-                    // (e.g. same raster texture attached to multiple sources). This means the same
-                    // texture may be added to the tile's texture list more than once, which ensures
-                    // that it is properly released (to match its retain count).
-                    if (mesh_data[s].textures) {
-                        textures.push.apply(textures, _toConsumableArray(mesh_data[s].textures));
-                    }
                 }
             }
             delete this.mesh_data;
 
-            // Initialize tracking for this tile generation
-            if (progress.start) {
-                this.previous_textures = [].concat(_toConsumableArray(this.textures)); // copy old list of textures
-                this.textures = [];
-            }
-
             // New meshes
             for (var m in meshes) {
-                if (this.meshes[m]) {
-                    this.meshes[m].forEach(function (m) {
-                        return m.destroy();
-                    }); // free old meshes
-                }
-                this.meshes[m] = meshes[m]; // set new mesh
-                this.new_mesh_styles.push(m);
-            }
+                // swap in non-collision meshes right away
+                if (!styles[m].collision) {
+                    if (this.meshes[m]) {
+                        this.meshes[m].forEach(function (m) {
+                            return m.destroy();
+                        }); // free old meshes
+                    }
 
-            // New textures
-            (_textures = this.textures).push.apply(_textures, textures);
+                    this.meshes[m] = meshes[m]; // set new mesh
+                    this.new_mesh_styles.push(m);
+                }
+                // keep label meshes out of view until collision is complete
+                else {
+                        this.pending_label_meshes = this.pending_label_meshes || {};
+                        this.pending_label_meshes[m] = meshes[m];
+                    }
+            }
 
             if (progress.done) {
                 // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
-                for (var _m in this.meshes) {
-                    if (this.new_mesh_styles.indexOf(_m) === -1) {
-                        this.meshes[_m].forEach(function (m) {
+                for (var _m2 in this.meshes) {
+                    if (this.new_mesh_styles.indexOf(_m2) === -1 && (!this.pending_label_meshes || this.pending_label_meshes[_m2] == null)) {
+                        this.meshes[_m2].forEach(function (m) {
                             return m.destroy();
                         });
-                        delete this.meshes[_m];
+                        delete this.meshes[_m2];
                     }
                 }
                 this.new_mesh_styles = [];
 
-                // Release old textures
-                this.previous_textures.forEach(function (t) {
-                    return _texture2.default.release(t);
-                });
-                this.previous_textures = [];
-
                 this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
                 this.printDebug();
+            }
+        }
+
+        // How many styles are currently pending label collision
+
+    }, {
+        key: 'pendingLabelStyleCount',
+        value: function pendingLabelStyleCount() {
+            return this.pending_label_meshes ? Object.keys(this.pending_label_meshes).length : 0;
+        }
+
+        // Swap label style meshes after collision is complete
+
+    }, {
+        key: 'swapPendingLabels',
+        value: function swapPendingLabels() {
+            this.labeled = true; // mark as labeled
+
+            if (this.pending_label_meshes) {
+                for (var m in this.pending_label_meshes) {
+                    if (this.meshes[m]) {
+                        this.meshes[m].forEach(function (m) {
+                            return m.destroy();
+                        }); // free old meshes
+                    }
+
+                    this.meshes[m] = this.pending_label_meshes[m]; // set new mesh
+                }
+                this.pending_label_meshes = null;
             }
         }
 
@@ -42650,6 +43030,11 @@ var Tile = function () {
                 this.proxy_for = null;
                 this.proxy_depth = 0;
             }
+        }
+    }, {
+        key: 'isProxy',
+        value: function isProxy() {
+            return this.proxy_for != null;
         }
 
         // Proxy tiles only need to render a specific style if any of the tiles they are proxying *for*
@@ -42698,7 +43083,7 @@ var Tile = function () {
         value: function merge(other) {
             this.loading = other.loading;
             this.loaded = other.loaded;
-            this.generation = other.loaded;
+            this.generation = other.generation;
             this.error = other.error;
             this.mesh_data = other.mesh_data;
             this.debug = (0, _merge2.default)(this.debug, other.debug);
@@ -42842,7 +43227,7 @@ var Tile = function () {
             tile.debug.feature_count = 0;
             tile.debug.layers = null;
 
-            _collision2.default.startTile(tile.id);
+            _collision2.default.startTile(tile.id, { apply_repeat_groups: true });
 
             // Process each top-level layer
             for (var layer_name in layers) {
@@ -43134,7 +43519,7 @@ function addDebugLayers(node, tree) {
     }
 }
 
-},{"./geo":200,"./gl/texture":207,"./labels/collision":213,"./styles/style":242,"./styles/style_parser":244,"./utils/gl-matrix":256,"./utils/log":258,"./utils/merge":260,"./utils/task":265,"./utils/utils":268,"./utils/worker_broker":270}],251:[function(_dereq_,module,exports){
+},{"./geo":200,"./gl/texture":207,"./labels/collision":213,"./styles/style":243,"./styles/style_parser":245,"./utils/gl-matrix":257,"./utils/log":259,"./utils/merge":261,"./utils/task":266,"./utils/utils":269,"./utils/worker_broker":271}],252:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43155,6 +43540,10 @@ var _geo = _dereq_('./geo');
 
 var _geo2 = _interopRequireDefault(_geo);
 
+var _main_pass = _dereq_('./labels/main_pass');
+
+var _main_pass2 = _interopRequireDefault(_main_pass);
+
 var _log = _dereq_('./utils/log');
 
 var _log2 = _interopRequireDefault(_log);
@@ -43162,6 +43551,10 @@ var _log2 = _interopRequireDefault(_log);
 var _worker_broker = _dereq_('./utils/worker_broker');
 
 var _worker_broker2 = _interopRequireDefault(_worker_broker);
+
+var _task = _dereq_('./utils/task');
+
+var _task2 = _interopRequireDefault(_task);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -43183,6 +43576,14 @@ var TileManager = function () {
         this.building_tiles = null;
         this.renderable_tiles = [];
         this.active_styles = [];
+        this.collision = {
+            tiles: [],
+            generations: [],
+            style_counts: [],
+            pending_label_style_counts: [],
+            zoom: null,
+            zoom_steps: 2
+        };
 
         // Provide a hook for this object to be called from worker threads
         this.main_thread_target = ['TileManager', this.scene.id].join('_');
@@ -43297,11 +43698,83 @@ var TileManager = function () {
             this.view.pruneTilesForView();
             this.updateRenderableTiles();
             this.updateActiveStyles();
+            return this.updateLabels();
+        }
+    }, {
+        key: 'updateLabels',
+        value: function updateLabels() {
+            var _this2 = this;
+
+            if (this.scene.building && !this.scene.building.initial) {
+                // log('debug', `Skip label layout due to on-going scene rebuild`);
+                return Promise.resolve({});
+            }
+
+            // get current visible tiles and sort by key for consistency collision order
+            var tiles = this.renderable_tiles.filter(function (t) {
+                return t.valid;
+            }).filter(function (t) {
+                return t.built;
+            });
+
+            if (tiles.length === 0) {
+                return Promise.resolve({});
+            }
+
+            // Evaluate labels in order of tile build, to prevent previously visible labels
+            // from disappearing, e.g. due to a newly loaded repeat label nearby
+            tiles.sort(function (a, b) {
+                return a.build_id < b.build_id ? -1 : a.build_id > b.build_id ? 1 : 0;
+            });
+
+            // check if tile set has changed (in ways that affect collision)
+            if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom && tiles.every(function (t) {
+                var i = _this2.collision.tiles.indexOf(t);
+                return i > -1 && _this2.collision.generations[i] === t.generation && _this2.collision.style_counts[i] === Object.keys(t.meshes).length && _this2.collision.pending_label_style_counts[i] === t.pendingLabelStyleCount();
+            })) {
+                // log('debug', `Skip label layout due to same tile/meshes (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+                return Promise.resolve({});
+            }
+
+            // update collision if not already updating
+            if (!this.collision.task) {
+                this.collision.tiles = tiles;
+                this.collision.generations = tiles.map(function (t) {
+                    return t.generation;
+                });
+                this.collision.style_counts = tiles.map(function (t) {
+                    return Object.keys(t.meshes).length;
+                });
+                this.collision.pending_label_style_counts = tiles.map(function (t) {
+                    return t.pendingLabelStyleCount();
+                });
+                this.collision.zoom = roundPrecision(this.view.zoom, this.collision.zoom_steps);
+                // log('debug', `Update label collisions (zoom ${this.collision.zoom}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+
+                this.collision.task = {
+                    type: 'tileManagerUpdateLabels',
+                    run: function run(task) {
+                        return (0, _main_pass2.default)(_this2.collision.tiles, _this2.collision.zoom, _this2.isLoadingVisibleTiles()).then(function (results) {
+                            _this2.collision.task = null;
+                            _task2.default.finish(task, results);
+                            _this2.updateTileStates().then(function () {
+                                return _this2.scene.immediateRedraw();
+                            });
+                        });
+                    },
+                    user_moving_view: false // don't run task when user is moving view
+                };
+                _task2.default.add(this.collision.task);
+            }
+            // else {
+            //     log('debug', `Skip label layout due to on-going layout (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+            // }
+            return this.collision.task.promise;
         }
     }, {
         key: 'updateProxyTiles',
         value: function updateProxyTiles() {
-            var _this2 = this;
+            var _this3 = this;
 
             if (this.view.zoom_direction === 0) {
                 return;
@@ -43314,17 +43787,17 @@ var TileManager = function () {
 
             var proxy = false;
             this.forEachTile(function (tile) {
-                if (_this2.view.zoom_direction === 1) {
-                    if (tile.visible && !tile.built) {
-                        var parent = _this2.pyramid.getAncestor(tile);
+                if (_this3.view.zoom_direction === 1) {
+                    if (tile.visible && !tile.labeled) {
+                        var parent = _this3.pyramid.getAncestor(tile);
                         if (parent) {
                             parent.setProxyFor(tile);
                             proxy = true;
                         }
                     }
-                } else if (_this2.view.zoom_direction === -1) {
-                    if (tile.visible && !tile.built) {
-                        var descendants = _this2.pyramid.getDescendants(tile);
+                } else if (_this3.view.zoom_direction === -1) {
+                    if (tile.visible && !tile.labeled) {
+                        var descendants = _this3.pyramid.getDescendants(tile);
                         for (var i = 0; i < descendants.length; i++) {
                             descendants[i].setProxyFor(tile);
                             proxy = true;
@@ -43423,10 +43896,17 @@ var TileManager = function () {
     }, {
         key: 'isLoadingVisibleTiles',
         value: function isLoadingVisibleTiles() {
-            var _this3 = this;
+            var _this4 = this;
 
             return Object.keys(this.tiles).some(function (k) {
-                return _this3.tiles[k].visible && !_this3.tiles[k].built;
+                return _this4.tiles[k].visible && !_this4.tiles[k].built;
+            });
+        }
+    }, {
+        key: 'allVisibleTilesLabeled',
+        value: function allVisibleTilesLabeled() {
+            return this.renderable_tiles.every(function (t) {
+                return t.labeled;
             });
         }
 
@@ -43443,7 +43923,7 @@ var TileManager = function () {
     }, {
         key: 'loadQueuedCoordinates',
         value: function loadQueuedCoordinates() {
-            var _this4 = this;
+            var _this5 = this;
 
             if (this.queued_coords.length === 0) {
                 return;
@@ -43451,7 +43931,7 @@ var TileManager = function () {
 
             // Sort queued tiles from center tile
             this.queued_coords.sort(function (a, b) {
-                var center = _this4.view.center.meters;
+                var center = _this5.view.center.meters;
                 var half_span = _geo2.default.metersPerTile(a.z) / 2;
 
                 var ac = _geo2.default.metersForTile(a);
@@ -43471,7 +43951,7 @@ var TileManager = function () {
                 return bd > ad ? -1 : bd === ad ? 0 : 1;
             });
             this.queued_coords.forEach(function (coords) {
-                return _this4.loadCoordinate(coords);
+                return _this5.loadCoordinate(coords);
             });
             this.queued_coords = [];
         }
@@ -43648,9 +44128,18 @@ var TileManager = function () {
     return TileManager;
 }();
 
-exports.default = TileManager;
+// Round a number to given number of decimal divisions
+// e.g. roundPrecision(x, 4) rounds a number to increments of 0.25
 
-},{"./geo":200,"./tile":250,"./tile_pyramid":252,"./utils/log":258,"./utils/worker_broker":270}],252:[function(_dereq_,module,exports){
+
+exports.default = TileManager;
+function roundPrecision(x, d) {
+    var places = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 2;
+
+    return (Math.floor(x * d) / d).toFixed(places);
+}
+
+},{"./geo":200,"./labels/main_pass":218,"./tile":251,"./tile_pyramid":253,"./utils/log":259,"./utils/task":266,"./utils/worker_broker":271}],253:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43837,7 +44326,7 @@ var TilePyramid = function () {
 
 exports.default = TilePyramid;
 
-},{"./geo":200,"./tile":250}],253:[function(_dereq_,module,exports){
+},{"./geo":200,"./tile":251}],254:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -43860,7 +44349,7 @@ function debounce(func, wait) {
     };
 }
 
-},{}],254:[function(_dereq_,module,exports){
+},{}],255:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -43882,6 +44371,9 @@ exports.default = debugSettings = {
     // suppress animaton of label snap to pixel grid
     suppress_label_snap_animation: false,
 
+    // show hidden labels for debugging
+    show_hidden_labels: false,
+
     // collect feature/geometry stats on styling layers
     layer_stats: false
 };
@@ -43889,7 +44381,7 @@ function mergeDebugSettings(settings) {
     Object.assign(debugSettings, settings);
 }
 
-},{}],255:[function(_dereq_,module,exports){
+},{}],256:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43918,7 +44410,7 @@ var MethodNotImplemented = exports.MethodNotImplemented = function (_Error) {
     return MethodNotImplemented;
 }(Error);
 
-},{}],256:[function(_dereq_,module,exports){
+},{}],257:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44005,7 +44497,7 @@ exports.vec3 = vec3;
 exports.mat3 = mat3;
 exports.mat4 = mat4;
 
-},{"gl-mat3/invert":88,"gl-mat3/normal-from-mat4":89,"gl-mat4/copy":90,"gl-mat4/identity":91,"gl-mat4/lookAt":92,"gl-mat4/multiply":93,"gl-mat4/perspective":94,"gl-mat4/scale":95,"gl-mat4/translate":96}],257:[function(_dereq_,module,exports){
+},{"gl-mat3/invert":88,"gl-mat3/normal-from-mat4":89,"gl-mat4/copy":90,"gl-mat4/identity":91,"gl-mat4/lookAt":92,"gl-mat4/multiply":93,"gl-mat4/perspective":94,"gl-mat4/scale":95,"gl-mat4/translate":96}],258:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -44031,7 +44523,7 @@ function hashString(string) {
     return hash;
 }
 
-},{}],258:[function(_dereq_,module,exports){
+},{}],259:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44131,7 +44623,7 @@ if (_thread2.default.is_main) {
 _worker_broker2.default.addTarget('_logProxy', log); // proxy log messages from worker to main thread
 _worker_broker2.default.addTarget('_logSetLevelProxy', log.setLevel); // proxy log level setting from main to worker thread
 
-},{"./thread":266,"./version":269,"./worker_broker":270}],259:[function(_dereq_,module,exports){
+},{"./thread":267,"./version":270,"./worker_broker":271}],260:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44361,7 +44853,7 @@ var MediaCapture = function () {
 
 exports.default = MediaCapture;
 
-},{"../styles/style_parser":244,"./log":258,"./urls":267}],260:[function(_dereq_,module,exports){
+},{"../styles/style_parser":245,"./log":259,"./urls":268}],261:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44405,7 +44897,7 @@ function mergeObjects(dest) {
     return dest;
 }
 
-},{}],261:[function(_dereq_,module,exports){
+},{}],262:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44436,17 +44928,20 @@ var OBB = function () {
     }
 
     _createClass(OBB, [{
-        key: 'move',
-        value: function move(px, py) {
-            this.centroid = [px, py];
-
-            this.update();
+        key: 'toJSON',
+        value: function toJSON() {
+            return {
+                x: this.centroid[0],
+                y: this.centroid[1],
+                a: this.angle,
+                w: this.dimension[0],
+                h: this.dimension[1]
+            };
         }
     }, {
         key: 'getExtent',
         value: function getExtent() {
-            var inf = 1e6;
-            var aabb = [inf, inf, -inf, -inf];
+            var aabb = [Infinity, Infinity, -Infinity, -Infinity];
 
             for (var i = 0; i < 4; ++i) {
                 aabb[0] = Math.min(this.quad[i][0], aabb[0]);
@@ -44482,9 +44977,8 @@ var OBB = function () {
     }], [{
         key: 'projectToAxis',
         value: function projectToAxis(obb, axis) {
-            var inf = 1e6;
-            var min = inf;
-            var max = -inf;
+            var min = Infinity;
+            var max = -Infinity;
 
             var quad = obb.quad;
 
@@ -44522,7 +45016,7 @@ var OBB = function () {
 
 exports.default = OBB;
 
-},{"../vector":271}],262:[function(_dereq_,module,exports){
+},{"../vector":272}],263:[function(_dereq_,module,exports){
 'use strict';
 
 _dereq_('core-js/es6/promise');
@@ -44599,7 +45093,7 @@ if (perf && typeof perf.now !== 'function') {
     };
 }
 
-},{"core-js/es6/promise":11}],263:[function(_dereq_,module,exports){
+},{"core-js/es6/promise":11}],264:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -44614,7 +45108,7 @@ function sliceObject(obj, keys) {
     return sliced;
 }
 
-},{}],264:[function(_dereq_,module,exports){
+},{}],265:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44674,7 +45168,7 @@ function subscribeMixin(target) {
     });
 }
 
-},{"./log":258}],265:[function(_dereq_,module,exports){
+},{"./log":259}],266:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -44698,6 +45192,7 @@ var Task = {
             task.reject = reject;
         });
         task.promise = promise;
+
         task.total_elapsed = 0;
         task.stats = { calls: 0 };
         this.queue.push(task);
@@ -44734,7 +45229,7 @@ var Task = {
 
         task.stats.calls++;
         task.start_time = performance.now(); // start task timer
-        return task.target[task.method](task);
+        return task.run(task);
     },
     processAll: function processAll() {
         this.start_time = this.start_time || performance.now(); // start frame timer if necessary
@@ -44770,8 +45265,8 @@ var Task = {
     cancel: function cancel(task) {
         var val = void 0;
 
-        if (task.cancel && task.target[task.cancel] instanceof Function) {
-            val = task.target[task.cancel](task); // optional cancel function
+        if (task.cancel instanceof Function) {
+            val = task.cancel(task); // optional cancel function
         }
 
         task.resolve(val || {}); // resolve with result of cancel function, or empty object
@@ -44798,7 +45293,7 @@ var Task = {
 
 exports.default = Task;
 
-},{}],266:[function(_dereq_,module,exports){
+},{}],267:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -44830,7 +45325,7 @@ try {
     }
 }
 
-},{}],267:[function(_dereq_,module,exports){
+},{}],268:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45050,7 +45545,7 @@ function getURLParameter(name, url) {
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
 
-},{"./log":258}],268:[function(_dereq_,module,exports){
+},{"./log":259}],269:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45366,18 +45861,18 @@ Utils.pointInTile = function (point) {
     return point[0] >= 0 && point[1] > -_geo2.default.tile_scale && point[0] < _geo2.default.tile_scale && point[1] <= 0;
 };
 
-},{"../geo":200,"./log":258,"./thread":266,"./worker_broker":270}],269:[function(_dereq_,module,exports){
+},{"../geo":200,"./log":259,"./thread":267,"./worker_broker":271}],270:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.14.2\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Mapzen\",\n    \"email\": \"tangram@mapzen.com\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.4.14\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.15.0\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Tangram contributors\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.8.29\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
-},{}],270:[function(_dereq_,module,exports){
+},{}],271:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45946,7 +46441,7 @@ if (_thread2.default.is_worker) {
     setupWorkerThread();
 }
 
-},{"./log":258,"./thread":266}],271:[function(_dereq_,module,exports){
+},{"./log":259,"./thread":267}],272:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46159,7 +46654,7 @@ Vector.dot = function (v1, v2) {
     return n;
 };
 
-},{}],272:[function(_dereq_,module,exports){
+},{}],273:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46503,7 +46998,7 @@ var View = function () {
 
             this.scene.tile_manager.removeTiles(function (tile) {
                 // Ignore visible tiles
-                if (tile.visible || tile.proxy_for) {
+                if (tile.visible || tile.isProxy()) {
                     return false;
                 }
 
@@ -46592,6 +47087,6 @@ var View = function () {
 
 exports.default = View;
 
-},{"./camera":199,"./geo":200,"./tile":250,"./utils/log":258,"./utils/subscribe":264,"./utils/utils":268}]},{},[224])(224)
+},{"./camera":199,"./geo":200,"./tile":251,"./utils/log":259,"./utils/subscribe":265,"./utils/utils":269}]},{},[225])(225)
 });})();
 //# sourceMappingURL=tangram.debug.js.map
