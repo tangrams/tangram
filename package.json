@@ -112,7 +112,7 @@
     "karma-chrome-launcher": "2.0.0",
     "karma-mocha": "0.1.9",
     "karma-mocha-reporter": "1.0.0",
-    "karma-sauce-launcher": "tangrams/karma-sauce-launcher#firefox-profiles2",
+    "karma-sauce-launcher": "tangrams/karma-sauce-launcher#firefox-profiles3",
     "karma-sinon": "1.0.4",
     "mapstraction": "1.0.1",
     "mocha": "1.21.4",
