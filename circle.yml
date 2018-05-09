@@ -1,3 +1,11 @@
 test:
   override:
     - npm run test-ci
+machine:
+  node:
+    version: 6.11.3
+experimental:
+  notify:
+    branches:
+      ignore:
+        - update-karma-sauce-launcher

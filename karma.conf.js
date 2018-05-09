@@ -60,7 +60,7 @@ module.exports = function (config) {
             testName: 'Tangram test Suite',
             recordScreenshots: true,
             connectOptions: {
-                port: 5757,
+                // port: 5757,
                 logfile: 'sauce_connect.log'
             }
         },
