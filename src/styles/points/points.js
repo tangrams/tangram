@@ -171,10 +171,12 @@ Object.assign(Points, {
         else {
             style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, context);
             if (style.size == null) {
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-                    `'size' includes % and/or ratio-based scaling (${JSON.stringify(draw.size.value)}); ` +
-                    `these can only applied to sprites, but no sprite was specified, skipping features in layer`);
-                return;
+                // the StyleParser couldn't evaluate a sprite size - this means no sprite was defined,
+                // use the texture size
+                let tex = Texture.textures[style.texture];
+                let factor = (draw.size.value.indexOf('%') > -1 ? parseFloat(draw.size.value) : 1.0) / 100.0;
+                style.size = [(tex.width * factor), (tex.height * factor)];
+
             }
             else if (typeof style.size === 'number') {
                 style.size = [style.size, style.size]; // convert 1d size to 2d
