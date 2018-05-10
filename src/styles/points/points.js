@@ -159,6 +159,7 @@ Object.assign(Points, {
                 style.texcoords = sprite_info.texcoords;
             }
             else {
+                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}' uses a texture '${style.texture}' with defined sprites, but no sprite is specified. Skipping features in layer`);
                 return;
             }
         }

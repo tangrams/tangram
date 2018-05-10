@@ -192,6 +192,7 @@ StyleParser.createPointSizePropertyCache = function (obj) {
     }
 
     if (!has_pct) { // no percentage-based calculation, one cache for all sprites
+        if (obj === "auto") { throw `this value only allowed as half of an array, eg [16px, auto]:`; }
         obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
     }
     else { // per-sprite based evaluation
