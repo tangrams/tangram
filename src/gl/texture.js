@@ -468,6 +468,8 @@ Texture.getInfo = function (name) {
                 width: tex.width,
                 height: tex.height,
                 density: tex.density,
+                css_size: [ tex.width / tex.density, tex.height / tex.density ],
+                aspect: tex.width / tex.height,
                 sprites: tex.sprites,
                 texcoords: tex.texcoords,
                 sizes: tex.sizes,

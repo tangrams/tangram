@@ -151,29 +151,39 @@ Object.assign(Points, {
             return;
         }
 
-        // optional sprite
+        // optional sprite and texture
         let sprite_info;
         if (this.hasSprites(style)) {
+            // populate sprite_info object with used sprites
             sprite_info = this.parseSprite(style, draw, context);
+
             if (sprite_info) {
                 style.texcoords = sprite_info.texcoords;
             }
             else {
+                // sprites are defined, but none are used
                 log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}' uses a texture '${style.texture}' with defined sprites, but no sprite is specified. Skipping features in layer`);
                 return;
             }
+        } else if (draw.sprite) {
+            // sprite specified in the draw layer but no sprites defined in the texture
+            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+            `a sprite '${draw.sprite}' is specified but no sprites are defined in texture '${draw.texture}', skipping features in layer`);
+            return;
         }
 
         // point size defined explicitly, or defaults to sprite size, or generic fallback
         style.size = draw.size;
         if (!style.size) {
+            // a 'size' property has not been set in the draw layer -
+            // use the sprite size if it exists and a generic fallback if it doesn't
             style.size = (sprite_info && sprite_info.css_size) || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
         }
         else {
-            style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, context);
+            style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
             if (style.size == null) {
-                // the StyleParser couldn't evaluate a sprite size - this means no sprite was defined,
-                // use the texture size
+                // the StyleParser couldn't evaluate a sprite size -
+                // this means no sprite was defined, use the texture size
                 let tex = Texture.textures[style.texture];
                 let factor = (draw.size.value.indexOf('%') > -1 ? parseFloat(draw.size.value) : 1.0) / 100.0;
                 style.size = [(tex.width * factor), (tex.height * factor)];
@@ -258,10 +268,11 @@ Object.assign(Points, {
         return style.texture && Texture.textures[style.texture] && Texture.textures[style.texture].sprites;
     },
 
+    // Generate a sprite_info object
     getSpriteInfo (style, sprite) {
         let info = Texture.textures[style.texture].sprites[sprite] && Texture.getSpriteInfo(style.texture, sprite);
         if (sprite && !info) {
-            // track misisng sprites (per texture)
+            // track missing sprites (per texture)
             this.texture_missing_sprites[style.texture] = this.texture_missing_sprites[style.texture] || {};
             if (!this.texture_missing_sprites[style.texture][sprite]) { // only log each missing sprite once
                 log('debug', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${style.texture}'`);
@@ -274,7 +285,9 @@ Object.assign(Points, {
         return info;
     },
 
+    // Check a sprite name against available sprites and return a sprite_info object
     parseSprite (style, draw, context) {
+        // check for functions
         let sprite = StyleParser.evalProperty(draw.sprite, context);
         let sprite_info = this.getSpriteInfo(style, sprite) || this.getSpriteInfo(style, draw.sprite_default);
         return sprite_info;

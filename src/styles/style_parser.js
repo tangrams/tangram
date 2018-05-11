@@ -128,13 +128,13 @@ StyleParser.createPropertyCache = function (obj, transform = null) {
         c.type = CACHE_TYPE.DYNAMIC;
     }
 
-    // apply optional transform function
+    // apply optional transform function - usually a parsing function
     if (typeof transform === 'function') {
         if (c.zoom) { // apply to each zoom stop value
             c.value = c.value.map((v, i) => [v[0], transform(v[1], i)]);
         }
         else if (typeof c.value !== 'function') { // don't transform functions
-            c.value = transform(c.value, 0); // single value
+            c.value = transform(c.value, 0); // single value, 0 = the first and only item in the array
         }
     }
 
@@ -156,13 +156,14 @@ StyleParser.createColorPropertyCache = function (obj) {
     });
 };
 
-// Caching for point sizes, which include optional %-based or aspect-ratio-constrained scaling from sprite size
-// Returns a cache object if successful, or throws error message
+// Parse point sizes, which include optional %-based or aspect-ratio-constrained scaling from sprite size
+// Returns a cache object if successful, otherwise throws error message
 const isPercent = v => typeof v === 'string' && v[v.length-1] === '%'; // size computed by %
 const isRatio = v => v === 'auto'; // size derived from aspect ratio of one dimension
 const isComputed = v => isPercent(v) || isRatio(v);
 const dualRatioError = `'size' can specify either width or height as derived from aspect ratio, but not both`;
 StyleParser.createPointSizePropertyCache = function (obj) {
+    // obj is the value to be parsed eg "64px" "100%" "auto"
     // mimics the structure of the size value (at each zoom stop if applicable),
     // stores flags indicating if each element is a %-based size or not, or derived from aspect
     let has_pct = null;
@@ -205,47 +206,57 @@ StyleParser.createPointSizePropertyCache = function (obj) {
     return obj;
 };
 
-StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, context) {
+StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_info, context) {
     // no percentage-based calculation, one cache for all sprites
     if (!val.has_pct && !val.has_ratio) {
         return StyleParser.evalCachedProperty(val, context);
     }
 
+    let the_image = sprite_info ? sprite_info : texture_info;
+
+    // this function is passed to createPropertyCache as the transform function -
+    // when val.value is an array, it is used inside a map(), which is where i is used
+    function evalValue(v, i) {
+        if (Array.isArray(v)) { // 2D size
+            // either width or height or both could be a %
+            v = v.
+                map((c, j) => val.has_ratio[i][j] ? c : parsePositiveNumber(c)). // convert non-ratio values to px
+                map((c, j) => val.has_pct[i][j] ? the_image.css_size[j] * c / 100 : c); // apply % scaling as needed
+
+            // either width or height could be a ratio
+            if (val.has_ratio[i][0]) {
+                v[0] = v[1] * the_image.aspect;
+            }
+            else if (val.has_ratio[i][1]) {
+                v[1] = v[0] / the_image.aspect;
+            }
+        }
+        else { // 1D size
+            v = parsePositiveNumber(v);
+            if (val.has_pct[i]) {
+                v = the_image.css_size.map(c => c * v / 100); // set size as % of sprite
+            }
+            else {
+                v = [v, v]; // expand 1D size to 2D
+            }
+        }
+        return v;
+    }
     // per-sprite based evaluation
     if (!sprite_info) {
-        return; // trying to apply percentage or ratio sizing to a sprite
-    }
+        // apply percentage or ratio sizing to a texture
+        let textureCache = StyleParser.createPropertyCache(val.value, evalValue);
 
-    // cache sizes per sprite
-    if (!val.sprites[sprite_info.sprite]) {
-        val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, (v, i) => {
-            if (Array.isArray(v)) { // 2D size
-                // either width or height or both could be a %
-                v = v.
-                    map((c, j) => val.has_ratio[i][j] ? c : parsePositiveNumber(c)). // convert non-ratio values to px
-                    map((c, j) => val.has_pct[i][j] ? sprite_info.css_size[j] * c / 100 : c); // apply % scaling as needed
+        return StyleParser.evalCachedProperty(textureCache, context);
 
-                // either width or height could be a ratio
-                if (val.has_ratio[i][0]) {
-                    v[0] = v[1] * sprite_info.aspect;
-                }
-                else if (val.has_ratio[i][1]) {
-                    v[1] = v[0] / sprite_info.aspect;
-                }
-            }
-            else { // 1D size
-                v = parsePositiveNumber(v);
-                if (val.has_pct[i]) {
-                    v = sprite_info.css_size.map(c => c * v / 100); // set size as % of sprite
-                }
-                else {
-                    v = [v, v]; // expand 1D size to 2D
-                }
-            }
-            return v;
-        });
+    } else {
+
+        // cache sizes per sprite
+        if (!val.sprites[sprite_info.sprite]) {
+            val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, evalValue);
+        }
+        return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
     }
-    return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
 };
 
 // Interpolation and caching for a generic property (not a color or distance)
