@@ -161,8 +161,7 @@ Object.assign(Points, {
                 style.texcoords = sprite_info.texcoords;
             }
             else {
-                // sprites are defined, but none are used
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}' uses a texture '${style.texture}' with defined sprites, but no sprite is specified. Skipping features in layer`);
+                // sprites are defined in the style's texture, but none are used in the current layer
                 return;
             }
         } else if (draw.sprite) {
