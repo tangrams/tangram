@@ -141,7 +141,9 @@ export default class TileManager {
         tiles.sort((a, b) => a.build_id < b.build_id ? -1 : (a.build_id > b.build_id ? 1 : 0));
 
         // check if tile set has changed (in ways that affect collision)
-        if (// 1st: check if same zoom level
+        // if not, bail so that the existing collision task can carry on
+        // if so, carry on and start a new collision task
+        if (// 1st: check if same zoom level (rounded to a configurable precision)
             this.collision.zoom === roundPrecision(this.view.zoom, this.collision.zoom_steps) &&
             // 2nd: check if same set of tiles
             this.collision.tile_keys === JSON.stringify(tiles.map(t => t.key)) &&
@@ -158,6 +160,7 @@ export default class TileManager {
             this.collision.mesh_set = meshSetString(tiles);
             // log('debug', `Update label collisions (zoom ${this.collision.zoom}, ${this.collision.tile_keys})`);
 
+            // make a new collision task
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
                 run: (task) => {
