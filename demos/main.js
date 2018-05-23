@@ -28,10 +28,6 @@
         keyboard: false
     });
 
-    // Set the map location (will be overwritten if location URL params present)
-    var map_start_location = [16, 40.70531887544228, -74.00976419448853]; // NYC
-    map.setView(map_start_location);
-
     // Useful events to subscribe to
     layer.scene.subscribe({
         load: function (msg) {
