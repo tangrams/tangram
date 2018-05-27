@@ -10,6 +10,13 @@ export function leafletLayer(options) {
     return extendLeaflet(options);
 }
 
+// save references to overloaded Leaflet methods
+const originalHandlers = {
+    map: {},
+    scrollWheelZoom: {},
+    doubleClickZoom: {}
+};
+
 function extendLeaflet(options) {
 
     // If LeafletLayer is already defined when this is called just return that immediately
@@ -163,7 +170,7 @@ function extendLeaflet(options) {
 
                     this.updateSize();
                     this.updateView();
-                    // this.reverseTransform();
+                    this.reverseTransform();
 
                     this._updating_tangram = false;
 
@@ -255,8 +262,18 @@ function extendLeaflet(options) {
                         map.options.wheelDebounceTime * 2
                     );
 
+                    // save reference to overloaded method
+                    if (!originalHandlers.scrollWheelZoom._performZoom) {
+                        originalHandlers.scrollWheelZoom._performZoom = map.scrollWheelZoom._performZoom;
+                    }
+
                     var layer = this;
                     map.scrollWheelZoom._performZoom = function () {
+                        if (this._map !== layer._map) { // only call overloaded method on a tangram layer
+                            originalHandlers.scrollWheelZoom._performZoom.call(this);
+                            return;
+                        }
+
                         var map = this._map,
                             zoom = map.getZoom();
 
@@ -338,7 +355,17 @@ function extendLeaflet(options) {
                         const enabled = map.doubleClickZoom.enabled();
                         map.doubleClickZoom.disable();
 
+                        // save reference to overloaded method
+                        if (!originalHandlers.doubleClickZoom._onDoubleClick) {
+                            originalHandlers.doubleClickZoom._onDoubleClick = map.doubleClickZoom._onDoubleClick;
+                        }
+
                         map.doubleClickZoom._onDoubleClick = function (e) {
+                            if (this._map !== layer._map) { // only call overloaded method on a tangram layer
+                                originalHandlers.doubleClickZoom._onDoubleClick.call(this, e);
+                                return;
+                            }
+
                             var map = this._map,
                                 oldZoom = map.getZoom(),
                                 delta = map.options.zoomDelta,
@@ -360,7 +387,17 @@ function extendLeaflet(options) {
                     // NOTE: this will NOT fire the 'zoomanim' event, so this modification should be disabled for apps that depend on it
                     // See original: https://github.com/Leaflet/Leaflet/blob/cf518ff1a5e0e54a2f63faa144aeaa50888e0bc6/src/map/Map.js#L1610
                     if (map._zoomAnimated) {
+                        // save reference to overloaded method
+                        if (!originalHandlers.map._animateZoom) {
+                            originalHandlers.map._animateZoom = map._animateZoom;
+                        }
+
                         map._animateZoom = function (center, zoom, startAnim, noUpdate) {
+                            if (this !== layer._map) { // only call overloaded method on a tangram layer
+                                originalHandlers.map._animateZoom.call(this, center, zoom, startAnim, noUpdate);
+                                return;
+                            }
+
                             if (startAnim) {
                                 this._animatingZoom = true;
 
