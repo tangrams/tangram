@@ -24,7 +24,7 @@ export default class TileManager {
             style_counts: [],
             pending_label_style_counts: [],
             zoom: null,
-            zoom_steps: 2
+            zoom_steps: 3 // divisions per zoom at which labels are re-collided (e.g. 0, 0.33, 0.66)
         };
 
         // Provide a hook for this object to be called from worker threads
