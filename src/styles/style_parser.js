@@ -234,7 +234,7 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_in
         else { // 1D size
             v = parsePositiveNumber(v);
             if (val.has_pct[i]) {
-                v = the_image.css_size.map(c => c * v / 100); // set size as % of sprite
+                v = the_image.css_size.map(c => c * v / 100); // set size as % of image
             }
             else {
                 v = [v, v]; // expand 1D size to 2D
@@ -242,15 +242,15 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_in
         }
         return v;
     }
-    // per-sprite based evaluation
+    // texture-based evaluation
     if (!sprite_info) {
         // apply percentage or ratio sizing to a texture
-        let textureCache = StyleParser.createPropertyCache(val.value, evalValue);
+        let textureSizeCache = StyleParser.createPropertyCache(val.value, evalValue);
 
-        return StyleParser.evalCachedProperty(textureCache, context);
+        return StyleParser.evalCachedProperty(textureSizeCache, context);
 
     } else {
-
+    // per-sprite based evaluation
         // cache sizes per sprite
         if (!val.sprites[sprite_info.sprite]) {
             val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, evalValue);

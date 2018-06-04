@@ -180,14 +180,13 @@ Object.assign(Points, {
             style.size = (sprite_info && sprite_info.css_size) || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
         }
         else {
+            // check for a cached size, passing the texture and any sprite references
             style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
             if (style.size == null) {
-                // the StyleParser couldn't evaluate a sprite size -
-                // this means no sprite was defined, use the texture size
-                let tex = Texture.textures[style.texture];
-                let factor = (draw.size.value.indexOf('%') > -1 ? parseFloat(draw.size.value) : 1.0) / 100.0;
-                style.size = [(tex.width * factor), (tex.height * factor)];
-
+                // the StyleParser couldn't evaluate a sprite size
+                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+                    `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, skipping features in layer`);
+                return;
             }
             else if (typeof style.size === 'number') {
                 style.size = [style.size, style.size]; // convert 1d size to 2d
