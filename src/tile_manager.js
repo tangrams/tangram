@@ -142,20 +142,26 @@ export default class TileManager {
         // from disappearing, e.g. due to a newly loaded repeat label nearby
         tiles.sort((a, b) => a.build_id < b.build_id ? -1 : (a.build_id > b.build_id ? 1 : 0));
 
-        // check if tile set has changed (in ways that affect collision)
+        // check whether tile set has changed since the task was created (in ways that affect collision)
+        // if these things are the same as when they were set, a new task isn't needed:
+        // the current view's zoom matches the one in the collision task
         if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
             tiles.every(t => {
+                // the tile is in the collision task's tile set
                 let i = this.collision.tiles.indexOf(t);
                 return i > -1 &&
+                    // the current tile's collision generation matches the current collision's generation
                     this.collision.generations[i] === t.generation &&
+                    // the number of styles hasn't changed
                     this.collision.style_counts[i] === Object.keys(t.meshes).length &&
+                    // the number of pending styles with labels hasn't changed
                     this.collision.pending_label_style_counts[i] === t.pendingLabelStyleCount();
             })) {
             // log('debug', `Skip label layout due to same tile/meshes (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
             return Promise.resolve({});
         }
 
-        // update collision if not already updating
+        // otherwise, make a collision task if one doesn't already exist
         if (!this.collision.task) {
             this.collision.tiles = tiles;
             this.collision.generations = tiles.map(t => t.generation);
