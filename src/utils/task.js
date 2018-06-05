@@ -22,9 +22,9 @@ const Task = {
         this.queue.push(task);
 
         // Run task immediately if under total frame time
-        this.start_time = this.start_time || performance.now(); // start frame timer if necessary
-        this.elapsed = performance.now() - this.start_time;
-        if (this.elapsed < Task.max_time) {
+        task.start_time = task.start_time || performance.now(); // start frame timer if necessary
+        task.elapsed = performance.now() - task.start_time;
+        if (task.elapsed < Task.max_time) {
             this.process(task);
         }
 
