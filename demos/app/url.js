@@ -26,11 +26,14 @@
         }, update_url_throttle);
     }
 
-    map.on('move', updateURL);
-    map.setView(map_start_location.slice(1, 3), map_start_location[0]);
-
-    layer.on('init', function(){
-        updateURL();
-        map.setView(map_start_location.slice(1, 3), map_start_location[0]);
+    window.addEventListener('load', function () {
+        // update URL scene load
+        map.scene.subscribe({
+            load: function (msg) {
+                updateURL();
+                map.setView(map_start_location.slice(1, 3), map_start_location[0]);
+            }
+        });
     });
+
 })();

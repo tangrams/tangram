@@ -2,8 +2,8 @@
 
 import './utils/polyfills';
 
-// The leaflet layer plugin is currently the primary public API
-import {leafletLayer} from './leaflet_layer';
+// primary public API
+import {tangramLayer} from './tangramLayer';
 
 // The scene worker is only activated when a worker thread is instantiated, but must always be loaded
 import Scene from './scene';
@@ -78,7 +78,7 @@ if (Thread.is_main) {
 }
 
 module.exports = {
-    leafletLayer,
+    tangramLayer,
     debug,
     version
 };
