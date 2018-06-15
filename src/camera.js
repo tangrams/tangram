@@ -2,6 +2,7 @@ import Utils from './utils/utils';
 import ShaderProgram from './gl/shader_program';
 import {mat4, mat3, vec3} from './utils/gl-matrix';
 
+
 // Abstract base class
 export default class Camera {
 
@@ -9,6 +10,8 @@ export default class Camera {
         this.view = view;
         this.position = options.position;
         this.zoom = options.zoom;
+        window.deltaX = 0;
+        window.deltaY = 0;
     }
 
     // Create a camera by type name, factory-style
@@ -91,6 +94,8 @@ class PerspectiveCamera extends Camera {
             this.focal_length = [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]];
         }
 
+        this.rotation = options.rotation || {x: 0, y: 0};
+
         this.vanishing_point = options.vanishing_point || [0, 0]; // [x, y]
         this.vanishing_point = this.vanishing_point.map(parseFloat); // we implicitly only support px units here
         this.vanishing_point_skew = [];
@@ -98,6 +103,44 @@ class PerspectiveCamera extends Camera {
         this.position_meters = null;
         this.view_matrix = new Float64Array(16);
         this.projection_matrix = new Float32Array(16);
+
+        window.map.scene.canvas.onmousedown = handleMouseDown;
+        window.map.scene.canvas.onmouseup = handleMouseUp;
+        window.map.scene.canvas.onmousemove = handleMouseMove;
+
+        this.mouseDown = false;
+        this.lastMouseX = null;
+        this.lastMouseY = null;
+
+        function handleMouseDown (event) {
+            this.mouseDown = true;
+            window.lastMouseX = event.clientX;
+            window.lastMouseY = event.clientY;
+        }
+
+        function handleMouseUp (event) {
+            this.mouseDown = false;
+        }
+
+        function handleMouseMove (event) {
+            // debugger
+            var scene = window.map.scene;
+            var camera = window.map.scene.view.camera;
+            var projection_matrix = camera.projection_matrix;
+            if (!this.mouseDown) {
+                return;
+            }
+            var newX = event.clientX;
+            var newY = event.clientY;
+
+            window.deltaX = newX - window.lastMouseX;
+            window.deltaY = newY - window.lastMouseY;
+
+            camera.updateMatrices();
+            scene.requestRedraw();
+            this.lastMouseX = newX;
+            this.lastMouseY = newY;
+        }
 
         // 'camera' is the name of the shader block, e.g. determines where in the shader this code is injected
         ShaderProgram.replaceBlock('camera', `
@@ -169,6 +212,15 @@ class PerspectiveCamera extends Camera {
 
         // Projection matrix
         mat4.perspective(this.projection_matrix, fov, this.view.aspect, 1, height * 2);
+
+        function degToRad(deg) {
+            return deg * Math.PI / 180;
+        }
+        // mat4.rotate(this.projection_matrix, this.projection_matrix, this.rotation.x, vec3.fromValues(0, 1, 0));
+        // mat4.rotate(this.projection_matrix, this.projection_matrix, this.rotation.y, vec3.fromValues(1, 0, 0));
+        // mat4.rotate(this.projection_matrix, this.projection_matrix, this.rotation.z, vec3.fromValues(0, 0, 1));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaX) / 10, vec3.fromValues(0, 1, 0));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaY) / 10, vec3.fromValues(1, 0, 0));
 
         // Convert vanishing point from pixels to viewport space
         this.vanishing_point_skew[0] = this.vanishing_point[0] / this.view.size.css.width;

@@ -20,6 +20,9 @@ cameras:
         type: perspective
         vanishing_point: [0, -250px] # relative to center of screen, in pixels
         active: true
+        # rotation:
+        #     x: 0
+        #     y: -.5
 
     isometric:
         type: isometric
