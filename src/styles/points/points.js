@@ -748,6 +748,8 @@ Object.assign(Points, {
         // track label mesh buffer data
         const linked = (style.linked && style.linked.label.id);
         this.trackLabel(label, linked, mesh, geom_count, context);
+
+        return geom_count;
     },
 
     buildCurvedLabel (label, style, mesh, context) {
