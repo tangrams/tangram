@@ -197,8 +197,24 @@ export var Style = {
         }
 
         let mesh = this.getTileMesh(tile, this.meshVariantTypeForDraw(style));
+
+        // In case of polygons with interiors within interiors it may happen that during buildGeometry() vertices were
+        // added but the returned geometries count is 0 because the triangulation and checks against interiors
+        // interrupted the build process. For such cases we have to memorize the original vertex_count and offset to
+        // reset the vertex_data afterwards:
+        const orig_offset = mesh.vertex_data.offset;
+        const orig_vertex_count = mesh.vertex_data.vertex_count;
+
         if (this.buildGeometry(feature.geometry, style, mesh, context) > 0) {
             feature.generation = this.generation; // track scene generation that feature was rendered for
+        } else {
+            // Check if vertices were added but geometries count is 0:
+            if (mesh.vertex_data.vertex_count > orig_vertex_count) {
+                // Reset the vertex_data:
+                mesh.vertex_data.vertex_buffer.fill(0, orig_offset, mesh.vertex_data.offset);
+                mesh.vertex_data.vertex_count = orig_vertex_count;
+                mesh.vertex_data.offset = orig_offset;
+            }
         }
     },
 
