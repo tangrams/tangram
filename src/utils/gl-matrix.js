@@ -38,6 +38,7 @@ import {default as mat4_perspective} from 'gl-mat4/perspective';
 import {default as mat4_lookAt} from 'gl-mat4/lookAt';
 import {default as mat4_identity} from 'gl-mat4/identity';
 import {default as mat4_copy} from 'gl-mat4/copy';
+import {default as mat4_invert} from 'gl-mat4/invert';
 
 const mat4 = {
     multiply: mat4_multiply,
@@ -47,7 +48,8 @@ const mat4 = {
     perspective: mat4_perspective,
     lookAt: mat4_lookAt,
     identity: mat4_identity,
-    copy: mat4_copy
+    copy: mat4_copy,
+    invert: mat4_invert,
 };
 
 

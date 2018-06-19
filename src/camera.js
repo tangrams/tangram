@@ -123,10 +123,8 @@ class PerspectiveCamera extends Camera {
         }
 
         function handleMouseMove (event) {
-            // debugger
             var scene = window.map.scene;
             var camera = window.map.scene.view.camera;
-            var projection_matrix = camera.projection_matrix;
             if (!this.mouseDown) {
                 return;
             }
@@ -186,7 +184,7 @@ class PerspectiveCamera extends Camera {
     updateMatrices() {
         // TODO: only re-calculate these vars when necessary
 
-        // Height of the viewport in meters at current zoom
+        // Height of the viewport in meters at current zoom – assumes landscape mode
         var viewport_height = this.view.size.css.height * this.view.meters_per_pixel;
 
         // Compute camera properties to fit desired view
@@ -213,15 +211,6 @@ class PerspectiveCamera extends Camera {
         // Projection matrix
         mat4.perspective(this.projection_matrix, fov, this.view.aspect, 1, height * 2);
 
-        function degToRad(deg) {
-            return deg * Math.PI / 180;
-        }
-        // mat4.rotate(this.projection_matrix, this.projection_matrix, this.rotation.x, vec3.fromValues(0, 1, 0));
-        // mat4.rotate(this.projection_matrix, this.projection_matrix, this.rotation.y, vec3.fromValues(1, 0, 0));
-        // mat4.rotate(this.projection_matrix, this.projection_matrix, this.rotation.z, vec3.fromValues(0, 0, 1));
-        mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaX) / 10, vec3.fromValues(0, 1, 0));
-        mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaY) / 10, vec3.fromValues(1, 0, 0));
-
         // Convert vanishing point from pixels to viewport space
         this.vanishing_point_skew[0] = this.vanishing_point[0] / this.view.size.css.width;
         this.vanishing_point_skew[1] = this.vanishing_point[1] / this.view.size.css.height;
@@ -243,6 +232,15 @@ class PerspectiveCamera extends Camera {
 
         // Include camera height in projection matrix
         mat4.translate(this.projection_matrix, this.projection_matrix, vec3.fromValues(0, 0, -height));
+
+        function degToRad(deg) {
+            return deg * Math.PI / 180;
+        }
+
+        // var translation = vec2(screenx, screeny)
+        // mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaX) / 10, vec3.fromValues(0, 1, 0));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaY) / 10, vec3.fromValues(1, 0, 0));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaX) / 10, vec3.fromValues(0, 0, 1));
     }
 
     update() {
@@ -259,7 +257,7 @@ class PerspectiveCamera extends Camera {
 }
 
 // Isometric-style projection
-// Note: this is actually an "axonometric" projection, but I'm using the colloquial term isometric because it is more recognizable.
+// Note: this is technically an "axonometric" projection, but we're using the colloquial term isometric.
 // An isometric projection is a specific subset of axonometric projections.
 // 'axis' determines the xy skew applied to a vertex based on its z coordinate, e.g. [0, 1] axis causes buildings to be drawn
 // straight upwards on screen at their true height, [0, .5] would draw them up at half-height, [1, 0] would be sideways, etc.
