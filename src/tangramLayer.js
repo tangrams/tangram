@@ -9,6 +9,7 @@
 
 import Thread from './utils/thread';
 import Scene from './scene';
+import * as interaction from './interaction';
 
 var tangramLayer;
 export function tangramLayer(id, options) {
@@ -38,6 +39,7 @@ export function tangramLayer(id, options) {
         ).then(() => {
 
           this.updateSize(this);
+          interaction.init(this);
 
         }).catch(error => {
             throw(error);
@@ -63,9 +65,9 @@ export function tangramLayer(id, options) {
       },
 
       updateSize: function (map) {
-        var size = {x: this.container.clientWidth, y: this.container.clientHeight};;
+        var size = {x: this.container.clientWidth, y: this.container.clientHeight};
         map.scene.resizeMap(size.x, size.y);
       }
-    }
+    };
   }
-};
+}

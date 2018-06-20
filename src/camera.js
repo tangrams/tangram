@@ -10,8 +10,8 @@ export default class Camera {
         this.view = view;
         this.position = options.position;
         this.zoom = options.zoom;
-        window.deltaX = 0;
-        window.deltaY = 0;
+        this.roll = null;
+        this.pitch = null;
     }
 
     // Create a camera by type name, factory-style
@@ -103,42 +103,6 @@ class PerspectiveCamera extends Camera {
         this.position_meters = null;
         this.view_matrix = new Float64Array(16);
         this.projection_matrix = new Float32Array(16);
-
-        window.map.scene.canvas.onmousedown = handleMouseDown;
-        window.map.scene.canvas.onmouseup = handleMouseUp;
-        window.map.scene.canvas.onmousemove = handleMouseMove;
-
-        this.mouseDown = false;
-        this.lastMouseX = null;
-        this.lastMouseY = null;
-
-        function handleMouseDown (event) {
-            this.mouseDown = true;
-            window.lastMouseX = event.clientX;
-            window.lastMouseY = event.clientY;
-        }
-
-        function handleMouseUp (event) {
-            this.mouseDown = false;
-        }
-
-        function handleMouseMove (event) {
-            var scene = window.map.scene;
-            var camera = window.map.scene.view.camera;
-            if (!this.mouseDown) {
-                return;
-            }
-            var newX = event.clientX;
-            var newY = event.clientY;
-
-            window.deltaX = newX - window.lastMouseX;
-            window.deltaY = newY - window.lastMouseY;
-
-            camera.updateMatrices();
-            scene.requestRedraw();
-            this.lastMouseX = newX;
-            this.lastMouseY = newY;
-        }
 
         // 'camera' is the name of the shader block, e.g. determines where in the shader this code is injected
         ShaderProgram.replaceBlock('camera', `
@@ -233,14 +197,8 @@ class PerspectiveCamera extends Camera {
         // Include camera height in projection matrix
         mat4.translate(this.projection_matrix, this.projection_matrix, vec3.fromValues(0, 0, -height));
 
-        function degToRad(deg) {
-            return deg * Math.PI / 180;
-        }
-
-        // var translation = vec2(screenx, screeny)
-        // mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaX) / 10, vec3.fromValues(0, 1, 0));
-        mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaY) / 10, vec3.fromValues(1, 0, 0));
-        mat4.rotate(this.projection_matrix, this.projection_matrix, degToRad(window.deltaX) / 10, vec3.fromValues(0, 0, 1));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, this.roll, vec3.fromValues(1, 0, 0));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, this.pitch, vec3.fromValues(0, 0, 1));
     }
 
     update() {
