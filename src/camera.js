@@ -202,9 +202,8 @@ class PerspectiveCamera extends Camera {
 
         // Include camera height in projection matrix
         mat4.translate(this.projection_matrix, this.projection_matrix, vec3.fromValues(0, 0, -height));
-        // apply roll and pitch
-        mat4.rotate(this.projection_matrix, this.projection_matrix, this.roll, vec3.fromValues(1, 0, 0));
-        mat4.rotate(this.projection_matrix, this.projection_matrix, this.pitch, vec3.fromValues(0, 0, 1));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, this.pitch, vec3.fromValues(1, 0, 0));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, this.roll, vec3.fromValues(0, 0, 1));
     }
 
     update() {
