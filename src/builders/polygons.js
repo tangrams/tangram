@@ -60,9 +60,8 @@ export function buildPolygons (
 
                     // Add UVs:
                     if (texcoord_index) {
-                        vertex_template.splice(texcoord_index, 2,
-                                ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize,
-                                ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize);
+                        vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
+                        vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
                     }
 
                     vertex_data.addVertex(vertex_template);
