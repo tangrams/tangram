@@ -2,7 +2,8 @@ import Scene from './scene';
 
 export function init(layer) {
   var scene = layer.scene;
-  var camera = scene.view.camera;
+  var view = scene.view;
+  var camera = view.camera;
 
   scene.canvas.onmousedown = handleMouseDown;
   scene.canvas.onmouseup = handleMouseUp;
@@ -13,11 +14,11 @@ export function init(layer) {
   var lastMouseX = null;
   var lastMouseY = null;
 
-  // maintain pitch and roll between drags
+  // track drag position
   var startingX = 0;
   var startingY = 0;
 
-  // track pitch and roll offset from 0
+  // track drag distance from the starting position
   var deltaX = null;
   var deltaY = null;
 
@@ -36,7 +37,7 @@ export function init(layer) {
       lastMouseX = null;
       lastMouseY = null;
       // track last drag offset and apply that as offset to the next drag –
-      // otherwise camera resets pitch and roll with each drag
+      // otherwise camera resets position and rotation with each drag
       startingX = deltaX;
       startingY = deltaY;
   }
@@ -53,7 +54,9 @@ export function init(layer) {
 
       camera.roll = degToRad(deltaY) / 10;
       camera.pitch = degToRad(deltaX) / 10;
-      camera.updateMatrices();
-      scene.requestRedraw();
+      view.roll = camera.roll;
+      view.pitch = camera.pitch;
+      camera.update();
+      scene.tile_manager.updateLabels();
   }
 }

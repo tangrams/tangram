@@ -20,6 +20,9 @@ export default class View {
         this.bounds = null;
         this.meters_per_pixel = null;
 
+        this.roll = null;
+        this.pitch = null;
+
         this.panning = false;
         this.panning_stop_at = 0;
         this.pan_snap_timer = 0;
@@ -146,7 +149,7 @@ export default class View {
         }
 
         if (tile_zoom !== last_tile_zoom) {
-            this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1;
+            this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1; // 1 = zooming in, -1 = zooming out
         }
 
         this.zoom = zoom;

@@ -46,6 +46,12 @@ export default class Camera {
             if (this.zoom) {
                 view.zoom = this.zoom;
             }
+            if (this.roll) {
+                view.roll = this.roll;
+            }
+            if (this.pitch) {
+                view.pitch = this.pitch;
+            }
             this.view.setView(view);
         }
     }
@@ -196,7 +202,7 @@ class PerspectiveCamera extends Camera {
 
         // Include camera height in projection matrix
         mat4.translate(this.projection_matrix, this.projection_matrix, vec3.fromValues(0, 0, -height));
-
+        // apply roll and pitch
         mat4.rotate(this.projection_matrix, this.projection_matrix, this.roll, vec3.fromValues(1, 0, 0));
         mat4.rotate(this.projection_matrix, this.projection_matrix, this.pitch, vec3.fromValues(0, 0, 1));
     }

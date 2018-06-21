@@ -24,7 +24,9 @@ export default class TileManager {
             style_counts: [],
             pending_label_style_counts: [],
             zoom: null,
-            zoom_steps: 3 // divisions per zoom at which labels are re-collided (e.g. 0, 0.33, 0.66)
+            zoom_steps: 3, // divisions per zoom at which labels are re-collided (e.g. 0, 0.33, 0.66)
+            pitch: null,
+            roll: null,
         };
 
         // Provide a hook for this object to be called from worker threads
@@ -144,6 +146,8 @@ export default class TileManager {
 
         // check if tile set has changed (in ways that affect collision)
         if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
+            this.view.roll === this.collision.roll &&
+            this.view.pitch === this.collision.pitch &&
             tiles.every(t => {
                 let i = this.collision.tiles.indexOf(t);
                 return i > -1 &&
@@ -162,6 +166,8 @@ export default class TileManager {
             this.collision.style_counts = tiles.map(t => Object.keys(t.meshes).length);
             this.collision.pending_label_style_counts = tiles.map(t => t.pendingLabelStyleCount());
             this.collision.zoom = roundPrecision(this.view.zoom, this.collision.zoom_steps);
+            this.collision.pitch = this.view.pitch;
+            this.collision.roll = this.view.roll;
             // log('debug', `Update label collisions (zoom ${this.collision.zoom}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
 
             this.collision.task = {
@@ -186,6 +192,7 @@ export default class TileManager {
 
     updateProxyTiles () {
         if (this.view.zoom_direction === 0) {
+            // haven't zoomed yet, no proxy tiles have been created
             return;
         }
 
@@ -194,7 +201,7 @@ export default class TileManager {
 
         let proxy = false;
         this.forEachTile(tile => {
-            if (this.view.zoom_direction === 1) {
+            if (this.view.zoom_direction === 1) { // zooming in
                 if (tile.visible && !tile.labeled) {
                     const parent = this.pyramid.getAncestor(tile);
                     if (parent) {
@@ -203,7 +210,7 @@ export default class TileManager {
                     }
                 }
             }
-            else if (this.view.zoom_direction === -1) {
+            else if (this.view.zoom_direction === -1) { // zooming out
                 if (tile.visible && !tile.labeled) {
                     const descendants = this.pyramid.getDescendants(tile);
                     for (let i=0; i < descendants.length; i++) {
