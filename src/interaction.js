@@ -1,4 +1,5 @@
 import Scene from './scene';
+import Geo from './geo';
 
 export function init(layer) {
   var scene = layer.scene;
@@ -14,13 +15,22 @@ export function init(layer) {
   var lastMouseX = null;
   var lastMouseY = null;
 
-  // track drag position
+  // track drag screen position
   var startingX = 0;
   var startingY = 0;
 
   // track drag distance from the starting position
-  var deltaX = null;
-  var deltaY = null;
+  var deltaX = 0;
+  var deltaY = 0;
+  var orbitDeltaX = null;
+  var orbitDeltaY = null;
+
+  // track drag starting map position
+  var startingLng = view.center.meters.x;
+  var startingLat = view.center.meters.y;
+
+  var metersDeltaX = null;
+  var metersDeltaY = null;
 
   function degToRad(deg) {
     return deg * Math.PI / 180;
@@ -38,25 +48,40 @@ export function init(layer) {
       lastMouseY = null;
       // track last drag offset and apply that as offset to the next drag –
       // otherwise camera resets position and rotation with each drag
-      startingX = deltaX;
-      startingY = deltaY;
+      startingX = orbitDeltaX;
+      startingY = orbitDeltaY;
+      startingLng = view.center.meters.x;
+      startingLat = view.center.meters.y;
+      deltaX = 0;
+      deltaY = 0;
   }
 
   function handleMouseMove (event) {
-      if (!mouseDown) {
-          return;
-      }
-      var newX = event.clientX;
-      var newY = event.clientY;
+    if (!mouseDown) {
+        return;
+    }
+    var newX = event.clientX;
+    var newY = event.clientY;
 
-      deltaX = startingX + newX - lastMouseX;
-      deltaY = startingY + newY - lastMouseY;
+    deltaX = newX - lastMouseX;
+    deltaY = newY - lastMouseY;
 
-      camera.roll = degToRad(deltaY) / 10;
-      camera.pitch = degToRad(deltaX) / 10;
+    if (event.metaKey) { // orbit camera
+      orbitDeltaX = startingX + newX - lastMouseX;
+      orbitDeltaY = startingY + newY - lastMouseY;
+      camera.roll = degToRad(orbitDeltaY) / 10;
+      camera.pitch = degToRad(orbitDeltaX) / 10;
       view.roll = camera.roll;
       view.pitch = camera.pitch;
-      camera.update();
-      scene.tile_manager.updateLabels();
-  }
+
+    } else { // basic pan
+      metersDeltaX = deltaX * Geo.metersPerPixel(view.zoom);
+      metersDeltaY = deltaY * Geo.metersPerPixel(view.zoom);
+      var deltaLatLng = Geo.metersToLatLng([startingLng - metersDeltaX, startingLat + metersDeltaY]);
+      view.setView({lng: deltaLatLng[0], lat: deltaLatLng[1]});
+      console.log(view.center.meters)
+    }
+    camera.update();
+    scene.tile_manager.updateLabels();
+}
 }
