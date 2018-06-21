@@ -198,7 +198,7 @@ export var Style = {
 
         let mesh = this.getTileMesh(tile, this.meshVariantTypeForDraw(style));
 
-        // In case of polygons with interiors (holes) it may happen that during buildGeometry() vertices were
+        // In case of polygons with interiors within interiors it may happen that during buildGeometry() vertices were
         // added but the returned geometries count is 0 because the triangulation and checks against interiors
         // interrupted the build process. For such cases we have to memorize the original vertex_count and offset to
         // reset the vertex_data afterwards:
