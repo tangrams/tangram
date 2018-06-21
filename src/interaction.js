@@ -8,6 +8,7 @@ export function init(layer) {
 
   scene.canvas.onmousedown = handleMouseDown;
   scene.canvas.onmouseup = handleMouseUp;
+  scene.canvas.onmouseleave = handleMouseUp;
   scene.canvas.onmousemove = handleMouseMove;
   scene.container.onwheel = handleScroll;
 
@@ -34,6 +35,9 @@ export function init(layer) {
   var metersDeltaX = null;
   var metersDeltaY = null;
 
+  // track modifier key state
+  var metaKeyDown = false;
+
   function degToRad(deg) {
     return deg * Math.PI / 180;
   }
@@ -58,6 +62,11 @@ export function init(layer) {
       deltaY = 0;
   }
 
+  function resetMouseEventVars(event) {
+    handleMouseUp(event);
+    handleMouseDown(event);
+  }
+
   function handleMouseMove (event) {
     if (!mouseDown) {
         return;
@@ -69,18 +78,32 @@ export function init(layer) {
     deltaY = newY - lastMouseY;
 
     if (event.metaKey) { // orbit camera
+      if (!metaKeyDown) { // meta key pressed during drag, fake a mouseup/mousedown
+        resetMouseEventVars(event);
+      }
+      metaKeyDown = true;
       orbitDeltaX = startingX + newX - lastMouseX;
       orbitDeltaY = startingY + newY - lastMouseY;
-      camera.roll = degToRad(orbitDeltaY) / 10;
-      camera.pitch = degToRad(orbitDeltaX) / 10;
+      camera.roll = degToRad(orbitDeltaX * .1);
+      camera.pitch = degToRad(orbitDeltaY * .1);
       view.roll = camera.roll;
       view.pitch = camera.pitch;
 
     } else { // basic pan
-      metersDeltaX = deltaX * Geo.metersPerPixel(view.zoom);
-      metersDeltaY = deltaY * Geo.metersPerPixel(view.zoom);
-      var deltaLatLng = Geo.metersToLatLng([startingLng - metersDeltaX, startingLat + metersDeltaY]);
-      view.setView({lng: deltaLatLng[0], lat: deltaLatLng[1]});
+      if (metaKeyDown) { // meta key was just released during drag, fake a mouseup/mousedown
+        resetMouseEventVars(event);
+      } else {
+        metersDeltaX = deltaX * Geo.metersPerPixel(view.zoom);
+        metersDeltaY = deltaY * Geo.metersPerPixel(view.zoom);
+
+        var cosRoll = Math.cos(scene.view.roll);
+        var adjustedDeltaX = metersDeltaX * cosRoll + metersDeltaY * Math.sin(scene.view.roll + Math.PI);
+        var adjustedDeltaY = metersDeltaY * cosRoll + metersDeltaX * Math.sin(scene.view.roll);
+
+        var deltaLatLng = Geo.metersToLatLng([startingLng - adjustedDeltaX, startingLat + adjustedDeltaY]);
+        view.setView({lng: deltaLatLng[0], lat: deltaLatLng[1]});
+      }
+      metaKeyDown = false;
     }
     camera.update();
     scene.tile_manager.updateLabels();
