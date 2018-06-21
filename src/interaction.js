@@ -9,6 +9,7 @@ export function init(layer) {
   scene.canvas.onmousedown = handleMouseDown;
   scene.canvas.onmouseup = handleMouseUp;
   scene.canvas.onmousemove = handleMouseMove;
+  scene.container.onwheel = handleScroll;
 
   // track mouse state
   var mouseDown = false;
@@ -29,6 +30,7 @@ export function init(layer) {
   var startingLng = view.center.meters.x;
   var startingLat = view.center.meters.y;
 
+  // track drag distance from the starting map position
   var metersDeltaX = null;
   var metersDeltaY = null;
 
@@ -79,9 +81,13 @@ export function init(layer) {
       metersDeltaY = deltaY * Geo.metersPerPixel(view.zoom);
       var deltaLatLng = Geo.metersToLatLng([startingLng - metersDeltaX, startingLat + metersDeltaY]);
       view.setView({lng: deltaLatLng[0], lat: deltaLatLng[1]});
-      console.log(view.center.meters)
     }
     camera.update();
     scene.tile_manager.updateLabels();
-}
+  }
+
+  function handleScroll (event) {
+    view.setZoom(view.zoom -= event.deltaY * .01);
+    return false;
+  }
 }
