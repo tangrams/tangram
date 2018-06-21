@@ -23,12 +23,13 @@ export function buildPolygons (
     let vertex_elements = vertex_data.vertex_elements,
         element_offset = vertex_data.vertex_count,
         num_polygons = polygons.length,
-        geom_count = 0;
+        geom_count = 0,
+        min_u, min_v, max_u, max_v,
+        min_x, min_y, max_x, max_y;
 
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        // Usage of "var" for function wide visibility:
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
+        [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
     for (let p = 0; p < num_polygons; p++) {
@@ -37,13 +38,12 @@ export function buildPolygons (
             indices = triangulatePolygon(earcut.flatten(polygon)),
             num_indices = indices.length;
 
-        // The verices and vertex-elements must not be added if earcut returns no indicies:
+        // The vertices and vertex-elements must not be added if earcut returns no indices:
         if (num_indices) {
 
             // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box:
             if (texcoord_index) {
-                // Usage of "var" for function wide visibility:
-                var [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon),
+                [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon),
                     span_x = max_x - min_x,
                     span_y = max_y - min_y,
                     scale_u = (max_u - min_u) / span_x,
@@ -69,7 +69,7 @@ export function buildPolygons (
             }
 
             // Add element indices:
-            for (let i = 0; i < num_indices; i++){
+            for (let i = 0; i < num_indices; i++) {
                 vertex_elements.push(element_offset + indices[i]);
             }
             geom_count += num_indices / 3;
