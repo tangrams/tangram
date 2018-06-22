@@ -85,7 +85,7 @@ export function init(layer) {
       orbitDeltaX = startingX + newX - lastMouseX;
       orbitDeltaY = startingY + newY - lastMouseY;
       camera.roll = degToRad(orbitDeltaX * .1);
-      camera.pitch = degToRad(orbitDeltaY * .1);
+      camera.pitch = Math.min(degToRad(orbitDeltaY * .1), 0.);
       view.roll = camera.roll;
       view.pitch = camera.pitch;
 
