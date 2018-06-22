@@ -4,6 +4,7 @@ import Camera from './camera';
 import Utils from './utils/utils';
 import subscribeMixin from './utils/subscribe';
 import log from './utils/log';
+import * as interaction from './interaction';
 
 export const VIEW_PAN_SNAP_TIME = 0.5;
 
@@ -58,6 +59,7 @@ export default class View {
         let active_camera = this.getActiveCamera();
         if (active_camera) {
             this.camera = Camera.create(active_camera, this, this.scene.config.cameras[active_camera]);
+            interaction.init(this.scene, this.camera);
             this.camera.updateView();
         }
     }

@@ -9,9 +9,9 @@ export default class Camera {
     constructor(name, view, options = {}) {
         this.view = view;
         this.position = options.position;
-        this.zoom = options.zoom;
-        this.roll = null;
-        this.pitch = null;
+        this.zoom = options.zoom || view.zoom || null;
+        this.roll = view.roll || null;
+        this.pitch = view.pitch || null;
     }
 
     // Create a camera by type name, factory-style

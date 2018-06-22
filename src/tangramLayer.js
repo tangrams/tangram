@@ -20,7 +20,7 @@ export function tangramLayer(id, options) {
       initialize (options) {
       // Defaults
         if (!this.hasOwnProperty('options')) {
-            this.options = this.options ? create(this.options) : {};
+            this.options = options || {};
         }
         for (var i in options) {
             this.options[i] = options[i];
@@ -39,7 +39,9 @@ export function tangramLayer(id, options) {
         ).then(() => {
 
           this.updateSize(this);
-          interaction.init(this);
+
+          // Interaction layer initialization
+          interaction.init(this.scene, this.scene.view.camera);
 
         }).catch(error => {
             throw(error);

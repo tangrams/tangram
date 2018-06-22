@@ -23,10 +23,12 @@ export default class TileManager {
             generations: [],
             style_counts: [],
             pending_label_style_counts: [],
-            zoom: null,
+            view: {
+                zoom: null,
+                pitch: null,
+                roll: null
+            },
             zoom_steps: 3, // divisions per zoom at which labels are re-collided (e.g. 0, 0.33, 0.66)
-            pitch: null,
-            roll: null,
         };
 
         // Provide a hook for this object to be called from worker threads
@@ -165,15 +167,16 @@ export default class TileManager {
             this.collision.generations = tiles.map(t => t.generation);
             this.collision.style_counts = tiles.map(t => Object.keys(t.meshes).length);
             this.collision.pending_label_style_counts = tiles.map(t => t.pendingLabelStyleCount());
-            this.collision.zoom = roundPrecision(this.view.zoom, this.collision.zoom_steps);
-            this.collision.pitch = this.view.pitch;
-            this.collision.roll = this.view.roll;
+            this.collision.view = { zoom: roundPrecision(this.view.zoom, this.collision.zoom_steps),
+                                    pitch: this.view.pitch,
+                                    roll: this.view.roll
+                                };
             // log('debug', `Update label collisions (zoom ${this.collision.zoom}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
 
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
                 run: (task) => {
-                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.zoom, this.isLoadingVisibleTiles()).then(results => {
+                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.view, this.isLoadingVisibleTiles()).then(results => {
                         this.collision.task = null;
                         Task.finish(task, results);
                         this.updateTileStates().then(() => this.scene.immediateRedraw());

@@ -1,11 +1,11 @@
-import Scene from './scene';
 import Geo from './geo';
 
-export function init(layer) {
-  var scene = layer.scene;
+export function init(scene, camera) {
   var view = scene.view;
-  var camera = view.camera;
 
+  var orbitSpeed = 0.1; // controls mouse-to-orbit speed
+
+  // set event handlers
   scene.canvas.onmousedown = handleMouseDown;
   scene.canvas.onmouseup = handleMouseUp;
   scene.canvas.onmouseleave = handleMouseLeave;
@@ -24,8 +24,10 @@ export function init(layer) {
   // track drag distance from the starting position
   var deltaX = 0;
   var deltaY = 0;
-  var orbitDeltaX = null;
-  var orbitDeltaY = null;
+
+  // track orbit drag distance, preset with any pre-existing orbit
+  var orbitDeltaX = radToDeg(camera.roll / orbitSpeed);
+  var orbitDeltaY = radToDeg(camera.pitch / orbitSpeed);
 
   // track drag starting map position
   var startingLng = view.center.meters.x;
@@ -40,6 +42,9 @@ export function init(layer) {
 
   function degToRad(deg) {
     return deg * Math.PI / 180;
+  }
+  function radToDeg(rad) {
+    return rad / Math.PI * 180;
   }
 
   function handleMouseDown (event) {
@@ -83,15 +88,16 @@ export function init(layer) {
     deltaX = newX - lastMouseX;
     deltaY = newY - lastMouseY;
 
-    if (event.metaKey) { // orbit camera
+    // orbit camera
+    if (event.metaKey) {
       if (!metaKeyDown) { // meta key pressed during drag, fake a mouseup/mousedown
         resetMouseEventVars(event);
       }
       metaKeyDown = true;
       orbitDeltaX = startingX + newX - lastMouseX;
-      orbitDeltaY = startingY + newY - lastMouseY;
-      camera.roll = degToRad(orbitDeltaX * .1);
-      camera.pitch = Math.min(degToRad(orbitDeltaY * .1), 0.);
+      orbitDeltaY = Math.min(startingY + newY - lastMouseY, 0); // enforce minimum pitch of 0 = straight down
+      camera.roll = degToRad(orbitDeltaX * orbitSpeed);
+      camera.pitch = degToRad(orbitDeltaY * orbitSpeed);
       view.roll = camera.roll;
       view.pitch = camera.pitch;
 
@@ -103,9 +109,9 @@ export function init(layer) {
         metersDeltaY = deltaY * Geo.metersPerPixel(view.zoom);
 
         // compensate for roll
-        var cosRoll = Math.cos(scene.view.roll);
-        var adjustedDeltaX = metersDeltaX * cosRoll + metersDeltaY * Math.sin(scene.view.roll + Math.PI);
-        var adjustedDeltaY = metersDeltaY * cosRoll + metersDeltaX * Math.sin(scene.view.roll);
+        var cosRoll = Math.cos(view.roll);
+        var adjustedDeltaX = metersDeltaX * cosRoll + metersDeltaY * Math.sin(view.roll + Math.PI);
+        var adjustedDeltaY = metersDeltaY * cosRoll + metersDeltaX * Math.sin(view.roll);
 
         var deltaLatLng = Geo.metersToLatLng([startingLng - adjustedDeltaX, startingLat + adjustedDeltaY]);
         view.setView({lng: deltaLatLng[0], lat: deltaLatLng[1]});
@@ -117,7 +123,7 @@ export function init(layer) {
   }
 
   function handleScroll (event) {
-    var zoomFactor = .01; // sets zoom speed with scrollwheel/trackpad
+    var zoomFactor = 0.01; // sets zoom speed with scrollwheel/trackpad
     var targetZoom = view.zoom - event.deltaY * zoomFactor;
 
     // zoom toward pointer location
@@ -126,12 +132,12 @@ export function init(layer) {
     var offset = [startPosition[0] - containerCenter[0], startPosition[1] - containerCenter[1]];
 
     // compensate for roll
-    var cosRoll = Math.cos(scene.view.roll);
-    var adjustedOffset = [offset[0] * cosRoll + offset[1] * Math.sin(scene.view.roll + Math.PI),
-                      offset[1] * cosRoll + offset[0] * Math.sin(scene.view.roll)];
+    var cosRoll = Math.cos(view.roll);
+    var adjustedOffset = [offset[0] * cosRoll + offset[1] * Math.sin(view.roll + Math.PI),
+                      offset[1] * cosRoll + offset[0] * Math.sin(view.roll)];
 
     var scrollTarget = [adjustedOffset[0] * Geo.metersPerPixel(view.zoom), adjustedOffset[1] * Geo.metersPerPixel(view.zoom)];
-    var panFactor = (targetZoom - view.zoom) * .666; // I don't know why .666 is needed here
+    var panFactor = (targetZoom - view.zoom) * 0.666; // I don't know why 0.666 is needed here
     var target = [view.center.meters.x + scrollTarget[0] * panFactor,
                   view.center.meters.y - scrollTarget[1] * panFactor];
     target = Geo.metersToLatLng(target);
