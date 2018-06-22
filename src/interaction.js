@@ -8,7 +8,7 @@ export function init(layer) {
 
   scene.canvas.onmousedown = handleMouseDown;
   scene.canvas.onmouseup = handleMouseUp;
-  scene.canvas.onmouseleave = handleMouseUp;
+  scene.canvas.onmouseleave = handleMouseLeave;
   scene.canvas.onmousemove = handleMouseMove;
   scene.container.onwheel = handleScroll;
 
@@ -60,6 +60,12 @@ export function init(layer) {
       startingLat = view.center.meters.y;
       deltaX = 0;
       deltaY = 0;
+  }
+
+  function handleMouseLeave (event) {
+    if (!metaKeyDown) { // trigger mouseup on pan, but not orbit
+      handleMouseUp(event);
+    }
   }
 
   function resetMouseEventVars(event) {
