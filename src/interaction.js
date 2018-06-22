@@ -96,6 +96,7 @@ export function init(layer) {
         metersDeltaX = deltaX * Geo.metersPerPixel(view.zoom);
         metersDeltaY = deltaY * Geo.metersPerPixel(view.zoom);
 
+        // compensate for roll
         var cosRoll = Math.cos(scene.view.roll);
         var adjustedDeltaX = metersDeltaX * cosRoll + metersDeltaY * Math.sin(scene.view.roll + Math.PI);
         var adjustedDeltaY = metersDeltaY * cosRoll + metersDeltaX * Math.sin(scene.view.roll);
@@ -117,7 +118,13 @@ export function init(layer) {
     var startPosition = [event.clientX, event.clientY];
     var containerCenter = [scene.container.clientWidth / 2, scene.container.clientHeight / 2];
     var offset = [startPosition[0] - containerCenter[0], startPosition[1] - containerCenter[1]];
-    var scrollTarget = [offset[0] * Geo.metersPerPixel(view.zoom), offset[1] * Geo.metersPerPixel(view.zoom)];
+
+    // compensate for roll
+    var cosRoll = Math.cos(scene.view.roll);
+    var adjustedOffset = [offset[0] * cosRoll + offset[1] * Math.sin(scene.view.roll + Math.PI),
+                      offset[1] * cosRoll + offset[0] * Math.sin(scene.view.roll)];
+
+    var scrollTarget = [adjustedOffset[0] * Geo.metersPerPixel(view.zoom), adjustedOffset[1] * Geo.metersPerPixel(view.zoom)];
     var panFactor = (targetZoom - view.zoom) * .666; // I don't know why .666 is needed here
     var target = [view.center.meters.x + scrollTarget[0] * panFactor,
                   view.center.meters.y - scrollTarget[1] * panFactor];
