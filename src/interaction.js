@@ -110,7 +110,27 @@ export function init(layer) {
   }
 
   function handleScroll (event) {
-    view.setZoom(view.zoom -= event.deltaY * .01);
+    var zoomFactor = .01; // sets zoom speed with scrollwheel/trackpad
+    var targetZoom = view.zoom - event.deltaY * zoomFactor;
+
+    // zoom toward pointer location
+    var startPosition = [event.clientX, event.clientY];
+    var containerCenter = [scene.container.clientWidth / 2, scene.container.clientHeight / 2];
+    var offset = [startPosition[0] - containerCenter[0], startPosition[1] - containerCenter[1]];
+    var scrollTarget = [offset[0] * Geo.metersPerPixel(view.zoom), offset[1] * Geo.metersPerPixel(view.zoom)];
+    var panFactor = (targetZoom - view.zoom) * .666; // I don't know why .666 is needed here
+    var target = [view.center.meters.x + scrollTarget[0] * panFactor,
+                  view.center.meters.y - scrollTarget[1] * panFactor];
+    target = Geo.metersToLatLng(target);
+
+    view.setView({lng: target[0], lat: target[1], zoom: targetZoom});
+
+    // have to set these here too because scroll doesn't count as a mousedown
+    // so no mouseup will be triggered at the end
+    startingLng = view.center.meters.x;
+    startingLat = view.center.meters.y;
+
+    // prevent scroll event bubbling
     return false;
   }
 }
