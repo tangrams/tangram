@@ -30,8 +30,8 @@ export function init(scene, camera) {
   var orbitDeltaY = radToDeg(camera.pitch / orbitSpeed);
 
   // track drag starting map position
-  var startingLng = view.center.meters.x;
-  var startingLat = view.center.meters.y;
+  var startingLng = view.center ? view.center.meters.x : null;
+  var startingLat = view.center ? view.center.meters.y : null;
 
   // track drag distance from the starting map position
   var metersDeltaX = null;
