@@ -25,7 +25,8 @@ export function buildPolygons (
         num_polygons = polygons.length,
         geom_count = 0,
         min_u, min_v, max_u, max_v,
-        min_x, min_y, max_x, max_y;
+        min_x, min_y, max_x, max_y,
+        span_x, span_y, scale_u, scale_v;
 
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
