@@ -21,7 +21,6 @@ export function buildPolygons (
         polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
     let vertex_elements = vertex_data.vertex_elements,
-        element_offset = vertex_data.vertex_count,
         num_polygons = polygons.length,
         geom_count = 0,
         min_u, min_v, max_u, max_v,
@@ -36,6 +35,7 @@ export function buildPolygons (
     for (let p = 0; p < num_polygons; p++) {
 
         let polygon = polygons[p],
+            element_offset = vertex_data.vertex_count,
             indices = triangulatePolygon(earcut.flatten(polygon)),
             num_indices = indices.length;
 
