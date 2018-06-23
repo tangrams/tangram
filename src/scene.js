@@ -788,30 +788,31 @@ export default class Scene {
     // Query features within visible tiles, with optional filter conditions
     queryFeatures({ filter, unique = true, group_by = null, visible = null, geometry = false } = {}) {
         filter = Utils.serializeWithFunctions(filter);
+
+        // Optional uniqueify criteria
+        // Valid values: true, false/null, single property name, or array of property names
+        unique = (typeof unique === 'string') ? [unique] : unique;
+        const uniqueify = unique && (obj => {
+            const props = Array.isArray(unique) ? sliceObject(obj.properties, unique) : obj.properties;
+            if (geometry) {
+                // when `geometry` flag is set, we need to uniqueify based on *both* feature properties and geometry
+                return JSON.stringify({ geometry: obj.geometry, properties: props });
+            }
+            return JSON.stringify(props);
+        });
+
+        // Optional grouping criteria
+        // Valid values: false/null, single property name, or array of property names
+        group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
+        const group = group_by && (obj => {
+            return Array.isArray(group_by) ? JSON.stringify(sliceObject(obj, group_by)) : obj[group_by];
+        });
+
         let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
         return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, visible, geometry, tile_keys }).then(results => {
             let features = [];
             let keys = {};
             let groups = {};
-
-            // Optional uniqueify criteria
-            // Valid values: true, false/null, single property name, or array of property names
-            unique = (typeof unique === 'string') ? [unique] : unique;
-            const uniqueify = unique && (obj => {
-                const props = Array.isArray(unique) ? sliceObject(obj.properties, unique) : obj.properties;
-                if (geometry) {
-                    // when `geometry` flag is set, we need to uniqueify based on *both* feature properties and geometry
-                    return JSON.stringify({ geometry: obj.geometry, properties: props });
-                }
-                return JSON.stringify(props);
-            });
-
-            // Optional grouping criteria
-            // Valid values: false/null, single property name, or array of property names
-            group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
-            const group = group_by && (obj => {
-                return Array.isArray(group_by) ? JSON.stringify(sliceObject(obj, group_by)) : obj[group_by];
-            });
 
             results.forEach(r => r.forEach(feature => {
                 if (uniqueify) {
