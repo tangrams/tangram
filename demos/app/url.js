@@ -29,11 +29,13 @@
     window.addEventListener('load', function () {
         // update URL scene load
         map.scene.subscribe({
-            load: function (msg) {
-                updateURL();
-                map.setView(map_start_location.slice(1, 3), map_start_location[0]);
-            }
+            load: onLoad()
         });
     });
+
+    function onLoad() {
+        updateURL();
+        map.setView(map_start_location.slice(1, 3), map_start_location[0]);
+    }
 
 })();
