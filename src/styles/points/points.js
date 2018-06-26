@@ -452,7 +452,12 @@ Object.assign(Points, {
         draw.placement_min_length_ratio = StyleParser.createPropertyCache(draw.placement_min_length_ratio, StyleParser.parsePositiveNumber);
 
         if (typeof draw.angle === 'number') {
-            draw.angle = draw.angle * Math.PI / 180;
+            draw.angle = draw.angle * Math.PI / 180; // convert static value to radians
+        }
+        else if (typeof draw.angle === 'function') {
+            // convert function return value to radians
+            const angle_func = draw.angle;
+            draw.angle = context => angle_func(context) * Math.PI / 180;
         }
         else {
             draw.angle = draw.angle || 0; // angle can be a string like "auto" (use angle of geometry)
