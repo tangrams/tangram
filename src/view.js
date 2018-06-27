@@ -4,7 +4,6 @@ import Camera from './camera';
 import Utils from './utils/utils';
 import subscribeMixin from './utils/subscribe';
 import log from './utils/log';
-import * as interaction from './interaction';
 
 export const VIEW_PAN_SNAP_TIME = 0.5;
 
@@ -14,6 +13,7 @@ export default class View {
         subscribeMixin(this);
 
         this.scene = scene;
+        this.interactionLayer = null; // optionally set by tangramLayer
         this.createMatrices();
 
         this.zoom = null;
@@ -59,7 +59,9 @@ export default class View {
         let active_camera = this.getActiveCamera();
         if (active_camera) {
             this.camera = Camera.create(active_camera, this, this.scene.config.cameras[active_camera]);
-            interaction.init(this.scene, this.camera);
+            if (this.interactionLayer) { // provided by tangramLayer
+                this.interactionLayer.init(this.scene, this.camera);
+            }
             this.camera.updateView();
         }
     }

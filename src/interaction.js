@@ -2,7 +2,7 @@ import Geo from './geo';
 
 export function init(scene, camera) {
   var view = scene.view;
-
+  view.interactionLayer = this;
   var orbitSpeed = 0.1; // controls mouse-to-orbit speed
 
   // set event handlers
