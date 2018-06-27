@@ -12,6 +12,9 @@ export default SceneLoader = {
 
     // Load scenes definitions from URL & proprocess
     loadScene(url, { path, type } = {}) {
+        if (typeof url === 'undefined') {
+            return Promise.reject(Error('No scene url found'));
+        }
         let errors = [];
         return this.loadSceneRecursive({ url, path, type }, null, errors).
             then(result => this.finalize(result)).

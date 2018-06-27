@@ -11,15 +11,17 @@ import Thread from './utils/thread';
 import Scene from './scene';
 
 var tangramLayer;
-export function tangramLayer(id, options) {
+export function tangramLayer(id, options = {}) {
   if (Thread.is_main) {
     return {
       container: document.getElementById(id),
-
-      initialize (options) {
-      // Defaults
+      initialize (initOptions = {}) {
+        // if options were defined in both the layer instantiation and the initialize call, merge them
+        // (initialization options will override layer options)
+        for (var attribute in initOptions) { options[attribute] = initOptions[attribute]; }
+        // Defaults
         if (!this.hasOwnProperty('options')) {
-            this.options = this.options ? create(this.options) : {};
+            this.options = options;
         }
         for (var i in options) {
             this.options[i] = options[i];
@@ -63,9 +65,9 @@ export function tangramLayer(id, options) {
       },
 
       updateSize: function (map) {
-        var size = {x: this.container.clientWidth, y: this.container.clientHeight};;
+        var size = {x: this.container.clientWidth, y: this.container.clientHeight};
         map.scene.resizeMap(size.x, size.y);
       }
-    }
+    };
   }
-};
+}
