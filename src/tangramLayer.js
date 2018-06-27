@@ -12,15 +12,17 @@ import Scene from './scene';
 import * as interaction from './interaction';
 
 var tangramLayer;
-export function tangramLayer(id, options) {
+export function tangramLayer(id, options = {}) {
   if (Thread.is_main) {
     return {
       container: document.getElementById(id),
-
-      initialize (options) {
-      // Defaults
+      initialize (initOptions = {}) {
+        // if options were defined in both the layer instantiation and the initialize call, merge them
+        // (initialization options will override layer options)
+        for (var attribute in initOptions) { options[attribute] = initOptions[attribute]; }
+        // Defaults
         if (!this.hasOwnProperty('options')) {
-            this.options = options || {};
+            this.options = options;
         }
         for (var i in options) {
             this.options[i] = options[i];
