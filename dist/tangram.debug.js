@@ -24851,9 +24851,9 @@ var Camera = function () {
 
         this.view = view;
         this.position = options.position;
-        this.zoom = options.zoom || view.zoom || null;
-        this.roll = view.roll || null;
-        this.pitch = view.pitch || null;
+        this.zoom = options.zoom || view ? view.zoom : null;
+        this.roll = options.roll || view ? view.roll : null;
+        this.pitch = options.pitch || view ? view.pitch : null;
     }
 
     // Create a camera by type name, factory-style
@@ -28193,7 +28193,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function init(scene, camera) {
   var view = scene.view;
-
+  view.interactionLayer = this;
   var orbitSpeed = 0.1; // controls mouse-to-orbit speed
 
   // set event handlers
@@ -28221,8 +28221,8 @@ function init(scene, camera) {
   var orbitDeltaY = radToDeg(camera.pitch / orbitSpeed);
 
   // track drag starting map position
-  var startingLng = view.center.meters.x;
-  var startingLat = view.center.meters.y;
+  var startingLng = view.center ? view.center.meters.x : null;
+  var startingLat = view.center ? view.center.meters.y : null;
 
   // track drag distance from the starting map position
   var metersDeltaX = null;
@@ -28242,9 +28242,11 @@ function init(scene, camera) {
     mouseDown = true;
     lastMouseX = event.clientX;
     lastMouseY = event.clientY;
+    // scene.view.markUserInput();
   }
 
   function handleMouseUp(event) {
+    // scene.render_loop_stop = true;
     mouseDown = false;
     lastMouseX = null;
     lastMouseY = null;
@@ -28256,6 +28258,7 @@ function init(scene, camera) {
     startingLat = view.center.meters.y;
     deltaX = 0;
     deltaY = 0;
+    view.setPanning(false);
   }
 
   function handleMouseLeave(event) {
@@ -28274,6 +28277,7 @@ function init(scene, camera) {
     if (!mouseDown) {
       return;
     }
+    view.setPanning(false); // reset pan timer
     var newX = event.clientX;
     var newY = event.clientY;
 
@@ -28299,6 +28303,7 @@ function init(scene, camera) {
         // meta key was just released during drag, fake a mouseup/mousedown
         resetMouseEventVars(event);
       } else {
+
         metersDeltaX = deltaX * _geo2.default.metersPerPixel(view.zoom);
         metersDeltaY = deltaY * _geo2.default.metersPerPixel(view.zoom);
 
@@ -28312,8 +28317,10 @@ function init(scene, camera) {
       }
       metaKeyDown = false;
     }
-    camera.update();
+    view.setPanning(true);
+    // view.markUserInput();
     scene.tile_manager.updateLabels();
+    scene.update();
   }
 
   function handleScroll(event) {
@@ -28344,6 +28351,7 @@ function init(scene, camera) {
     // prevent scroll event bubbling
     return false;
   }
+  scene.render_loop_stop = true; // disable constant frame updates
 }
 
 },{"./geo":202}],216:[function(_dereq_,module,exports){
@@ -33310,6 +33318,9 @@ exports.default = SceneLoader = {
             path = _ref.path,
             type = _ref.type;
 
+        if (typeof url === 'undefined') {
+            return Promise.reject(Error('No scene url found'));
+        }
         var errors = [];
         return this.loadSceneRecursive({ url: url, path: path, type: type }, null, errors).then(function (result) {
             return _this.finalize(result);
@@ -42474,17 +42485,25 @@ var tangramLayer; // Tangram main API
 // This will create a Tangram map in the DOM element (normally a div) called 'map'.
 
 
-function tangramLayer(id, options) {
+function tangramLayer(id) {
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
   if (_thread2.default.is_main) {
     return {
       container: document.getElementById(id),
-
-      initialize: function initialize(options) {
+      initialize: function initialize() {
         var _this = this;
 
+        var initOptions = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+        // if options were defined in both the layer instantiation and the initialize call, merge them
+        // (initialization options will override layer options)
+        for (var attribute in initOptions) {
+          options[attribute] = initOptions[attribute];
+        }
         // Defaults
         if (!this.hasOwnProperty('options')) {
-          this.options = options || {};
+          this.options = options;
         }
         for (var i in options) {
           this.options[i] = options[i];
@@ -46553,12 +46572,6 @@ var _log = _dereq_('./utils/log');
 
 var _log2 = _interopRequireDefault(_log);
 
-var _interaction = _dereq_('./interaction');
-
-var interaction = _interopRequireWildcard(_interaction);
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -46572,6 +46585,7 @@ var View = function () {
         (0, _subscribe2.default)(this);
 
         this.scene = scene;
+        this.interactionLayer = null; // optionally set by tangramLayer
         this.createMatrices();
 
         this.zoom = null;
@@ -46624,7 +46638,10 @@ var View = function () {
             var active_camera = this.getActiveCamera();
             if (active_camera) {
                 this.camera = _camera2.default.create(active_camera, this, this.scene.config.cameras[active_camera]);
-                interaction.init(this.scene, this.camera);
+                if (this.interactionLayer) {
+                    // provided by tangramLayer
+                    this.interactionLayer.init(this.scene, this.camera);
+                }
                 this.camera.updateView();
             }
         }
@@ -46960,6 +46977,6 @@ var View = function () {
 
 exports.default = View;
 
-},{"./camera":201,"./geo":202,"./interaction":215,"./tile":254,"./utils/log":261,"./utils/subscribe":267,"./utils/utils":271}]},{},[227])(227)
+},{"./camera":201,"./geo":202,"./tile":254,"./utils/log":261,"./utils/subscribe":267,"./utils/utils":271}]},{},[227])(227)
 });})();
 //# sourceMappingURL=tangram.debug.js.map
