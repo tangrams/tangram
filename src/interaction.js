@@ -51,9 +51,11 @@ export function init(scene, camera) {
       mouseDown = true;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
+      // scene.view.markUserInput();
   }
 
   function handleMouseUp (event) {
+      // scene.render_loop_stop = true;
       mouseDown = false;
       lastMouseX = null;
       lastMouseY = null;
@@ -65,6 +67,7 @@ export function init(scene, camera) {
       startingLat = view.center.meters.y;
       deltaX = 0;
       deltaY = 0;
+      view.setPanning(false);
   }
 
   function handleMouseLeave (event) {
@@ -82,6 +85,7 @@ export function init(scene, camera) {
     if (!mouseDown) {
         return;
     }
+    view.setPanning(false); // reset pan timer
     var newX = event.clientX;
     var newY = event.clientY;
 
@@ -105,6 +109,7 @@ export function init(scene, camera) {
       if (metaKeyDown) { // meta key was just released during drag, fake a mouseup/mousedown
         resetMouseEventVars(event);
       } else {
+
         metersDeltaX = deltaX * Geo.metersPerPixel(view.zoom);
         metersDeltaY = deltaY * Geo.metersPerPixel(view.zoom);
 
@@ -118,8 +123,10 @@ export function init(scene, camera) {
       }
       metaKeyDown = false;
     }
-    camera.update();
+    view.setPanning(true);
+    // view.markUserInput();
     scene.tile_manager.updateLabels();
+    scene.update();
   }
 
   function handleScroll (event) {
@@ -152,4 +159,5 @@ export function init(scene, camera) {
     // prevent scroll event bubbling
     return false;
   }
+  scene.render_loop_stop = true; // disable constant frame updates
 }
