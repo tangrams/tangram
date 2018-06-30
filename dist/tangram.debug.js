@@ -1,4 +1,4 @@
-(function(){var target = (typeof self === "undefined" || !(typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope)) && ((typeof module !== "undefined" && module.exports) || (typeof window !== "undefined"));if (target) {var __worker_src__ = arguments.callee.toString();var __worker_src_origin__ = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : '';var __worker_src_map__ = 'tangram.debug.js.map';};(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Tangram = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+(function(){var target = (typeof self === "undefined" || !(typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope)) && ((typeof module !== "undefined" && module.exports) || (typeof window !== "undefined"));if (target) {var __worker_src__ = arguments.callee.toString();var __worker_src_origin__ = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : '';var __worker_src_map__ = 'tangram.debug.js.map';};(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Tangram = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = Point;
@@ -947,68 +947,102 @@ for (var i = 0, len = code.length; i < len; ++i) {
   revLookup[code.charCodeAt(i)] = i
 }
 
+// Support decoding URL-safe base64 strings, as Node.js does.
+// See: https://en.wikipedia.org/wiki/Base64#URL_applications
 revLookup['-'.charCodeAt(0)] = 62
 revLookup['_'.charCodeAt(0)] = 63
 
-function placeHoldersCount (b64) {
+function getLens (b64) {
   var len = b64.length
+
   if (len % 4 > 0) {
     throw new Error('Invalid string. Length must be a multiple of 4')
   }
 
-  // the number of equal signs (place holders)
-  // if there are two placeholders, than the two characters before it
-  // represent one byte
-  // if there is only one, then the three characters before it represent 2 bytes
-  // this is just a cheap hack to not do indexOf twice
-  return b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
+  // Trim off extra bytes after placeholder bytes are found
+  // See: https://github.com/beatgammit/base64-js/issues/42
+  var validLen = b64.indexOf('=')
+  if (validLen === -1) validLen = len
+
+  var placeHoldersLen = validLen === len
+    ? 0
+    : 4 - (validLen % 4)
+
+  return [validLen, placeHoldersLen]
 }
 
+// base64 is 4/3 + up to two characters of the original data
 function byteLength (b64) {
-  // base64 is 4/3 + up to two characters of the original data
-  return (b64.length * 3 / 4) - placeHoldersCount(b64)
+  var lens = getLens(b64)
+  var validLen = lens[0]
+  var placeHoldersLen = lens[1]
+  return ((validLen + placeHoldersLen) * 3 / 4) - placeHoldersLen
+}
+
+function _byteLength (b64, validLen, placeHoldersLen) {
+  return ((validLen + placeHoldersLen) * 3 / 4) - placeHoldersLen
 }
 
 function toByteArray (b64) {
-  var i, l, tmp, placeHolders, arr
-  var len = b64.length
-  placeHolders = placeHoldersCount(b64)
+  var tmp
+  var lens = getLens(b64)
+  var validLen = lens[0]
+  var placeHoldersLen = lens[1]
 
-  arr = new Arr((len * 3 / 4) - placeHolders)
+  var arr = new Arr(_byteLength(b64, validLen, placeHoldersLen))
+
+  var curByte = 0
 
   // if there are placeholders, only get up to the last complete 4 chars
-  l = placeHolders > 0 ? len - 4 : len
+  var len = placeHoldersLen > 0
+    ? validLen - 4
+    : validLen
 
-  var L = 0
-
-  for (i = 0; i < l; i += 4) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 18) | (revLookup[b64.charCodeAt(i + 1)] << 12) | (revLookup[b64.charCodeAt(i + 2)] << 6) | revLookup[b64.charCodeAt(i + 3)]
-    arr[L++] = (tmp >> 16) & 0xFF
-    arr[L++] = (tmp >> 8) & 0xFF
-    arr[L++] = tmp & 0xFF
+  for (var i = 0; i < len; i += 4) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 18) |
+      (revLookup[b64.charCodeAt(i + 1)] << 12) |
+      (revLookup[b64.charCodeAt(i + 2)] << 6) |
+      revLookup[b64.charCodeAt(i + 3)]
+    arr[curByte++] = (tmp >> 16) & 0xFF
+    arr[curByte++] = (tmp >> 8) & 0xFF
+    arr[curByte++] = tmp & 0xFF
   }
 
-  if (placeHolders === 2) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 2) | (revLookup[b64.charCodeAt(i + 1)] >> 4)
-    arr[L++] = tmp & 0xFF
-  } else if (placeHolders === 1) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 10) | (revLookup[b64.charCodeAt(i + 1)] << 4) | (revLookup[b64.charCodeAt(i + 2)] >> 2)
-    arr[L++] = (tmp >> 8) & 0xFF
-    arr[L++] = tmp & 0xFF
+  if (placeHoldersLen === 2) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 2) |
+      (revLookup[b64.charCodeAt(i + 1)] >> 4)
+    arr[curByte++] = tmp & 0xFF
+  }
+
+  if (placeHoldersLen === 1) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 10) |
+      (revLookup[b64.charCodeAt(i + 1)] << 4) |
+      (revLookup[b64.charCodeAt(i + 2)] >> 2)
+    arr[curByte++] = (tmp >> 8) & 0xFF
+    arr[curByte++] = tmp & 0xFF
   }
 
   return arr
 }
 
 function tripletToBase64 (num) {
-  return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F]
+  return lookup[num >> 18 & 0x3F] +
+    lookup[num >> 12 & 0x3F] +
+    lookup[num >> 6 & 0x3F] +
+    lookup[num & 0x3F]
 }
 
 function encodeChunk (uint8, start, end) {
   var tmp
   var output = []
   for (var i = start; i < end; i += 3) {
-    tmp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
+    tmp =
+      ((uint8[i] << 16) & 0xFF0000) +
+      ((uint8[i + 1] << 8) & 0xFF00) +
+      (uint8[i + 2] & 0xFF)
     output.push(tripletToBase64(tmp))
   }
   return output.join('')
@@ -1018,30 +1052,33 @@ function fromByteArray (uint8) {
   var tmp
   var len = uint8.length
   var extraBytes = len % 3 // if we have 1 byte left, pad 2 bytes
-  var output = ''
   var parts = []
   var maxChunkLength = 16383 // must be multiple of 3
 
   // go through the array every three bytes, we'll deal with trailing stuff later
   for (var i = 0, len2 = len - extraBytes; i < len2; i += maxChunkLength) {
-    parts.push(encodeChunk(uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)))
+    parts.push(encodeChunk(
+      uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)
+    ))
   }
 
   // pad the end with zeros, but make sure to not forget the extra bytes
   if (extraBytes === 1) {
     tmp = uint8[len - 1]
-    output += lookup[tmp >> 2]
-    output += lookup[(tmp << 4) & 0x3F]
-    output += '=='
+    parts.push(
+      lookup[tmp >> 2] +
+      lookup[(tmp << 4) & 0x3F] +
+      '=='
+    )
   } else if (extraBytes === 2) {
-    tmp = (uint8[len - 2] << 8) + (uint8[len - 1])
-    output += lookup[tmp >> 10]
-    output += lookup[(tmp >> 4) & 0x3F]
-    output += lookup[(tmp << 2) & 0x3F]
-    output += '='
+    tmp = (uint8[len - 2] << 8) + uint8[len - 1]
+    parts.push(
+      lookup[tmp >> 10] +
+      lookup[(tmp >> 4) & 0x3F] +
+      lookup[(tmp << 2) & 0x3F] +
+      '='
+    )
   }
-
-  parts.push(output)
 
   return parts.join('')
 }
@@ -1104,6 +1141,24 @@ function typedArraySupport () {
   }
 }
 
+Object.defineProperty(Buffer.prototype, 'parent', {
+  get: function () {
+    if (!(this instanceof Buffer)) {
+      return undefined
+    }
+    return this.buffer
+  }
+})
+
+Object.defineProperty(Buffer.prototype, 'offset', {
+  get: function () {
+    if (!(this instanceof Buffer)) {
+      return undefined
+    }
+    return this.byteOffset
+  }
+})
+
 function createBuffer (length) {
   if (length > K_MAX_LENGTH) {
     throw new RangeError('Invalid typed array length')
@@ -1155,7 +1210,7 @@ function from (value, encodingOrOffset, length) {
     throw new TypeError('"value" argument must not be a number')
   }
 
-  if (isArrayBuffer(value)) {
+  if (isArrayBuffer(value) || (value && isArrayBuffer(value.buffer))) {
     return fromArrayBuffer(value, encodingOrOffset, length)
   }
 
@@ -1185,7 +1240,7 @@ Buffer.__proto__ = Uint8Array
 
 function assertSize (size) {
   if (typeof size !== 'number') {
-    throw new TypeError('"size" argument must be a number')
+    throw new TypeError('"size" argument must be of type number')
   } else if (size < 0) {
     throw new RangeError('"size" argument must not be negative')
   }
@@ -1239,7 +1294,7 @@ function fromString (string, encoding) {
   }
 
   if (!Buffer.isEncoding(encoding)) {
-    throw new TypeError('"encoding" must be a valid string encoding')
+    throw new TypeError('Unknown encoding: ' + encoding)
   }
 
   var length = byteLength(string, encoding) | 0
@@ -1268,11 +1323,11 @@ function fromArrayLike (array) {
 
 function fromArrayBuffer (array, byteOffset, length) {
   if (byteOffset < 0 || array.byteLength < byteOffset) {
-    throw new RangeError('\'offset\' is out of bounds')
+    throw new RangeError('"offset" is outside of buffer bounds')
   }
 
   if (array.byteLength < byteOffset + (length || 0)) {
-    throw new RangeError('\'length\' is out of bounds')
+    throw new RangeError('"length" is outside of buffer bounds')
   }
 
   var buf
@@ -1303,7 +1358,7 @@ function fromObject (obj) {
   }
 
   if (obj) {
-    if (isArrayBufferView(obj) || 'length' in obj) {
+    if (ArrayBuffer.isView(obj) || 'length' in obj) {
       if (typeof obj.length !== 'number' || numberIsNaN(obj.length)) {
         return createBuffer(0)
       }
@@ -1315,7 +1370,7 @@ function fromObject (obj) {
     }
   }
 
-  throw new TypeError('First argument must be a string, Buffer, ArrayBuffer, Array, or array-like object.')
+  throw new TypeError('The first argument must be one of type string, Buffer, ArrayBuffer, Array, or Array-like Object.')
 }
 
 function checked (length) {
@@ -1402,6 +1457,9 @@ Buffer.concat = function concat (list, length) {
   var pos = 0
   for (i = 0; i < list.length; ++i) {
     var buf = list[i]
+    if (ArrayBuffer.isView(buf)) {
+      buf = Buffer.from(buf)
+    }
     if (!Buffer.isBuffer(buf)) {
       throw new TypeError('"list" argument must be an Array of Buffers')
     }
@@ -1415,7 +1473,7 @@ function byteLength (string, encoding) {
   if (Buffer.isBuffer(string)) {
     return string.length
   }
-  if (isArrayBufferView(string) || isArrayBuffer(string)) {
+  if (ArrayBuffer.isView(string) || isArrayBuffer(string)) {
     return string.byteLength
   }
   if (typeof string !== 'string') {
@@ -1582,6 +1640,8 @@ Buffer.prototype.toString = function toString () {
   if (arguments.length === 0) return utf8Slice(this, 0, length)
   return slowToString.apply(this, arguments)
 }
+
+Buffer.prototype.toLocaleString = Buffer.prototype.toString
 
 Buffer.prototype.equals = function equals (b) {
   if (!Buffer.isBuffer(b)) throw new TypeError('Argument must be a Buffer')
@@ -1803,9 +1863,7 @@ function hexWrite (buf, string, offset, length) {
     }
   }
 
-  // must be an even number of digits
   var strLen = string.length
-  if (strLen % 2 !== 0) throw new TypeError('Invalid hex string')
 
   if (length > strLen / 2) {
     length = strLen / 2
@@ -2498,6 +2556,7 @@ Buffer.prototype.writeDoubleBE = function writeDoubleBE (value, offset, noAssert
 
 // copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
 Buffer.prototype.copy = function copy (target, targetStart, start, end) {
+  if (!Buffer.isBuffer(target)) throw new TypeError('argument should be a Buffer')
   if (!start) start = 0
   if (!end && end !== 0) end = this.length
   if (targetStart >= target.length) targetStart = target.length
@@ -2512,7 +2571,7 @@ Buffer.prototype.copy = function copy (target, targetStart, start, end) {
   if (targetStart < 0) {
     throw new RangeError('targetStart out of bounds')
   }
-  if (start < 0 || start >= this.length) throw new RangeError('sourceStart out of bounds')
+  if (start < 0 || start >= this.length) throw new RangeError('Index out of range')
   if (end < 0) throw new RangeError('sourceEnd out of bounds')
 
   // Are we oob?
@@ -2522,22 +2581,19 @@ Buffer.prototype.copy = function copy (target, targetStart, start, end) {
   }
 
   var len = end - start
-  var i
 
-  if (this === target && start < targetStart && targetStart < end) {
+  if (this === target && typeof Uint8Array.prototype.copyWithin === 'function') {
+    // Use built-in when available, missing from IE11
+    this.copyWithin(targetStart, start, end)
+  } else if (this === target && start < targetStart && targetStart < end) {
     // descending copy from end
-    for (i = len - 1; i >= 0; --i) {
-      target[i + targetStart] = this[i + start]
-    }
-  } else if (len < 1000) {
-    // ascending copy from start
-    for (i = 0; i < len; ++i) {
+    for (var i = len - 1; i >= 0; --i) {
       target[i + targetStart] = this[i + start]
     }
   } else {
     Uint8Array.prototype.set.call(
       target,
-      this.subarray(start, start + len),
+      this.subarray(start, end),
       targetStart
     )
   }
@@ -2560,17 +2616,19 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
       encoding = end
       end = this.length
     }
-    if (val.length === 1) {
-      var code = val.charCodeAt(0)
-      if (code < 256) {
-        val = code
-      }
-    }
     if (encoding !== undefined && typeof encoding !== 'string') {
       throw new TypeError('encoding must be a string')
     }
     if (typeof encoding === 'string' && !Buffer.isEncoding(encoding)) {
       throw new TypeError('Unknown encoding: ' + encoding)
+    }
+    if (val.length === 1) {
+      var code = val.charCodeAt(0)
+      if ((encoding === 'utf8' && code < 128) ||
+          encoding === 'latin1') {
+        // Fast path: If `val` fits into a single byte, use that numeric value.
+        val = code
+      }
     }
   } else if (typeof val === 'number') {
     val = val & 255
@@ -2600,6 +2658,10 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
       ? val
       : new Buffer(val, encoding)
     var len = bytes.length
+    if (len === 0) {
+      throw new TypeError('The value "' + val +
+        '" is invalid for argument "value"')
+    }
     for (i = 0; i < end - start; ++i) {
       this[i + start] = bytes[i % len]
     }
@@ -2614,6 +2676,8 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
 var INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g
 
 function base64clean (str) {
+  // Node takes equal signs as end of the Base64 encoding
+  str = str.split('=')[0]
   // Node strips out invalid characters like \n and \t from the string, base64-js does not
   str = str.trim().replace(INVALID_BASE64_RE, '')
   // Node converts strings with length < 2 to ''
@@ -2755,16 +2819,11 @@ function isArrayBuffer (obj) {
       typeof obj.byteLength === 'number')
 }
 
-// Node 0.10 supports `ArrayBuffer` but lacks `ArrayBuffer.isView`
-function isArrayBufferView (obj) {
-  return (typeof ArrayBuffer.isView === 'function') && ArrayBuffer.isView(obj)
-}
-
 function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":8,"ieee754":100}],11:[function(_dereq_,module,exports){
+},{"base64-js":8,"ieee754":99}],11:[function(_dereq_,module,exports){
 _dereq_('../modules/es6.object.to-string');
 _dereq_('../modules/es6.string.iterator');
 _dereq_('../modules/web.dom.iterable');
@@ -4105,7 +4164,7 @@ function objectToString(o) {
 
 }).call(this,{"isBuffer":_dereq_("../../is-buffer/index.js")})
 
-},{"../../is-buffer/index.js":102}],76:[function(_dereq_,module,exports){
+},{"../../is-buffer/index.js":101}],76:[function(_dereq_,module,exports){
 // (c) Dean McNamee <dean@gmail.com>, 2012.
 //
 // https://github.com/deanm/css-color-parser-js
@@ -4955,310 +5014,6 @@ earcut.flatten = function (data) {
 };
 
 },{}],78:[function(_dereq_,module,exports){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-function EventEmitter() {
-  this._events = this._events || {};
-  this._maxListeners = this._maxListeners || undefined;
-}
-module.exports = EventEmitter;
-
-// Backwards-compat with node 0.10.x
-EventEmitter.EventEmitter = EventEmitter;
-
-EventEmitter.prototype._events = undefined;
-EventEmitter.prototype._maxListeners = undefined;
-
-// By default EventEmitters will print a warning if more than 10 listeners are
-// added to it. This is a useful default which helps finding memory leaks.
-EventEmitter.defaultMaxListeners = 10;
-
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!isNumber(n) || n < 0 || isNaN(n))
-    throw TypeError('n must be a positive number');
-  this._maxListeners = n;
-  return this;
-};
-
-EventEmitter.prototype.emit = function(type) {
-  var er, handler, len, args, i, listeners;
-
-  if (!this._events)
-    this._events = {};
-
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events.error ||
-        (isObject(this._events.error) && !this._events.error.length)) {
-      er = arguments[1];
-      if (er instanceof Error) {
-        throw er; // Unhandled 'error' event
-      } else {
-        // At least give some kind of context to the user
-        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
-        err.context = er;
-        throw err;
-      }
-    }
-  }
-
-  handler = this._events[type];
-
-  if (isUndefined(handler))
-    return false;
-
-  if (isFunction(handler)) {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        args = Array.prototype.slice.call(arguments, 1);
-        handler.apply(this, args);
-    }
-  } else if (isObject(handler)) {
-    args = Array.prototype.slice.call(arguments, 1);
-    listeners = handler.slice();
-    len = listeners.length;
-    for (i = 0; i < len; i++)
-      listeners[i].apply(this, args);
-  }
-
-  return true;
-};
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  var m;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events)
-    this._events = {};
-
-  // To avoid recursion in the case that type === "newListener"! Before
-  // adding it to the listeners, first emit "newListener".
-  if (this._events.newListener)
-    this.emit('newListener', type,
-              isFunction(listener.listener) ?
-              listener.listener : listener);
-
-  if (!this._events[type])
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  else if (isObject(this._events[type]))
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  else
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-
-  // Check for listener leak
-  if (isObject(this._events[type]) && !this._events[type].warned) {
-    if (!isUndefined(this._maxListeners)) {
-      m = this._maxListeners;
-    } else {
-      m = EventEmitter.defaultMaxListeners;
-    }
-
-    if (m && m > 0 && this._events[type].length > m) {
-      this._events[type].warned = true;
-      console.error('(node) warning: possible EventEmitter memory ' +
-                    'leak detected. %d listeners added. ' +
-                    'Use emitter.setMaxListeners() to increase limit.',
-                    this._events[type].length);
-      if (typeof console.trace === 'function') {
-        // not supported in IE 10
-        console.trace();
-      }
-    }
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  var fired = false;
-
-  function g() {
-    this.removeListener(type, g);
-
-    if (!fired) {
-      fired = true;
-      listener.apply(this, arguments);
-    }
-  }
-
-  g.listener = listener;
-  this.on(type, g);
-
-  return this;
-};
-
-// emits a 'removeListener' event iff the listener was removed
-EventEmitter.prototype.removeListener = function(type, listener) {
-  var list, position, length, i;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events || !this._events[type])
-    return this;
-
-  list = this._events[type];
-  length = list.length;
-  position = -1;
-
-  if (list === listener ||
-      (isFunction(list.listener) && list.listener === listener)) {
-    delete this._events[type];
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-
-  } else if (isObject(list)) {
-    for (i = length; i-- > 0;) {
-      if (list[i] === listener ||
-          (list[i].listener && list[i].listener === listener)) {
-        position = i;
-        break;
-      }
-    }
-
-    if (position < 0)
-      return this;
-
-    if (list.length === 1) {
-      list.length = 0;
-      delete this._events[type];
-    } else {
-      list.splice(position, 1);
-    }
-
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  var key, listeners;
-
-  if (!this._events)
-    return this;
-
-  // not listening for removeListener, no need to emit
-  if (!this._events.removeListener) {
-    if (arguments.length === 0)
-      this._events = {};
-    else if (this._events[type])
-      delete this._events[type];
-    return this;
-  }
-
-  // emit removeListener for all listeners on all events
-  if (arguments.length === 0) {
-    for (key in this._events) {
-      if (key === 'removeListener') continue;
-      this.removeAllListeners(key);
-    }
-    this.removeAllListeners('removeListener');
-    this._events = {};
-    return this;
-  }
-
-  listeners = this._events[type];
-
-  if (isFunction(listeners)) {
-    this.removeListener(type, listeners);
-  } else if (listeners) {
-    // LIFO order
-    while (listeners.length)
-      this.removeListener(type, listeners[listeners.length - 1]);
-  }
-  delete this._events[type];
-
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  var ret;
-  if (!this._events || !this._events[type])
-    ret = [];
-  else if (isFunction(this._events[type]))
-    ret = [this._events[type]];
-  else
-    ret = this._events[type].slice();
-  return ret;
-};
-
-EventEmitter.prototype.listenerCount = function(type) {
-  if (this._events) {
-    var evlistener = this._events[type];
-
-    if (isFunction(evlistener))
-      return 1;
-    else if (evlistener)
-      return evlistener.length;
-  }
-  return 0;
-};
-
-EventEmitter.listenerCount = function(emitter, type) {
-  return emitter.listenerCount(type);
-};
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-
-},{}],79:[function(_dereq_,module,exports){
 (function(){function m(a,b){document.addEventListener?a.addEventListener("scroll",b,!1):a.attachEvent("scroll",b)}function n(a){document.body?a():document.addEventListener?document.addEventListener("DOMContentLoaded",function c(){document.removeEventListener("DOMContentLoaded",c);a()}):document.attachEvent("onreadystatechange",function l(){if("interactive"==document.readyState||"complete"==document.readyState)document.detachEvent("onreadystatechange",l),a()})};function t(a){this.a=document.createElement("div");this.a.setAttribute("aria-hidden","true");this.a.appendChild(document.createTextNode(a));this.b=document.createElement("span");this.c=document.createElement("span");this.h=document.createElement("span");this.f=document.createElement("span");this.g=-1;this.b.style.cssText="max-width:none;display:inline-block;position:absolute;height:100%;width:100%;overflow:scroll;font-size:16px;";this.c.style.cssText="max-width:none;display:inline-block;position:absolute;height:100%;width:100%;overflow:scroll;font-size:16px;";
 this.f.style.cssText="max-width:none;display:inline-block;position:absolute;height:100%;width:100%;overflow:scroll;font-size:16px;";this.h.style.cssText="display:inline-block;width:200%;height:200%;font-size:16px;max-width:none;";this.b.appendChild(this.h);this.c.appendChild(this.f);this.a.appendChild(this.b);this.a.appendChild(this.c)}
 function x(a,b){a.a.style.cssText="max-width:none;min-width:20px;min-height:20px;display:inline-block;overflow:hidden;position:absolute;width:auto;margin:0;padding:0;top:-999px;left:-999px;white-space:nowrap;font:"+b+";"}function y(a){var b=a.a.offsetWidth,c=b+100;a.f.style.width=c+"px";a.c.scrollLeft=c;a.b.scrollLeft=a.b.scrollWidth+100;return a.g!==b?(a.g=b,!0):!1}function z(a,b){function c(){var a=l;y(a)&&a.a.parentNode&&b(a.g)}var l=a;m(a.b,c);m(a.c,c);y(a)};function A(a,b){var c=b||{};this.family=a;this.style=c.style||"normal";this.weight=c.weight||"normal";this.stretch=c.stretch||"normal"}var B=null,C=null,E=null,F=null;function I(){if(null===E){var a=document.createElement("div");try{a.style.font="condensed 100px sans-serif"}catch(b){}E=""!==a.style.font}return E}function J(a,b){return[a.style,a.weight,I()?a.stretch:"","100px",b].join(" ")}
@@ -5267,7 +5022,7 @@ c){r=setTimeout(c,D)});Promise.race([K,e]).then(function(){clearTimeout(r);a(c)}
 function H(){if((new Date).getTime()-G>=D)d.parentNode&&d.parentNode.removeChild(d),b(c);else{var a=document.hidden;if(!0===a||void 0===a)g=f.a.offsetWidth,h=p.a.offsetWidth,k=q.a.offsetWidth,e();r=setTimeout(H,50)}}var f=new t(l),p=new t(l),q=new t(l),g=-1,h=-1,k=-1,u=-1,v=-1,w=-1,d=document.createElement("div");d.dir="ltr";x(f,J(c,"sans-serif"));x(p,J(c,"serif"));x(q,J(c,"monospace"));d.appendChild(f.a);d.appendChild(p.a);d.appendChild(q.a);document.body.appendChild(d);u=f.a.offsetWidth;v=p.a.offsetWidth;
 w=q.a.offsetWidth;H();z(f,function(a){g=a;e()});x(f,J(c,'"'+c.family+'",sans-serif'));z(p,function(a){h=a;e()});x(p,J(c,'"'+c.family+'",serif'));z(q,function(a){k=a;e()});x(q,J(c,'"'+c.family+'",monospace'))})})};"undefined"!==typeof module?module.exports=A:(window.FontFaceObserver=A,window.FontFaceObserver.prototype.load=A.prototype.load);}());
 
-},{}],80:[function(_dereq_,module,exports){
+},{}],79:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = clip;
@@ -5418,7 +5173,7 @@ function newSlice(slices, slice, area, dist, outer) {
     return [];
 }
 
-},{"./feature":82}],81:[function(_dereq_,module,exports){
+},{"./feature":81}],80:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = convert;
@@ -5541,7 +5296,7 @@ function calcSize(points) {
     points.dist = dist;
 }
 
-},{"./feature":82,"./simplify":84}],82:[function(_dereq_,module,exports){
+},{"./feature":81,"./simplify":83}],81:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = createFeature;
@@ -5586,7 +5341,7 @@ function calcRingBBox(min, max, points) {
     }
 }
 
-},{}],83:[function(_dereq_,module,exports){
+},{}],82:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = geojsonvt;
@@ -5830,7 +5585,7 @@ function isClippedSquare(tile, extent, buffer) {
     return true;
 }
 
-},{"./clip":80,"./convert":81,"./tile":85,"./transform":86,"./wrap":87}],84:[function(_dereq_,module,exports){
+},{"./clip":79,"./convert":80,"./tile":84,"./transform":85,"./wrap":86}],83:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = simplify;
@@ -5906,7 +5661,7 @@ function getSqSegDist(p, a, b) {
     return dx * dx + dy * dy;
 }
 
-},{}],85:[function(_dereq_,module,exports){
+},{}],84:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = createTile;
@@ -6014,7 +5769,7 @@ function signedArea(ring) {
     return sum;
 }
 
-},{}],86:[function(_dereq_,module,exports){
+},{}],85:[function(_dereq_,module,exports){
 'use strict';
 
 exports.tile = transformTile;
@@ -6057,7 +5812,7 @@ function transformPoint(p, extent, z2, tx, ty) {
     return [x, y];
 }
 
-},{}],87:[function(_dereq_,module,exports){
+},{}],86:[function(_dereq_,module,exports){
 'use strict';
 
 var clip = _dereq_('./clip');
@@ -6115,7 +5870,7 @@ function shiftCoords(points, offset) {
     return newPoints;
 }
 
-},{"./clip":80,"./feature":82}],88:[function(_dereq_,module,exports){
+},{"./clip":79,"./feature":81}],87:[function(_dereq_,module,exports){
 module.exports = invert
 
 /**
@@ -6154,7 +5909,7 @@ function invert(out, a) {
   return out
 }
 
-},{}],89:[function(_dereq_,module,exports){
+},{}],88:[function(_dereq_,module,exports){
 module.exports = normalFromMat4
 
 /**
@@ -6211,7 +5966,7 @@ function normalFromMat4(out, a) {
   return out
 }
 
-},{}],90:[function(_dereq_,module,exports){
+},{}],89:[function(_dereq_,module,exports){
 module.exports = copy;
 
 /**
@@ -6240,7 +5995,7 @@ function copy(out, a) {
     out[15] = a[15];
     return out;
 };
-},{}],91:[function(_dereq_,module,exports){
+},{}],90:[function(_dereq_,module,exports){
 module.exports = identity;
 
 /**
@@ -6268,7 +6023,7 @@ function identity(out) {
     out[15] = 1;
     return out;
 };
-},{}],92:[function(_dereq_,module,exports){
+},{}],91:[function(_dereq_,module,exports){
 module.exports = invert;
 
 /**
@@ -6324,7 +6079,7 @@ function invert(out, a) {
 
     return out;
 };
-},{}],93:[function(_dereq_,module,exports){
+},{}],92:[function(_dereq_,module,exports){
 var identity = _dereq_('./identity');
 
 module.exports = lookAt;
@@ -6415,7 +6170,7 @@ function lookAt(out, eye, center, up) {
 
     return out;
 };
-},{"./identity":91}],94:[function(_dereq_,module,exports){
+},{"./identity":90}],93:[function(_dereq_,module,exports){
 module.exports = multiply;
 
 /**
@@ -6458,7 +6213,7 @@ function multiply(out, a, b) {
     out[15] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
     return out;
 };
-},{}],95:[function(_dereq_,module,exports){
+},{}],94:[function(_dereq_,module,exports){
 module.exports = perspective;
 
 /**
@@ -6492,7 +6247,7 @@ function perspective(out, fovy, aspect, near, far) {
     out[15] = 0;
     return out;
 };
-},{}],96:[function(_dereq_,module,exports){
+},{}],95:[function(_dereq_,module,exports){
 module.exports = rotate;
 
 /**
@@ -6557,7 +6312,7 @@ function rotate(out, a, rad, axis) {
     }
     return out;
 };
-},{}],97:[function(_dereq_,module,exports){
+},{}],96:[function(_dereq_,module,exports){
 module.exports = scale;
 
 /**
@@ -6589,7 +6344,7 @@ function scale(out, a, v) {
     out[15] = a[15];
     return out;
 };
-},{}],98:[function(_dereq_,module,exports){
+},{}],97:[function(_dereq_,module,exports){
 module.exports = translate;
 
 /**
@@ -6628,7 +6383,7 @@ function translate(out, a, v) {
 
     return out;
 };
-},{}],99:[function(_dereq_,module,exports){
+},{}],98:[function(_dereq_,module,exports){
 module.exports = parseErrors
 
 function parseErrors(log) {
@@ -6656,10 +6411,10 @@ function parseErrors(log) {
   return logs
 }
 
-},{}],100:[function(_dereq_,module,exports){
+},{}],99:[function(_dereq_,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
-  var eLen = nBytes * 8 - mLen - 1
+  var eLen = (nBytes * 8) - mLen - 1
   var eMax = (1 << eLen) - 1
   var eBias = eMax >> 1
   var nBits = -7
@@ -6672,12 +6427,12 @@ exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   e = s & ((1 << (-nBits)) - 1)
   s >>= (-nBits)
   nBits += eLen
-  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+  for (; nBits > 0; e = (e * 256) + buffer[offset + i], i += d, nBits -= 8) {}
 
   m = e & ((1 << (-nBits)) - 1)
   e >>= (-nBits)
   nBits += mLen
-  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+  for (; nBits > 0; m = (m * 256) + buffer[offset + i], i += d, nBits -= 8) {}
 
   if (e === 0) {
     e = 1 - eBias
@@ -6692,7 +6447,7 @@ exports.read = function (buffer, offset, isLE, mLen, nBytes) {
 
 exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   var e, m, c
-  var eLen = nBytes * 8 - mLen - 1
+  var eLen = (nBytes * 8) - mLen - 1
   var eMax = (1 << eLen) - 1
   var eBias = eMax >> 1
   var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
@@ -6725,7 +6480,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
       m = 0
       e = eMax
     } else if (e + eBias >= 1) {
-      m = (value * c - 1) * Math.pow(2, mLen)
+      m = ((value * c) - 1) * Math.pow(2, mLen)
       e = e + eBias
     } else {
       m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
@@ -6742,7 +6497,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],101:[function(_dereq_,module,exports){
+},{}],100:[function(_dereq_,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -6767,11 +6522,11 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],102:[function(_dereq_,module,exports){
+},{}],101:[function(_dereq_,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
- * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * @author   Feross Aboukhadijeh <https://feross.org>
  * @license  MIT
  */
 
@@ -6790,14 +6545,14 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],103:[function(_dereq_,module,exports){
+},{}],102:[function(_dereq_,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],104:[function(_dereq_,module,exports){
+},{}],103:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -6806,7 +6561,7 @@ var yaml = _dereq_('./lib/js-yaml.js');
 
 module.exports = yaml;
 
-},{"./lib/js-yaml.js":105}],105:[function(_dereq_,module,exports){
+},{"./lib/js-yaml.js":104}],104:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -6847,7 +6602,7 @@ module.exports.parse          = deprecated('parse');
 module.exports.compose        = deprecated('compose');
 module.exports.addConstructor = deprecated('addConstructor');
 
-},{"./js-yaml/exception":107,"./js-yaml/loader":108,"./js-yaml/schema":110,"./js-yaml/schema/core":111,"./js-yaml/schema/default_full":112,"./js-yaml/schema/default_safe":113,"./js-yaml/schema/failsafe":114,"./js-yaml/schema/json":115,"./js-yaml/type":116}],106:[function(_dereq_,module,exports){
+},{"./js-yaml/exception":106,"./js-yaml/loader":107,"./js-yaml/schema":109,"./js-yaml/schema/core":110,"./js-yaml/schema/default_full":111,"./js-yaml/schema/default_safe":112,"./js-yaml/schema/failsafe":113,"./js-yaml/schema/json":114,"./js-yaml/type":115}],105:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -6908,7 +6663,7 @@ module.exports.repeat         = repeat;
 module.exports.isNegativeZero = isNegativeZero;
 module.exports.extend         = extend;
 
-},{}],107:[function(_dereq_,module,exports){
+},{}],106:[function(_dereq_,module,exports){
 // YAML error class. http://stackoverflow.com/questions/8458984
 //
 'use strict';
@@ -6953,7 +6708,7 @@ YAMLException.prototype.toString = function toString(compact) {
 
 module.exports = YAMLException;
 
-},{}],108:[function(_dereq_,module,exports){
+},{}],107:[function(_dereq_,module,exports){
 'use strict';
 
 /*eslint-disable max-len,no-use-before-define*/
@@ -8541,7 +8296,7 @@ module.exports.load        = load;
 module.exports.safeLoadAll = safeLoadAll;
 module.exports.safeLoad    = safeLoad;
 
-},{"./common":106,"./exception":107,"./mark":109,"./schema/default_full":112,"./schema/default_safe":113}],109:[function(_dereq_,module,exports){
+},{"./common":105,"./exception":106,"./mark":108,"./schema/default_full":111,"./schema/default_safe":112}],108:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -8619,7 +8374,7 @@ Mark.prototype.toString = function toString(compact) {
 
 module.exports = Mark;
 
-},{"./common":106}],110:[function(_dereq_,module,exports){
+},{"./common":105}],109:[function(_dereq_,module,exports){
 'use strict';
 
 /*eslint-disable max-len*/
@@ -8725,7 +8480,7 @@ Schema.create = function createSchema() {
 
 module.exports = Schema;
 
-},{"./common":106,"./exception":107,"./type":116}],111:[function(_dereq_,module,exports){
+},{"./common":105,"./exception":106,"./type":115}],110:[function(_dereq_,module,exports){
 // Standard YAML's Core schema.
 // http://www.yaml.org/spec/1.2/spec.html#id2804923
 //
@@ -8745,7 +8500,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":110,"./json":115}],112:[function(_dereq_,module,exports){
+},{"../schema":109,"./json":114}],111:[function(_dereq_,module,exports){
 // JS-YAML's default schema for `load` function.
 // It is not described in the YAML specification.
 //
@@ -8772,7 +8527,7 @@ module.exports = Schema.DEFAULT = new Schema({
   ]
 });
 
-},{"../schema":110,"../type/js/function":121,"../type/js/regexp":122,"../type/js/undefined":123,"./default_safe":113}],113:[function(_dereq_,module,exports){
+},{"../schema":109,"../type/js/function":120,"../type/js/regexp":121,"../type/js/undefined":122,"./default_safe":112}],112:[function(_dereq_,module,exports){
 // JS-YAML's default schema for `safeLoad` function.
 // It is not described in the YAML specification.
 //
@@ -8802,7 +8557,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":110,"../type/binary":117,"../type/merge":125,"../type/omap":127,"../type/pairs":128,"../type/set":130,"../type/timestamp":132,"./core":111}],114:[function(_dereq_,module,exports){
+},{"../schema":109,"../type/binary":116,"../type/merge":124,"../type/omap":126,"../type/pairs":127,"../type/set":129,"../type/timestamp":131,"./core":110}],113:[function(_dereq_,module,exports){
 // Standard YAML's Failsafe schema.
 // http://www.yaml.org/spec/1.2/spec.html#id2802346
 
@@ -8821,7 +8576,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":110,"../type/map":124,"../type/seq":129,"../type/str":131}],115:[function(_dereq_,module,exports){
+},{"../schema":109,"../type/map":123,"../type/seq":128,"../type/str":130}],114:[function(_dereq_,module,exports){
 // Standard YAML's JSON schema.
 // http://www.yaml.org/spec/1.2/spec.html#id2803231
 //
@@ -8848,7 +8603,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":110,"../type/bool":118,"../type/float":119,"../type/int":120,"../type/null":126,"./failsafe":114}],116:[function(_dereq_,module,exports){
+},{"../schema":109,"../type/bool":117,"../type/float":118,"../type/int":119,"../type/null":125,"./failsafe":113}],115:[function(_dereq_,module,exports){
 'use strict';
 
 var YAMLException = _dereq_('./exception');
@@ -8911,7 +8666,7 @@ function Type(tag, options) {
 
 module.exports = Type;
 
-},{"./exception":107}],117:[function(_dereq_,module,exports){
+},{"./exception":106}],116:[function(_dereq_,module,exports){
 'use strict';
 
 /*eslint-disable no-bitwise*/
@@ -9043,7 +8798,7 @@ module.exports = new Type('tag:yaml.org,2002:binary', {
   represent: representYamlBinary
 });
 
-},{"../type":116,"buffer":9}],118:[function(_dereq_,module,exports){
+},{"../type":115,"buffer":9}],117:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9080,7 +8835,7 @@ module.exports = new Type('tag:yaml.org,2002:bool', {
   defaultStyle: 'lowercase'
 });
 
-},{"../type":116}],119:[function(_dereq_,module,exports){
+},{"../type":115}],118:[function(_dereq_,module,exports){
 'use strict';
 
 var common = _dereq_('../common');
@@ -9187,7 +8942,7 @@ module.exports = new Type('tag:yaml.org,2002:float', {
   defaultStyle: 'lowercase'
 });
 
-},{"../common":106,"../type":116}],120:[function(_dereq_,module,exports){
+},{"../common":105,"../type":115}],119:[function(_dereq_,module,exports){
 'use strict';
 
 var common = _dereq_('../common');
@@ -9357,7 +9112,7 @@ module.exports = new Type('tag:yaml.org,2002:int', {
   }
 });
 
-},{"../common":106,"../type":116}],121:[function(_dereq_,module,exports){
+},{"../common":105,"../type":115}],120:[function(_dereq_,module,exports){
 'use strict';
 
 var esprima;
@@ -9443,7 +9198,7 @@ module.exports = new Type('tag:yaml.org,2002:js/function', {
   represent: representJavascriptFunction
 });
 
-},{"../../type":116}],122:[function(_dereq_,module,exports){
+},{"../../type":115}],121:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../../type');
@@ -9505,7 +9260,7 @@ module.exports = new Type('tag:yaml.org,2002:js/regexp', {
   represent: representJavascriptRegExp
 });
 
-},{"../../type":116}],123:[function(_dereq_,module,exports){
+},{"../../type":115}],122:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../../type');
@@ -9535,7 +9290,7 @@ module.exports = new Type('tag:yaml.org,2002:js/undefined', {
   represent: representJavascriptUndefined
 });
 
-},{"../../type":116}],124:[function(_dereq_,module,exports){
+},{"../../type":115}],123:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9545,7 +9300,7 @@ module.exports = new Type('tag:yaml.org,2002:map', {
   construct: function (data) { return data !== null ? data : {}; }
 });
 
-},{"../type":116}],125:[function(_dereq_,module,exports){
+},{"../type":115}],124:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9559,7 +9314,7 @@ module.exports = new Type('tag:yaml.org,2002:merge', {
   resolve: resolveYamlMerge
 });
 
-},{"../type":116}],126:[function(_dereq_,module,exports){
+},{"../type":115}],125:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9595,7 +9350,7 @@ module.exports = new Type('tag:yaml.org,2002:null', {
   defaultStyle: 'lowercase'
 });
 
-},{"../type":116}],127:[function(_dereq_,module,exports){
+},{"../type":115}],126:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9641,7 +9396,7 @@ module.exports = new Type('tag:yaml.org,2002:omap', {
   construct: constructYamlOmap
 });
 
-},{"../type":116}],128:[function(_dereq_,module,exports){
+},{"../type":115}],127:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9696,7 +9451,7 @@ module.exports = new Type('tag:yaml.org,2002:pairs', {
   construct: constructYamlPairs
 });
 
-},{"../type":116}],129:[function(_dereq_,module,exports){
+},{"../type":115}],128:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9706,7 +9461,7 @@ module.exports = new Type('tag:yaml.org,2002:seq', {
   construct: function (data) { return data !== null ? data : []; }
 });
 
-},{"../type":116}],130:[function(_dereq_,module,exports){
+},{"../type":115}],129:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9737,7 +9492,7 @@ module.exports = new Type('tag:yaml.org,2002:set', {
   construct: constructYamlSet
 });
 
-},{"../type":116}],131:[function(_dereq_,module,exports){
+},{"../type":115}],130:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9747,7 +9502,7 @@ module.exports = new Type('tag:yaml.org,2002:str', {
   construct: function (data) { return data !== null ? data : ''; }
 });
 
-},{"../type":116}],132:[function(_dereq_,module,exports){
+},{"../type":115}],131:[function(_dereq_,module,exports){
 'use strict';
 
 var Type = _dereq_('../type');
@@ -9830,7 +9585,7 @@ module.exports = new Type('tag:yaml.org,2002:timestamp', {
   represent: representYamlTimestamp
 });
 
-},{"../type":116}],133:[function(_dereq_,module,exports){
+},{"../type":115}],132:[function(_dereq_,module,exports){
 'use strict';
 var utils = _dereq_('./utils');
 var support = _dereq_('./support');
@@ -9917,7 +9672,7 @@ exports.decode = function(input) {
     return output;
 };
 
-},{"./support":159,"./utils":161}],134:[function(_dereq_,module,exports){
+},{"./support":158,"./utils":160}],133:[function(_dereq_,module,exports){
 'use strict';
 
 var external = _dereq_("./external");
@@ -9994,7 +9749,7 @@ CompressedObject.createWorkerFrom = function (uncompressedWorker, compression, c
 
 module.exports = CompressedObject;
 
-},{"./external":138,"./stream/Crc32Probe":154,"./stream/DataLengthProbe":155,"./stream/DataWorker":156}],135:[function(_dereq_,module,exports){
+},{"./external":137,"./stream/Crc32Probe":153,"./stream/DataLengthProbe":154,"./stream/DataWorker":155}],134:[function(_dereq_,module,exports){
 'use strict';
 
 var GenericWorker = _dereq_("./stream/GenericWorker");
@@ -10010,7 +9765,7 @@ exports.STORE = {
 };
 exports.DEFLATE = _dereq_('./flate');
 
-},{"./flate":139,"./stream/GenericWorker":157}],136:[function(_dereq_,module,exports){
+},{"./flate":138,"./stream/GenericWorker":156}],135:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('./utils');
@@ -10090,7 +9845,7 @@ module.exports = function crc32wrapper(input, crc) {
 };
 // vim: set shiftwidth=4 softtabstop=4:
 
-},{"./utils":161}],137:[function(_dereq_,module,exports){
+},{"./utils":160}],136:[function(_dereq_,module,exports){
 'use strict';
 exports.base64 = false;
 exports.binary = false;
@@ -10103,7 +9858,7 @@ exports.comment = null;
 exports.unixPermissions = null;
 exports.dosPermissions = null;
 
-},{}],138:[function(_dereq_,module,exports){
+},{}],137:[function(_dereq_,module,exports){
 'use strict';
 
 // var ES6Promise = require("es6-promise").Promise;
@@ -10115,7 +9870,7 @@ module.exports = {
     Promise: window.Promise
 };
 
-},{}],139:[function(_dereq_,module,exports){
+},{}],138:[function(_dereq_,module,exports){
 'use strict';
 var USE_TYPEDARRAY = (typeof Uint8Array !== 'undefined') && (typeof Uint16Array !== 'undefined') && (typeof Uint32Array !== 'undefined');
 
@@ -10185,7 +9940,7 @@ exports.uncompressWorker = function () {
     return new FlateWorker("Inflate", {});
 };
 
-},{"./stream/GenericWorker":157,"./utils":161,"pako":172}],140:[function(_dereq_,module,exports){
+},{"./stream/GenericWorker":156,"./utils":160,"pako":172}],139:[function(_dereq_,module,exports){
 'use strict';
 
 /**
@@ -10235,7 +9990,7 @@ JSZip.loadAsync = function (content, options) {
 JSZip.external = _dereq_("./external");
 module.exports = JSZip;
 
-},{"./defaults":137,"./external":138,"./load":141,"./object":145,"./support":159}],141:[function(_dereq_,module,exports){
+},{"./defaults":136,"./external":137,"./load":140,"./object":144,"./support":158}],140:[function(_dereq_,module,exports){
 'use strict';
 var utils = _dereq_('./utils');
 var external = _dereq_("./external");
@@ -10319,7 +10074,7 @@ module.exports = function(data, options) {
     });
 };
 
-},{"./external":138,"./nodejsUtils":144,"./stream/Crc32Probe":154,"./utf8":160,"./utils":161,"./zipEntries":162}],142:[function(_dereq_,module,exports){
+},{"./external":137,"./nodejsUtils":143,"./stream/Crc32Probe":153,"./utf8":159,"./utils":160,"./zipEntries":161}],141:[function(_dereq_,module,exports){
 "use strict";
 
 var utils = _dereq_('../utils');
@@ -10395,7 +10150,7 @@ NodejsStreamInputAdapter.prototype.resume = function () {
 
 module.exports = NodejsStreamInputAdapter;
 
-},{"../stream/GenericWorker":157,"../utils":161}],143:[function(_dereq_,module,exports){
+},{"../stream/GenericWorker":156,"../utils":160}],142:[function(_dereq_,module,exports){
 'use strict';
 
 var Readable = _dereq_('readable-stream').Readable;
@@ -10439,7 +10194,7 @@ NodejsStreamOutputAdapter.prototype._read = function() {
 
 module.exports = NodejsStreamOutputAdapter;
 
-},{"readable-stream":170,"util":196}],144:[function(_dereq_,module,exports){
+},{"readable-stream":170,"util":195}],143:[function(_dereq_,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -10478,7 +10233,7 @@ module.exports = {
 
 }).call(this,_dereq_("buffer").Buffer)
 
-},{"buffer":10}],145:[function(_dereq_,module,exports){
+},{"buffer":10}],144:[function(_dereq_,module,exports){
 'use strict';
 // var utf8 = require('./utf8');
 var utils = _dereq_('./utils');
@@ -10867,7 +10622,7 @@ var out = {
 };
 module.exports = out;
 
-},{"./compressedObject":134,"./defaults":137,"./nodejs/NodejsStreamInputAdapter":142,"./nodejsUtils":144,"./stream/GenericWorker":157,"./utils":161,"./zipObject":164}],146:[function(_dereq_,module,exports){
+},{"./compressedObject":133,"./defaults":136,"./nodejs/NodejsStreamInputAdapter":141,"./nodejsUtils":143,"./stream/GenericWorker":156,"./utils":160,"./zipObject":163}],145:[function(_dereq_,module,exports){
 'use strict';
 var DataReader = _dereq_('./DataReader');
 var utils = _dereq_('../utils');
@@ -10926,7 +10681,7 @@ ArrayReader.prototype.readData = function(size) {
 };
 module.exports = ArrayReader;
 
-},{"../utils":161,"./DataReader":147}],147:[function(_dereq_,module,exports){
+},{"../utils":160,"./DataReader":146}],146:[function(_dereq_,module,exports){
 'use strict';
 var utils = _dereq_('../utils');
 
@@ -11044,7 +10799,7 @@ DataReader.prototype = {
 };
 module.exports = DataReader;
 
-},{"../utils":161}],148:[function(_dereq_,module,exports){
+},{"../utils":160}],147:[function(_dereq_,module,exports){
 'use strict';
 var Uint8ArrayReader = _dereq_('./Uint8ArrayReader');
 var utils = _dereq_('../utils');
@@ -11065,7 +10820,7 @@ NodeBufferReader.prototype.readData = function(size) {
 };
 module.exports = NodeBufferReader;
 
-},{"../utils":161,"./Uint8ArrayReader":150}],149:[function(_dereq_,module,exports){
+},{"../utils":160,"./Uint8ArrayReader":149}],148:[function(_dereq_,module,exports){
 'use strict';
 var DataReader = _dereq_('./DataReader');
 var utils = _dereq_('../utils');
@@ -11105,7 +10860,7 @@ StringReader.prototype.readData = function(size) {
 };
 module.exports = StringReader;
 
-},{"../utils":161,"./DataReader":147}],150:[function(_dereq_,module,exports){
+},{"../utils":160,"./DataReader":146}],149:[function(_dereq_,module,exports){
 'use strict';
 var ArrayReader = _dereq_('./ArrayReader');
 var utils = _dereq_('../utils');
@@ -11129,7 +10884,7 @@ Uint8ArrayReader.prototype.readData = function(size) {
 };
 module.exports = Uint8ArrayReader;
 
-},{"../utils":161,"./ArrayReader":146}],151:[function(_dereq_,module,exports){
+},{"../utils":160,"./ArrayReader":145}],150:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('../utils');
@@ -11161,7 +10916,7 @@ module.exports = function (data) {
 
 // vim: set shiftwidth=4 softtabstop=4:
 
-},{"../support":159,"../utils":161,"./ArrayReader":146,"./NodeBufferReader":148,"./StringReader":149,"./Uint8ArrayReader":150}],152:[function(_dereq_,module,exports){
+},{"../support":158,"../utils":160,"./ArrayReader":145,"./NodeBufferReader":147,"./StringReader":148,"./Uint8ArrayReader":149}],151:[function(_dereq_,module,exports){
 'use strict';
 exports.LOCAL_FILE_HEADER = "PK\x03\x04";
 exports.CENTRAL_FILE_HEADER = "PK\x01\x02";
@@ -11170,7 +10925,7 @@ exports.ZIP64_CENTRAL_DIRECTORY_LOCATOR = "PK\x06\x07";
 exports.ZIP64_CENTRAL_DIRECTORY_END = "PK\x06\x06";
 exports.DATA_DESCRIPTOR = "PK\x07\x08";
 
-},{}],153:[function(_dereq_,module,exports){
+},{}],152:[function(_dereq_,module,exports){
 'use strict';
 
 var GenericWorker = _dereq_('./GenericWorker');
@@ -11198,7 +10953,7 @@ ConvertWorker.prototype.processChunk = function (chunk) {
 };
 module.exports = ConvertWorker;
 
-},{"../utils":161,"./GenericWorker":157}],154:[function(_dereq_,module,exports){
+},{"../utils":160,"./GenericWorker":156}],153:[function(_dereq_,module,exports){
 'use strict';
 
 var GenericWorker = _dereq_('./GenericWorker');
@@ -11223,7 +10978,7 @@ Crc32Probe.prototype.processChunk = function (chunk) {
 };
 module.exports = Crc32Probe;
 
-},{"../crc32":136,"../utils":161,"./GenericWorker":157}],155:[function(_dereq_,module,exports){
+},{"../crc32":135,"../utils":160,"./GenericWorker":156}],154:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('../utils');
@@ -11254,7 +11009,7 @@ DataLengthProbe.prototype.processChunk = function (chunk) {
 module.exports = DataLengthProbe;
 
 
-},{"../utils":161,"./GenericWorker":157}],156:[function(_dereq_,module,exports){
+},{"../utils":160,"./GenericWorker":156}],155:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('../utils');
@@ -11372,7 +11127,7 @@ DataWorker.prototype._tick = function() {
 
 module.exports = DataWorker;
 
-},{"../utils":161,"./GenericWorker":157}],157:[function(_dereq_,module,exports){
+},{"../utils":160,"./GenericWorker":156}],156:[function(_dereq_,module,exports){
 'use strict';
 
 /**
@@ -11637,7 +11392,7 @@ GenericWorker.prototype = {
 
 module.exports = GenericWorker;
 
-},{}],158:[function(_dereq_,module,exports){
+},{}],157:[function(_dereq_,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -11847,7 +11602,7 @@ module.exports = StreamHelper;
 
 }).call(this,_dereq_("buffer").Buffer)
 
-},{"../base64":133,"../external":138,"../nodejs/NodejsStreamOutputAdapter":143,"../utils":161,"./ConvertWorker":153,"./GenericWorker":157,"buffer":10}],159:[function(_dereq_,module,exports){
+},{"../base64":132,"../external":137,"../nodejs/NodejsStreamOutputAdapter":142,"../utils":160,"./ConvertWorker":152,"./GenericWorker":156,"buffer":10}],158:[function(_dereq_,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -11886,7 +11641,7 @@ exports.nodestream = !!_dereq_("./nodejs/NodejsStreamOutputAdapter").prototype;
 
 }).call(this,_dereq_("buffer").Buffer)
 
-},{"./nodejs/NodejsStreamOutputAdapter":143,"buffer":10}],160:[function(_dereq_,module,exports){
+},{"./nodejs/NodejsStreamOutputAdapter":142,"buffer":10}],159:[function(_dereq_,module,exports){
 'use strict';
 
 var utils = _dereq_('./utils');
@@ -12163,7 +11918,7 @@ Utf8EncodeWorker.prototype.processChunk = function (chunk) {
 };
 exports.Utf8EncodeWorker = Utf8EncodeWorker;
 
-},{"./nodejsUtils":144,"./stream/GenericWorker":157,"./support":159,"./utils":161}],161:[function(_dereq_,module,exports){
+},{"./nodejsUtils":143,"./stream/GenericWorker":156,"./support":158,"./utils":160}],160:[function(_dereq_,module,exports){
 'use strict';
 
 var support = _dereq_('./support');
@@ -12630,7 +12385,7 @@ exports.prepareContent = function(name, inputData, isBinary, isOptimizedBinarySt
     });
 };
 
-},{"./base64":133,"./external":138,"./nodejsUtils":144,"./support":159,"asap":6}],162:[function(_dereq_,module,exports){
+},{"./base64":132,"./external":137,"./nodejsUtils":143,"./support":158,"asap":6}],161:[function(_dereq_,module,exports){
 'use strict';
 var readerFor = _dereq_('./reader/readerFor');
 var utils = _dereq_('./utils');
@@ -12894,7 +12649,7 @@ ZipEntries.prototype = {
 // }}} end of ZipEntries
 module.exports = ZipEntries;
 
-},{"./reader/readerFor":151,"./signature":152,"./support":159,"./utf8":160,"./utils":161,"./zipEntry":163}],163:[function(_dereq_,module,exports){
+},{"./reader/readerFor":150,"./signature":151,"./support":158,"./utf8":159,"./utils":160,"./zipEntry":162}],162:[function(_dereq_,module,exports){
 'use strict';
 var readerFor = _dereq_('./reader/readerFor');
 var utils = _dereq_('./utils');
@@ -13188,7 +12943,7 @@ ZipEntry.prototype = {
 };
 module.exports = ZipEntry;
 
-},{"./compressedObject":134,"./compressions":135,"./crc32":136,"./reader/readerFor":151,"./support":159,"./utf8":160,"./utils":161}],164:[function(_dereq_,module,exports){
+},{"./compressedObject":133,"./compressions":134,"./crc32":135,"./reader/readerFor":150,"./support":158,"./utf8":159,"./utils":160}],163:[function(_dereq_,module,exports){
 'use strict';
 
 var StreamHelper = _dereq_('./stream/StreamHelper');
@@ -13314,7 +13069,55 @@ for(var i = 0; i < removedMethods.length; i++) {
 }
 module.exports = ZipObject;
 
-},{"./compressedObject":134,"./stream/DataWorker":156,"./stream/GenericWorker":157,"./stream/StreamHelper":158,"./utf8":160}],165:[function(_dereq_,module,exports){
+},{"./compressedObject":133,"./stream/DataWorker":155,"./stream/GenericWorker":156,"./stream/StreamHelper":157,"./utf8":159}],164:[function(_dereq_,module,exports){
+(function (process){
+'use strict';
+
+if (!process.version ||
+    process.version.indexOf('v0.') === 0 ||
+    process.version.indexOf('v1.') === 0 && process.version.indexOf('v1.8.') !== 0) {
+  module.exports = nextTick;
+} else {
+  module.exports = process.nextTick;
+}
+
+function nextTick(fn, arg1, arg2, arg3) {
+  if (typeof fn !== 'function') {
+    throw new TypeError('"callback" argument must be a function');
+  }
+  var len = arguments.length;
+  var args, i;
+  switch (len) {
+  case 0:
+  case 1:
+    return process.nextTick(fn);
+  case 2:
+    return process.nextTick(function afterTickOne() {
+      fn.call(null, arg1);
+    });
+  case 3:
+    return process.nextTick(function afterTickTwo() {
+      fn.call(null, arg1, arg2);
+    });
+  case 4:
+    return process.nextTick(function afterTickThree() {
+      fn.call(null, arg1, arg2, arg3);
+    });
+  default:
+    args = new Array(len - 1);
+    i = 0;
+    while (i < args.length) {
+      args[i++] = arguments[i];
+    }
+    return process.nextTick(function afterTick() {
+      fn.apply(null, args);
+    });
+  }
+}
+
+}).call(this,_dereq_('_process'))
+
+},{"_process":189}],165:[function(_dereq_,module,exports){
 // a duplex stream is just a stream that is both readable and writable.
 // Since JS doesn't have multiple prototypal inheritance, this class
 // prototypally inherits from Readable, and then parasitically from
@@ -13390,7 +13193,7 @@ function forEach(xs, f) {
     f(xs[i], i);
   }
 }
-},{"./_stream_readable":167,"./_stream_writable":169,"core-util-is":75,"inherits":101,"process-nextick-args":189}],166:[function(_dereq_,module,exports){
+},{"./_stream_readable":167,"./_stream_writable":169,"core-util-is":75,"inherits":100,"process-nextick-args":164}],166:[function(_dereq_,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -13417,7 +13220,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":168,"core-util-is":75,"inherits":101}],167:[function(_dereq_,module,exports){
+},{"./_stream_transform":168,"core-util-is":75,"inherits":100}],167:[function(_dereq_,module,exports){
 (function (process){
 'use strict';
 
@@ -14301,7 +14104,7 @@ function indexOf(xs, x) {
 }
 }).call(this,_dereq_('_process'))
 
-},{"./_stream_duplex":165,"_process":190,"buffer":10,"core-util-is":75,"events":78,"inherits":101,"isarray":103,"process-nextick-args":189,"string_decoder/":171,"util":9}],168:[function(_dereq_,module,exports){
+},{"./_stream_duplex":165,"_process":189,"buffer":10,"core-util-is":75,"events":196,"inherits":100,"isarray":102,"process-nextick-args":164,"string_decoder/":171,"util":9}],168:[function(_dereq_,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -14482,8 +14285,8 @@ function done(stream, er) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":165,"core-util-is":75,"inherits":101}],169:[function(_dereq_,module,exports){
-(function (process){
+},{"./_stream_duplex":165,"core-util-is":75,"inherits":100}],169:[function(_dereq_,module,exports){
+(function (process,setImmediate){
 // A bit simpler than readable streams.
 // Implement an async ._write(chunk, encoding, cb), and it'll handle all
 // the drain event emission and buffering.
@@ -15000,9 +14803,9 @@ function CorkedRequest(state) {
     }
   };
 }
-}).call(this,_dereq_('_process'))
+}).call(this,_dereq_('_process'),_dereq_("timers").setImmediate)
 
-},{"./_stream_duplex":165,"_process":190,"buffer":10,"core-util-is":75,"events":78,"inherits":101,"process-nextick-args":189,"util-deprecate":193}],170:[function(_dereq_,module,exports){
+},{"./_stream_duplex":165,"_process":189,"buffer":10,"core-util-is":75,"events":196,"inherits":100,"process-nextick-args":164,"timers":191,"util-deprecate":193}],170:[function(_dereq_,module,exports){
 var Stream = (function (){
   try {
     return _dereq_('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
@@ -22666,55 +22469,7 @@ function writeUtf8(buf, str, pos) {
     return pos;
 }
 
-},{"ieee754":100}],189:[function(_dereq_,module,exports){
-(function (process){
-'use strict';
-
-if (!process.version ||
-    process.version.indexOf('v0.') === 0 ||
-    process.version.indexOf('v1.') === 0 && process.version.indexOf('v1.8.') !== 0) {
-  module.exports = nextTick;
-} else {
-  module.exports = process.nextTick;
-}
-
-function nextTick(fn, arg1, arg2, arg3) {
-  if (typeof fn !== 'function') {
-    throw new TypeError('"callback" argument must be a function');
-  }
-  var len = arguments.length;
-  var args, i;
-  switch (len) {
-  case 0:
-  case 1:
-    return process.nextTick(fn);
-  case 2:
-    return process.nextTick(function afterTickOne() {
-      fn.call(null, arg1);
-    });
-  case 3:
-    return process.nextTick(function afterTickTwo() {
-      fn.call(null, arg1, arg2);
-    });
-  case 4:
-    return process.nextTick(function afterTickThree() {
-      fn.call(null, arg1, arg2, arg3);
-    });
-  default:
-    args = new Array(len - 1);
-    i = 0;
-    while (i < args.length) {
-      args[i++] = arguments[i];
-    }
-    return process.nextTick(function afterTick() {
-      fn.apply(null, args);
-    });
-  }
-}
-
-}).call(this,_dereq_('_process'))
-
-},{"_process":190}],190:[function(_dereq_,module,exports){
+},{"ieee754":99}],189:[function(_dereq_,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -22900,7 +22655,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],191:[function(_dereq_,module,exports){
+},{}],190:[function(_dereq_,module,exports){
 /*!
  * strip-comments <https://github.com/jonschlinkert/strip-comments>
  *
@@ -22975,7 +22730,87 @@ strip.line = function(str, opts) {
   return str ? str.replace(re, '') : '';
 };
 
-},{}],192:[function(_dereq_,module,exports){
+},{}],191:[function(_dereq_,module,exports){
+(function (setImmediate,clearImmediate){
+var nextTick = _dereq_('process/browser.js').nextTick;
+var apply = Function.prototype.apply;
+var slice = Array.prototype.slice;
+var immediateIds = {};
+var nextImmediateId = 0;
+
+// DOM APIs, for completeness
+
+exports.setTimeout = function() {
+  return new Timeout(apply.call(setTimeout, window, arguments), clearTimeout);
+};
+exports.setInterval = function() {
+  return new Timeout(apply.call(setInterval, window, arguments), clearInterval);
+};
+exports.clearTimeout =
+exports.clearInterval = function(timeout) { timeout.close(); };
+
+function Timeout(id, clearFn) {
+  this._id = id;
+  this._clearFn = clearFn;
+}
+Timeout.prototype.unref = Timeout.prototype.ref = function() {};
+Timeout.prototype.close = function() {
+  this._clearFn.call(window, this._id);
+};
+
+// Does not start the time, just sets up the members needed.
+exports.enroll = function(item, msecs) {
+  clearTimeout(item._idleTimeoutId);
+  item._idleTimeout = msecs;
+};
+
+exports.unenroll = function(item) {
+  clearTimeout(item._idleTimeoutId);
+  item._idleTimeout = -1;
+};
+
+exports._unrefActive = exports.active = function(item) {
+  clearTimeout(item._idleTimeoutId);
+
+  var msecs = item._idleTimeout;
+  if (msecs >= 0) {
+    item._idleTimeoutId = setTimeout(function onTimeout() {
+      if (item._onTimeout)
+        item._onTimeout();
+    }, msecs);
+  }
+};
+
+// That's not how node.js implements it but the exposed api is the same.
+exports.setImmediate = typeof setImmediate === "function" ? setImmediate : function(fn) {
+  var id = nextImmediateId++;
+  var args = arguments.length < 2 ? false : slice.call(arguments, 1);
+
+  immediateIds[id] = true;
+
+  nextTick(function onNextTick() {
+    if (immediateIds[id]) {
+      // fn.call() is faster so we optimize for the common use-case
+      // @see http://jsperf.com/call-apply-segu
+      if (args) {
+        fn.apply(null, args);
+      } else {
+        fn.call(null);
+      }
+      // Prevent ids from leaking
+      exports.clearImmediate(id);
+    }
+  });
+
+  return id;
+};
+
+exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate : function(id) {
+  delete immediateIds[id];
+};
+}).call(this,_dereq_("timers").setImmediate,_dereq_("timers").clearImmediate)
+
+},{"process/browser.js":189,"timers":191}],192:[function(_dereq_,module,exports){
 // https://github.com/topojson/topojson-client Version 2.1.0. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -23164,15 +22999,13 @@ function config (name) {
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
 },{}],194:[function(_dereq_,module,exports){
-arguments[4][101][0].apply(exports,arguments)
-},{"dup":101}],195:[function(_dereq_,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],196:[function(_dereq_,module,exports){
+},{}],195:[function(_dereq_,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -23763,7 +23596,532 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,_dereq_('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./support/isBuffer":195,"_process":190,"inherits":194}],197:[function(_dereq_,module,exports){
+},{"./support/isBuffer":194,"_process":189,"inherits":100}],196:[function(_dereq_,module,exports){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+var objectCreate = Object.create || objectCreatePolyfill
+var objectKeys = Object.keys || objectKeysPolyfill
+var bind = Function.prototype.bind || functionBindPolyfill
+
+function EventEmitter() {
+  if (!this._events || !Object.prototype.hasOwnProperty.call(this, '_events')) {
+    this._events = objectCreate(null);
+    this._eventsCount = 0;
+  }
+
+  this._maxListeners = this._maxListeners || undefined;
+}
+module.exports = EventEmitter;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+var defaultMaxListeners = 10;
+
+var hasDefineProperty;
+try {
+  var o = {};
+  if (Object.defineProperty) Object.defineProperty(o, 'x', { value: 0 });
+  hasDefineProperty = o.x === 0;
+} catch (err) { hasDefineProperty = false }
+if (hasDefineProperty) {
+  Object.defineProperty(EventEmitter, 'defaultMaxListeners', {
+    enumerable: true,
+    get: function() {
+      return defaultMaxListeners;
+    },
+    set: function(arg) {
+      // check whether the input is a positive number (whose value is zero or
+      // greater and not a NaN).
+      if (typeof arg !== 'number' || arg < 0 || arg !== arg)
+        throw new TypeError('"defaultMaxListeners" must be a positive number');
+      defaultMaxListeners = arg;
+    }
+  });
+} else {
+  EventEmitter.defaultMaxListeners = defaultMaxListeners;
+}
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
+  if (typeof n !== 'number' || n < 0 || isNaN(n))
+    throw new TypeError('"n" argument must be a positive number');
+  this._maxListeners = n;
+  return this;
+};
+
+function $getMaxListeners(that) {
+  if (that._maxListeners === undefined)
+    return EventEmitter.defaultMaxListeners;
+  return that._maxListeners;
+}
+
+EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
+  return $getMaxListeners(this);
+};
+
+// These standalone emit* functions are used to optimize calling of event
+// handlers for fast cases because emit() itself often has a variable number of
+// arguments and can be deoptimized because of that. These functions always have
+// the same number of arguments and thus do not get deoptimized, so the code
+// inside them can execute faster.
+function emitNone(handler, isFn, self) {
+  if (isFn)
+    handler.call(self);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self);
+  }
+}
+function emitOne(handler, isFn, self, arg1) {
+  if (isFn)
+    handler.call(self, arg1);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1);
+  }
+}
+function emitTwo(handler, isFn, self, arg1, arg2) {
+  if (isFn)
+    handler.call(self, arg1, arg2);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1, arg2);
+  }
+}
+function emitThree(handler, isFn, self, arg1, arg2, arg3) {
+  if (isFn)
+    handler.call(self, arg1, arg2, arg3);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1, arg2, arg3);
+  }
+}
+
+function emitMany(handler, isFn, self, args) {
+  if (isFn)
+    handler.apply(self, args);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].apply(self, args);
+  }
+}
+
+EventEmitter.prototype.emit = function emit(type) {
+  var er, handler, len, args, i, events;
+  var doError = (type === 'error');
+
+  events = this._events;
+  if (events)
+    doError = (doError && events.error == null);
+  else if (!doError)
+    return false;
+
+  // If there is no 'error' event listener then throw.
+  if (doError) {
+    if (arguments.length > 1)
+      er = arguments[1];
+    if (er instanceof Error) {
+      throw er; // Unhandled 'error' event
+    } else {
+      // At least give some kind of context to the user
+      var err = new Error('Unhandled "error" event. (' + er + ')');
+      err.context = er;
+      throw err;
+    }
+    return false;
+  }
+
+  handler = events[type];
+
+  if (!handler)
+    return false;
+
+  var isFn = typeof handler === 'function';
+  len = arguments.length;
+  switch (len) {
+      // fast cases
+    case 1:
+      emitNone(handler, isFn, this);
+      break;
+    case 2:
+      emitOne(handler, isFn, this, arguments[1]);
+      break;
+    case 3:
+      emitTwo(handler, isFn, this, arguments[1], arguments[2]);
+      break;
+    case 4:
+      emitThree(handler, isFn, this, arguments[1], arguments[2], arguments[3]);
+      break;
+      // slower
+    default:
+      args = new Array(len - 1);
+      for (i = 1; i < len; i++)
+        args[i - 1] = arguments[i];
+      emitMany(handler, isFn, this, args);
+  }
+
+  return true;
+};
+
+function _addListener(target, type, listener, prepend) {
+  var m;
+  var events;
+  var existing;
+
+  if (typeof listener !== 'function')
+    throw new TypeError('"listener" argument must be a function');
+
+  events = target._events;
+  if (!events) {
+    events = target._events = objectCreate(null);
+    target._eventsCount = 0;
+  } else {
+    // To avoid recursion in the case that type === "newListener"! Before
+    // adding it to the listeners, first emit "newListener".
+    if (events.newListener) {
+      target.emit('newListener', type,
+          listener.listener ? listener.listener : listener);
+
+      // Re-assign `events` because a newListener handler could have caused the
+      // this._events to be assigned to a new object
+      events = target._events;
+    }
+    existing = events[type];
+  }
+
+  if (!existing) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    existing = events[type] = listener;
+    ++target._eventsCount;
+  } else {
+    if (typeof existing === 'function') {
+      // Adding the second element, need to change to array.
+      existing = events[type] =
+          prepend ? [listener, existing] : [existing, listener];
+    } else {
+      // If we've already got an array, just append.
+      if (prepend) {
+        existing.unshift(listener);
+      } else {
+        existing.push(listener);
+      }
+    }
+
+    // Check for listener leak
+    if (!existing.warned) {
+      m = $getMaxListeners(target);
+      if (m && m > 0 && existing.length > m) {
+        existing.warned = true;
+        var w = new Error('Possible EventEmitter memory leak detected. ' +
+            existing.length + ' "' + String(type) + '" listeners ' +
+            'added. Use emitter.setMaxListeners() to ' +
+            'increase limit.');
+        w.name = 'MaxListenersExceededWarning';
+        w.emitter = target;
+        w.type = type;
+        w.count = existing.length;
+        if (typeof console === 'object' && console.warn) {
+          console.warn('%s: %s', w.name, w.message);
+        }
+      }
+    }
+  }
+
+  return target;
+}
+
+EventEmitter.prototype.addListener = function addListener(type, listener) {
+  return _addListener(this, type, listener, false);
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.prependListener =
+    function prependListener(type, listener) {
+      return _addListener(this, type, listener, true);
+    };
+
+function onceWrapper() {
+  if (!this.fired) {
+    this.target.removeListener(this.type, this.wrapFn);
+    this.fired = true;
+    switch (arguments.length) {
+      case 0:
+        return this.listener.call(this.target);
+      case 1:
+        return this.listener.call(this.target, arguments[0]);
+      case 2:
+        return this.listener.call(this.target, arguments[0], arguments[1]);
+      case 3:
+        return this.listener.call(this.target, arguments[0], arguments[1],
+            arguments[2]);
+      default:
+        var args = new Array(arguments.length);
+        for (var i = 0; i < args.length; ++i)
+          args[i] = arguments[i];
+        this.listener.apply(this.target, args);
+    }
+  }
+}
+
+function _onceWrap(target, type, listener) {
+  var state = { fired: false, wrapFn: undefined, target: target, type: type, listener: listener };
+  var wrapped = bind.call(onceWrapper, state);
+  wrapped.listener = listener;
+  state.wrapFn = wrapped;
+  return wrapped;
+}
+
+EventEmitter.prototype.once = function once(type, listener) {
+  if (typeof listener !== 'function')
+    throw new TypeError('"listener" argument must be a function');
+  this.on(type, _onceWrap(this, type, listener));
+  return this;
+};
+
+EventEmitter.prototype.prependOnceListener =
+    function prependOnceListener(type, listener) {
+      if (typeof listener !== 'function')
+        throw new TypeError('"listener" argument must be a function');
+      this.prependListener(type, _onceWrap(this, type, listener));
+      return this;
+    };
+
+// Emits a 'removeListener' event if and only if the listener was removed.
+EventEmitter.prototype.removeListener =
+    function removeListener(type, listener) {
+      var list, events, position, i, originalListener;
+
+      if (typeof listener !== 'function')
+        throw new TypeError('"listener" argument must be a function');
+
+      events = this._events;
+      if (!events)
+        return this;
+
+      list = events[type];
+      if (!list)
+        return this;
+
+      if (list === listener || list.listener === listener) {
+        if (--this._eventsCount === 0)
+          this._events = objectCreate(null);
+        else {
+          delete events[type];
+          if (events.removeListener)
+            this.emit('removeListener', type, list.listener || listener);
+        }
+      } else if (typeof list !== 'function') {
+        position = -1;
+
+        for (i = list.length - 1; i >= 0; i--) {
+          if (list[i] === listener || list[i].listener === listener) {
+            originalListener = list[i].listener;
+            position = i;
+            break;
+          }
+        }
+
+        if (position < 0)
+          return this;
+
+        if (position === 0)
+          list.shift();
+        else
+          spliceOne(list, position);
+
+        if (list.length === 1)
+          events[type] = list[0];
+
+        if (events.removeListener)
+          this.emit('removeListener', type, originalListener || listener);
+      }
+
+      return this;
+    };
+
+EventEmitter.prototype.removeAllListeners =
+    function removeAllListeners(type) {
+      var listeners, events, i;
+
+      events = this._events;
+      if (!events)
+        return this;
+
+      // not listening for removeListener, no need to emit
+      if (!events.removeListener) {
+        if (arguments.length === 0) {
+          this._events = objectCreate(null);
+          this._eventsCount = 0;
+        } else if (events[type]) {
+          if (--this._eventsCount === 0)
+            this._events = objectCreate(null);
+          else
+            delete events[type];
+        }
+        return this;
+      }
+
+      // emit removeListener for all listeners on all events
+      if (arguments.length === 0) {
+        var keys = objectKeys(events);
+        var key;
+        for (i = 0; i < keys.length; ++i) {
+          key = keys[i];
+          if (key === 'removeListener') continue;
+          this.removeAllListeners(key);
+        }
+        this.removeAllListeners('removeListener');
+        this._events = objectCreate(null);
+        this._eventsCount = 0;
+        return this;
+      }
+
+      listeners = events[type];
+
+      if (typeof listeners === 'function') {
+        this.removeListener(type, listeners);
+      } else if (listeners) {
+        // LIFO order
+        for (i = listeners.length - 1; i >= 0; i--) {
+          this.removeListener(type, listeners[i]);
+        }
+      }
+
+      return this;
+    };
+
+function _listeners(target, type, unwrap) {
+  var events = target._events;
+
+  if (!events)
+    return [];
+
+  var evlistener = events[type];
+  if (!evlistener)
+    return [];
+
+  if (typeof evlistener === 'function')
+    return unwrap ? [evlistener.listener || evlistener] : [evlistener];
+
+  return unwrap ? unwrapListeners(evlistener) : arrayClone(evlistener, evlistener.length);
+}
+
+EventEmitter.prototype.listeners = function listeners(type) {
+  return _listeners(this, type, true);
+};
+
+EventEmitter.prototype.rawListeners = function rawListeners(type) {
+  return _listeners(this, type, false);
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  if (typeof emitter.listenerCount === 'function') {
+    return emitter.listenerCount(type);
+  } else {
+    return listenerCount.call(emitter, type);
+  }
+};
+
+EventEmitter.prototype.listenerCount = listenerCount;
+function listenerCount(type) {
+  var events = this._events;
+
+  if (events) {
+    var evlistener = events[type];
+
+    if (typeof evlistener === 'function') {
+      return 1;
+    } else if (evlistener) {
+      return evlistener.length;
+    }
+  }
+
+  return 0;
+}
+
+EventEmitter.prototype.eventNames = function eventNames() {
+  return this._eventsCount > 0 ? Reflect.ownKeys(this._events) : [];
+};
+
+// About 1.5x faster than the two-arg version of Array#splice().
+function spliceOne(list, index) {
+  for (var i = index, k = i + 1, n = list.length; k < n; i += 1, k += 1)
+    list[i] = list[k];
+  list.pop();
+}
+
+function arrayClone(arr, n) {
+  var copy = new Array(n);
+  for (var i = 0; i < n; ++i)
+    copy[i] = arr[i];
+  return copy;
+}
+
+function unwrapListeners(arr) {
+  var ret = new Array(arr.length);
+  for (var i = 0; i < ret.length; ++i) {
+    ret[i] = arr[i].listener || arr[i];
+  }
+  return ret;
+}
+
+function objectCreatePolyfill(proto) {
+  var F = function() {};
+  F.prototype = proto;
+  return new F;
+}
+function objectKeysPolyfill(obj) {
+  var keys = [];
+  for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) {
+    keys.push(k);
+  }
+  return k;
+}
+function functionBindPolyfill(context) {
+  var fn = this;
+  return function () {
+    return fn.apply(context, arguments);
+  };
+}
+
+},{}],197:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -25579,15 +25937,20 @@ var context_id = 0;
 // Setup a WebGL context
 // If no canvas element is provided, one is created and added to the document body
 Context.getContext = function getContext(canvas, options) {
+    console.log('getContext');
     var fullscreen = false;
     if (canvas == null) {
+        console.log('null canvas');
         canvas = document.createElement('canvas');
         canvas.style.position = 'absolute';
-        canvas.style.top = 0;
+        canvas.style.top = 100;
         canvas.style.left = 0;
         canvas.style.zIndex = -1;
+        canvas.style.border = "2px solid pink";
         document.body.appendChild(canvas);
         fullscreen = true;
+    } else {
+        console.log('getContext: canvas already exists GAWD:', canvas);
     }
 
     var gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
@@ -26874,7 +27237,7 @@ ShaderProgram.createShader = function (gl, source, stype) {
     return shader;
 };
 
-},{"../utils/hash":260,"../utils/log":261,"./extensions":205,"./glsl":206,"./texture":209,"gl-shader-errors":99,"strip-comments":191}],209:[function(_dereq_,module,exports){
+},{"../utils/hash":260,"../utils/log":261,"./extensions":205,"./glsl":206,"./texture":209,"gl-shader-errors":98,"strip-comments":190}],209:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -31211,7 +31574,7 @@ module.exports = {
     version: _version2.default
 };
 
-},{"./geo":202,"./gl/glsl":206,"./gl/shader_program":208,"./gl/texture":209,"./gl/vertex_data":212,"./labels/collision":216,"./light":225,"./material":226,"./scene":228,"./scene_worker":231,"./selection":232,"./sources/data_source":233,"./sources/geojson":234,"./sources/mvt":235,"./sources/raster":236,"./sources/topojson":237,"./styles/layer":239,"./styles/style_manager":246,"./styles/style_parser":247,"./styles/text/canvas_text":248,"./tangramLayer":253,"./utils/debug_settings":257,"./utils/log":261,"./utils/polyfills":265,"./utils/thread":269,"./utils/utils":271,"./utils/version":272,"./utils/worker_broker":273,"./vector":274,"js-yaml":104,"jszip":140}],228:[function(_dereq_,module,exports){
+},{"./geo":202,"./gl/glsl":206,"./gl/shader_program":208,"./gl/texture":209,"./gl/vertex_data":212,"./labels/collision":216,"./light":225,"./material":226,"./scene":228,"./scene_worker":231,"./selection":232,"./sources/data_source":233,"./sources/geojson":234,"./sources/mvt":235,"./sources/raster":236,"./sources/topojson":237,"./styles/layer":239,"./styles/style_manager":246,"./styles/style_parser":247,"./styles/text/canvas_text":248,"./tangramLayer":253,"./utils/debug_settings":257,"./utils/log":261,"./utils/polyfills":265,"./utils/thread":269,"./utils/utils":271,"./utils/version":272,"./utils/worker_broker":273,"./vector":274,"js-yaml":103,"jszip":139}],228:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -31536,6 +31899,7 @@ var Scene = function () {
         key: 'createCanvas',
         value: function createCanvas() {
             if (this.canvas) {
+                console.log('createCanvas: canvas already exists');
                 return;
             }
 
@@ -33267,7 +33631,7 @@ function loadResource(source) {
     });
 }
 
-},{"./utils/urls":270,"./utils/utils":271,"js-yaml":104,"jszip":140}],230:[function(_dereq_,module,exports){
+},{"./utils/urls":270,"./utils/utils":271,"js-yaml":103,"jszip":139}],230:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35484,7 +35848,7 @@ function getCentroidFeatureForPolygon(coordinates, properties, newProperties) {
     };
 }
 
-},{"../geo":202,"../utils/log":261,"./data_source":233,"./mvt":235,"geojson-vt":83}],235:[function(_dereq_,module,exports){
+},{"../geo":202,"../utils/log":261,"./data_source":233,"./mvt":235,"geojson-vt":82}],235:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41629,7 +41993,7 @@ var FontManager = {
 
 exports.default = FontManager;
 
-},{"../../utils/log":261,"../../utils/utils":271,"fontfaceobserver":79}],250:[function(_dereq_,module,exports){
+},{"../../utils/log":261,"../../utils/utils":271,"fontfaceobserver":78}],250:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44379,7 +44743,7 @@ exports.vec3 = vec3;
 exports.mat3 = mat3;
 exports.mat4 = mat4;
 
-},{"gl-mat3/invert":88,"gl-mat3/normal-from-mat4":89,"gl-mat4/copy":90,"gl-mat4/identity":91,"gl-mat4/invert":92,"gl-mat4/lookAt":93,"gl-mat4/multiply":94,"gl-mat4/perspective":95,"gl-mat4/rotate":96,"gl-mat4/scale":97,"gl-mat4/translate":98}],260:[function(_dereq_,module,exports){
+},{"gl-mat3/invert":87,"gl-mat3/normal-from-mat4":88,"gl-mat4/copy":89,"gl-mat4/identity":90,"gl-mat4/invert":91,"gl-mat4/lookAt":92,"gl-mat4/multiply":93,"gl-mat4/perspective":94,"gl-mat4/rotate":95,"gl-mat4/scale":96,"gl-mat4/translate":97}],260:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -45750,7 +46114,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.15.1\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Tangram contributors\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles3\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.8.29\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.15.1\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"build-watch\": \"./node_modules/.bin/watchify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Tangram contributors\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"babelify\": \"7.3.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles3\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.8.29\",\n    \"watchify\": \"^3.11.0\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
@@ -46978,5 +47342,6 @@ var View = function () {
 exports.default = View;
 
 },{"./camera":201,"./geo":202,"./tile":254,"./utils/log":261,"./utils/subscribe":267,"./utils/utils":271}]},{},[227])(227)
-});})();
+});
+})();
 //# sourceMappingURL=tangram.debug.js.map
