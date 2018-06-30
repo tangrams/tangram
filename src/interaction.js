@@ -150,6 +150,7 @@ export function init(scene, camera) {
     target = Geo.metersToLatLng(target);
 
     view.setView({lng: target[0], lat: target[1], zoom: targetZoom});
+    scene.update();
 
     // have to set these here too because scroll doesn't count as a mousedown
     // so no mouseup will be triggered at the end

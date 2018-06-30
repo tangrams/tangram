@@ -227,6 +227,7 @@ export default class Scene {
         }
 
         this.container = this.container || document.body;
+        this.container.style.height = "100%"; // necessary for react?
         this.canvas = document.createElement('canvas');
         this.canvas.style.position = 'absolute';
         this.canvas.style.top = 0;
