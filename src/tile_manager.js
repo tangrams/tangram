@@ -76,6 +76,8 @@ export default class TileManager {
         }
 
         this.forgetTile(tile.key);
+        console.log('R', tile.key);
+        this.scene.update();
         this.scene.requestRedraw();
     }
 
@@ -128,6 +130,7 @@ export default class TileManager {
     }
 
     updateLabels () {
+        console.warn('updateLabels, building??', this.scene.building)
         if (this.scene.building && !this.scene.building.initial) {
             // log('debug', `Skip label layout due to on-going scene rebuild`);
             return Promise.resolve({});
@@ -416,12 +419,13 @@ export default class TileManager {
 
             tile.buildMeshes(this.scene.styles, progress);
             this.updateTileStates();
-            this.scene.requestRedraw();
         }
 
         if (progress.done) {
             this.tileBuildStop(tile.key);
         }
+        console.log(tile.key);
+        // this.scene.update();
     }
 
     // Called on main thread when web worker encounters an error building a tile

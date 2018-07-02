@@ -36,6 +36,7 @@ cameras:
 scene:
     background:
         color: '#f0ebeb'
+    animated: false
 
 fonts:
     Montserrat:

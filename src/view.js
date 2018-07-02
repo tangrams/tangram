@@ -160,7 +160,7 @@ export default class View {
         this.tile_zoom = tile_zoom;
 
         this.updateBounds();
-        this.scene.requestRedraw();
+        this.scene.update();
     }
 
     // Choose the base zoom level to use for a given fractional zoom

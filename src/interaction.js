@@ -55,7 +55,6 @@ export function init(scene, camera) {
   }
 
   function handleMouseUp (event) {
-      // scene.render_loop_stop = true;
       mouseDown = false;
       lastMouseX = null;
       lastMouseY = null;
@@ -68,6 +67,7 @@ export function init(scene, camera) {
       deltaX = 0;
       deltaY = 0;
       view.setPanning(false);
+      scene.update();
   }
 
   function handleMouseLeave (event) {
@@ -125,7 +125,6 @@ export function init(scene, camera) {
     }
     view.setPanning(true);
     // view.markUserInput();
-    scene.tile_manager.updateLabels();
     scene.update();
   }
 
