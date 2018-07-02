@@ -1,5 +1,6 @@
 import Utils from '../utils/utils';
 import Geo from '../geo';
+import log from '../utils/log';
 
 import parseCSSColor from 'csscolorparser';
 
@@ -525,7 +526,11 @@ StyleParser.calculateOrder = function(order, context) {
 // Evaluate a function-based property, or pass-through static value
 StyleParser.evalProperty = function(prop, context) {
     if (typeof prop === 'function') {
-        return prop(context);
+        try {
+            return prop(context);
+        } catch(e) {
+            log('warn', e);
+        }
     }
     return prop;
 };
