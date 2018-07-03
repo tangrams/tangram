@@ -51,7 +51,7 @@ export function init(scene, camera) {
       mouseDown = true;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
-      // scene.view.markUserInput();
+      view.markUserInput();
   }
 
   function handleMouseUp (event) {
@@ -124,8 +124,8 @@ export function init(scene, camera) {
       metaKeyDown = false;
     }
     view.setPanning(true);
-    // view.markUserInput();
-    scene.update();
+    view.markUserInput();
+    scene.requestRedraw();
   }
 
   function handleScroll (event) {
@@ -159,5 +159,4 @@ export function init(scene, camera) {
     // prevent scroll event bubbling
     return false;
   }
-  scene.render_loop_stop = true; // disable constant frame updates
 }

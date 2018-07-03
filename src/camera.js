@@ -207,7 +207,6 @@ class PerspectiveCamera extends Camera {
     }
 
     update() {
-        // console.log('.')
         super.update();
         this.updateMatrices();
     }

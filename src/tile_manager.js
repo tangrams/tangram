@@ -28,7 +28,7 @@ export default class TileManager {
                 pitch: null,
                 roll: null
             },
-            zoom_steps: 3, // divisions per zoom at which labels are re-collided (e.g. 0, 0.33, 0.66)
+            zoom_steps: 3 // divisions per zoom at which labels are re-collided (e.g. 0, 0.33, 0.66)
         };
 
         // Provide a hook for this object to be called from worker threads
@@ -76,8 +76,6 @@ export default class TileManager {
         }
 
         this.forgetTile(tile.key);
-        console.log('R', tile.key);
-        this.scene.update();
         this.scene.requestRedraw();
     }
 
@@ -130,7 +128,6 @@ export default class TileManager {
     }
 
     updateLabels () {
-        console.warn('updateLabels, building??', this.scene.building)
         if (this.scene.building && !this.scene.building.initial) {
             // log('debug', `Skip label layout due to on-going scene rebuild`);
             return Promise.resolve({});
@@ -150,9 +147,9 @@ export default class TileManager {
         tiles.sort((a, b) => a.build_id < b.build_id ? -1 : (a.build_id > b.build_id ? 1 : 0));
 
         // check if tile set has changed (in ways that affect collision)
-        if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
-            this.view.roll === this.collision.roll &&
-            this.view.pitch === this.collision.pitch &&
+        if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.view.zoom &&
+            this.view.roll === this.collision.view.roll &&
+            this.view.pitch === this.collision.view.pitch &&
             tiles.every(t => {
                 let i = this.collision.tiles.indexOf(t);
                 return i > -1 &&
@@ -179,10 +176,12 @@ export default class TileManager {
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
                 run: (task) => {
-                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.view, this.isLoadingVisibleTiles()).then(results => {
+                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.view.zoom, this.isLoadingVisibleTiles()).then(results => {
                         this.collision.task = null;
                         Task.finish(task, results);
-                        this.updateTileStates().then(() => this.scene.immediateRedraw());
+                        this.updateTileStates().then(() => {
+                            this.scene.immediateRedraw();
+                        });
 
                     });
                 },
@@ -419,13 +418,12 @@ export default class TileManager {
 
             tile.buildMeshes(this.scene.styles, progress);
             this.updateTileStates();
+            this.scene.requestRedraw();
         }
 
         if (progress.done) {
             this.tileBuildStop(tile.key);
         }
-        console.log(tile.key);
-        // this.scene.update();
     }
 
     // Called on main thread when web worker encounters an error building a tile

@@ -394,6 +394,7 @@ export default class Scene {
         if (width === 0 && height === 0) {
             return;
         }
+
         this.dirty = true;
         this.view.setViewportSize(width, height);
         if (this.gl) {
@@ -453,7 +454,6 @@ export default class Scene {
             this.updating > 0 ||
             this.ready() === false
         );
-        // console.log(main, selection, this.initialized, this.updating, this.ready());
 
         // Pre-render loop hook
         this.trigger('pre_update', will_render);
