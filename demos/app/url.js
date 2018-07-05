@@ -20,7 +20,7 @@
         clearTimeout(update_url_timeout);
         update_url_timeout = setTimeout(function() {
             var center = map.getCenter();
-            var url_options = [map.getZoom(), center.lat, center.lng];
+            var url_options = [Math.round(map.getZoom() * 1000)/1000, center.lat, center.lng];
 
             window.location.hash = url_options.join('/');
         }, update_url_throttle);
@@ -29,7 +29,8 @@
     window.addEventListener('load', function () {
         // update URL scene load
         map.scene.subscribe({
-            load: onLoad()
+            load: onLoad(),
+            move: updateURL,
         });
     });
 
