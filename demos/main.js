@@ -37,6 +37,7 @@
         ],
         sources: {
           mapzen: {
+            type: 'MVT',
             url: 'https://tile.nextzen.org/tilezen/vector/v1/256/all/{z}/{x}/{y}.mvt',
             url_params: {
               api_key: 'tsINU1vsQnKLU1jjCimtVw',
