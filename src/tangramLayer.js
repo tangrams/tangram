@@ -29,6 +29,7 @@ export function tangramLayer(id, options = {}) {
         }
 
         this.scene = Scene.create();
+        this.view = this.scene.view;
 
         // Add GL canvas to map this.container
         this.scene.container = this.container;
@@ -43,7 +44,7 @@ export function tangramLayer(id, options = {}) {
           this.updateSize(this);
 
           // Interaction layer initialization
-          interaction.init(this.scene, this.scene.view.camera);
+          interaction.init(this.scene, this.view.camera);
 
         }).catch(error => {
             throw(error);
@@ -51,15 +52,15 @@ export function tangramLayer(id, options = {}) {
       },
       
       getCenter: function() {
-        return this.scene.view.center;
+        return this.view.center;
       },
 
       getZoom: function() {
-        return this.scene.view.zoom;
+        return this.view.zoom;
       },
 
       setView: function (view) {
-        this.scene.view.setView(view);
+        this.view.setView(view);
       },
 
       updateView: function (map) {
