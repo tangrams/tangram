@@ -64,8 +64,8 @@ export function tangramLayer(id, options = {}) {
       },
 
       updateView: function (map) {
-        var view = map._lastCenter;
-        view.zoom = map._zoom;
+        var view = map.center;
+        view.zoom = map.zoom;
         map.scene.view.setView(view);
       },
 

@@ -1,6 +1,8 @@
 (function(){
     var url_hash = getValuesFromUrl();
-    var map_start_location = url_hash ? url_hash.slice(0, 3) : [16, 40.70531887544228, -74.00976419448853];
+    const defaultLocation = [16, 40.70531887544228, -74.00976419448853];
+    var location = url_hash || defaultLocation;
+    var map_start_location = {lat: location[1], lng: location[2], zoom: location[0]};
 
     /*** URL parsing ***/
     // URL hash pattern #[zoom]/[lat]/[lng]
@@ -9,7 +11,7 @@
         if (url_hash.length < 3 || parseFloat(url_hash[0]) === 'number') {
             url_hash = false;
         }
-        return url_hash;
+        return url_hash.map(x => parseFloat(x));
     }
 
     // Put current state on URL
@@ -35,8 +37,7 @@
     });
 
     function onLoad() {
-        updateURL();
-        map.setView(map_start_location.slice(1, 3), map_start_location[0]);
+        map.setView(map_start_location);
     }
 
 })();
