@@ -161,12 +161,15 @@ Utils.stringToFunction = function(val, wrap) {
             let args = fmatch[1].length > 0 && fmatch[1].split(',').map(x => x.trim()).filter(x => x);
             args = args.length > 0 ? args : ['context']; // default to single 'context' argument
 
+            let func;
             if (typeof wrap === 'function') {
-                return new Function(args.toString(), wrap(src)); // jshint ignore:line
+                func = new Function(args.toString(), wrap(src)); // jshint ignore:line
             }
             else {
-                return new Function(args.toString(), src); // jshint ignore:line
+                func = new Function(args.toString(), src); // jshint ignore:line
             }
+            func.source = src; // save original, un-wrapped function source
+            return func;
         }
         catch (e) {
             // fall-back to original value if parsing failed
