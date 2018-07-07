@@ -267,8 +267,7 @@ StyleParser.evalCachedProperty = function(val, context) {
         return;
     }
     else if (val.dynamic) { // function, compute each time (no caching)
-        let v = val.dynamic(context);
-        return v;
+        return tryEval(val.dynamic, context);
     }
     else if (val.static) { // single static value
         return val.static;
@@ -280,8 +279,7 @@ StyleParser.evalCachedProperty = function(val, context) {
         // Dynamic function-based
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            let v = val.dynamic(context);
-            return v;
+            return tryEval(val.dynamic, context);
         }
         // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
         else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
@@ -344,8 +342,7 @@ StyleParser.parseUnits = function (val) {
 // { value: original, zoom: { z: meters }, dynamic: function(){...} }
 StyleParser.evalCachedDistanceProperty = function(val, context) {
     if (val.dynamic) {
-        let v = val.dynamic(context);
-        return v;
+        return tryEval(val.dynamic, context);
     }
     else if (val.zoom && val.zoom[context.zoom]) {
         return val.zoom[context.zoom];
@@ -354,8 +351,7 @@ StyleParser.evalCachedDistanceProperty = function(val, context) {
         // Dynamic function-based
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            let v = val.dynamic(context);
-            return v;
+            return tryEval(val.dynamic, context);
         }
         // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
         else if (val.zoom) {
@@ -399,7 +395,7 @@ StyleParser.colorForString = function(string) {
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
 StyleParser.evalCachedColorProperty = function(val, context = {}) {
     if (val.dynamic) {
-        let v = val.dynamic(context);
+        let v = tryEval(val.dynamic, context);
 
         if (typeof v === 'string') {
             v = StyleParser.colorForString(v);
@@ -420,7 +416,7 @@ StyleParser.evalCachedColorProperty = function(val, context = {}) {
         // Dynamic function-based color
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            let v = val.dynamic(context);
+            let v = tryEval(val.dynamic, context);
 
             if (typeof v === 'string') {
                 v = StyleParser.colorForString(v);
@@ -467,7 +463,7 @@ StyleParser.evalCachedColorProperty = function(val, context = {}) {
 
 StyleParser.parseColor = function(val, context = {}) {
     if (typeof val === 'function') {
-        val = val(context);
+        val = tryEval(val, context);
     }
 
     // Parse CSS-style colors
@@ -507,7 +503,7 @@ StyleParser.parseColor = function(val, context = {}) {
 StyleParser.calculateOrder = function(order, context) {
     // Computed order
     if (typeof order === 'function') {
-        order = order(context);
+        order = tryEval(order, context);
     }
     else if (typeof order === 'string') {
         // Order tied to feature property
@@ -526,11 +522,20 @@ StyleParser.calculateOrder = function(order, context) {
 // Evaluate a function-based property, or pass-through static value
 StyleParser.evalProperty = function(prop, context) {
     if (typeof prop === 'function') {
-        try {
-            return prop(context);
-        } catch(e) {
-            log('warn', e);
-        }
+        return tryEval(prop, context);
     }
     return prop;
 };
+
+// eval property function with try/catch
+function tryEval (func, context) {
+    try {
+        return func(context);
+    } catch(e) {
+        log('warn',
+            `Property function in layer '${context.layers[context.layers.length-1]}' failed with\n`,
+            `error ${e.stack}\n`,
+            `function '${func.source}'\n`,
+            context.feature, context);
+    }
+}
