@@ -25,18 +25,21 @@
   },
   "scripts": {
     "start": "npm run watch",
-    "test": "npm run lint && npm run build-bundle && npm run test-local",
-    "test-ci": "npm run lint && npm run build-bundle && npm run test-remote",
+    "test": "npm run lint && npm run build-bundle-es5 && npm run test-local",
+    "test-ci": "npm run lint && npm run build-bundle-es5 && npm run test-remote",
     "test-remote": "./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
     "test-local": "./node_modules/karma/bin/karma start --browsers Chrome --single-run",
     "karma-start": "./node_modules/karma/bin/karma start --browsers Chrome --no-watch",
     "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome",
     "lint": "./node_modules/.bin/jshint src/ && jshint test/",
-    "build": "npm run build-bundle && npm run build-minify",
-    "build-bundle": "./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js",
-    "build-minify": "./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size",
+    "build": "npm run build-es5 && npm run build-bundle && npm run build-minify",
+    "build-es5": "npm run build-bundle-es5 && npm run build-minify-es5",
+    "build-bundle": "./node_modules/.bin/browserify src/module.js -t [ envify --TANGRAM_BUILD_ENV es6 ] -t [ babelify --plugins [ @babel/plugin-transform-modules-commonjs ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js",
+    "build-bundle-es5": "./node_modules/.bin/browserify src/module.js -t [ envify --TANGRAM_BUILD_ENV es5 ] -t [ babelify --presets [ @babel/env ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ mapstraction ./dist/tangram.es5.debug.js.map ] -o ./dist/tangram.es5.debug.js",
+    "build-minify": "./node_modules/.bin/terser dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size",
+    "build-minify-es5": "./node_modules/.bin/terser dist/tangram.es5.debug.js -c warnings=false -m | sed -e 's/tangram.es5.debug.js.map//g' > dist/tangram.es5.min.js",
     "build-size": "gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'",
-    "watch": "./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]"
+    "watch": "./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ envify --TANGRAM_BUILD_ENV es6 ] -t [ babelify --plugins [ @babel/plugin-transform-modules-commonjs ] ] -t brfs -s Tangram -p [ mapstraction ./dist/tangram.debug.temp.js.map ]"
   },
   "files": [
     "src/*",
@@ -97,14 +100,17 @@
     "topojson-client": "tangrams/topojson-client#read-only"
   },
   "devDependencies": {
-    "babelify": "7.3.0",
-    "babel-preset-es2015": "6.16.0",
-    "browserify": "14.4.0",
+    "@babel/core": "7.0.0-beta.52",
+    "@babel/plugin-transform-modules-commonjs": "7.0.0-beta.52",
+    "@babel/preset-env": "7.0.0-beta.52",
+    "babelify": "9.0.0",
+    "browserify": "16.2.2",
     "browserify-derequire": "0.9.4",
     "budo": "10.0.3",
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
-    "core-js": "2.4.1",
+    "core-js": "2.5.7",
+    "envify": "4.1.0",
     "glob": "4.0.6",
     "jshint": "2.9.4",
     "karma": "1.5.0",
@@ -117,8 +123,9 @@
     "mapstraction": "1.0.1",
     "mocha": "1.21.4",
     "sinon": "1.10.3",
+    "terser": "3.8.1",
     "through2": "2.0.3",
-    "uglify-js": "2.8.29",
+    "webworkify": "1.4.0",
     "yargs": "1.3.2"
   }
 }

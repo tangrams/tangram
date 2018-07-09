@@ -1,5 +1,5 @@
 /*jshint worker: true*/
-import Thread from './utils/thread';
+import './utils/polyfills'; // ensure polyfills are loaded into worker threads
 import Utils from './utils/utils';
 import {mergeDebugSettings} from './utils/debug_settings';
 import log from './utils/log';
@@ -16,10 +16,13 @@ import Texture from './gl/texture';
 import VertexElements from './gl/vertex_elements';
 import Label from './labels/label';
 
-export var SceneWorker = self;
+// NB: data source modules need to be explicitly loaded to register themselves, could put into one module
+import './sources/geojson';
+import './sources/topojson';
+import './sources/mvt';
+import './sources/raster';
 
-// Worker functionality will only be defined in worker thread
-if (Thread.is_worker) {
+export default function worker (self) {
 
 Object.assign(self, {
 

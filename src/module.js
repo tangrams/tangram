@@ -4,15 +4,11 @@ import './utils/polyfills';
 
 // The leaflet layer plugin is currently the primary public API
 import {leafletLayer} from './leaflet_layer';
-
-// The scene worker is only activated when a worker thread is instantiated, but must always be loaded
 import Scene from './scene';
-import {SceneWorker} from './scene_worker';
 
 // Additional modules are exposed for debugging
 import version from './utils/version';
 import log from './utils/log';
-import Thread from './utils/thread';
 import Utils from './utils/utils';
 import Geo from './geo';
 import Vector from './vector';
@@ -43,7 +39,6 @@ import JSZip from 'jszip';
 var debug = {
     log,
     yaml,
-    Thread,
     Utils,
     Geo,
     Vector,
@@ -55,7 +50,6 @@ var debug = {
     Material,
     Light,
     Scene,
-    SceneWorker,
     WorkerBroker,
     layerCache,
     StyleManager,
@@ -66,15 +60,13 @@ var debug = {
     debugSettings
 };
 
-if (Thread.is_main) {
-    Utils.requestAnimationFramePolyfill();
+Utils.requestAnimationFramePolyfill();
 
-    // Attach Promise polyfill to window
-    // Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
-    if (window.Promise === undefined) {
-        window.Promise = Promise;
-        JSZip.external.Promise = Promise;
-    }
+// Attach Promise polyfill to window
+// Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
+if (window.Promise === undefined) {
+    window.Promise = Promise;
+    JSZip.external.Promise = Promise;
 }
 
 module.exports = {
