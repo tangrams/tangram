@@ -25,6 +25,8 @@ import CanvasText from './styles/text/canvas_text';
 import FontManager from './styles/text/font_manager';
 import MediaCapture from './utils/media_capture';
 
+import work from 'webworkify';
+
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
 
@@ -258,27 +260,6 @@ export default class Scene {
         this.media_capture.setCanvas(this.canvas, this.gl);
     }
 
-    // Get the URL to load the web worker from
-    getWorkerUrl() {
-        let worker_url;
-        /* jshint -W117 */
-        // ignore uninitialized worker src variable (defined in parent scope)
-        if (typeof __worker_src__ !== "undefined"){
-            let source = '(' + __worker_src__ + ')()';
-            if (__worker_src_origin__ && __worker_src_map__ !== '') {
-                let origin = __worker_src_origin__.slice(0, __worker_src_origin__.lastIndexOf('/')+1);
-                source += '\n//#' + ' sourceMappingURL=' + origin + __worker_src_map__;
-            }
-            worker_url = URLs.createObjectURL(new Blob([source], { type: 'application/javascript' }));
-        }
-        /* jshint +W117 */
-
-        if (!worker_url) {
-            throw new Error("Couldn't find internal Tangram source variable (may indicate the library did not build correctly)");
-        }
-        return worker_url;
-    }
-
     // Update list of any custom scripts (either at scene-level or data-source-level)
     updateExternalScripts () {
         let prev_scripts = [...(this.external_scripts||[])]; // save list of previously loaded scripts
@@ -320,21 +301,20 @@ export default class Scene {
         }
 
         if (!this.workers) {
-            return this.makeWorkers(this.getWorkerUrl());
+            return this.makeWorkers();
         }
         return Promise.resolve();
     }
 
     // Instantiate workers from URL, init event handlers
-    makeWorkers(url) {
-
+    makeWorkers() {
         // Let VertexElements know if 32 bit indices for element arrays are available
         let has_element_index_uint = this.gl.getExtension("OES_element_index_uint") ? true : false;
 
         let queue = [];
         this.workers = [];
-        for (let id=0; id < this.num_workers; id++) {
-            let worker = new Worker(url);
+        for (var id=0; id < this.num_workers; id++) {
+            var worker = work(require('./scene_worker.js'));
             this.workers[id] = worker;
 
             WorkerBroker.addWorker(worker);
@@ -358,7 +338,7 @@ export default class Scene {
             log.setWorkers(this.workers);
 
             // Free memory after worker initialization
-            URLs.revokeObjectURL(url);
+            this.workers.forEach(w => URLs.revokeObjectURL(w.objectURL));
         });
     }
 
