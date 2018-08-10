@@ -1,11 +1,15 @@
-test:
-  override:
-    - npm run test-ci
-machine:
-  node:
-    version: 6.11.3
-experimental:
-  notify:
-    branches:
-      ignore:
-        - update-karma-sauce-launcher
+version: 2.0
+jobs:
+  build:
+    docker:
+      - image: circleci/node:6-browsers
+        environment:
+          CHROME_BIN: "/usr/bin/google-chrome"
+    steps:
+      - checkout
+      - run:
+          name: install
+          command: npm install
+      - run:
+          name: tests
+          command: npm run test-ci
