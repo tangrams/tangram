@@ -21956,7 +21956,6 @@ Pbf.prototype = {
     // === READING =================================================================
 
     readFields: function(readField, result, end) {
-        // debugger
         end = end || this.length;
 
         while (this.pos < end) {
@@ -22118,8 +22117,6 @@ Pbf.prototype = {
         else if (type === Pbf.Fixed32) this.pos += 4;
         else if (type === Pbf.Fixed64) this.pos += 8;
         else throw new Error('Unimplemented type: ' + type);
-        // else console.log('Unimplemented type: ' + type);
-        // else debugger
     },
 
     // === WRITING =================================================================
@@ -23844,73 +23841,91 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var up_vec3 = [0, 0, 1];
 
-// Tesselate a flat 2D polygon
-// x & y coordinates will be set as first two elements of provided vertex_template
+/**
+ * To tesselate flat 2D polygons.
+ * The x & y coordinates will be set as first two elements of provided vertex_template.
+ * @param {Array.<Array.<Array.<Array.<number>>>>} polygons The polygons to tesselate.
+ * @param {VertexData} vertex_data The VertexData were to store the results
+ * @param {Array.<number>} vertex_template The vertex template to use
+ * @param {Object} options The texture coordinate options to apply
+ * @return {number} the number of the resulting geometries (triangles)
+ */
 function buildPolygons(polygons, vertex_data, vertex_template, _ref) {
     var texcoord_index = _ref.texcoord_index,
         texcoord_scale = _ref.texcoord_scale,
         texcoord_normalize = _ref.texcoord_normalize;
 
 
-    var vertex_elements = vertex_data.vertex_elements;
+    var vertex_elements = vertex_data.vertex_elements,
+        num_polygons = polygons.length,
+        geom_count = 0,
+        min_u = void 0,
+        min_v = void 0,
+        max_u = void 0,
+        max_v = void 0,
+        min_x = void 0,
+        min_y = void 0,
+        max_x = void 0,
+        max_y = void 0,
+        span_x = void 0,
+        span_y = void 0,
+        scale_u = void 0,
+        scale_v = void 0;
 
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
 
-        var _ref2 = texcoord_scale || _common.default_uvs,
-            _ref3 = _slicedToArray(_ref2, 4),
-            min_u = _ref3[0],
-            min_v = _ref3[1],
-            max_u = _ref3[2],
-            max_v = _ref3[3];
+        var _ref2 = texcoord_scale || _common.default_uvs;
+
+        var _ref3 = _slicedToArray(_ref2, 4);
+
+        min_u = _ref3[0];
+        min_v = _ref3[1];
+        max_u = _ref3[2];
+        max_v = _ref3[3];
     }
 
-    var geom_count = 0;
-    var num_polygons = polygons.length;
     for (var p = 0; p < num_polygons; p++) {
-        var element_offset = vertex_data.vertex_count;
 
-        var polygon = polygons[p];
+        var polygon = polygons[p],
+            element_offset = vertex_data.vertex_count,
+            indices = triangulatePolygon(_earcut2.default.flatten(polygon)),
+            num_indices = indices.length;
 
-        // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box
-        if (texcoord_index) {
-            var _Geo$findBoundingBox = _geo2.default.findBoundingBox(polygon),
-                _Geo$findBoundingBox2 = _slicedToArray(_Geo$findBoundingBox, 4),
-                min_x = _Geo$findBoundingBox2[0],
-                min_y = _Geo$findBoundingBox2[1],
-                max_x = _Geo$findBoundingBox2[2],
-                max_y = _Geo$findBoundingBox2[3];
+        // The vertices and vertex-elements must not be added if earcut returns no indices:
+        if (num_indices) {
 
-            var span_x = max_x - min_x;
-            var span_y = max_y - min_y;
-            var scale_u = (max_u - min_u) / span_x;
-            var scale_v = (max_v - min_v) / span_y;
-        }
+            // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box:
+            if (texcoord_index) {
+                var _Geo$findBoundingBox, _Geo$findBoundingBox2;
 
-        for (var ring_index = 0; ring_index < polygon.length; ring_index++) {
-            // Add vertex data
-            var polygon_ring = polygon[ring_index];
-            for (var i = 0; i < polygon_ring.length; i++) {
-                var vertex = polygon_ring[i];
-                vertex_template[0] = vertex[0];
-                vertex_template[1] = vertex[1];
-
-                // Add UVs
-                if (texcoord_index) {
-                    vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
-                    vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
-                }
-
-                vertex_data.addVertex(vertex_template);
+                (_Geo$findBoundingBox = _geo2.default.findBoundingBox(polygon), _Geo$findBoundingBox2 = _slicedToArray(_Geo$findBoundingBox, 4), min_x = _Geo$findBoundingBox2[0], min_y = _Geo$findBoundingBox2[1], max_x = _Geo$findBoundingBox2[2], max_y = _Geo$findBoundingBox2[3], _Geo$findBoundingBox), span_x = max_x - min_x, span_y = max_y - min_y, scale_u = (max_u - min_u) / span_x, scale_v = (max_v - min_v) / span_y;
             }
-        }
 
-        // Add element indices
-        var indices = triangulatePolygon(_earcut2.default.flatten(polygon));
-        for (var _i = 0; _i < indices.length; _i++) {
-            vertex_elements.push(element_offset + indices[_i]);
+            for (var ring_index = 0; ring_index < polygon.length; ring_index++) {
+                // Add vertex data:
+                var polygon_ring = polygon[ring_index];
+                for (var i = 0; i < polygon_ring.length; i++) {
+                    var vertex = polygon_ring[i];
+                    vertex_template[0] = vertex[0];
+                    vertex_template[1] = vertex[1];
+
+                    // Add UVs:
+                    if (texcoord_index) {
+                        vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
+                        vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
+                    }
+
+                    vertex_data.addVertex(vertex_template);
+                }
+            }
+
+            // Add element indices:
+            for (var _i = 0; _i < num_indices; _i++) {
+                vertex_elements.push(element_offset + indices[_i]);
+            }
+            geom_count += num_indices / 3;
         }
-        geom_count += indices.length / 3;
     }
     return geom_count;
 }
@@ -27272,6 +27287,8 @@ Texture.getInfo = function (name) {
                 width: tex.width,
                 height: tex.height,
                 density: tex.density,
+                css_size: [tex.width / tex.density, tex.height / tex.density],
+                aspect: tex.width / tex.height,
                 sprites: tex.sprites,
                 texcoords: tex.texcoords,
                 sizes: tex.sizes,
@@ -30175,6 +30192,13 @@ function leafletLayer(options) {
     return extendLeaflet(options);
 }
 
+// save references to overloaded Leaflet methods
+var originalHandlers = {
+    map: {},
+    scrollWheelZoom: {},
+    doubleClickZoom: {}
+};
+
 function extendLeaflet(options) {
 
     // If LeafletLayer is already defined when this is called just return that immediately
@@ -30327,7 +30351,7 @@ function extendLeaflet(options) {
 
                     _this.updateSize();
                     _this.updateView();
-                    // this.reverseTransform();
+                    _this.reverseTransform();
 
                     _this._updating_tangram = false;
 
@@ -30414,8 +30438,19 @@ function extendLeaflet(options) {
                         map.fire('viewreset'); // keep other leaflet layers in sync
                     }, map.options.wheelDebounceTime * 2);
 
+                    // save reference to overloaded method
+                    if (!originalHandlers.scrollWheelZoom._performZoom) {
+                        originalHandlers.scrollWheelZoom._performZoom = map.scrollWheelZoom._performZoom;
+                    }
+
                     var layer = this;
                     map.scrollWheelZoom._performZoom = function () {
+                        if (this._map !== layer._map) {
+                            // only call overloaded method on a tangram layer
+                            originalHandlers.scrollWheelZoom._performZoom.call(this);
+                            return;
+                        }
+
                         var map = this._map,
                             zoom = map.getZoom();
 
@@ -30498,7 +30533,18 @@ function extendLeaflet(options) {
                         var enabled = map.doubleClickZoom.enabled();
                         map.doubleClickZoom.disable();
 
+                        // save reference to overloaded method
+                        if (!originalHandlers.doubleClickZoom._onDoubleClick) {
+                            originalHandlers.doubleClickZoom._onDoubleClick = map.doubleClickZoom._onDoubleClick;
+                        }
+
                         map.doubleClickZoom._onDoubleClick = function (e) {
+                            if (this._map !== layer._map) {
+                                // only call overloaded method on a tangram layer
+                                originalHandlers.doubleClickZoom._onDoubleClick.call(this, e);
+                                return;
+                            }
+
                             var map = this._map,
                                 oldZoom = map.getZoom(),
                                 delta = map.options.zoomDelta,
@@ -30520,7 +30566,18 @@ function extendLeaflet(options) {
                     // NOTE: this will NOT fire the 'zoomanim' event, so this modification should be disabled for apps that depend on it
                     // See original: https://github.com/Leaflet/Leaflet/blob/cf518ff1a5e0e54a2f63faa144aeaa50888e0bc6/src/map/Map.js#L1610
                     if (map._zoomAnimated) {
+                        // save reference to overloaded method
+                        if (!originalHandlers.map._animateZoom) {
+                            originalHandlers.map._animateZoom = map._animateZoom;
+                        }
+
                         map._animateZoom = function (center, zoom, startAnim, noUpdate) {
+                            if (this !== layer._map) {
+                                // only call overloaded method on a tangram layer
+                                originalHandlers.map._animateZoom.call(this, center, zoom, startAnim, noUpdate);
+                                return;
+                            }
+
                             if (startAnim) {
                                 this._animatingZoom = true;
 
@@ -32449,6 +32506,26 @@ var Scene = function () {
                 geometry = _ref5$geometry === undefined ? false : _ref5$geometry;
 
             filter = _utils2.default.serializeWithFunctions(filter);
+
+            // Optional uniqueify criteria
+            // Valid values: true, false/null, single property name, or array of property names
+            unique = typeof unique === 'string' ? [unique] : unique;
+            var uniqueify = unique && function (obj) {
+                var props = Array.isArray(unique) ? (0, _slice2.default)(obj.properties, unique) : obj.properties;
+                if (geometry) {
+                    // when `geometry` flag is set, we need to uniqueify based on *both* feature properties and geometry
+                    return JSON.stringify({ geometry: obj.geometry, properties: props });
+                }
+                return JSON.stringify(props);
+            };
+
+            // Optional grouping criteria
+            // Valid values: false/null, single property name, or array of property names
+            group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
+            var group = group_by && function (obj) {
+                return Array.isArray(group_by) ? JSON.stringify((0, _slice2.default)(obj, group_by)) : obj[group_by];
+            };
+
             var tile_keys = this.tile_manager.getRenderableTiles().map(function (t) {
                 return t.key;
             });
@@ -32456,20 +32533,6 @@ var Scene = function () {
                 var features = [];
                 var keys = {};
                 var groups = {};
-
-                // Optional uniqueify criteria
-                // Valid values: true, false/null, single property name, or array of property names
-                unique = typeof unique === 'string' ? [unique] : unique;
-                var uniqueify = unique && function (obj) {
-                    return JSON.stringify(Array.isArray(unique) ? (0, _slice2.default)(obj, unique) : obj);
-                };
-
-                // Optional grouping criteria
-                // Valid values: false/null, single property name, or array of property names
-                group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
-                var group = group_by && function (obj) {
-                    return Array.isArray(group_by) ? JSON.stringify((0, _slice2.default)(obj, group_by)) : obj[group_by];
-                };
 
                 results.forEach(function (r) {
                     return r.forEach(function (feature) {
@@ -37748,25 +37811,37 @@ Object.assign(Points, {
             return;
         }
 
-        // optional sprite
+        // optional sprite and texture
         var sprite_info = void 0;
         if (this.hasSprites(style)) {
+            // populate sprite_info object with used sprites
             sprite_info = this.parseSprite(style, draw, context);
+
             if (sprite_info) {
                 style.texcoords = sprite_info.texcoords;
             } else {
+                // sprites are defined in the style's texture, but none are used in the current layer
+                (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\' uses a texture \'' + style.texture + '\' with defined sprites, but no sprite is specified. Skipping features in layer');
                 return;
             }
+        } else if (draw.sprite) {
+            // sprite specified in the draw layer but no sprites defined in the texture
+            (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + ('a sprite \'' + draw.sprite + '\' is specified but no sprites are defined in texture \'' + draw.texture + '\', skipping features in layer'));
+            return;
         }
 
         // point size defined explicitly, or defaults to sprite size, or generic fallback
         style.size = draw.size;
         if (!style.size) {
+            // a 'size' property has not been set in the draw layer -
+            // use the sprite size if it exists and a generic fallback if it doesn't
             style.size = sprite_info && sprite_info.css_size || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
         } else {
-            style.size = _style_parser2.default.evalCachedPointSizeProperty(draw.size, sprite_info, context);
+            // check for a cached size, passing the texture and any sprite references
+            style.size = _style_parser2.default.evalCachedPointSizeProperty(draw.size, sprite_info, _texture2.default.textures[style.texture], context);
             if (style.size == null) {
-                (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + ('\'size\' includes % and/or ratio-based scaling (' + JSON.stringify(draw.size.value) + '); ') + 'these can only applied to sprites, but no sprite was specified, skipping features in layer');
+                // the StyleParser couldn't evaluate a sprite size
+                (0, _log2.default)({ level: 'warn', once: true }, 'Layer \'' + draw.layers[draw.layers.length - 1] + '\': ' + ('\'size\' (' + JSON.stringify(draw.size.value) + ') couldn\'t be interpreted, skipping features in layer'));
                 return;
             } else if (typeof style.size === 'number') {
                 style.size = [style.size, style.size]; // convert 1d size to 2d
@@ -37841,10 +37916,13 @@ Object.assign(Points, {
     hasSprites: function hasSprites(style) {
         return style.texture && _texture2.default.textures[style.texture] && _texture2.default.textures[style.texture].sprites;
     },
+
+
+    // Generate a sprite_info object
     getSpriteInfo: function getSpriteInfo(style, sprite) {
         var info = _texture2.default.textures[style.texture].sprites[sprite] && _texture2.default.getSpriteInfo(style.texture, sprite);
         if (sprite && !info) {
-            // track misisng sprites (per texture)
+            // track missing sprites (per texture)
             this.texture_missing_sprites[style.texture] = this.texture_missing_sprites[style.texture] || {};
             if (!this.texture_missing_sprites[style.texture][sprite]) {
                 // only log each missing sprite once
@@ -37856,7 +37934,11 @@ Object.assign(Points, {
         }
         return info;
     },
+
+
+    // Check a sprite name against available sprites and return a sprite_info object
     parseSprite: function parseSprite(style, draw, context) {
+        // check for functions
         var sprite = _style_parser2.default.evalProperty(draw.sprite, context);
         var sprite_info = this.getSpriteInfo(style, sprite) || this.getSpriteInfo(style, draw.sprite_default);
         return sprite_info;
@@ -38029,7 +38111,13 @@ Object.assign(Points, {
         draw.placement_min_length_ratio = _style_parser2.default.createPropertyCache(draw.placement_min_length_ratio, _style_parser2.default.parsePositiveNumber);
 
         if (typeof draw.angle === 'number') {
-            draw.angle = draw.angle * Math.PI / 180;
+            draw.angle = draw.angle * Math.PI / 180; // convert static value to radians
+        } else if (typeof draw.angle === 'function') {
+            // convert function return value to radians
+            var angle_func = draw.angle;
+            draw.angle = function (context) {
+                return angle_func(context) * Math.PI / 180;
+            };
         } else {
             draw.angle = draw.angle || 0; // angle can be a string like "auto" (use angle of geometry)
         }
@@ -38309,6 +38397,8 @@ Object.assign(Points, {
         // track label mesh buffer data
         var linked = style.linked && style.linked.label.id;
         this.trackLabel(label, linked, mesh, geom_count, context);
+
+        return geom_count;
     },
     buildCurvedLabel: function buildCurvedLabel(label, style, mesh, context) {
         var vertex_template = this.makeVertexTemplate(style, mesh);
@@ -40035,6 +40125,10 @@ var _geo = _dereq_('../geo');
 
 var _geo2 = _interopRequireDefault(_geo);
 
+var _log = _dereq_('../utils/log');
+
+var _log2 = _interopRequireDefault(_log);
+
 var _csscolorparser = _dereq_('csscolorparser');
 
 var _csscolorparser2 = _interopRequireDefault(_csscolorparser);
@@ -40157,7 +40251,7 @@ StyleParser.createPropertyCache = function (obj) {
         c.type = CACHE_TYPE.DYNAMIC;
     }
 
-    // apply optional transform function
+    // apply optional transform function - usually a parsing function
     if (typeof transform === 'function') {
         if (c.zoom) {
             // apply to each zoom stop value
@@ -40166,7 +40260,7 @@ StyleParser.createPropertyCache = function (obj) {
             });
         } else if (typeof c.value !== 'function') {
             // don't transform functions
-            c.value = transform(c.value, 0); // single value
+            c.value = transform(c.value, 0); // single value, 0 = the first and only item in the array
         }
     }
 
@@ -40187,8 +40281,8 @@ StyleParser.createColorPropertyCache = function (obj) {
     });
 };
 
-// Caching for point sizes, which include optional %-based or aspect-ratio-constrained scaling from sprite size
-// Returns a cache object if successful, or throws error message
+// Parse point sizes, which include optional %-based or aspect-ratio-constrained scaling from sprite size
+// Returns a cache object if successful, otherwise throws error message
 var isPercent = function isPercent(v) {
     return typeof v === 'string' && v[v.length - 1] === '%';
 }; // size computed by %
@@ -40200,6 +40294,7 @@ var isComputed = function isComputed(v) {
 };
 var dualRatioError = '\'size\' can specify either width or height as derived from aspect ratio, but not both';
 StyleParser.createPointSizePropertyCache = function (obj) {
+    // obj is the value to be parsed eg "64px" "100%" "auto"
     // mimics the structure of the size value (at each zoom stop if applicable),
     // stores flags indicating if each element is a %-based size or not, or derived from aspect
     var has_pct = null;
@@ -40249,6 +40344,9 @@ StyleParser.createPointSizePropertyCache = function (obj) {
 
     if (!has_pct) {
         // no percentage-based calculation, one cache for all sprites
+        if (obj === "auto") {
+            throw 'this value only allowed as half of an array, eg [16px, auto]:';
+        }
         obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
     } else {
         // per-sprite based evaluation
@@ -40261,51 +40359,60 @@ StyleParser.createPointSizePropertyCache = function (obj) {
     return obj;
 };
 
-StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, context) {
+StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_info, context) {
     // no percentage-based calculation, one cache for all sprites
     if (!val.has_pct && !val.has_ratio) {
         return StyleParser.evalCachedProperty(val, context);
     }
 
-    // per-sprite based evaluation
-    if (!sprite_info) {
-        return; // trying to apply percentage or ratio sizing to a sprite
-    }
+    var the_image = sprite_info ? sprite_info : texture_info;
 
-    // cache sizes per sprite
-    if (!val.sprites[sprite_info.sprite]) {
-        val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, function (v, i) {
-            if (Array.isArray(v)) {
-                // 2D size
-                // either width or height or both could be a %
-                v = v.map(function (c, j) {
-                    return val.has_ratio[i][j] ? c : parsePositiveNumber(c);
-                }). // convert non-ratio values to px
-                map(function (c, j) {
-                    return val.has_pct[i][j] ? sprite_info.css_size[j] * c / 100 : c;
-                }); // apply % scaling as needed
+    // this function is passed to createPropertyCache as the transform function -
+    // when val.value is an array, it is used inside a map(), which is where i is used
+    function evalValue(v, i) {
+        if (Array.isArray(v)) {
+            // 2D size
+            // either width or height or both could be a %
+            v = v.map(function (c, j) {
+                return val.has_ratio[i][j] ? c : parsePositiveNumber(c);
+            }). // convert non-ratio values to px
+            map(function (c, j) {
+                return val.has_pct[i][j] ? the_image.css_size[j] * c / 100 : c;
+            }); // apply % scaling as needed
 
-                // either width or height could be a ratio
-                if (val.has_ratio[i][0]) {
-                    v[0] = v[1] * sprite_info.aspect;
-                } else if (val.has_ratio[i][1]) {
-                    v[1] = v[0] / sprite_info.aspect;
-                }
-            } else {
-                // 1D size
-                v = parsePositiveNumber(v);
-                if (val.has_pct[i]) {
-                    v = sprite_info.css_size.map(function (c) {
-                        return c * v / 100;
-                    }); // set size as % of sprite
-                } else {
-                    v = [v, v]; // expand 1D size to 2D
-                }
+            // either width or height could be a ratio
+            if (val.has_ratio[i][0]) {
+                v[0] = v[1] * the_image.aspect;
+            } else if (val.has_ratio[i][1]) {
+                v[1] = v[0] / the_image.aspect;
             }
-            return v;
-        });
+        } else {
+            // 1D size
+            v = parsePositiveNumber(v);
+            if (val.has_pct[i]) {
+                v = the_image.css_size.map(function (c) {
+                    return c * v / 100;
+                }); // set size as % of image
+            } else {
+                v = [v, v]; // expand 1D size to 2D
+            }
+        }
+        return v;
     }
-    return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
+    // texture-based evaluation
+    if (!sprite_info) {
+        // apply percentage or ratio sizing to a texture
+        var textureSizeCache = StyleParser.createPropertyCache(val.value, evalValue);
+
+        return StyleParser.evalCachedProperty(textureSizeCache, context);
+    } else {
+        // per-sprite based evaluation
+        // cache sizes per sprite
+        if (!val.sprites[sprite_info.sprite]) {
+            val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, evalValue);
+        }
+        return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
+    }
 };
 
 // Interpolation and caching for a generic property (not a color or distance)
@@ -40315,8 +40422,7 @@ StyleParser.evalCachedProperty = function (val, context) {
         return;
     } else if (val.dynamic) {
         // function, compute each time (no caching)
-        var v = val.dynamic(context);
-        return v;
+        return tryEval(val.dynamic, context);
     } else if (val.static) {
         // single static value
         return val.static;
@@ -40328,8 +40434,7 @@ StyleParser.evalCachedProperty = function (val, context) {
         // Dynamic function-based
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            var _v = val.dynamic(context);
-            return _v;
+            return tryEval(val.dynamic, context);
         }
         // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
         else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
@@ -40396,16 +40501,14 @@ StyleParser.parseUnits = function (val) {
 // { value: original, zoom: { z: meters }, dynamic: function(){...} }
 StyleParser.evalCachedDistanceProperty = function (val, context) {
     if (val.dynamic) {
-        var v = val.dynamic(context);
-        return v;
+        return tryEval(val.dynamic, context);
     } else if (val.zoom && val.zoom[context.zoom]) {
         return val.zoom[context.zoom];
     } else {
         // Dynamic function-based
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            var _v2 = val.dynamic(context);
-            return _v2;
+            return tryEval(val.dynamic, context);
         }
         // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
         else if (val.zoom) {
@@ -40450,7 +40553,7 @@ StyleParser.evalCachedColorProperty = function (val) {
     var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
     if (val.dynamic) {
-        var v = val.dynamic(context);
+        var v = tryEval(val.dynamic, context);
 
         if (typeof v === 'string') {
             v = StyleParser.colorForString(v);
@@ -40468,16 +40571,16 @@ StyleParser.evalCachedColorProperty = function (val) {
         // Dynamic function-based color
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            var _v3 = val.dynamic(context);
+            var _v = tryEval(val.dynamic, context);
 
-            if (typeof _v3 === 'string') {
-                _v3 = StyleParser.colorForString(_v3);
+            if (typeof _v === 'string') {
+                _v = StyleParser.colorForString(_v);
             }
 
-            if (_v3 && _v3[3] == null) {
-                _v3[3] = 1; // default alpha
+            if (_v && _v[3] == null) {
+                _v[3] = 1; // default alpha
             }
-            return _v3;
+            return _v;
         }
         // Single string color
         else if (typeof val.value === 'string') {
@@ -40489,9 +40592,9 @@ StyleParser.evalCachedColorProperty = function (val) {
                     // Parse any string colors inside stops, the first time we encounter this property
                     if (!val.zoom_preprocessed) {
                         for (var i = 0; i < val.value.length; i++) {
-                            var _v4 = val.value[i];
-                            if (_v4 && typeof _v4[1] === 'string') {
-                                _v4[1] = StyleParser.colorForString(_v4[1]);
+                            var _v2 = val.value[i];
+                            if (_v2 && typeof _v2[1] === 'string') {
+                                _v2[1] = StyleParser.colorForString(_v2[1]);
                             }
                         }
                         val.zoom_preprocessed = true;
@@ -40519,7 +40622,7 @@ StyleParser.parseColor = function (val) {
     var context = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
     if (typeof val === 'function') {
-        val = val(context);
+        val = tryEval(val, context);
     }
 
     // Parse CSS-style colors
@@ -40559,7 +40662,7 @@ StyleParser.parseColor = function (val) {
 StyleParser.calculateOrder = function (order, context) {
     // Computed order
     if (typeof order === 'function') {
-        order = order(context);
+        order = tryEval(order, context);
     } else if (typeof order === 'string') {
         // Order tied to feature property
         if (context.feature.properties[order]) {
@@ -40577,12 +40680,21 @@ StyleParser.calculateOrder = function (order, context) {
 // Evaluate a function-based property, or pass-through static value
 StyleParser.evalProperty = function (prop, context) {
     if (typeof prop === 'function') {
-        return prop(context);
+        return tryEval(prop, context);
     }
     return prop;
 };
 
-},{"../geo":200,"../utils/utils":269,"csscolorparser":76}],246:[function(_dereq_,module,exports){
+// eval property function with try/catch
+function tryEval(func, context) {
+    try {
+        return func(context);
+    } catch (e) {
+        (0, _log2.default)('warn', 'Property function in layer \'' + context.layers[context.layers.length - 1] + '\' failed with\n', 'error ' + e.stack + '\n', 'function \'' + func.source + '\'\n', context.feature, context);
+    }
+}
+
+},{"../geo":200,"../utils/log":259,"../utils/utils":269,"csscolorparser":76}],246:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43583,7 +43695,7 @@ var TileManager = function () {
             style_counts: [],
             pending_label_style_counts: [],
             zoom: null,
-            zoom_steps: 2
+            zoom_steps: 3 // divisions per zoom at which labels are re-collided (e.g. 0, 0.33, 0.66)
         };
 
         // Provide a hook for this object to be called from worker threads
@@ -45733,11 +45845,14 @@ Utils.stringToFunction = function (val, wrap) {
             });
             args = args.length > 0 ? args : ['context']; // default to single 'context' argument
 
+            var func = void 0;
             if (typeof wrap === 'function') {
-                return new Function(args.toString(), wrap(src)); // jshint ignore:line
+                func = new Function(args.toString(), wrap(src)); // jshint ignore:line
             } else {
-                return new Function(args.toString(), src); // jshint ignore:line
+                func = new Function(args.toString(), src); // jshint ignore:line
             }
+            func.source = src; // save original, un-wrapped function source
+            return func;
         } catch (e) {
             // fall-back to original value if parsing failed
             return val;
@@ -45869,7 +45984,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.15.1\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Tangram contributors\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles2\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.8.29\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.15.2\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Tangram contributors\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles3\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.8.29\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
