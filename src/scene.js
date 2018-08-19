@@ -79,6 +79,8 @@ export default class Scene {
         this.last_selection_render = -1;    // frame counter for last selection render pass
         this.media_capture = new MediaCapture();
         this.selection = null;
+        this.selection_feature_count = 0;
+        this.fetching_selection_map = null;
         this.introspection = (options.introspection === true) ? true : false;
         this.resetTime();
 
@@ -134,8 +136,6 @@ export default class Scene {
         this.initializing = this.loadScene(config_source, options)
             .then(() => this.createWorkers())
             .then(() => {
-                this.resetFeatureSelection();
-
                 // Scene loaded from a JS object, or modified by a `load` event, may contain compiled JS functions
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
@@ -195,6 +195,7 @@ export default class Scene {
 
         if (this.selection) {
             this.selection.destroy();
+            this.selection = null;
         }
 
         if (this.gl) {
@@ -496,6 +497,17 @@ export default class Scene {
         if (main) {
             this.render_count = this.renderPass();
             this.last_main_render = this.frame;
+
+            // Update feature selection map if necessary
+            this.render_count_changed = false;
+            if (this.render_count !== this.last_render_count) {
+                this.render_count_changed = true;
+                this.getFeatureSelectionMapSize().then(size => {
+                    this.selection_feature_count = size;
+                    log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
+                });
+            }
+            this.last_render_count = this.render_count;
         }
 
         // Render selection pass (if needed)
@@ -522,18 +534,6 @@ export default class Scene {
 
             this.selection.read(); // process any pending results from selection buffer
         }
-
-        this.render_count_changed = false;
-        if (this.render_count !== this.last_render_count) {
-            this.render_count_changed = true;
-
-            this.getFeatureSelectionMapSize().then(size => {
-                if (size) { // returns undefined if previous request pending
-                    log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
-                }
-            });
-        }
-        this.last_render_count = this.render_count;
 
         return true;
     }
@@ -774,6 +774,16 @@ export default class Scene {
             return Promise.resolve();
         }
 
+        // skip selection if no interactive features
+        if (this.selection_feature_count === 0) {
+            return Promise.resolve();
+        }
+
+        // only instantiate feature selection on-demand
+        if (!this.selection) {
+            this.resetFeatureSelection();
+        }
+
         // Scale point and radius to [0..1] range
         let point = {
             x: pixel.x / this.view.size.css.width,
@@ -886,7 +896,7 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             this.syncConfigToWorker({ serialize_funcs });
-            this.resetFeatureSelection(sources);
+            this.resetWorkerFeatureSelection(sources);
             this.resetTime();
 
             // Rebuild visible tiles
@@ -1134,7 +1144,7 @@ export default class Scene {
     // Turn introspection mode on/off
     setIntrospection (val) {
         if (val !== this.introspection) {
-            this.introspection = val || false;
+            this.introspection = (val != null) ? val : false;
             this.updating++;
             return this.updateConfig({ normalize: false }).then(() => this.updating--);
         }
@@ -1182,7 +1192,10 @@ export default class Scene {
         this.view.updateBounds();
         this.requestRedraw();
 
-        return done;
+        return done.then(() => {
+            this.last_render_count = 0; // force re-evaluation of selection map
+            this.requestRedraw();
+        });
     }
 
     // Serialize config and send to worker
@@ -1226,27 +1239,28 @@ export default class Scene {
         this.listeners = null;
     }
 
-    resetFeatureSelection(sources = null) {
-        if (!this.selection) {
-            this.selection = new FeatureSelection(this.gl, this.workers, () => this.building);
-        }
-        else if (this.workers) {
+    resetFeatureSelection() {
+        this.selection = new FeatureSelection(this.gl, this.workers, () => this.building);
+        this.last_render_count = 0; // force re-evaluation of selection map
+    }
+
+    resetWorkerFeatureSelection(sources = null) {
+        if (this.workers) {
             WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection', sources);
         }
     }
 
     // Gets the current feature selection map size across all workers. Returns a promise.
     getFeatureSelectionMapSize() {
-        if (this.fetching_selection_map) {
-            return Promise.resolve(); // return undefined if already pending
+        // Only allow one fetch process to run at a time
+        if (this.fetching_selection_map == null) {
+            this.fetching_selection_map = WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionMapSize')
+                .then(sizes => {
+                    this.fetching_selection_map = null;
+                    return sizes.reduce((a, b) => a + b);
+                });
         }
-        this.fetching_selection_map = true;
-
-        return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionMapSize')
-            .then(sizes => {
-                this.fetching_selection_map = false;
-                return sizes.reduce((a, b) => a + b);
-            });
+        return this.fetching_selection_map;
     }
 
     // Reset internal clock, mostly useful for consistent experience when changing styles/debugging

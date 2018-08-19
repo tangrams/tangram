@@ -100,6 +100,8 @@ Object.assign(self, {
         self.configuring = self.syncing_textures.then(() => {
             log('debug', `updated config`);
         });
+
+        return self.configuring;
     },
 
     // Create data sources and clear tile cache if necessary
