@@ -620,6 +620,7 @@ export default class Scene {
         for (let mo=0; mo < max_mesh_variant_order + 1; mo++) {
             for (let t=0; t < renderable_tiles.length; t++) {
                 let tile = renderable_tiles[t];
+                let first_for_tile = true;
 
                 if (tile.meshes[style_name] == null) {
                     continue;
@@ -632,8 +633,8 @@ export default class Scene {
                 }
 
                 // Render current mesh variant for current style for current tile
-                let mesh = tile.meshes[style_name].filter(m => m.variant.order === mo)[0]; // find mesh by variant order
-                if (mesh) {
+                const meshes = tile.meshes[style_name].filter(m => m.variant.order === mo); // find meshes by variant order
+                meshes.forEach(mesh => {
                     // Style-specific state
                     // Only setup style if rendering for first time this frame
                     // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
@@ -646,14 +647,17 @@ export default class Scene {
                     }
 
                     // Tile-specific state
-                    this.view.setupTile(tile, program);
+                    if (first_for_tile === true) {
+                        first_for_tile = false;
+                        this.view.setupTile(tile, program);
+                    }
 
                     // Render this mesh variant
                     if (style.render(mesh)) {
                         this.requestRedraw();
                     }
                     render_count += mesh.geometry_count;
-                }
+                });
             }
         }
 
