@@ -110,20 +110,6 @@ Utils.cancelRequest = function (key) {
     }
 };
 
-// Needed for older browsers that still support WebGL (Safari 6 etc.)
-Utils.requestAnimationFramePolyfill = function () {
-    if (typeof window.requestAnimationFrame !== 'function') {
-        window.requestAnimationFrame =
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame    ||
-            window.oRequestAnimationFrame      ||
-            window.msRequestAnimationFrame     ||
-            function (cb) {
-                setTimeout(cb, 1000 /60);
-            };
-    }
-};
-
 // Stringify an object into JSON, but convert functions to strings
 Utils.serializeWithFunctions = function (obj) {
     if (typeof obj === 'function') {
