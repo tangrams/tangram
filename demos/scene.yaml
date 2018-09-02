@@ -97,11 +97,12 @@ sources:
         url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
         tile_size: 512
         max_zoom: 15
-        # # Data filtering demo with 'scripts' and 'transform' properties:
-        # # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
-        # # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
-        # # That feature is then filtered on below in the 'roads' layer.
-        # scripts: ['https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js']
+        # Data filtering demo with 'scripts' and 'transform' properties:
+        # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
+        # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
+        # That feature is then filtered on below in the 'roads' layer.
+        # scripts:
+        #     turf: https://npmcdn.com/@turf/turf/turf.min.js
         # transform: |
         #     function(data, extra_data) {
         #         if (data.roads &&
