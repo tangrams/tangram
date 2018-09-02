@@ -1,6 +1,6 @@
 {
   "name": "tangram",
-  "version": "0.15.3",
+  "version": "0.15.4",
   "description": "WebGL Maps for Vector Tiles",
   "repository": {
     "type": "git",
