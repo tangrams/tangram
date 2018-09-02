@@ -632,20 +632,26 @@ export default class Scene {
                     continue;
                 }
 
-                // Render current mesh variant for current style for current tile
+                // Get meshes for current variant order, current style, and current tile
                 const meshes = tile.meshes[style_name].filter(m => m.variant.order === mo); // find meshes by variant order
-                meshes.forEach(mesh => {
-                    // Style-specific state
-                    // Only setup style if rendering for first time this frame
-                    // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-                    if (first_for_style === true) {
-                        first_for_style = false;
-                        program = this.setupStyle(style, program_key);
-                        if (!program) {
-                            return 0;
-                        }
-                    }
+                if (meshes.length === 0) {
+                    continue;
+                }
 
+                // Style-specific state
+                // Only setup style if rendering for first time this frame
+                // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+                if (first_for_style === true) {
+                    first_for_style = false;
+                    program = this.setupStyle(style, program_key);
+                    if (!program) {
+                        // no program found, e.g. happens when rendering selection pass, but style doesn't support selection
+                        return 0;
+                    }
+                }
+
+                // Render each mesh (for current variant order)
+                meshes.forEach(mesh => {
                     // Tile-specific state
                     if (first_for_tile === true) {
                         first_for_tile = false;
