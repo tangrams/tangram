@@ -22,8 +22,6 @@ http://mapzen.com/tangram
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geocoder-mapzen/1.9.4/leaflet-geocoder-mapzen.js"></script> <!-- leaflet plugin for pelias search UI -->
     <script src="demos/lib/dat.gui.min.js"></script> <!-- lightweight GUI lib -->
-    <script src="demos/lib/rStats.js"></script> <!-- rStats provides WebGL performance profiling-->
-    <script src="demos/lib/rStats.extras.js"></script>
     <script src="demos/lib/FileSaver.js"></script> <!-- used in the demo to save screenshots -->
     <script src="demos/lib/keymaster.js"></script> <!-- Keymaster handles keyboard input -->
 
@@ -37,7 +35,13 @@ http://mapzen.com/tangram
     <script src="demos/app/url.js"></script> <!-- URL parsing -->
     <script src="demos/app/key.js"></script> <!-- demo key setup -->
     <script src="demos/app/gui.js"></script> <!-- UI for configuring map -->
-    <!-- <script src="demos/app/rStats.js"></script> --> <!-- WebGL stats for debugging -->
+
+    <!-- Uncomment to enable WebGL stats for debugging -->
+    <!--
+    <script src="demos/lib/rStats.js"></script>
+    <script src="demos/lib/rStats.extras.js"></script>
+    <script src="demos/app/rStats.js"></script>
+    -->
 
   </body>
 
