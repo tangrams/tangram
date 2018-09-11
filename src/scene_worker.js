@@ -1,5 +1,5 @@
 /*jshint worker: true*/
-import './utils/polyfills'; // ensure polyfills are loaded into worker threads
+
 import Utils from './utils/utils';
 import {mergeDebugSettings} from './utils/debug_settings';
 import log from './utils/log';
