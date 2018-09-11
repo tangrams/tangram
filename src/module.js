@@ -1,7 +1,5 @@
 /*jshint worker: true*/
 
-import './utils/polyfills';
-
 // The leaflet layer plugin is currently the primary public API
 import {leafletLayer} from './leaflet_layer';
 import Scene from './scene';
@@ -33,7 +31,6 @@ import CanvasText from './styles/text/canvas_text';
 import debugSettings from './utils/debug_settings';
 
 import yaml from 'js-yaml';
-import JSZip from 'jszip';
 
 // Make some modules accessible for debugging
 var debug = {
@@ -59,13 +56,6 @@ var debug = {
     CanvasText,
     debugSettings
 };
-
-// Attach Promise polyfill to window
-// Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
-if (window.Promise === undefined) {
-    window.Promise = Promise;
-    JSZip.external.Promise = Promise;
-}
 
 module.exports = {
     leafletLayer,
