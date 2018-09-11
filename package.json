@@ -45,7 +45,10 @@
     "src/*",
     "dist/tangram.debug.js",
     "dist/tangram.debug.js.map",
-    "dist/tangram.min.js"
+    "dist/tangram.min.js",
+    "dist/tangram.es5.debug.js",
+    "dist/tangram.es5.debug.js.map",
+    "dist/tangram.es5.min.js"
   ],
   "author": {
     "name": "Tangram contributors"
