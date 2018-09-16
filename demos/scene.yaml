@@ -97,6 +97,8 @@ sources:
         url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
         tile_size: 512
         max_zoom: 15
+        # request_headers: # send custom headers with tile requests
+        #     Authorization: Bearer xxxxxxxxx
         # Data filtering demo with 'scripts' and 'transform' properties:
         # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
         # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
