@@ -44,6 +44,14 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             request.open(method, url, true);
             request.timeout = timeout;
             request.responseType = responseType;
+
+            // Attach optional request headers
+            if (headers && typeof headers === 'object') {
+                for (let key in headers) {
+                    request.setRequestHeader(key, headers[key]);
+                }
+            }
+
             request.onload = () => {
                 if (request.status === 200) {
                     if (['text', 'json'].indexOf(request.responseType) > -1) {
