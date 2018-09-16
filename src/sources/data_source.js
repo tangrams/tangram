@@ -219,6 +219,10 @@ export class NetworkSource extends DataSource {
         super(source, sources);
         this.response_type = ""; // use to set explicit XHR type
 
+        if (typeof source.url !== 'string') {
+            throw Error('Network data source must provide a string `url` property');
+        }
+
         // Add extra URL params, and warn on duplicates
         let [url, dupes] = URLs.addParamsToURL(source.url, source.url_params);
         this.url = url;
@@ -228,8 +232,9 @@ export class NetworkSource extends DataSource {
                 `skipping value '${param}=${value}' specified in 'url_params'`);
         });
 
-        if (typeof this.url !== 'string') {
-            throw Error('Network data source must provide a string `url` property');
+        // Optional HTTP request headers to send
+        if (source.request_headers && typeof source.request_headers === 'object') {
+            this.request_headers = source.request_headers;
         }
     }
 
@@ -251,7 +256,7 @@ export class NetworkSource extends DataSource {
             // promise.then((body) => {
 
             let request_id = (network_request_id++) + '-' + url;
-            let promise = Utils.io(url, 60 * 1000, this.response_type, 'GET', {}, request_id);
+            let promise = Utils.io(url, 60 * 1000, this.response_type, 'GET', this.request_headers, request_id);
             source_data.request_id = request_id;
 
             promise.then((body) => {
