@@ -265,8 +265,9 @@ Object.assign(self, {
                 let data = tile.source_data.layers[layer];
                 data.features.forEach(feature => {
                     // Optionally check if feature is visible (e.g. was rendered for current generation)
-                    if ((visible === true && feature.generation !== self.generation) ||
-                        (visible === false && feature.generation === self.generation)) {
+                    const feature_visible = (feature.generation === self.generation);
+                    if ((visible === true && !feature_visible) ||
+                        (visible === false && feature_visible)) {
                         return;
                     }
 
@@ -282,7 +283,12 @@ Object.assign(self, {
                     // Info to return with each feature
                     let subset = {
                         type: feature.type,
-                        properties: feature.properties
+                        properties: Object.assign({}, feature.properties, {
+                            $source: context.source,
+                            $layer: context.layer,
+                            $geometry: context.geometry,
+                            $visible: feature_visible
+                        })
                     };
 
                     // Optionally include geometry in response
