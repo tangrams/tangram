@@ -1,7 +1,7 @@
 /*
     Hello source-viewers!
     We're glad you're interested in how Tangram can be used to make amazing maps!
-    - The Mapzen Tangram team
+    - The Tangram team
 */
 
 (function () {
@@ -18,7 +18,7 @@
         //     layer_stats: true // enable to collect detailed layer stats, access w/`scene.debug.layerStats()`
         // },
         logLevel: 'debug',
-        attribution: '<a href="https://mapzen.com/tangram" target="_blank">Tangram</a> | &copy; OSM contributors | <a href="https://mapzen.com/" target="_blank">Mapzen</a>'
+        attribution: '<a href="https://github.com/tangrams/tangram" target="_blank">Tangram</a> | &copy; OSM contributors | <a href="https://nextzen.org/" target="_blank">Nextzen</a>'
     });
 
     // Create a Leaflet map
