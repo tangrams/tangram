@@ -43,13 +43,18 @@ export const TextLabels = {
         this.texts[tile.id] = this.texts[tile.id] || {};
         let sizes = this.texts[tile.id][text_settings_key] = this.texts[tile.id][text_settings_key] || {};
 
+        // handle multi-source labels – these could be boundary labels (with left: and right:) or a prioritized
+        // array of possible label sources: [name, kind]
         if (text instanceof Object){
             let results = [];
-
-            // add both left/right text elements to repeat group to improve repeat culling
-            // avoids one component of a boundary label (e.g. Colorado) being culled too aggressively when it also
-            // appears in nearby boundary labels (e.g. Colorado/Utah & Colorado/New Mexico repeat as separate groups)
-            let repeat_group_prefix = text.left + '-' + text.right; // NB: should be all text keys, not just left/right
+            let repeat_group_prefix = "";
+            // boundary labels
+            if (text.left && text.right) {
+                // add both left/right text elements to repeat group to improve repeat culling
+                // avoids one component of a boundary label (e.g. Colorado) being culled too aggressively when it also
+                // appears in nearby boundary labels (e.g. Colorado/Utah & Colorado/New Mexico repeat as separate groups)
+                repeat_group_prefix = text.left + '-' + text.right; // NB: should be all text keys, not just left/right
+            }
 
             for (let key in text){
                 let current_text = text[key];
@@ -65,13 +70,12 @@ export const TextLabels = {
                         ref: 0 // # of times this text/style combo appears in tile
                     };
                 }
-
                 results.push({
                     draw, text : current_text, text_settings_key, layout
                 });
             }
 
-            return (results.length > 0 && results); // return null if no boundary labels found
+            return (results.length > 0 && results); // return null if no labels found
         }
         else {
             // unique text strings, grouped by text drawing style
