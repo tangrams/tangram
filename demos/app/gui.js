@@ -54,7 +54,7 @@
                     'https://www.nextzen.org/carto/bubble-wrap-style/8/themes/label-10.zip'
                 ],
                 sources: {
-                    mapzen: {
+                    nextzen: {
                         type: 'MVT',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -70,7 +70,7 @@
                     'https://www.nextzen.org/carto/walkabout-style/6/themes/label-10.zip'
                 ],
                 sources: {
-                    mapzen: {
+                    nextzen: {
                         type: 'TopoJSON',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -92,7 +92,7 @@
                     'https://www.nextzen.org/carto/refill-style/10/themes/label-10.zip'
                 ],
                 sources: {
-                    mapzen: {
+                    nextzen: {
                         type: 'MVT',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -111,7 +111,7 @@
                     'https://www.nextzen.org/carto/refill-style/10/themes/terrain-shading-dark.zip'
                 ],
                 sources: {
-                    mapzen: {
+                    nextzen: {
                         type: 'TopoJSON',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -133,7 +133,7 @@
                     'https://www.nextzen.org/carto/tron-style/5/themes/label-10.zip'
                 ],
                 sources: {
-                    mapzen: {
+                    nextzen: {
                         type: 'MVT',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -223,7 +223,7 @@
             scene.config.global.ux_language = gui.language;
             gui.add(gui, 'language', langs).onChange(function(value) {
                 scene.config.global.language = value;    // for bundled demos
-                scene.config.global.ux_language = value; // for Mapzen basemaps
+                scene.config.global.ux_language = value; // for Nextzen basemaps
                 scene.updateConfig();
             });
         }
