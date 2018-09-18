@@ -236,9 +236,11 @@ Object.assign(Points, {
             draw.text.visible !== false && // explicitly handle `visible` property for nested text
             this.parseTextFeature(feature, draw.text, context, tile);
 
-        // if the text feature is an array, there were multiple options: use the first entry
         if (Array.isArray(tf)) {
-            tf = tf[0];
+            tf = null; // NB: boundary labels not supported for point label attachments, should log warning
+            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+                `cannot use boundary labels (e.g. 'text_source: { left: ..., right: ... }') for 'text' labels attached to 'points'; ` +
+                `provided 'text_source' value was ${JSON.stringify(draw.text.text_source)}`);
         }
 
         if (tf) {
