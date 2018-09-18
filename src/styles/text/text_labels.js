@@ -100,7 +100,7 @@ export const TextLabels = {
         let text;
         let source = draw.text_source || 'name';
 
-        if (source != null && typeof source === 'object') {
+        if (source != null && !Array.isArray(source) && typeof source === 'object') {
             // left/right boundary labels
             text = {};
             for (let key in source) {
