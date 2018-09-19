@@ -235,6 +235,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
     prepareGeoJSON (data, tile, source) {
         // Apply optional data transform
         if (typeof this.transform === 'function') {
+            this.tile = tile;
             data = this.transform(data, this.extra_data);
         }
 
