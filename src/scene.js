@@ -795,6 +795,20 @@ export default class Scene {
             catch(error => Promise.resolve({ error }));
     }
 
+    // Query layers within visible tiles
+    queryLayers() {
+        let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
+        return WorkerBroker.postMessage(this.workers, 'self.queryLayers', tile_keys).then(results => {
+            // concatenate results from all workers
+            let filteredResults = [].concat.apply([], results);
+            // de-duplicate results
+            filteredResults = filteredResults.filter(function(item, pos) {
+                return filteredResults.indexOf(item) === pos;
+            });
+            return filteredResults;
+        });
+    }
+
     // Query features within visible tiles, with optional filter conditions
     queryFeatures({ filter, unique = true, group_by = null, visible = null, geometry = false } = {}) {
         filter = Utils.serializeWithFunctions(filter);

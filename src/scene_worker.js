@@ -305,6 +305,20 @@ Object.assign(self, {
         return features;
     },
 
+    // Query layers within visible tiles
+    queryLayers (tile_keys) {
+        let layers = [];
+        let tiles = tile_keys.map(t => self.tiles[t]).filter(t => t);
+        tiles.forEach(tile => {
+            for (let layer in tile.source_data.layers) {
+                if (layers.indexOf(layer) === -1) {
+                    layers.push(layer);
+                }
+            }
+        });
+        return layers;
+    },
+
     // Get a feature from the selection map
     getFeatureSelection ({ id, key } = {}) {
         var selection = FeatureSelection.map[key];
