@@ -369,7 +369,7 @@ export default class Tile {
             layer: source layer name
             geom: GeoJSON FeatureCollection
     */
-    static getDataForSource (source_data, source_config, default_layer = null) {
+    static getDataForSource (source_data, source_config, scene_layer) {
         var layers = [];
 
         if (source_config != null && source_data != null && source_data.layers != null) {
@@ -379,11 +379,11 @@ export default class Tile {
                     geom: source_data.layers._default
                 });
             }
-            // If no layer specified, and a default requested layer exists
-            else if (!source_config.layer && default_layer) {
+            // If no layer specified, and a layer for the scene layer name exists
+            else if (!source_config.layer && scene_layer) {
                 layers.push({
-                    layer: default_layer,
-                    geom: source_data.layers[default_layer]
+                    layer: scene_layer,
+                    geom: source_data.layers[scene_layer]
                 });
             }
             // If a layer is specified by name, use it
