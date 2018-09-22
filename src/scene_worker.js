@@ -74,14 +74,6 @@ Object.assign(self, {
         self.generation = generation;
         self.introspection = introspection;
 
-        // Data block functions are not context wrapped like the rest of the style functions are
-        // TODO: probably want a cleaner way to exclude these
-        for (let layer in config.layers) {
-            if (config.layers[layer]) {
-                config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
-            }
-        }
-
         // Expand global properties
         self.global = Utils.stringsToFunctions(config.global);
 
