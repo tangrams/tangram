@@ -9,20 +9,26 @@ Tangram: WebGL Maps for Vector Data
 
 Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser with WebGL. It is tuned for OpenStreetMap but supports any source of GeoJSON/TopoJSON or binary vector data, including tilesets and single files.
 
-Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/simple-demo)) with a basic example of a Tangram map. 
+Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/simple-demo)) with a basic example of a Tangram map.
 
 Tangram is instantiated as a [Leaflet](http://leafletjs.com/) plugin for integration with standard web maps. [Tangram ES](https://github.com/tangrams/tangram-es) is a native mobile version of the Tangram library, written in C++.
 
-## Quickstart
+## Getting Started
 
-The current version of Tangram can be included in your page with:
+Tangram is published in two build flavors, one for current browsers (using modern JS and web platform features), and one for older browsers (specifically IE11, with modern JS transpiled to older ES5 syntax). You can use this snippet to automatically load the best one for your browser, using the [`module`/`nomodule` pattern](https://developers.google.com/web/fundamentals/primers/modules#browser):
 
 ```html
-<script src="https://unpkg.com/tangram/dist/tangram.min.js"></script>
+<script type="module" src="https://unpkg.com/tangram/dist/tangram.min.js"></script> <!-- recent browsers load this bundle -->
+<script nomodule src="https://unpkg.com/tangram/dist/tangram.es5.min.js"></script> <!-- older browsers (e.g. IE11) load this bundle -->
 ```
 
-Specific library versions can be loaded with `@version` (see [unpkg](https://unpkg.com/) for details), e.g.
-```https://unpkg.com/tangram@0.14.0/dist/tangram.min.js```
+**Note:** Because scripts with the `module` type automatically load in ["deferred" mode](https://flaviocopes.com/javascript-async-defer/), you must make sure to **include the `defer` keyword** for any scripts you load that depend on Tangram (so that they won't run until Tangram is finished loading). For example, if your app code is in `index.js`, load it like this (anywhere after the Tangram `<script>` tag):
+
+`<script defer src="index.js"></script>`
+
+Specific Tangram library versions can also be loaded with `@version` syntax(see [unpkg](https://unpkg.com/) for details). Versions earlier than v0.16.0 do not use the `module` syntax; use a single script tag to load them instead: `<script src="https://unpkg.com/tangram@0.15.4/dist/tangram.min.js"></script>`.
+
+Tangram is [published on NPM](https://www.npmjs.com/package/tangram) and can be [bundled using `import` or `require`](https://github.com/tangrams/tangram-play/wiki/Using-Tangram-with-Bundlers-&-Frameworks).
 
 The library includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.
 
@@ -30,9 +36,7 @@ Data sources, layers, and styling rules are written in a *scene file* ([here's a
 
 ```js
 var map = L.map('map');
-
 var layer = Tangram.leafletLayer({ scene: 'scene.yaml' });
-
 layer.addTo(map);
 ```
 
