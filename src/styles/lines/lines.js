@@ -429,6 +429,7 @@ Object.assign(Lines, {
             key += draw.texture_merged;
         }
         key += '/' + draw.texcoords;
+        key += '/' + (draw.interactive ? 1 : 0); // NB: if interactive is function, enable selection for whole draw group
         key = hashString(key);
         draw.variant = key;
 
@@ -436,6 +437,7 @@ Object.assign(Lines, {
             Lines.variants[key] = {
                 key,
                 order: draw.variant_order,
+                selection: (draw.interactive ? 1 : 0),
                 offset: (draw.offset ? 1 : 0),
                 texcoords: draw.texcoords,
                 texture: draw.texture_merged,
@@ -458,8 +460,9 @@ Object.assign(Lines, {
                 { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
                 { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.texcoords ? null : [0, 0]) },
                 { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) }
             ];
+
             Lines.vertex_layouts[variant.key] = new VertexLayout(attribs);
         }
         return Lines.vertex_layouts[variant.key];
@@ -513,7 +516,7 @@ Object.assign(Lines, {
         this.vertex_template[i++] = style.color[3] * 255;
 
         // selection color
-        if (this.selection) {
+        if (mesh.variant.selection) {
             // a_selection_color.rgba
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
