@@ -282,7 +282,7 @@ export var Style = {
 
             // Feature selection (only if feature is marked as interactive, and style supports it)
             if (this.selection) {
-                style.interactive = StyleParser.evalProperty(this.introspection || draw.interactive, context);
+                style.interactive = StyleParser.evalProperty(draw.interactive, context);
             }
             else {
                 style.interactive = false;
@@ -321,6 +321,13 @@ export var Style = {
                         draw[param] = val;
                     }
                 }
+            }
+
+            if (!this.selection) {
+                draw.interactive = false; // always disable feature selection for when style doesn't support it
+            }
+            else if (this.introspection) {
+                draw.interactive = true;  // always enable feature selection for introspection
             }
 
             draw = this._preprocess(draw); // optional subclass implementation
