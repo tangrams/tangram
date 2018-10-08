@@ -234,6 +234,7 @@ Object.assign(Lines, {
 
                 // Inherited properties
                 style.outline.color = draw.outline.color;
+                style.outline.interactive = draw.outline.interactive;
                 style.outline.cap = draw.outline.cap;
                 style.outline.join = draw.outline.join;
                 style.outline.miter_limit = draw.outline.miter_limit;
@@ -297,6 +298,7 @@ Object.assign(Lines, {
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
             draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
 
+            draw.outline.interactive = (draw.outline.interactive != null) ? draw.outline.interactive : draw.interactive;
             draw.outline.cap = draw.outline.cap || draw.cap;
             draw.outline.join = draw.outline.join || draw.join;
             draw.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
