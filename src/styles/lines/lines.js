@@ -15,8 +15,8 @@ import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/
 
 export const Lines = Object.create(Style);
 
-Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
 Lines.variants = {}; // mesh variants by variant key
+Lines.vertex_layouts = {}; // vertex layouts by variant key
 Lines.dash_textures = {}; // needs to be cleared on scene config update
 
 const DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
@@ -453,7 +453,7 @@ Object.assign(Lines, {
     vertexLayoutForMeshVariant (variant) {
         if (Lines.vertex_layouts[variant.key] == null) {
             // Basic attributes, others can be added (see texture UVs below)
-            let attribs = [
+            const attribs = [
                 { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
                 { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
                 { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false, static: (variant.offset ? null : [0, 0]) },
