@@ -176,7 +176,7 @@ export var Style = {
         return this.vertex_layout;
     },
 
-    default_mesh_variant: { key: 0 },
+    default_mesh_variant: { key: 0, order: 0 },
     meshVariantTypeForDraw (draw) {
         return this.default_mesh_variant;
     },
