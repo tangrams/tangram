@@ -136,6 +136,8 @@ export default class Scene {
         this.initializing = this.loadScene(config_source, options)
             .then(() => this.createWorkers())
             .then(() => {
+                this.destroyFeatureSelection();
+
                 // Scene loaded from a JS object, or modified by a `load` event, may contain compiled JS functions
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
@@ -186,17 +188,13 @@ export default class Scene {
         this.render_loop_stop = true; // schedule render loop to stop
 
         this.destroyListeners();
+        this.destroyFeatureSelection();
 
         if (this.canvas && this.canvas.parentNode) {
             this.canvas.parentNode.removeChild(this.canvas);
             this.canvas = null;
         }
         this.container = null;
-
-        if (this.selection) {
-            this.selection.destroy();
-            this.selection = null;
-        }
 
         if (this.gl) {
             Texture.destroy(this.gl);
@@ -1237,6 +1235,13 @@ export default class Scene {
         Texture.unsubscribe(this.listeners.texture);
         SceneLoader.unsubscribe(this.listeners.scene_loader);
         this.listeners = null;
+    }
+
+    destroyFeatureSelection() {
+        if (this.selection) {
+            this.selection.destroy();
+            this.selection = null;
+        }
     }
 
     resetFeatureSelection() {
