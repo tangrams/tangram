@@ -32,7 +32,6 @@ Object.assign(Lines, {
         Style.init.apply(this, arguments);
 
         // Tell the shader we want a order in vertex attributes, and to extrude lines
-        this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
         this.defines.TANGRAM_TEXTURE_COORDS = true; // texcoords attribute is set to static when not needed
 
