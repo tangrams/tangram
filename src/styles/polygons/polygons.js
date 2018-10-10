@@ -28,7 +28,6 @@ Object.assign(Polygons, {
 
         // Tell the shader about optional attributes (shader is shared with lines style, which has different config)
         this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
-        this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_TEXTURE_COORDS = this.texcoords;
     },
 
