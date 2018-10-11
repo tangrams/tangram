@@ -300,8 +300,8 @@ Object.assign(Lines, {
             draw.outline.interactive = (draw.outline.interactive != null) ? draw.outline.interactive : draw.interactive;
             draw.outline.cap = draw.outline.cap || draw.cap;
             draw.outline.join = draw.outline.join || draw.join;
-            draw.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
-            draw.outline.offset = draw.offset;
+            draw.outline.miter_limit = (draw.outline.miter_limit != null) ? draw.outline.miter_limit : draw.miter_limit;
+            draw.outline.offset = draw.offset; // always apply inline offset to outline
 
             // outline inhertits dash pattern, but NOT explicit texture
             let outline_style = this.styles[draw.outline.style];
