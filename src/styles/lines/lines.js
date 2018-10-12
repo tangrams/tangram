@@ -256,9 +256,6 @@ Object.assign(Lines, {
 
                 // Outlines are always at half-layer intervals to avoid conflicting with inner lines
                 style.outline.order -= 0.5;
-
-                // Ensure outlines in a separate mesh variant are drawn first
-                style.outline.variant_order = 0;
             }
         }
         else {
@@ -292,6 +289,7 @@ Object.assign(Lines, {
         this.computeVariant(draw);
 
         if (draw.outline) {
+            draw.outline.is_outline = true; // mark as outline (so mesh variant can be adjusted for render order, etc.)
             draw.outline.style = draw.outline.style || this.name;
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
@@ -429,13 +427,14 @@ Object.assign(Lines, {
         }
         key += '/' + draw.texcoords;
         key += '/' + (draw.interactive ? 1 : 0); // NB: if interactive is function, enable selection for whole draw group
+        key += '/' + draw.is_outline;
         key = hashString(key);
         draw.variant = key;
 
         if (Lines.variants[key] == null) {
             Lines.variants[key] = {
                 key,
-                order: draw.variant_order,
+                order: (draw.is_outline ? 0 : 1), // outlines should be drawn first, so inline is on top
                 selection: (draw.interactive ? 1 : 0),
                 offset: (draw.offset ? 1 : 0),
                 texcoords: draw.texcoords,
