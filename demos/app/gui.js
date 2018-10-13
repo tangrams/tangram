@@ -54,7 +54,7 @@
                     'https://www.nextzen.org/carto/bubble-wrap-style/8/themes/label-10.zip'
                 ],
                 sources: {
-                    nextzen: {
+                    mapzen: {
                         type: 'MVT',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -70,7 +70,7 @@
                     'https://www.nextzen.org/carto/walkabout-style/6/themes/label-10.zip'
                 ],
                 sources: {
-                    nextzen: {
+                    mapzen: {
                         type: 'TopoJSON',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -92,7 +92,7 @@
                     'https://www.nextzen.org/carto/refill-style/10/themes/label-10.zip'
                 ],
                 sources: {
-                    nextzen: {
+                    mapzen: {
                         type: 'MVT',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -111,7 +111,7 @@
                     'https://www.nextzen.org/carto/refill-style/10/themes/terrain-shading-dark.zip'
                 ],
                 sources: {
-                    nextzen: {
+                    mapzen: {
                         type: 'TopoJSON',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson',
                         url_subdomains: ['a', 'b', 'c', 'd'],
@@ -133,7 +133,7 @@
                     'https://www.nextzen.org/carto/tron-style/5/themes/label-10.zip'
                 ],
                 sources: {
-                    nextzen: {
+                    mapzen: {
                         type: 'MVT',
                         url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
                         url_subdomains: ['a', 'b', 'c', 'd'],
