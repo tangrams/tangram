@@ -117,7 +117,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
             }
 
             if (show) {
-                visible[container.label.id] = container; // track visible labels
+                visible[container.label.id] = true; // track visible labels
             }
 
             let changed = true; // check if label visibility changed on this collision pass
