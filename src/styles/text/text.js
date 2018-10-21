@@ -263,11 +263,7 @@ Object.assign(TextStyle, {
             }
         }
         return labels;
-    },
-
-    // Override to restore base class default implementations
-    vertexLayoutForMeshVariant: Style.vertexLayoutForMeshVariant,
-    meshVariantTypeForDraw: Style.meshVariantTypeForDraw
+    }
 
 });
 
