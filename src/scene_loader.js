@@ -273,8 +273,7 @@ export default SceneLoader = {
         }
 
         // Parse properties from globals
-        const separator = ':';
-        const props = flattenProperties(config.global, separator);
+        const props = flattenProperties(config.global);
 
         // Re-apply previously applied properties
         // NB: a current shortcoming here is that you cannot "un-link" a target property from a global
@@ -299,7 +298,7 @@ export default SceneLoader = {
             }
             stack.push(key);
 
-            const prop = (key.slice(0, 7) === 'global.') && (key.slice(7).replace(/\./g, separator));
+            const prop = (key.slice(0, 7) === 'global.') && key.slice(7);
             if (prop && props[prop] !== undefined) {
                 if (typeof props[prop] === 'string' && props[prop].slice(0, 7) === 'global.') {
                     return lookupGlobalName(props[prop], props, stack);
@@ -377,9 +376,8 @@ export default SceneLoader = {
 };
 
 // Flatten nested properties for simpler string look-ups
-// e.g. global.background.color -> 'global:background:color'
-function flattenProperties (obj, separator = ':', prefix = null, props = {}) {
-    prefix = prefix ? (prefix + separator) : '';
+function flattenProperties (obj, prefix = null, props = {}) {
+    prefix = prefix ? (prefix + '.') : '';
 
     for (let p in obj) {
         let key = prefix + p;
@@ -387,7 +385,7 @@ function flattenProperties (obj, separator = ':', prefix = null, props = {}) {
         props[key] = val;
 
         if (typeof val === 'object' && !Array.isArray(val)) {
-            flattenProperties(val, separator, key, props);
+            flattenProperties(val, key, props);
         }
     }
     return props;
