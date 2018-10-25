@@ -24,7 +24,12 @@ export class MVTSource extends NetworkTileSource {
 
         // Apply optional data transform
         if (typeof this.transform === 'function') {
-            source.layers = this.transform(source.layers, this.extra_data);
+            const tile_data = {
+                min: Object.assign({}, tile.min),
+                max: Object.assign({}, tile.max),
+                coords: Object.assign({}, tile.coords)
+            };
+            source.layers = this.transform(source.layers, this.extra_data, tile_data);
         }
 
         delete source.data; // comment out to save raw data for debugging

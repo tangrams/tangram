@@ -114,10 +114,10 @@ export class GeoJSONSource extends NetworkSource {
     parseSourceData (tile, source, response) {
         let data = typeof response === 'string' ? JSON.parse(response) : response;
         let layers = this.getLayers(data);
-        source.layers = this.preprocessLayers(layers);
+        source.layers = this.preprocessLayers(layers, tile);
     }
 
-    preprocessLayers (layers){
+    preprocessLayers (layers, tile){
         for (let key in layers) {
             let layer = layers[key];
             layer.features = this.preprocessFeatures(layer.features);
@@ -125,11 +125,16 @@ export class GeoJSONSource extends NetworkSource {
 
         // Apply optional data transform
         if (typeof this.transform === 'function') {
+            const tile_data = {
+                min: Object.assign({}, tile.min),
+                max: Object.assign({}, tile.max),
+                coords: Object.assign({}, tile.coords)
+            };
             if (Object.keys(layers).length === 1 && layers._default) {
-                layers._default = this.transform(layers._default, this.extra_data); // single-layer
+                layers._default = this.transform(layers._default, this.extra_data, tile_data); // single-layer
             }
             else {
-                layers = this.transform(layers, this.extra_data); // multiple layers
+                layers = this.transform(layers, this.extra_data, tile_data); // multiple layers
             }
         }
 
@@ -235,8 +240,12 @@ export class GeoJSONTileSource extends NetworkTileSource {
     prepareGeoJSON (data, tile, source) {
         // Apply optional data transform
         if (typeof this.transform === 'function') {
-            this.tile = tile;
-            data = this.transform(data, this.extra_data);
+            const tile_data = {
+                min: Object.assign({}, tile.min),
+                max: Object.assign({}, tile.max),
+                coords: Object.assign({}, tile.coords)
+            };
+            data = this.transform(data, this.extra_data, tile_data);
         }
 
         source.layers = GeoJSONSource.prototype.getLayers(data);
