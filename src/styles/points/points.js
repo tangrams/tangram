@@ -470,7 +470,7 @@ Object.assign(Points, {
             draw.text.group = draw.group;
             draw.text.layers = draw.layers;
             draw.text.order = draw.order;
-            draw.text.repeat_group = draw.text.repeat_group || draw.repeat_group;
+            draw.text.repeat_group = (draw.text.repeat_group != null ? draw.text.repeat_group : draw.repeat_group);
             draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
             draw.text.interactive = draw.text.interactive || draw.interactive; // inherits from point
@@ -510,7 +510,7 @@ Object.assign(Points, {
                 layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
             }
             else {
-                layout.repeat_group = draw.repeat_group; // pre-computer repeat group
+                layout.repeat_group = draw.repeat_group; // pre-computed repeat group
             }
         }
 
