@@ -1084,9 +1084,9 @@ export default class Scene {
 
     // Is scene currently animating?
     get animated () {
-        // Use explicitly set scene animation flag if defined, otherwise enabled animation if any animated styles are in view
-        return (this.config.scene.animated !== undefined ?
-                this.config.scene.animated :
+        // Disable animation is scene flag requests it, otherwise enable animation if any animated styles are in view
+        return (this.config.scene.animated === false ?
+                false :
                 this.tile_manager.getActiveStyles().some(s => this.styles[s].animated));
     }
 
