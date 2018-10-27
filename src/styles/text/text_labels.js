@@ -299,7 +299,10 @@ export const TextLabels = {
         );
 
         // Repeat rules - for text labels, defaults to tile size
-        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance || Geo.tile_size, StyleParser.parsePositiveNumber);
+        draw.repeat_distance = StyleParser.createPropertyCache(
+            draw.repeat_distance != null ? draw.repeat_distance : Geo.tile_size,
+            StyleParser.parsePositiveNumber
+        );
 
         return draw;
     },
