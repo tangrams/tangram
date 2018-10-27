@@ -82,6 +82,7 @@ export default class Scene {
         this.selection_feature_count = 0;
         this.fetching_selection_map = null;
         this.introspection = (options.introspection === true) ? true : false;
+        this.times = {}; // internal time logs (mostly for dev/profiling)
         this.resetTime();
 
         this.container = options.container;
@@ -118,7 +119,8 @@ export default class Scene {
 
         this.updating++;
         this.initialized = false;
-        this.initial_build_time = null;
+        this.times.frame = null; // clear first frame time
+        this.times.build = null; // clear first scene build time
 
         // Backwards compatibilty for passing `base_path` string as second argument
         // (since transitioned to using options argument to accept more parameters)
@@ -500,6 +502,8 @@ export default class Scene {
             this.render_count_changed = false;
             if (this.render_count !== this.last_render_count) {
                 this.render_count_changed = true;
+                this._logFirstFrame();
+
                 this.getFeatureSelectionMapSize().then(size => {
                     this.selection_feature_count = size;
                     log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
@@ -922,10 +926,7 @@ export default class Scene {
         if (this.building) {
             log('info', `Scene: build geometry finished`);
             if (this.building.resolve) {
-                if (this.initial_build_time == null) {
-                    this.initial_build_time = (+new Date()) - this.start_time;
-                    log('debug', `Scene: initial build time: ${this.initial_build_time}`);
-                }
+                this._logFirstBuild();
                 this.building.resolve(true);
             }
 
@@ -1317,6 +1318,22 @@ export default class Scene {
     _profileEnd(name) {
         console.profileEnd(`main thread: ${name}`);
         WorkerBroker.postMessage(this.workers, 'self.profileEnd', name);
+    }
+
+    // Log first frame rendered (with any geometry)
+    _logFirstFrame() {
+        if (this.last_render_count === 0 && !this.times.first_frame) {
+            this.times.first_frame = (+new Date()) - this.start_time;
+            log('debug', `Scene: initial frame time: ${this.times.first_frame}`);
+        }
+    }
+
+    // Log completion of first scene build
+    _logFirstBuild() {
+        if (this.times.first_build == null) {
+            this.times.first_build = (+new Date()) - this.start_time;
+            log('debug', `Scene: initial build time: ${this.times.first_build}`);
+        }
     }
 
     // Debug config and functions
