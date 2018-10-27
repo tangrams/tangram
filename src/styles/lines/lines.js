@@ -525,7 +525,7 @@ Object.assign(Lines, {
         return this.vertex_template;
     },
 
-    buildLines(lines, style, mesh, context, options) {
+    buildLines(lines, style, context, options) {
         // Outline (build first so that blended geometry without a depth test is drawn first/under the inner line)
         this.feature_style = this.outline_feature_style; // swap in outline-specific style holder
         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
@@ -537,6 +537,7 @@ Object.assign(Lines, {
 
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
+        let mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
         let vertex_data = mesh.vertex_data;
         let vertex_layout = vertex_data.vertex_layout;
         let vertex_template = this.makeVertexTemplate(style, mesh);
@@ -562,11 +563,11 @@ Object.assign(Lines, {
         );
     },
 
-    buildPolygons(polygons, style, mesh, context) {
-         // Render polygons as individual lines
+    buildPolygons(polygons, style, context) {
+        // Render polygons as individual lines
         let geom_count = 0;
          for (let p=0; p < polygons.length; p++) {
-            geom_count += this.buildLines(polygons[p], style, mesh, context, { closed_polygon: true, remove_tile_edges: true });
+            geom_count += this.buildLines(polygons[p], style, context, { closed_polygon: true, remove_tile_edges: true });
          }
         return geom_count;
     }

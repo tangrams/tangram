@@ -161,7 +161,8 @@ Object.assign(Polygons, {
         return this.vertex_template;
     },
 
-    buildPolygons(polygons, style, mesh, context) {
+    buildPolygons(polygons, style, context) {
+        let mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
         let vertex_data = mesh.vertex_data;
         let vertex_layout = vertex_data.vertex_layout;
         let vertex_template = this.makeVertexTemplate(style, mesh);

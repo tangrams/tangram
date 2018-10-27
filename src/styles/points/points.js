@@ -691,17 +691,18 @@ Object.assign(Points, {
     },
 
     // Build quad for point sprite
-    build (style, mesh, context) {
+    build (style, context) {
         let label = style.label;
         if (label.type === 'curved') {
-            return this.buildCurvedLabel(label, style, mesh, context);
+            return this.buildCurvedLabel(label, style, context);
         }
         else {
-            return this.buildStraightLabel(label, style, mesh, context);
+            return this.buildStraightLabel(label, style, context);
         }
     },
 
-    buildStraightLabel (label, style, mesh, context) {
+    buildStraightLabel (label, style, context) {
+        let mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
         let vertex_template = this.makeVertexTemplate(style, mesh);
         let angle = label.angle || style.angle;
 
@@ -757,8 +758,8 @@ Object.assign(Points, {
         return geom_count;
     },
 
-    buildCurvedLabel (label, style, mesh, context) {
-        let vertex_template = this.makeVertexTemplate(style, mesh);
+    buildCurvedLabel (label, style, context) {
+        let mesh, vertex_template;
         let angle = label.angle;
         let geom_count = 0;
 
@@ -772,13 +773,14 @@ Object.assign(Points, {
 
             // re-point to correct label texture
             style.label_texture = style.label_textures[i];
-            let mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            vertex_template = this.makeVertexTemplate(style, mesh);
 
             // add label texture uniform if needed
-            mesh_data.uniforms = mesh_data.uniforms || {};
-            mesh_data.uniforms.u_texture = style.label_texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
-            mesh_data.uniforms.u_apply_color_blocks = false;
+            mesh.uniforms = mesh.uniforms || {};
+            mesh.uniforms.u_texture = style.label_texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh.uniforms.u_apply_color_blocks = false;
 
             let offset = label.offset || [0,0];
             let position = label.position;
@@ -797,7 +799,7 @@ Object.assign(Points, {
                 offsets,                        // offsets per segment
                 texcoord_stroke,                // texture UVs for stroked text
                 true,                           // if curved
-                mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
+                mesh.vertex_data, vertex_template    // VBO and data for current vertex
             );
             geom_count += seg_count;
 
@@ -813,13 +815,14 @@ Object.assign(Points, {
 
             // re-point to correct label texture
             style.label_texture = style.label_textures[i];
-            let mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            vertex_template = this.makeVertexTemplate(style, mesh);
 
             // add label texture uniform if needed
-            mesh_data.uniforms = mesh_data.uniforms || {};
-            mesh_data.uniforms.u_texture = style.label_texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
-            mesh_data.uniforms.u_apply_color_blocks = false;
+            mesh.uniforms = mesh.uniforms || {};
+            mesh.uniforms.u_texture = style.label_texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh.uniforms.u_apply_color_blocks = false;
 
             let offset = label.offset || [0,0];
             let position = label.position;
@@ -838,7 +841,7 @@ Object.assign(Points, {
                 offsets,                        // offsets per segment
                 texcoord,                       // texture UVs for fill text
                 true,                           // if curved
-                mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
+                mesh.vertex_data, vertex_template    // VBO and data for current vertex
             );
             geom_count += seg_count;
 
@@ -878,16 +881,16 @@ Object.assign(Points, {
     },
 
     // Override to pass-through to generic point builder
-    buildLines (lines, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildLines (lines, style, context) {
+        return this.build(style, context);
     },
 
-    buildPoints (points, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildPoints (points, style, context) {
+        return this.build(style, context);
     },
 
-    buildPolygons (points, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildPolygons (points, style, context) {
+        return this.build(style, context);
     },
 
     // Override
@@ -900,11 +903,11 @@ Object.assign(Points, {
 
     // Override
     meshVariantTypeForDraw (draw) {
-        let key = draw.label_texture || draw.texture || this.default_mesh_variant.key; // unique key by texture name
+        let key = draw.label_texture || draw.texture || Style.default_mesh_variant.key; // unique key by texture name
         if (Points.variants[key] == null) {
             Points.variants[key] = {
                 key,
-                shader_point: (key === this.default_mesh_variant.key), // is shader point
+                shader_point: (key === Style.default_mesh_variant.key), // is shader point
                 order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
             };
         }

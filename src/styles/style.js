@@ -162,11 +162,12 @@ export var Style = {
     },
 
     getTileMesh (tile, variant) {
-        let meshes = this.tile_data[tile.id].meshes;
+        const meshes = this.tile_data[tile.id].meshes;
         if (meshes[variant.key] == null) {
+            const vertex_layout = this.vertexLayoutForMeshVariant(variant);
             meshes[variant.key] = {
                 variant,
-                vertex_data: this.vertexLayoutForMeshVariant(variant).createVertexData()
+                vertex_data: vertex_layout.createVertexData()
             };
         }
         return meshes[variant.key];
@@ -196,31 +197,30 @@ export var Style = {
             return; // skip feature
         }
 
-        let mesh = this.getTileMesh(tile, this.meshVariantTypeForDraw(style));
-        if (this.buildGeometry(feature.geometry, style, mesh, context) > 0) {
+        if (this.buildGeometry(feature.geometry, style, /*mesh,*/ context) > 0) {
             feature.generation = this.generation; // track scene generation that feature was rendered for
         }
     },
 
-    buildGeometry (geometry, style, mesh, context) {
+    buildGeometry (geometry, style, context) {
         let geom_count;
         if (geometry.type === 'Polygon') {
-            geom_count = this.buildPolygons([geometry.coordinates], style, mesh, context);
+            geom_count = this.buildPolygons([geometry.coordinates], style, context);
         }
         else if (geometry.type === 'MultiPolygon') {
-            geom_count = this.buildPolygons(geometry.coordinates, style, mesh, context);
+            geom_count = this.buildPolygons(geometry.coordinates, style, context);
         }
         else if (geometry.type === 'LineString') {
-            geom_count = this.buildLines([geometry.coordinates], style, mesh, context);
+            geom_count = this.buildLines([geometry.coordinates], style, context);
         }
         else if (geometry.type === 'MultiLineString') {
-            geom_count = this.buildLines(geometry.coordinates, style, mesh, context);
+            geom_count = this.buildLines(geometry.coordinates, style, context);
         }
         else if (geometry.type === 'Point') {
-            geom_count = this.buildPoints([geometry.coordinates], style, mesh, context);
+            geom_count = this.buildPoints([geometry.coordinates], style, context);
         }
         else if (geometry.type === 'MultiPoint') {
-            geom_count = this.buildPoints(geometry.coordinates, style, mesh, context);
+            geom_count = this.buildPoints(geometry.coordinates, style, context);
         }
 
         // Optionally collect per-layer stats
