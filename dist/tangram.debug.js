@@ -29748,7 +29748,7 @@ function mainThreadLabelCollisionPass(tiles, view_zoom) {
             }
 
             if (show) {
-                visible[container.label.id] = container; // track visible labels
+                visible[container.label.id] = true; // track visible labels
             }
 
             var changed = true; // check if label visibility changed on this collision pass
@@ -30253,7 +30253,7 @@ function extendLeaflet(options) {
                     wrapView: this.options.noWrap === true ? false : true,
                     highDensityDisplay: this.options.highDensityDisplay,
                     logLevel: this.options.logLevel,
-                    introspection: this.options.introspection,
+                    introspection: this.options.introspection, // turn scene introspection on/off
                     webGLContextOptions: this.options.webGLContextOptions, // override/supplement WebGL context options
                     disableRenderLoop: this.options.disableRenderLoop // app must call scene.update() per frame
                 });
@@ -31696,7 +31696,10 @@ var Scene = function () {
         this.last_selection_render = -1; // frame counter for last selection render pass
         this.media_capture = new _media_capture2.default();
         this.selection = null;
+        this.selection_feature_count = 0;
+        this.fetching_selection_map = null;
         this.introspection = options.introspection === true ? true : false;
+        this.times = {}; // internal time logs (mostly for dev/profiling)
         this.resetTime();
 
         this.container = options.container;
@@ -31738,7 +31741,8 @@ var Scene = function () {
 
             this.updating++;
             this.initialized = false;
-            this.initial_build_time = null;
+            this.times.frame = null; // clear first frame time
+            this.times.build = null; // clear first scene build time
 
             // Backwards compatibilty for passing `base_path` string as second argument
             // (since transitioned to using options argument to accept more parameters)
@@ -31756,7 +31760,7 @@ var Scene = function () {
             this.initializing = this.loadScene(config_source, options).then(function () {
                 return _this.createWorkers();
             }).then(function () {
-                _this.resetFeatureSelection();
+                _this.destroyFeatureSelection();
 
                 // Scene loaded from a JS object, or modified by a `load` event, may contain compiled JS functions
                 // which need to be serialized, while one loaded only from a URL does not.
@@ -31809,16 +31813,13 @@ var Scene = function () {
             this.render_loop_stop = true; // schedule render loop to stop
 
             this.destroyListeners();
+            this.destroyFeatureSelection();
 
             if (this.canvas && this.canvas.parentNode) {
                 this.canvas.parentNode.removeChild(this.canvas);
                 this.canvas = null;
             }
             this.container = null;
-
-            if (this.selection) {
-                this.selection.destroy();
-            }
 
             if (this.gl) {
                 _texture2.default.destroy(this.gl);
@@ -32162,6 +32163,19 @@ var Scene = function () {
             if (main) {
                 this.render_count = this.renderPass();
                 this.last_main_render = this.frame;
+
+                // Update feature selection map if necessary
+                this.render_count_changed = false;
+                if (this.render_count !== this.last_render_count) {
+                    this.render_count_changed = true;
+                    this._logFirstFrame();
+
+                    this.getFeatureSelectionMapSize().then(function (size) {
+                        _this5.selection_feature_count = size;
+                        (0, _log2.default)('info', 'Scene: rendered ' + _this5.render_count + ' primitives (' + size + ' features in selection map)');
+                    });
+                }
+                this.last_render_count = this.render_count;
             }
 
             // Render selection pass (if needed)
@@ -32187,19 +32201,6 @@ var Scene = function () {
 
                 this.selection.read(); // process any pending results from selection buffer
             }
-
-            this.render_count_changed = false;
-            if (this.render_count !== this.last_render_count) {
-                this.render_count_changed = true;
-
-                this.getFeatureSelectionMapSize().then(function (size) {
-                    if (size) {
-                        // returns undefined if previous request pending
-                        (0, _log2.default)('info', 'Scene: rendered ' + _this5.render_count + ' primitives (' + size + ' features in selection map)');
-                    }
-                });
-            }
-            this.last_render_count = this.render_count;
 
             return true;
         }
@@ -32491,6 +32492,16 @@ var Scene = function () {
                 return Promise.resolve();
             }
 
+            // skip selection if no interactive features
+            if (this.selection_feature_count === 0) {
+                return Promise.resolve();
+            }
+
+            // only instantiate feature selection on-demand
+            if (!this.selection) {
+                this.resetFeatureSelection();
+            }
+
             // Scale point and radius to [0..1] range
             var point = {
                 x: pixel.x / this.view.size.css.width,
@@ -32639,7 +32650,7 @@ var Scene = function () {
 
                 // Update config (in case JS objects were manipulated directly)
                 _this8.syncConfigToWorker({ serialize_funcs: serialize_funcs });
-                _this8.resetFeatureSelection(sources);
+                _this8.resetWorkerFeatureSelection(sources);
                 _this8.resetTime();
 
                 // Rebuild visible tiles
@@ -32670,10 +32681,7 @@ var Scene = function () {
             if (this.building) {
                 (0, _log2.default)('info', 'Scene: build geometry finished');
                 if (this.building.resolve) {
-                    if (this.initial_build_time == null) {
-                        this.initial_build_time = +new Date() - this.start_time;
-                        (0, _log2.default)('debug', 'Scene: initial build time: ' + this.initial_build_time);
-                    }
+                    this._logFirstBuild();
                     this.building.resolve(true);
                 }
 
@@ -32930,7 +32938,7 @@ var Scene = function () {
             var _this12 = this;
 
             if (val !== this.introspection) {
-                this.introspection = val || false;
+                this.introspection = val != null ? val : false;
                 this.updating++;
                 return this.updateConfig({ normalize: false }).then(function () {
                     return _this12.updating--;
@@ -32945,6 +32953,8 @@ var Scene = function () {
     }, {
         key: 'updateConfig',
         value: function updateConfig() {
+            var _this13 = this;
+
             var _ref9 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
                 _ref9$load_event = _ref9.load_event,
                 load_event = _ref9$load_event === undefined ? false : _ref9$load_event,
@@ -32991,7 +33001,10 @@ var Scene = function () {
             this.view.updateBounds();
             this.requestRedraw();
 
-            return done;
+            return done.then(function () {
+                _this13.last_render_count = 0; // force re-evaluation of selection map
+                _this13.requestRedraw();
+            });
         }
 
         // Serialize config and send to worker
@@ -33017,30 +33030,30 @@ var Scene = function () {
     }, {
         key: 'createListeners',
         value: function createListeners() {
-            var _this13 = this;
+            var _this14 = this;
 
             this.listeners = {};
 
             this.listeners.view = {
                 move: function move() {
-                    return _this13.trigger('move');
+                    return _this14.trigger('move');
                 }
             };
             this.view.subscribe(this.listeners.view);
 
             this.listeners.texture = {
                 update: function update() {
-                    return _this13.dirty = true;
+                    return _this14.dirty = true;
                 },
                 warning: function warning(data) {
-                    return _this13.trigger('warning', Object.assign({ type: 'textures' }, data));
+                    return _this14.trigger('warning', Object.assign({ type: 'textures' }, data));
                 }
             };
             _texture2.default.subscribe(this.listeners.texture);
 
             this.listeners.scene_loader = {
                 error: function error(data) {
-                    return _this13.trigger('error', Object.assign({ type: 'scene' }, data));
+                    return _this14.trigger('error', Object.assign({ type: 'scene' }, data));
                 }
             };
             _scene_loader2.default.subscribe(this.listeners.scene_loader);
@@ -33055,17 +33068,29 @@ var Scene = function () {
             this.listeners = null;
         }
     }, {
+        key: 'destroyFeatureSelection',
+        value: function destroyFeatureSelection() {
+            if (this.selection) {
+                this.selection.destroy();
+                this.selection = null;
+            }
+        }
+    }, {
         key: 'resetFeatureSelection',
         value: function resetFeatureSelection() {
-            var _this14 = this;
+            var _this15 = this;
 
+            this.selection = new _selection2.default(this.gl, this.workers, function () {
+                return _this15.building;
+            });
+            this.last_render_count = 0; // force re-evaluation of selection map
+        }
+    }, {
+        key: 'resetWorkerFeatureSelection',
+        value: function resetWorkerFeatureSelection() {
             var sources = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
 
-            if (!this.selection) {
-                this.selection = new _selection2.default(this.gl, this.workers, function () {
-                    return _this14.building;
-                });
-            } else if (this.workers) {
+            if (this.workers) {
                 _worker_broker2.default.postMessage(this.workers, 'self.resetFeatureSelection', sources);
             }
         }
@@ -33075,19 +33100,18 @@ var Scene = function () {
     }, {
         key: 'getFeatureSelectionMapSize',
         value: function getFeatureSelectionMapSize() {
-            var _this15 = this;
+            var _this16 = this;
 
-            if (this.fetching_selection_map) {
-                return Promise.resolve(); // return undefined if already pending
-            }
-            this.fetching_selection_map = true;
-
-            return _worker_broker2.default.postMessage(this.workers, 'self.getFeatureSelectionMapSize').then(function (sizes) {
-                _this15.fetching_selection_map = false;
-                return sizes.reduce(function (a, b) {
-                    return a + b;
+            // Only allow one fetch process to run at a time
+            if (this.fetching_selection_map == null) {
+                this.fetching_selection_map = _worker_broker2.default.postMessage(this.workers, 'self.getFeatureSelectionMapSize').then(function (sizes) {
+                    _this16.fetching_selection_map = null;
+                    return sizes.reduce(function (a, b) {
+                        return a + b;
+                    });
                 });
-            });
+            }
+            return this.fetching_selection_map;
         }
 
         // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
@@ -33158,6 +33182,28 @@ var Scene = function () {
             _worker_broker2.default.postMessage(this.workers, 'self.profileEnd', name);
         }
 
+        // Log first frame rendered (with any geometry)
+
+    }, {
+        key: '_logFirstFrame',
+        value: function _logFirstFrame() {
+            if (this.last_render_count === 0 && !this.times.first_frame) {
+                this.times.first_frame = +new Date() - this.start_time;
+                (0, _log2.default)('debug', 'Scene: initial frame time: ' + this.times.first_frame);
+            }
+        }
+
+        // Log completion of first scene build
+
+    }, {
+        key: '_logFirstBuild',
+        value: function _logFirstBuild() {
+            if (this.times.first_build == null) {
+                this.times.first_build = +new Date() - this.start_time;
+                (0, _log2.default)('debug', 'Scene: initial build time: ' + this.times.first_build);
+            }
+        }
+
         // Debug config and functions
 
     }, {
@@ -33207,6 +33253,9 @@ var Scene = function () {
                     });
                     return counts;
                 },
+
+
+                // Return geometry counts of visible tiles, grouped by base style name
                 geometryCountByBaseStyle: function geometryCountByBaseStyle() {
                     var style_counts = scene.debug.geometryCountByStyle();
                     var counts = {};
@@ -33217,6 +33266,18 @@ var Scene = function () {
                     }
                     return counts;
                 },
+
+
+                // Return sum of all geometry counts for visible tiles
+                geometryCountTotal: function geometryCountTotal() {
+                    var styles = scene.debug.geometryCountByStyle();
+                    return Object.keys(styles).reduce(function (p, c) {
+                        return styles[c] + p;
+                    }, 0);
+                },
+
+
+                // Return geometry GL buffer sizes for visible tiles, grouped by style name
                 geometrySizeByStyle: function geometrySizeByStyle() {
                     var sizes = {};
                     scene.tile_manager.getRenderableTiles().forEach(function (tile) {
@@ -33233,6 +33294,9 @@ var Scene = function () {
                     });
                     return sizes;
                 },
+
+
+                // Return geometry GL buffer sizes for visible tiles, grouped by base style name
                 geometrySizeByBaseStyle: function geometrySizeByBaseStyle() {
                     var style_sizes = scene.debug.geometrySizeByStyle();
                     var sizes = {};
@@ -33242,6 +33306,15 @@ var Scene = function () {
                         sizes[base] += style_sizes[style];
                     }
                     return sizes;
+                },
+
+
+                // Return sum of all geometry GL buffer sizes for visible tiles
+                geometrySizeTotal: function geometrySizeTotal() {
+                    var styles = scene.debug.geometrySizeByStyle();
+                    return Object.keys(styles).reduce(function (p, c) {
+                        return styles[c] + p;
+                    }, 0);
                 },
                 layerStats: function layerStats() {
                     if (_debug_settings2.default.layer_stats) {
@@ -33259,11 +33332,11 @@ var Scene = function () {
     }, {
         key: 'animated',
         get: function get() {
-            var _this16 = this;
+            var _this17 = this;
 
             // Use explicitly set scene animation flag if defined, otherwise enabled animation if any animated styles are in view
             return this.config.scene.animated !== undefined ? this.config.scene.animated : this.tile_manager.getActiveStyles().some(function (s) {
-                return _this16.styles[s].animated;
+                return _this17.styles[s].animated;
             });
         }
     }], [{
@@ -33953,8 +34026,7 @@ exports.default = SceneLoader = {
         }
 
         // Parse properties from globals
-        var separator = ':';
-        var props = flattenProperties(config.global, separator);
+        var props = flattenProperties(config.global);
 
         // Re-apply previously applied properties
         // NB: a current shortcoming here is that you cannot "un-link" a target property from a global
@@ -33985,7 +34057,7 @@ exports.default = SceneLoader = {
             }
             stack.push(key);
 
-            var prop = key.slice(0, 7) === 'global.' && key.slice(7).replace(/\./g, separator);
+            var prop = key.slice(0, 7) === 'global.' && key.slice(7);
             if (prop && props[prop] !== undefined) {
                 if (typeof props[prop] === 'string' && props[prop].slice(0, 7) === 'global.') {
                     return lookupGlobalName(props[prop], props, stack);
@@ -34066,14 +34138,12 @@ exports.default = SceneLoader = {
 };
 
 // Flatten nested properties for simpler string look-ups
-// e.g. global.background.color -> 'global:background:color'
 
 function flattenProperties(obj) {
-    var separator = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : ':';
-    var prefix = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-    var props = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {};
+    var prefix = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+    var props = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-    prefix = prefix ? prefix + separator : '';
+    prefix = prefix ? prefix + '.' : '';
 
     for (var p in obj) {
         var key = prefix + p;
@@ -34081,7 +34151,7 @@ function flattenProperties(obj) {
         props[key] = val;
 
         if ((typeof val === 'undefined' ? 'undefined' : _typeof(val)) === 'object' && !Array.isArray(val)) {
-            flattenProperties(val, separator, key, props);
+            flattenProperties(val, key, props);
         }
     }
     return props;
@@ -34223,14 +34293,6 @@ if (_thread2.default.is_worker) {
             self.generation = generation;
             self.introspection = introspection;
 
-            // Data block functions are not context wrapped like the rest of the style functions are
-            // TODO: probably want a cleaner way to exclude these
-            for (var layer in config.layers) {
-                if (config.layers[layer]) {
-                    config.layers[layer].data = _utils2.default.stringsToFunctions(config.layers[layer].data);
-                }
-            }
-
             // Expand global properties
             self.global = _utils2.default.stringsToFunctions(config.global);
 
@@ -34257,6 +34319,8 @@ if (_thread2.default.is_worker) {
             self.configuring = self.syncing_textures.then(function () {
                 (0, _log2.default)('debug', 'updated config');
             });
+
+            return self.configuring;
         },
 
 
@@ -37095,8 +37159,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var Lines = exports.Lines = Object.create(_style.Style);
 
-Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
 Lines.variants = {}; // mesh variants by variant key
+Lines.vertex_layouts = {}; // vertex layouts by variant key
 Lines.dash_textures = {}; // needs to be cleared on scene config update
 
 var DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
@@ -37112,7 +37176,6 @@ Object.assign(Lines, {
         _style.Style.init.apply(this, arguments);
 
         // Tell the shader we want a order in vertex attributes, and to extrude lines
-        this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
         this.defines.TANGRAM_TEXTURE_COORDS = true; // texcoords attribute is set to static when not needed
 
@@ -37309,6 +37372,7 @@ Object.assign(Lines, {
 
                 // Inherited properties
                 style.outline.color = draw.outline.color;
+                style.outline.interactive = draw.outline.interactive;
                 style.outline.cap = draw.outline.cap;
                 style.outline.join = draw.outline.join;
                 style.outline.miter_limit = draw.outline.miter_limit;
@@ -37330,9 +37394,6 @@ Object.assign(Lines, {
 
                 // Outlines are always at half-layer intervals to avoid conflicting with inner lines
                 style.outline.order -= 0.5;
-
-                // Ensure outlines in a separate mesh variant are drawn first
-                style.outline.variant_order = 0;
             }
         } else {
             style.outline.width.value = null;
@@ -37364,15 +37425,17 @@ Object.assign(Lines, {
         this.computeVariant(draw);
 
         if (draw.outline) {
+            draw.outline.is_outline = true; // mark as outline (so mesh variant can be adjusted for render order, etc.)
             draw.outline.style = draw.outline.style || this.name;
             draw.outline.color = _style_parser2.default.createColorPropertyCache(draw.outline.color);
             draw.outline.width = _style_parser2.default.createPropertyCache(draw.outline.width, _style_parser2.default.parseUnits);
             draw.outline.next_width = _style_parser2.default.createPropertyCache(draw.outline.width, _style_parser2.default.parseUnits); // width re-computed for next zoom
 
+            draw.outline.interactive = draw.outline.interactive != null ? draw.outline.interactive : draw.interactive;
             draw.outline.cap = draw.outline.cap || draw.cap;
             draw.outline.join = draw.outline.join || draw.join;
-            draw.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
-            draw.outline.offset = draw.offset;
+            draw.outline.miter_limit = draw.outline.miter_limit != null ? draw.outline.miter_limit : draw.miter_limit;
+            draw.outline.offset = draw.offset; // always apply inline offset to outline
 
             // outline inhertits dash pattern, but NOT explicit texture
             var outline_style = this.styles[draw.outline.style];
@@ -37507,13 +37570,16 @@ Object.assign(Lines, {
             key += draw.texture_merged;
         }
         key += '/' + draw.texcoords;
+        key += '/' + (draw.interactive ? 1 : 0); // NB: if interactive is function, enable selection for whole draw group
+        key += '/' + draw.is_outline;
         key = (0, _hash2.default)(key);
         draw.variant = key;
 
         if (Lines.variants[key] == null) {
             Lines.variants[key] = {
                 key: key,
-                order: draw.variant_order,
+                order: draw.is_outline ? 0 : 1, // outlines should be drawn first, so inline is on top
+                selection: draw.interactive ? 1 : 0,
                 offset: draw.offset ? 1 : 0,
                 texcoords: draw.texcoords,
                 texture: draw.texture_merged,
@@ -37530,7 +37596,8 @@ Object.assign(Lines, {
     vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
         if (Lines.vertex_layouts[variant.key] == null) {
             // Basic attributes, others can be added (see texture UVs below)
-            var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_extrude', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_offset', size: 2, type: _constants2.default.SHORT, normalized: false, static: variant.offset ? null : [0, 0] }, { name: 'a_scaling', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true, static: variant.texcoords ? null : [0, 0] }, { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }, { name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
+            var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_extrude', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_offset', size: 2, type: _constants2.default.SHORT, normalized: false, static: variant.offset ? null : [0, 0] }, { name: 'a_scaling', size: 2, type: _constants2.default.SHORT, normalized: false }, { name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true, static: variant.texcoords ? null : [0, 0] }, { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }, { name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true, static: variant.selection ? null : [0, 0, 0, 0] }];
+
             Lines.vertex_layouts[variant.key] = new _vertex_layout2.default(attribs);
         }
         return Lines.vertex_layouts[variant.key];
@@ -37586,7 +37653,7 @@ Object.assign(Lines, {
         this.vertex_template[i++] = style.color[3] * 255;
 
         // selection color
-        if (this.selection) {
+        if (mesh.variant.selection) {
             // a_selection_color.rgba
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
@@ -37596,7 +37663,7 @@ Object.assign(Lines, {
 
         return this.vertex_template;
     },
-    buildLines: function buildLines(lines, style, mesh, context, options) {
+    buildLines: function buildLines(lines, style, context, options) {
         // Outline (build first so that blended geometry without a depth test is drawn first/under the inner line)
         this.feature_style = this.outline_feature_style; // swap in outline-specific style holder
         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
@@ -37608,6 +37675,7 @@ Object.assign(Lines, {
 
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
+        var mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
         var vertex_data = mesh.vertex_data;
         var vertex_layout = vertex_data.vertex_layout;
         var vertex_template = this.makeVertexTemplate(style, mesh);
@@ -37626,11 +37694,11 @@ Object.assign(Lines, {
             offset: style.offset
         });
     },
-    buildPolygons: function buildPolygons(polygons, style, mesh, context) {
+    buildPolygons: function buildPolygons(polygons, style, context) {
         // Render polygons as individual lines
         var geom_count = 0;
         for (var p = 0; p < polygons.length; p++) {
-            geom_count += this.buildLines(polygons[p], style, mesh, context, { closed_polygon: true, remove_tile_edges: true });
+            geom_count += this.buildLines(polygons[p], style, context, { closed_polygon: true, remove_tile_edges: true });
         }
         return geom_count;
     }
@@ -38153,7 +38221,7 @@ Object.assign(Points, {
             draw.text.group = draw.group;
             draw.text.layers = draw.layers;
             draw.text.order = draw.order;
-            draw.text.repeat_group = draw.text.repeat_group || draw.repeat_group;
+            draw.text.repeat_group = draw.text.repeat_group != null ? draw.text.repeat_group : draw.repeat_group;
             draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = typeof draw.text.optional === 'boolean' ? draw.text.optional : false; // default text to required
             draw.text.interactive = draw.text.interactive || draw.interactive; // inherits from point
@@ -38193,7 +38261,7 @@ Object.assign(Points, {
             if (typeof draw.repeat_group === 'function') {
                 layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
             } else {
-                layout.repeat_group = draw.repeat_group; // pre-computer repeat group
+                layout.repeat_group = draw.repeat_group; // pre-computed repeat group
             }
         }
 
@@ -38364,15 +38432,16 @@ Object.assign(Points, {
 
 
     // Build quad for point sprite
-    build: function build(style, mesh, context) {
+    build: function build(style, context) {
         var label = style.label;
         if (label.type === 'curved') {
-            return this.buildCurvedLabel(label, style, mesh, context);
+            return this.buildCurvedLabel(label, style, context);
         } else {
-            return this.buildStraightLabel(label, style, mesh, context);
+            return this.buildStraightLabel(label, style, context);
         }
     },
-    buildStraightLabel: function buildStraightLabel(label, style, mesh, context) {
+    buildStraightLabel: function buildStraightLabel(label, style, context) {
+        var mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
         var vertex_template = this.makeVertexTemplate(style, mesh);
         var angle = label.angle || style.angle;
 
@@ -38424,8 +38493,9 @@ Object.assign(Points, {
 
         return geom_count;
     },
-    buildCurvedLabel: function buildCurvedLabel(label, style, mesh, context) {
-        var vertex_template = this.makeVertexTemplate(style, mesh);
+    buildCurvedLabel: function buildCurvedLabel(label, style, context) {
+        var mesh = void 0,
+            vertex_template = void 0;
         var angle = label.angle;
         var geom_count = 0;
 
@@ -38439,13 +38509,14 @@ Object.assign(Points, {
 
             // re-point to correct label texture
             style.label_texture = style.label_textures[i];
-            var mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            vertex_template = this.makeVertexTemplate(style, mesh);
 
             // add label texture uniform if needed
-            mesh_data.uniforms = mesh_data.uniforms || {};
-            mesh_data.uniforms.u_texture = style.label_texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
-            mesh_data.uniforms.u_apply_color_blocks = false;
+            mesh.uniforms = mesh.uniforms || {};
+            mesh.uniforms.u_texture = style.label_texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh.uniforms.u_apply_color_blocks = false;
 
             var offset = label.offset || [0, 0];
             var position = label.position;
@@ -38463,7 +38534,7 @@ Object.assign(Points, {
             offsets, // offsets per segment
             texcoord_stroke, // texture UVs for stroked text
             true, // if curved
-            mesh_data.vertex_data, vertex_template // VBO and data for current vertex
+            mesh.vertex_data, vertex_template // VBO and data for current vertex
             );
             geom_count += seg_count;
 
@@ -38479,13 +38550,14 @@ Object.assign(Points, {
 
             // re-point to correct label texture
             style.label_texture = style.label_textures[_i5];
-            var _mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            vertex_template = this.makeVertexTemplate(style, mesh);
 
             // add label texture uniform if needed
-            _mesh_data.uniforms = _mesh_data.uniforms || {};
-            _mesh_data.uniforms.u_texture = style.label_texture;
-            _mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
-            _mesh_data.uniforms.u_apply_color_blocks = false;
+            mesh.uniforms = mesh.uniforms || {};
+            mesh.uniforms.u_texture = style.label_texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh.uniforms.u_apply_color_blocks = false;
 
             var _offset = label.offset || [0, 0];
             var _position = label.position;
@@ -38503,7 +38575,7 @@ Object.assign(Points, {
             _offsets, // offsets per segment
             texcoord, // texture UVs for fill text
             true, // if curved
-            _mesh_data.vertex_data, vertex_template // VBO and data for current vertex
+            mesh.vertex_data, vertex_template // VBO and data for current vertex
             );
             geom_count += _seg_count;
 
@@ -38542,14 +38614,14 @@ Object.assign(Points, {
 
 
     // Override to pass-through to generic point builder
-    buildLines: function buildLines(lines, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildLines: function buildLines(lines, style, context) {
+        return this.build(style, context);
     },
-    buildPoints: function buildPoints(points, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildPoints: function buildPoints(points, style, context) {
+        return this.build(style, context);
     },
-    buildPolygons: function buildPolygons(points, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildPolygons: function buildPolygons(points, style, context) {
+        return this.build(style, context);
     },
 
 
@@ -38564,11 +38636,11 @@ Object.assign(Points, {
 
     // Override
     meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
-        var key = draw.label_texture || draw.texture || this.default_mesh_variant.key; // unique key by texture name
+        var key = draw.label_texture || draw.texture || _style.Style.default_mesh_variant.key; // unique key by texture name
         if (Points.variants[key] == null) {
             Points.variants[key] = {
                 key: key,
-                shader_point: key === this.default_mesh_variant.key, // is shader point
+                shader_point: key === _style.Style.default_mesh_variant.key, // is shader point
                 order: draw.label_texture ? 1 : 0 // put text on top of points (e.g. for highway shields, etc.)
             };
         }
@@ -38621,6 +38693,9 @@ var shaderSrc_polygonsFragment = exports.shaderSrc_polygonsFragment = "uniform v
 
 var Polygons = exports.Polygons = Object.create(_style.Style);
 
+Polygons.variants = {}; // mesh variants by variant key
+Polygons.vertex_layouts = {}; // vertex layouts by variant key
+
 Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,
@@ -38631,23 +38706,9 @@ Object.assign(Polygons, {
     init: function init() {
         _style.Style.init.apply(this, arguments);
 
-        // Basic attributes, others can be added (see texture UVs below)
-        var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_normal', size: 3, type: _constants2.default.BYTE, normalized: true }, // gets padded to 4-bytes
-        { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }, { name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }];
-
-        // Tell the shader we have a normal and order attributes
+        // Tell the shader about optional attributes (shader is shared with lines style, which has different config)
         this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
-        this.defines.TANGRAM_LAYER_ORDER = true;
-
-        // Optional texture UVs
-        if (this.texcoords) {
-            this.defines.TANGRAM_TEXTURE_COORDS = true;
-
-            // Add vertex attribute for UVs only when needed
-            attribs.push({ name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true });
-        }
-
-        this.vertex_layout = new _vertex_layout2.default(attribs);
+        this.defines.TANGRAM_TEXTURE_COORDS = this.texcoords;
     },
     _parseFeature: function _parseFeature(feature, draw, context) {
         var style = this.feature_style;
@@ -38656,6 +38717,8 @@ Object.assign(Polygons, {
         if (!style.color) {
             return null;
         }
+
+        style.variant = draw.variant; // pre-calculated mesh variant
 
         style.z = draw.z && _style_parser2.default.evalCachedDistanceProperty(draw.z, context) || _style_parser2.default.defaults.z;
         style.z *= _geo2.default.height_scale; // provide sub-meter precision of height values
@@ -38689,7 +38752,45 @@ Object.assign(Polygons, {
     _preprocess: function _preprocess(draw) {
         draw.color = _style_parser2.default.createColorPropertyCache(draw.color);
         draw.z = _style_parser2.default.createPropertyCache(draw.z, _style_parser2.default.parseUnits);
+        this.computeVariant(draw);
         return draw;
+    },
+
+
+    // Calculate and store mesh variant (unique by draw group but not feature)
+    computeVariant: function computeVariant(draw) {
+        var selection = this.selection && draw.interactive ? 1 : 0; // NB: if interactive is function, enable selection for whole draw group
+        var texcoords = this.texcoords ? 1 : 0;
+        var key = selection + '/' + texcoords;
+        draw.variant = key;
+
+        if (Polygons.variants[key] == null) {
+            Polygons.variants[key] = {
+                key: key,
+                order: 0,
+                selection: selection,
+                texcoords: texcoords
+            };
+        }
+    },
+
+
+    // Override
+    // Create or return desired vertex layout permutation based on flags
+    vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
+        if (Polygons.vertex_layouts[variant.key] == null) {
+            var attribs = [{ name: 'a_position', size: 4, type: _constants2.default.SHORT, normalized: false }, { name: 'a_normal', size: 3, type: _constants2.default.BYTE, normalized: true }, // gets padded to 4-bytes
+            { name: 'a_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true }, { name: 'a_selection_color', size: 4, type: _constants2.default.UNSIGNED_BYTE, normalized: true, static: variant.selection ? null : [0, 0, 0, 0] }, { name: 'a_texcoord', size: 2, type: _constants2.default.UNSIGNED_SHORT, normalized: true, static: variant.texcoords ? null : [0, 0] }];
+
+            Polygons.vertex_layouts[variant.key] = new _vertex_layout2.default(attribs);
+        }
+        return Polygons.vertex_layouts[variant.key];
+    },
+
+
+    // Override
+    meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
+        return this.variants[draw.variant]; // return pre-calculated mesh variant
     },
 
 
@@ -38697,7 +38798,7 @@ Object.assign(Polygons, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate: function makeVertexTemplate(style) {
+    makeVertexTemplate: function makeVertexTemplate(style, mesh) {
         var i = 0;
 
         // position - x & y coords will be filled in per-vertex below
@@ -38720,7 +38821,7 @@ Object.assign(Polygons, {
         this.vertex_template[i++] = style.color[3] * 255;
 
         // selection color
-        if (this.selection) {
+        if (mesh.variant.selection) {
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
             this.vertex_template[i++] = style.selection_color[2] * 255;
@@ -38728,17 +38829,20 @@ Object.assign(Polygons, {
         }
 
         // Add texture UVs to template only if needed
-        if (this.texcoords) {
+        if (mesh.variant.texcoords) {
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
         }
 
         return this.vertex_template;
     },
-    buildPolygons: function buildPolygons(polygons, style, mesh, context) {
-        var vertex_template = this.makeVertexTemplate(style);
+    buildPolygons: function buildPolygons(polygons, style, context) {
+        var mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+        var vertex_data = mesh.vertex_data;
+        var vertex_layout = vertex_data.vertex_layout;
+        var vertex_template = this.makeVertexTemplate(style, mesh);
         var options = {
-            texcoord_index: this.vertex_layout.index.a_texcoord,
+            texcoord_index: vertex_layout.index.a_texcoord,
             texcoord_normalize: 65535, // scale UVs to unsigned shorts
             remove_tile_edges: !style.tile_edges,
             tile_edge_tolerance: _geo2.default.tile_scale * context.tile.pad_scale * 4,
@@ -38747,12 +38851,12 @@ Object.assign(Polygons, {
 
         // Extruded polygons (e.g. 3D buildings)
         if (style.extrude && style.height) {
-            return (0, _polygons.buildExtrudedPolygons)(polygons, style.z, style.height, style.min_height, mesh.vertex_data, vertex_template, this.vertex_layout.index.a_normal, 127, // scale normals to signed bytes
+            return (0, _polygons.buildExtrudedPolygons)(polygons, style.z, style.height, style.min_height, vertex_data, vertex_template, vertex_layout.index.a_normal, 127, // scale normals to signed bytes
             options);
         }
         // Regular polygons
         else {
-                return (0, _polygons.buildPolygons)(polygons, mesh.vertex_data, vertex_template, options);
+                return (0, _polygons.buildPolygons)(polygons, vertex_data, vertex_template, options);
             }
     }
 });
@@ -39021,9 +39125,10 @@ var Style = exports.Style = {
     getTileMesh: function getTileMesh(tile, variant) {
         var meshes = this.tile_data[tile.id].meshes;
         if (meshes[variant.key] == null) {
+            var vertex_layout = this.vertexLayoutForMeshVariant(variant);
             meshes[variant.key] = {
                 variant: variant,
-                vertex_data: this.vertexLayoutForMeshVariant(variant).createVertexData()
+                vertex_data: vertex_layout.createVertexData()
             };
         }
         return meshes[variant.key];
@@ -39033,7 +39138,7 @@ var Style = exports.Style = {
     },
 
 
-    default_mesh_variant: { key: 0 },
+    default_mesh_variant: { key: 0, order: 0 },
     meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
         return this.default_mesh_variant;
     },
@@ -39052,27 +39157,26 @@ var Style = exports.Style = {
             return; // skip feature
         }
 
-        var mesh = this.getTileMesh(tile, this.meshVariantTypeForDraw(style));
-        if (this.buildGeometry(feature.geometry, style, mesh, context) > 0) {
+        if (this.buildGeometry(feature.geometry, style, /*mesh,*/context) > 0) {
             feature.generation = this.generation; // track scene generation that feature was rendered for
         }
     },
-    buildGeometry: function buildGeometry(geometry, style, mesh, context) {
+    buildGeometry: function buildGeometry(geometry, style, context) {
         var _this = this;
 
         var geom_count = void 0;
         if (geometry.type === 'Polygon') {
-            geom_count = this.buildPolygons([geometry.coordinates], style, mesh, context);
+            geom_count = this.buildPolygons([geometry.coordinates], style, context);
         } else if (geometry.type === 'MultiPolygon') {
-            geom_count = this.buildPolygons(geometry.coordinates, style, mesh, context);
+            geom_count = this.buildPolygons(geometry.coordinates, style, context);
         } else if (geometry.type === 'LineString') {
-            geom_count = this.buildLines([geometry.coordinates], style, mesh, context);
+            geom_count = this.buildLines([geometry.coordinates], style, context);
         } else if (geometry.type === 'MultiLineString') {
-            geom_count = this.buildLines(geometry.coordinates, style, mesh, context);
+            geom_count = this.buildLines(geometry.coordinates, style, context);
         } else if (geometry.type === 'Point') {
-            geom_count = this.buildPoints([geometry.coordinates], style, mesh, context);
+            geom_count = this.buildPoints([geometry.coordinates], style, context);
         } else if (geometry.type === 'MultiPoint') {
-            geom_count = this.buildPoints(geometry.coordinates, style, mesh, context);
+            geom_count = this.buildPoints(geometry.coordinates, style, context);
         }
 
         // Optionally collect per-layer stats
@@ -39134,7 +39238,7 @@ var Style = exports.Style = {
 
             // Feature selection (only if feature is marked as interactive, and style supports it)
             if (this.selection) {
-                style.interactive = _style_parser2.default.evalProperty(this.introspection || draw.interactive, context);
+                style.interactive = _style_parser2.default.evalProperty(draw.interactive, context);
             } else {
                 style.interactive = false;
             }
@@ -39169,6 +39273,12 @@ var Style = exports.Style = {
                         draw[param] = val;
                     }
                 }
+            }
+
+            if (!this.selection) {
+                draw.interactive = false; // always disable feature selection for when style doesn't support it
+            } else if (this.introspection) {
+                draw.interactive = true; // always enable feature selection for introspection
             }
 
             draw = this._preprocess(draw); // optional subclass implementation
@@ -42288,13 +42398,7 @@ Object.assign(TextStyle, {
             }
         }
         return labels;
-    },
-
-
-    // Override to restore base class default implementations
-    vertexLayoutForMeshVariant: _style.Style.vertexLayoutForMeshVariant,
-    meshVariantTypeForDraw: _style.Style.meshVariantTypeForDraw
-
+    }
 });
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures
@@ -42430,7 +42534,7 @@ var TextLabels = exports.TextLabels = {
         var text = void 0;
         var source = draw.text_source || 'name';
 
-        if (source != null && (typeof source === 'undefined' ? 'undefined' : _typeof(source)) === 'object') {
+        if (source != null && !Array.isArray(source) && (typeof source === 'undefined' ? 'undefined' : _typeof(source)) === 'object') {
             // left/right boundary labels
             text = {};
             for (var key in source) {
@@ -42639,7 +42743,7 @@ var TextLabels = exports.TextLabels = {
         });
 
         // Repeat rules - for text labels, defaults to tile size
-        draw.repeat_distance = _style_parser2.default.createPropertyCache(draw.repeat_distance || _geo2.default.tile_size, _style_parser2.default.parsePositiveNumber);
+        draw.repeat_distance = _style_parser2.default.createPropertyCache(draw.repeat_distance != null ? draw.repeat_distance : _geo2.default.tile_size, _style_parser2.default.parsePositiveNumber);
 
         return draw;
     },
@@ -43533,9 +43637,7 @@ var Tile = function () {
 
     }, {
         key: 'getDataForSource',
-        value: function getDataForSource(source_data, source_config) {
-            var default_layer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-
+        value: function getDataForSource(source_data, source_config, scene_layer) {
             var layers = [];
 
             if (source_config != null && source_data != null && source_data.layers != null) {
@@ -43545,11 +43647,11 @@ var Tile = function () {
                         geom: source_data.layers._default
                     });
                 }
-                // If no layer specified, and a default requested layer exists
-                else if (!source_config.layer && default_layer) {
+                // If no layer specified, and a layer for the scene layer name exists
+                else if (!source_config.layer && scene_layer) {
                         layers.push({
-                            layer: default_layer,
-                            geom: source_data.layers[default_layer]
+                            layer: scene_layer,
+                            geom: source_data.layers[scene_layer]
                         });
                     }
                     // If a layer is specified by name, use it
@@ -46008,7 +46110,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.15.4\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Tangram contributors\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles3\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.8.29\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
+var pkg = JSON.parse("{\n  \"name\": \"tangram\",\n  \"version\": \"0.15.5\",\n  \"description\": \"WebGL Maps for Vector Tiles\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git://github.com/tangrams/tangram.git\"\n  },\n  \"main\": \"dist/tangram.min.js\",\n  \"homepage\": \"https://github.com/tangrams/tangram\",\n  \"keywords\": [\n    \"maps\",\n    \"graphics\",\n    \"rendering\",\n    \"visualization\",\n    \"WebGL\",\n    \"OpenStreetMap\"\n  ],\n  \"config\": {\n    \"output\": \"\",\n    \"output_map\": \"\"\n  },\n  \"engines\": {\n    \"npm\": \">=2.0.0\"\n  },\n  \"scripts\": {\n    \"start\": \"npm run watch\",\n    \"test\": \"npm run lint && npm run build-bundle && npm run test-local\",\n    \"test-ci\": \"npm run lint && npm run build-bundle && npm run test-remote\",\n    \"test-remote\": \"./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run\",\n    \"test-local\": \"./node_modules/karma/bin/karma start --browsers Chrome --single-run\",\n    \"karma-start\": \"./node_modules/karma/bin/karma start --browsers Chrome --no-watch\",\n    \"karma-run\": \"./node_modules/karma/bin/karma run --browsers Chrome\",\n    \"lint\": \"./node_modules/.bin/jshint src/ && jshint test/\",\n    \"build\": \"npm run build-bundle && npm run build-minify\",\n    \"build-bundle\": \"./node_modules/.bin/browserify src/module.js -t [ babelify --presets [ es2015 ] ] -t brfs --debug -s Tangram -p browserify-derequire -p [ ./build/quine.js tangram.debug.js.map ] -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js\",\n    \"build-minify\": \"./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build-size\",\n    \"build-size\": \"gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'\",\n    \"watch\": \"./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --presets [ es2015 ] ] -t brfs -s Tangram -p [ ./build/quine.js tangram.debug.temp.js.map ] -p [ mapstraction ./dist/tangram.debug.temp.js.map ]\"\n  },\n  \"files\": [\n    \"src/*\",\n    \"dist/tangram.debug.js\",\n    \"dist/tangram.debug.js.map\",\n    \"dist/tangram.min.js\"\n  ],\n  \"author\": {\n    \"name\": \"Tangram contributors\"\n  },\n  \"contributors\": [\n    {\n      \"name\": \"Brett Camper\"\n    },\n    {\n      \"name\": \"Peter Richardson\"\n    },\n    {\n      \"name\": \"Patricio Gonzalez Vivo\"\n    },\n    {\n      \"name\": \"Karim Naaji\"\n    },\n    {\n      \"name\": \"Ivan Willig\"\n    },\n    {\n      \"name\": \"Lou Huang\"\n    },\n    {\n      \"name\": \"David Valdman\"\n    },\n    {\n      \"name\": \"Nick Doiron\"\n    },\n    {\n      \"name\": \"Francisco López\"\n    },\n    {\n      \"name\": \"David Manzanares\"\n    }\n  ],\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@mapbox/vector-tile\": \"1.3.0\",\n    \"brfs\": \"1.4.3\",\n    \"csscolorparser\": \"1.0.3\",\n    \"earcut\": \"2.1.1\",\n    \"fontfaceobserver\": \"2.0.7\",\n    \"geojson-vt\": \"2.4.0\",\n    \"gl-mat3\": \"1.0.0\",\n    \"gl-mat4\": \"1.1.4\",\n    \"gl-shader-errors\": \"1.0.3\",\n    \"js-yaml\": \"tangrams/js-yaml#read-only\",\n    \"jszip\": \"tangrams/jszip#read-only\",\n    \"pbf\": \"3.1.0\",\n    \"strip-comments\": \"0.3.2\",\n    \"topojson-client\": \"tangrams/topojson-client#read-only\"\n  },\n  \"devDependencies\": {\n    \"babelify\": \"7.3.0\",\n    \"babel-preset-es2015\": \"6.16.0\",\n    \"browserify\": \"14.4.0\",\n    \"browserify-derequire\": \"0.9.4\",\n    \"budo\": \"10.0.3\",\n    \"chai\": \"1.9.2\",\n    \"chai-as-promised\": \"4.1.1\",\n    \"core-js\": \"2.4.1\",\n    \"glob\": \"4.0.6\",\n    \"jshint\": \"2.9.4\",\n    \"karma\": \"1.5.0\",\n    \"karma-browserify\": \"5.1.1\",\n    \"karma-chrome-launcher\": \"2.0.0\",\n    \"karma-mocha\": \"0.1.9\",\n    \"karma-mocha-reporter\": \"1.0.0\",\n    \"karma-sauce-launcher\": \"tangrams/karma-sauce-launcher#firefox-profiles3\",\n    \"karma-sinon\": \"1.0.4\",\n    \"mapstraction\": \"1.0.1\",\n    \"mocha\": \"1.21.4\",\n    \"sinon\": \"1.10.3\",\n    \"through2\": \"2.0.3\",\n    \"uglify-js\": \"2.8.29\",\n    \"yargs\": \"1.3.2\"\n  }\n}\n");
 var version = void 0;
 exports.default = version = 'v' + pkg.version;
 
