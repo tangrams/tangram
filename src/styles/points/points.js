@@ -16,9 +16,8 @@ import {TextLabels} from '../text/text_labels';
 import {VIEW_PAN_SNAP_TIME} from '../../view';
 import debugSettings from '../../utils/debug_settings';
 
-let fs = require('fs');
-const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
-const shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
+import points_vs from './points_vertex.glsl';
+import points_fs from './points_fragment.glsl';
 
 const PLACEMENT = LabelPoint.PLACEMENT;
 
@@ -45,8 +44,8 @@ Object.assign(Points, TextLabels);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
-    vertex_shader_src: shaderSrc_pointsVertex,
-    fragment_shader_src: shaderSrc_pointsFragment,
+    vertex_shader_src: points_vs,
+    fragment_shader_src: points_fs,
     selection: true,  // enable feature selection
     collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending

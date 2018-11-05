@@ -9,9 +9,12 @@ import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
 import renderDashArray from './dasharray';
 import Geo from '../../geo';
+
 import WorkerBroker from '../../utils/worker_broker';
 import hashString from '../../utils/hash';
-import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
+
+import polygons_vs from '../polygons/polygons_vertex.glsl';
+import polygons_fs from '../polygons/polygons_fragment.glsl';
 
 export const Lines = Object.create(Style);
 
@@ -24,8 +27,8 @@ const DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patter
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
-    vertex_shader_src: shaderSrc_polygonsVertex,
-    fragment_shader_src: shaderSrc_polygonsFragment,
+    vertex_shader_src: polygons_vs,
+    fragment_shader_src: polygons_fs,
     selection: true, // enable feature selection
 
     init() {

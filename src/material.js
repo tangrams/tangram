@@ -1,8 +1,7 @@
 import GLSL from './gl/glsl';
 import StyleParser from './styles/style_parser';
 
-let fs = require('fs');
-const shaderSrc_material = fs.readFileSync(__dirname + '/gl/shaders/material.glsl', 'utf8');
+import material_source from './gl/shaders/material.glsl';
 
 const material_props = ['emission', 'ambient', 'diffuse', 'specular'];
 
@@ -95,7 +94,7 @@ export default class Material {
             style.texcoords = style.texcoords || (this.normal.mapping === 'uv');
         }
 
-        style.replaceShaderBlock(Material.block, shaderSrc_material, 'Material');
+        style.replaceShaderBlock(Material.block, material_source, 'Material');
         style.addShaderBlock('setup', '\nmaterial = u_material;\n', 'Material');
     }
 
