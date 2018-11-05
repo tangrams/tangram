@@ -4,12 +4,10 @@ import Geo from './geo';
 import Vector from './vector';
 import StyleParser from './styles/style_parser';
 
-let fs = require('fs');
-
-const shaderSrc_ambientLight = fs.readFileSync(__dirname + '/gl/shaders/ambientLight.glsl', 'utf8');
-const shaderSrc_directionalLight = fs.readFileSync(__dirname + '/gl/shaders/directionalLight.glsl', 'utf8');
-const shaderSrc_pointLight = fs.readFileSync(__dirname + '/gl/shaders/pointLight.glsl', 'utf8');
-const shaderSrc_spotLight = fs.readFileSync(__dirname + '/gl/shaders/spotLight.glsl', 'utf8');
+import ambient_source from './gl/shaders/ambient_light.glsl';
+import directional_source from './gl/shaders/directional_light.glsl';
+import point_source from './gl/shaders/point_light.glsl';
+import spot_source from './gl/shaders/spot_light.glsl';
 
 // Abstract light
 export default class Light {
@@ -183,7 +181,7 @@ class AmbientLight extends Light {
 
     // Inject struct and calculate function
     static inject() {
-        ShaderProgram.addBlock(Light.block, shaderSrc_ambientLight);
+        ShaderProgram.addBlock(Light.block, ambient_source);
     }
 
     setupProgram (_program) {
@@ -230,7 +228,7 @@ class DirectionalLight extends Light {
 
     // Inject struct and calculate function
     static inject() {
-        ShaderProgram.addBlock(Light.block, shaderSrc_directionalLight);
+        ShaderProgram.addBlock(Light.block, directional_source);
     }
 
     setupProgram (_program) {
@@ -269,7 +267,7 @@ class PointLight extends Light {
 
     // Inject struct and calculate function
     static inject () {
-        ShaderProgram.addBlock(Light.block, shaderSrc_pointLight);
+        ShaderProgram.addBlock(Light.block, point_source);
     }
 
     // Inject isntance-specific settings
@@ -360,7 +358,7 @@ class SpotLight extends PointLight {
 
     // Inject struct and calculate function
     static inject () {
-        ShaderProgram.addBlock(Light.block, shaderSrc_spotLight);
+        ShaderProgram.addBlock(Light.block, spot_source);
     }
 
     setupProgram (_program) {

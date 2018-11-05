@@ -10,11 +10,10 @@ import {Points} from './points/points';
 import {TextStyle} from './text/text';
 import {RasterStyle} from './raster/raster';
 
-let fs = require('fs');
-const shaderSrc_accessors = fs.readFileSync(__dirname + '/../gl/shaders/accessors.glsl', 'utf8');
-const shaderSrc_layerOrder = fs.readFileSync(__dirname + '/../gl/shaders/layer_order.glsl', 'utf8');
-const shaderSrc_selectionGlobals = fs.readFileSync(__dirname + '/../gl/shaders/selection_globals.glsl', 'utf8');
-const shaderSrc_selectionVertex = fs.readFileSync(__dirname + '/../gl/shaders/selection_vertex.glsl', 'utf8');
+import accessors_source from '../gl/shaders/accessors.glsl';
+import layer_order_source from '../gl/shaders/layer_order.glsl';
+import selection_globals_source from '../gl/shaders/selection_globals.glsl';
+import selection_vertex_source from '../gl/shaders/selection_vertex.glsl';
 
 export class StyleManager {
 
@@ -36,16 +35,16 @@ export class StyleManager {
         ShaderProgram.removeBlock('setup');
 
         // Model and world position accessors
-        ShaderProgram.addBlock('global', shaderSrc_accessors);
+        ShaderProgram.addBlock('global', accessors_source);
 
         // Layer re-ordering function
-        ShaderProgram.addBlock('global', shaderSrc_layerOrder);
+        ShaderProgram.addBlock('global', layer_order_source);
 
         // Feature selection global
-        ShaderProgram.addBlock('global', shaderSrc_selectionGlobals);
+        ShaderProgram.addBlock('global', selection_globals_source);
 
         // Feature selection vertex shader support
-        ShaderProgram.replaceBlock('setup', shaderSrc_selectionVertex);
+        ShaderProgram.replaceBlock('setup', selection_vertex_source);
 
         // Minimum value for float comparisons
         ShaderProgram.defines.TANGRAM_EPSILON = 0.00001;

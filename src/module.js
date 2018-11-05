@@ -57,7 +57,7 @@ var debug = {
     debugSettings
 };
 
-module.exports = {
+export default {
     leafletLayer,
     debug,
     version

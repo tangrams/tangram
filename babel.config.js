@@ -1,9 +1,9 @@
 module.exports = function(context) {
-  const env = context.cache(() => process.env.BABEL_ENV);
-
-  const targets = env === 'esmodules' ?
-    { esmodules: true } :
-    { browsers: ['last 2 versions', 'ie >= 11', 'safari >= 7'] };
+  const es5 = (process.env.ES5 === 'true');
+  const cache = context.cache(() => es5);
+  const targets = es5 ?
+    { browsers: ['last 2 versions', 'ie >= 11', 'safari >= 7'] } :
+    { esmodules: true };
 
   return {
     presets: [
@@ -12,7 +12,7 @@ module.exports = function(context) {
           targets,
           loose: true,
           debug: true,
-          useBuiltIns: env === 'esmodules' ? false : 'usage'
+          useBuiltIns: es5 ? 'usage' : false
         }
       ],
     ]

@@ -25,8 +25,6 @@ import CanvasText from './styles/text/canvas_text';
 import FontManager from './styles/text/font_manager';
 import MediaCapture from './utils/media_capture';
 
-import work from 'webworkify';
-
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
 
@@ -313,8 +311,8 @@ export default class Scene {
 
         let queue = [];
         this.workers = [];
-        for (var id=0; id < this.num_workers; id++) {
-            var worker = work(require('./scene_worker.js'));
+        for (let id=0; id < this.num_workers; id++) {
+            let worker = new Worker(Tangram.workerURL); // jshint ignore:line
             this.workers[id] = worker;
 
             WorkerBroker.addWorker(worker);
@@ -336,9 +334,6 @@ export default class Scene {
         this.next_worker = 0;
         return Promise.all(queue).then(() => {
             log.setWorkers(this.workers);
-
-            // Free memory after worker initialization
-            this.workers.forEach(w => URLs.revokeObjectURL(w.objectURL));
         });
     }
 

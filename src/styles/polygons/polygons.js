@@ -7,9 +7,8 @@ import VertexLayout from '../../gl/vertex_layout';
 import {buildPolygons, buildExtrudedPolygons} from '../../builders/polygons';
 import Geo from '../../geo';
 
-let fs = require('fs');
-export const shaderSrc_polygonsVertex = fs.readFileSync(__dirname + '/polygons_vertex.glsl', 'utf8');
-export const shaderSrc_polygonsFragment = fs.readFileSync(__dirname + '/polygons_fragment.glsl', 'utf8');
+import polygons_vs from './polygons_vertex.glsl';
+import polygons_fs from './polygons_fragment.glsl';
 
 export const Polygons = Object.create(Style);
 
@@ -19,8 +18,8 @@ Polygons.vertex_layouts = {}; // vertex layouts by variant key
 Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,
-    vertex_shader_src: shaderSrc_polygonsVertex,
-    fragment_shader_src: shaderSrc_polygonsFragment,
+    vertex_shader_src: polygons_vs,
+    fragment_shader_src: polygons_fs,
     selection: true, // enable feature selection
 
     init() {

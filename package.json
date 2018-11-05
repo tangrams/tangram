@@ -1,12 +1,12 @@
 {
   "name": "tangram",
-  "version": "0.15.5",
+  "version": "0.16.0",
   "description": "WebGL Maps for Vector Tiles",
   "repository": {
     "type": "git",
     "url": "git://github.com/tangrams/tangram.git"
   },
-  "main": "dist/tangram.min.js",
+  "main": "dist/tangram.es5.min.js",
   "homepage": "https://github.com/tangrams/tangram",
   "keywords": [
     "maps",
@@ -33,12 +33,12 @@
     "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome",
     "lint": "./node_modules/.bin/jshint src/ && jshint test/",
     "build": "npm run build:nomodules && npm run build:minify:nomodules && npm run build:modules && npm run build:minify:modules",
-    "build:modules": "BABEL_ENV=esmodules ./node_modules/.bin/browserify src/module.js -t babelify -t brfs --debug -s Tangram -p browserify-derequire -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js",
-    "build:nomodules": "BABEL_ENV=nomodules ./node_modules/.bin/browserify src/module.js -t babelify -t brfs --debug -s Tangram -p browserify-derequire -p [ mapstraction ./dist/tangram.es5.debug.js.map ] -o ./dist/tangram.es5.debug.js",
+    "build:modules": "ES5=false ./node_modules/.bin/browserify src/module.js -t babelify --debug -s Tangram -p browserify-derequire -p [ mapstraction ./dist/tangram.debug.js.map ] -o ./dist/tangram.debug.js",
+    "build:nomodules": "ES5=true ./node_modules/.bin/browserify src/module.js -t babelify --debug -s Tangram -p browserify-derequire -p [ mapstraction ./dist/tangram.es5.debug.js.map ] -o ./dist/tangram.es5.debug.js",
     "build:minify:modules": "./node_modules/.bin/terser dist/tangram.debug.js -c warnings=false -m | sed -e 's/tangram.debug.js.map//g' > dist/tangram.min.js && npm run build:size",
     "build:minify:nomodules": "./node_modules/.bin/terser dist/tangram.es5.debug.js -c warnings=false -m | sed -e 's/tangram.es5.debug.js.map//g' > dist/tangram.es5.min.js",
     "build:size": "gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'",
-    "watch": "BABEL_ENV=esmodules ./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t babelify -t brfs -s Tangram -p [ mapstraction ./dist/tangram.debug.temp.js.map ]"
+    "watch": "ES5=false ./node_modules/.bin/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t babelify -s Tangram -p [ mapstraction ./dist/tangram.debug.temp.js.map ]"
   },
   "files": [
     "src/*",
@@ -87,7 +87,6 @@
   "license": "MIT",
   "dependencies": {
     "@mapbox/vector-tile": "1.3.0",
-    "brfs": "1.4.3",
     "csscolorparser": "1.0.3",
     "earcut": "2.1.1",
     "fontfaceobserver": "2.0.7",
@@ -96,7 +95,7 @@
     "gl-mat4": "1.1.4",
     "gl-shader-errors": "1.0.3",
     "js-yaml": "tangrams/js-yaml#read-only",
-    "jszip": "tangrams/jszip#read-only",
+    "jszip": "3.1.5",
     "pbf": "3.1.0",
     "strip-comments": "0.3.2",
     "topojson-client": "tangrams/topojson-client#read-only"
@@ -121,6 +120,18 @@
     "karma-sinon": "1.0.4",
     "mapstraction": "1.0.1",
     "mocha": "1.21.4",
+    "rollup": "0.66.6",
+    "rollup-plugin-babel": "4.0.3",
+    "rollup-plugin-commonjs": "9.2.0",
+    "rollup-plugin-livereload": "0.6.0",
+    "rollup-plugin-node-builtins": "2.1.2",
+    "rollup-plugin-node-globals": "1.4.0",
+    "rollup-plugin-node-resolve": "3.4.0",
+    "rollup-plugin-replace": "2.1.0",
+    "rollup-plugin-serve": "0.6.0",
+    "rollup-plugin-sourcemaps": "0.4.2",
+    "rollup-plugin-string": "2.0.2",
+    "rollup-plugin-terser": "3.0.0",
     "sinon": "1.10.3",
     "terser": "3.8.1",
     "through2": "2.0.3",

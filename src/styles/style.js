@@ -14,9 +14,8 @@ import Thread from '../utils/thread';
 import WorkerBroker from '../utils/worker_broker';
 import debugSettings from '../utils/debug_settings';
 
-let fs = require('fs');
-const shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
-const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.glsl', 'utf8');
+import selection_fragment_source from '../gl/shaders/selection_fragment.glsl';
+import rasters_source from '../gl/shaders/rasters.glsl';
 
 // Base class
 
@@ -466,7 +465,7 @@ export var Style = {
             this.selection_program = new ShaderProgram(
                 this.gl,
                 this.vertex_shader_src,
-                shaderSrc_selectionFragment,
+                selection_fragment_source,
                 {
                     name: (this.name + ' (selection)'),
                     defines: selection_defines,
@@ -564,8 +563,8 @@ export var Style = {
             // Use model position of tile's coordinate zoom for raster tile texture UVs
             this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
 
-            // Uniforms and macros for raster samplers
-            this.replaceShaderBlock('raster', shaderSrc_rasters, 'Raster');
+            // Uniforms and samplers
+            this.replaceShaderBlock('raster', rasters_source, 'Raster');
         }
     },
 
