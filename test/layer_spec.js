@@ -1,10 +1,12 @@
 import chai from 'chai';
-let assert = chai.assert;
 import chaiAsPromised from 'chai-as-promised';
+import {LayerLeaf, LayerTree, mergeTrees, parseLayers, groupProps, calculateDraw} from '../src/styles/layer';
+import sampleLayers from './fixtures/sample-layers.json';
+
 chai.use(chaiAsPromised);
+let assert = chai.assert;
 
 describe('LayerLeaf', () => {
-    const {LayerLeaf} = require('../src/styles/layer');
 
     it('returns an new instanceof', () => {
         let subject = new LayerLeaf({name: 'test', layer: {}});
@@ -15,8 +17,6 @@ describe('LayerLeaf', () => {
 });
 
 describe('LayerTree', () => {
-    const {LayerTree} = require('../src/styles/layer');
-
     it('returns an new instanceof', () => {
         let subject = new LayerTree({name: 'test', layer: {}});
         assert.instanceOf(subject, LayerTree);
@@ -31,8 +31,6 @@ describe('.mergeTrees()', () => {
         [ { group: { e: 'y' } }, { group: { f: 'x' } }, { group:{ g: 0.0003 } }, { group: { h: 10 } } ],
         [ { group: { s: 3.14 } }, { group: { t: 2.71828 } }, { group:{ u: 0.0001 } }, { group: { v: 'x' } } ]
     ];
-
-    const {mergeTrees} = require('../src/styles/layer');
 
     describe('when given an array of arrays to merged', () => {
 
@@ -118,17 +116,14 @@ describe('.mergeTrees()', () => {
 
 describe('.parseLayer(layers)', () => {
 
-    const {parseLayers}= require('../src/styles/layer');
-    const LayerTree   = require('./fixtures/sample-layers');
-
     describe('when given a raw LayerTree', () => {
 
         it('returns a LayerTree', () => {
-            assert.instanceOf(parseLayers(LayerTree), Object);
+            assert.instanceOf(parseLayers(sampleLayers), Object);
         });
 
         it('returns the correct number of children layers', () => {
-            let tree = parseLayers(LayerTree);
+            let tree = parseLayers(sampleLayers);
             let numChildren = Object.keys(tree.root.children_to_parse).length;
             assert.equal(numChildren, 2);
         });
@@ -137,7 +132,6 @@ describe('.parseLayer(layers)', () => {
 
 
 describe('.groupProps()', () => {
-    let {groupProps} = require('../src/styles/layer');
 
     describe('given an object ', () => {
         let subject = {
@@ -164,8 +158,6 @@ describe('.groupProps()', () => {
 });
 
 describe('.calculateDraw()', () => {
-    const {calculateDraw} = require('../src/styles/layer');
-
 
     let b = {
         calculatedDraw: [
@@ -194,8 +186,6 @@ describe('.calculateDraw()', () => {
 
 describe('LayerTree.buildDrawGroups(context)', () => {
     let subject;
-    const {parseLayers} = require('../src/styles/layer');
-    const {LayerTree}   = require('../src/styles/layer');
 
     beforeEach(() => {
         subject = parseLayers(

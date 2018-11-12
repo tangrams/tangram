@@ -8,7 +8,7 @@ import ShaderProgram from '../src/gl/shader_program';
 import Camera from '../src/camera';
 import Light from '../src/light';
 
-import sampleScene from './fixtures/sample-scene';
+import sampleScene from './fixtures/sample-scene.json';
 
 var canvas, gl;
 

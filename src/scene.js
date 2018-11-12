@@ -19,6 +19,7 @@ import Light from './light';
 import Tile from './tile';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
+import './sources/sources';
 import FeatureSelection from './selection';
 import RenderStateManager from './gl/render_state';
 import CanvasText from './styles/text/canvas_text';
