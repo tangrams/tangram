@@ -25,8 +25,8 @@
   },
   "scripts": {
     "start": "npm run watch",
-    "test": "npm run lint && npm run build:nomodules && npm run test-local",
-    "test-ci": "npm run lint && npm run build:nomodules && npm run test-remote",
+    "test": "npm run lint && npm run test-local",
+    "test-ci": "npm run lint && npm run test-remote",
     "test-remote": "npm run test-build-worker && ES5=true ./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
     "test-local": "npm run test-build-worker && ES5=true ./node_modules/karma/bin/karma start --browsers Chrome --single-run",
     "test-build-worker": "ES5=true rollup -c test/rollup.config.worker.js",
