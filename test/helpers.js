@@ -1,5 +1,4 @@
 import Scene from '../src/scene';
-import * as URLs from '../src/utils/urls';
 
 let container = document.createElement('div');
 container.style.width = '250px';

@@ -66,6 +66,7 @@ export class TopoJSONTileSource extends GeoJSONTileSource {
         if (!this.urlHasTilePattern(this.url)) {
             return new TopoJSONSource(source);
         }
+        return this;
     }
 
     parseSourceData (tile, source, response) {

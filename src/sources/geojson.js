@@ -226,7 +226,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
             }
             else {
                 // Pass back to parent class to instantiate
-                return null;
+                return undefined;
             }
         }
         return this;

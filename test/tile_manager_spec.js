@@ -1,6 +1,5 @@
 import chai from 'chai';
 let assert = chai.assert;
-import Tile from '../src/tile';
 
 let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 let midtownTile = { x: 38603, y: 49255, z: 17 };
