@@ -7,6 +7,7 @@ import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Tile from './tile';
 import Geo from './geo';
 import DataSource from './sources/data_source';
+import './sources/sources';
 import FeatureSelection from './selection';
 import StyleParser from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
@@ -15,12 +16,6 @@ import {buildFilter} from './styles/filter';
 import Texture from './gl/texture';
 import VertexElements from './gl/vertex_elements';
 import Label from './labels/label';
-
-// NB: data source modules need to be explicitly loaded to register themselves, could put into one module
-import './sources/geojson';
-import './sources/topojson';
-import './sources/mvt';
-import './sources/raster';
 
 const SceneWorker = Object.assign(self, {
 

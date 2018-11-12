@@ -57,7 +57,7 @@ describe('TileManager', function () {
             it('loads and keeps the tile', () => {
                 tile_manager.loadCoordinate(coords);
                 assert.isTrue(Object.keys(tiles).length === 1);
-                assert.instanceOf(tile, Tile);
+                assert.isTrue(tile.constructor.name === 'Tile');
             });
 
         });

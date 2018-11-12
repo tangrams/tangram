@@ -8,16 +8,17 @@ import builtins from 'rollup-plugin-node-builtins';
 import replace from 'rollup-plugin-replace';
 import sourcemaps from 'rollup-plugin-sourcemaps';
 import {terser} from 'rollup-plugin-terser';
+import json from 'rollup-plugin-json';
 import string from 'rollup-plugin-string';
 
 import serve from 'rollup-plugin-serve';
 import livereload from 'rollup-plugin-livereload';
 
-const es5 = (process.env.ES5 === 'true');
-const minify = (process.env.MINIFY === 'true');
-const server = (process.env.SERVER === 'true');
+const ES5 = (process.env.ES5 === 'true');
+const MINIFY = (process.env.MINIFY === 'true');
+const SERVE = (process.env.SERVE === 'true');
 
-const outputFile = 'dist/tangram.' + (es5 ? 'es5.' : '') + (minify ? 'min' : 'debug') + '.js';
+const outputFile = 'dist/tangram.' + (ES5 ? 'ES5.' : '') + (MINIFY ? 'min' : 'debug') + '.js';
 
 // Use two pass code splitting and re-bundling technique, for another example see:
 // https://github.com/mapbox/mapbox-gl-js/blob/master/rollup.config.js
@@ -45,8 +46,9 @@ const config = [{
                 'node_modules/events/events.js': ['EventEmitter'],
             }
         }),
+        json(), // load JSON files
         string({
-            include: ['**/*.json', '**/*.glsl'] // inline imported JSON and shader files
+            include: ['**/*.glsl'] // inline shader files
         }),
 
         // These are needed for jszip node-environment compatibility,
@@ -54,7 +56,7 @@ const config = [{
         globals(),
         builtins(),
 
-        minify ? terser() : false,
+        MINIFY ? terser() : false,
         babel({
           exclude: 'node_modules/**'
         })
@@ -65,24 +67,24 @@ const config = [{
     output: {
         name: 'Tangram',
         file: outputFile,
-        format: es5 ? 'umd' : 'esm',
-        sourcemap: minify ? false : true,
+        format: ES5 ? 'umd' : 'esm',
+        sourcemap: MINIFY ? false : true,
         indent: false,
         intro: fs.readFileSync(require.resolve('./build/intro.js'), 'utf8')
     },
     treeshake: false,
     plugins: [
         replace({
-            ESMODULE: !es5
+            ESMODULE: !ES5
         }),
         sourcemaps(), // use source maps produced in the first pass
 
         // optionally start server and watch for rebuild
-        server ? serve({
+        SERVE ? serve({
             port: 8000,
             contentBase: ''
         }): false,
-        server ? livereload({
+        SERVE ? livereload({
             watch: 'dist'
         }) : false
     ],
