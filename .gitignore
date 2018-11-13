@@ -5,10 +5,7 @@
 
 # build & test artifacts
 node_modules
-dist/tangram.debug.temp.js.map
-
-# a make target for npm install
-.npm
+build
 
 # OS misc
 .DS_Store
