@@ -18,7 +18,7 @@ const ES5 = (process.env.ES5 === 'true');
 const MINIFY = (process.env.MINIFY === 'true');
 const SERVE = (process.env.SERVE === 'true');
 
-const outputFile = 'dist/tangram.' + (ES5 ? 'ES5.' : '') + (MINIFY ? 'min' : 'debug') + '.js';
+const outputFile = 'dist/tangram.' + (ES5 ? 'es5.' : '') + (MINIFY ? 'min' : 'debug') + '.js';
 
 // Use two pass code splitting and re-bundling technique, for another example see:
 // https://github.com/mapbox/mapbox-gl-js/blob/master/rollup.config.js
