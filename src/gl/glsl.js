@@ -153,6 +153,14 @@ GLSL.defineVariable = function (name, value) {
             type = 'sampler2D';
             array = value.length;
         }
+        // Array of arrays - but only arrays of vectors are allowed in this case
+        else if (Array.isArray(value[0]) && typeof value[0][0] === 'number') {
+            // float vectors (vec2, vec3, vec4)
+            if (value[0].length >= 2 && value[0].length <= 4) {
+                type = 'vec' + value.length;
+                array = value.length;
+            }
+        }
     }
     // Boolean
     else if (typeof value === 'boolean') {
