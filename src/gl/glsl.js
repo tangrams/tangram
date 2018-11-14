@@ -197,38 +197,6 @@ GLSL.defineUniform = function (name, value) {
 };
 
 /**
-    Check for a uniform definition of 'name' in the provided GLSL source
-    Simple regex check for 'uniform' keyword and var name, does not attempt to parse/extract GLSL
-    NOTE: assumes comments have been stripped from source
-*/
-GLSL.isUniformDefined = function (name, source) {
-    // Match, in order:
-    // - the keyword 'uniform'
-    // - at least one character that is anything except a semicolon, ;
-    // - optionally, anything enclosed in curly braces, { ... } (an inline structure definition can go here)
-    // - optionally, any # of characters that is not a semicolon, ;
-    // - the name of the uniform
-
-    var re = new RegExp('uniform[^;]+(?:{[\\s\\S]*})?[^;]*\\b' + name + '\\b', 'g');
-    if (source.match(re)) {
-        return true;
-    }
-    return false;
-};
-
-/**
-    Check that a symbol is referenced in the GLSL source
-    NOTE: assumes comments have been stripped from source
-*/
-GLSL.isSymbolReferenced = function (name, source) {
-    var re = new RegExp('\\b' + name + '\\b', 'g');
-    if (source.search(re) >= 0) {
-        return true;
-    }
-    return false;
-};
-
-/**
     Expand a single value or 2-element array into a 3-element array, with the last ( z )
     coordinate defaulting to 1 (with option to specify). Also runs parseFloat to try to maintain
     data integrity. Returns null if input couldn't be parsed.

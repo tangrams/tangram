@@ -7,8 +7,7 @@ import Texture from './texture';
 import getExtension from './extensions';
 import hashString from '../utils/hash';
 
-import strip from 'strip-comments';
-import { default as parseShaderErrors } from 'gl-shader-errors';
+import parseShaderErrors from 'gl-shader-errors';
 
 // Regex patterns
 const re_pragma = /^\s*#pragma.*$/gm;   // for removing unused pragmas after shader block injection
@@ -35,8 +34,7 @@ export default class ShaderProgram {
         // list of extensions to activate
         this.extensions = options.extensions || [];
 
-        // JS-object uniforms that are expected by this program
-        // If they are not found in the existing shader source, their types will be inferred and definitions
+        // JS-object uniforms that are expected by this program, their types are inferred and definitions
         // for each will be injected.
         this.dependent_uniforms = options.uniforms;
 
@@ -141,7 +139,7 @@ export default class ShaderProgram {
         this.computed_vertex_source = this.computed_vertex_source.replace(re_pragma, '');
         this.computed_fragment_source = this.computed_fragment_source.replace(re_pragma, '');
 
-        // Detect uniform definitions, inject any missing ones
+        // Inject uniform definitions
         this.ensureUniforms(this.dependent_uniforms);
 
         // Build & inject extensions & defines
@@ -275,49 +273,22 @@ export default class ShaderProgram {
         return blocks;
     }
 
-    // Detect uniform definitions, inject any missing ones
+    // Inject uniform definitions
     ensureUniforms(uniforms) {
         if (!uniforms) {
             return;
         }
 
-        var vs = strip(this.computed_vertex_source);
-        var fs = strip(this.computed_fragment_source);
-        var inject, vs_injections = [], fs_injections = [];
+        // Get GLSL definitions
+        const inject = Object.entries(uniforms).
+            map(([name, uniform]) => GLSL.defineUniform(name, uniform)).
+            filter(x => x);
 
-        // Check for missing uniform definitions
-        for (var name in uniforms) {
-            let vs_defined = GLSL.isUniformDefined(name, vs); // check vertex shader
-            let fs_defined = GLSL.isUniformDefined(name, fs); // check fragment shader
-
-            if (!vs_defined || !fs_defined) {
-                inject = GLSL.defineUniform(name, uniforms[name]);
-                if (!inject) {
-                    continue;
-                }
-
-                if (!vs_defined) {
-                    log('trace', `Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
-                    vs_injections.push(inject);
-                }
-
-                if (!fs_defined) {
-                    log('trace', `Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
-                    fs_injections.push(inject);
-                }
-            }
-        }
-
-        // Inject missing uniforms
+        // Inject uniforms
         // NOTE: these are injected at the very top of the shaders, even before any #defines or #pragmas are added
         // this could cause some issues with certain #pragmas, or other functions that might expect #defines
-        if (vs_injections.length > 0) {
-            this.computed_vertex_source = vs_injections.join('\n') + this.computed_vertex_source;
-        }
-
-        if (fs_injections.length > 0) {
-            this.computed_fragment_source = fs_injections.join('\n') + this.computed_fragment_source;
-        }
+        this.computed_vertex_source = inject.join('\n') + this.computed_vertex_source;
+        this.computed_fragment_source = inject.join('\n') + this.computed_fragment_source;
     }
 
     // Set uniforms from a JS object, with inferred types
