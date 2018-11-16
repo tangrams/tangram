@@ -267,69 +267,60 @@ export default SceneLoader = {
     // Substitutes global scene properties (those defined in the `config.global` object) for any style values
     // of the form `global.`, for example `color: global.park_color` would be replaced with the value (if any)
     // defined for the `park_color` property in `config.global.park_color`.
-    applyGlobalProperties(config, applied) {
+    applyGlobalProperties(config) {
         if (!config.global || Object.keys(config.global).length === 0) {
             return config; // no global properties to transform
         }
 
-        // Parse properties from globals
-        const props = flattenProperties(config.global);
+        const globals = flattenProperties(config.global); // flatten nested globals for simpler string look-ups
 
-        // Re-apply previously applied properties
-        // NB: a current shortcoming here is that you cannot "un-link" a target property from a global
-        // at run-time. Once a global property substitution has been recorderd, it will always be re-applied
-        // on subsequent scene updates, even if the target property was updated to another literal value.
-        // This is unlikely to be a common occurrence an acceptable limitation for now.
-        applied.forEach(({ prop, target, key }) => {
-            if (target) {
-                target[key] = props[prop];
-                // log('info', `Re-applying ${prop} with value ${props[prop]} to key ${key} in`, target);
-            }
-        });
-
-        // Recursively look-up a global property name. Allows globals to refer to other globals, e.g.:
-        // global:
-        //    color: global.secret_color
-        //    secret_color: red
-        function lookupGlobalName (key, props, stack = []) {
-            if (stack.indexOf(key) > -1) {
-                log({ level: 'warn', once: true }, `Global properties: cyclical reference detected`, stack);
-                return;
-            }
-            stack.push(key);
-
-            const prop = (key.slice(0, 7) === 'global.') && key.slice(7);
-            if (prop && props[prop] !== undefined) {
-                if (typeof props[prop] === 'string' && props[prop].slice(0, 7) === 'global.') {
-                    return lookupGlobalName(props[prop], props, stack);
-                }
-                return prop;
-            }
-        }
-
-        // Find and apply new properties
+        // Find and apply new global properties (and re-apply old ones)
         function applyGlobals (obj, target, key) {
-            // Convert string
-            if (typeof obj === 'string') {
-                const prop = lookupGlobalName(obj, props);
-                const val = props[prop];
-                if (val !== undefined) {
-                    // Save record of where property is applied
-                    applied.push({ prop, target, key });
+            let prop;
 
-                    // Apply property
-                    obj = val;
+            // Check for previously applied global substitution
+            if (target != null && typeof target === 'object' && target._global_prop && target._global_prop[key]) {
+                prop = target._global_prop[key];
+            }
+            // Check string for new global substitution
+            else if (typeof obj === 'string' && obj.slice(0, 7) === 'global.') {
+                prop = obj;
+            }
+
+            // Found global property to substitute
+            if (prop) {
+                // Mark property as global substitution
+                if (target._global_prop == null) {
+                    Object.defineProperty(target, '_global_prop', { value: {} });
                 }
+                target._global_prop[key] = prop;
+
+                // Get current global value
+                const val = globals[prop];
+
+                // Create getter/setter
+                Object.defineProperty(target, key, {
+                    enumerable: true,
+                    get: function () {
+                        return val; // return substituted value
+                    },
+                    set: function (v) {
+                        // clear the global substitution and remove the getter/setter
+                        delete target._global_prop[key];
+                        delete target[key];
+                        target[key] = v; // save the new value
+                    }
+                });
             }
             // Loop through object keys or array indices
             else if (Array.isArray(obj)) {
                 for (let p=0; p < obj.length; p++) {
-                    obj[p] = applyGlobals(obj[p], obj, p);
+                    applyGlobals(obj[p], obj, p);
                 }
             }
             else if (typeof obj === 'object') {
                 for (let p in obj) {
-                    obj[p] = applyGlobals(obj[p], obj, p);
+                    applyGlobals(obj[p], obj, p);
                 }
             }
             return obj;
@@ -376,19 +367,19 @@ export default SceneLoader = {
 };
 
 // Flatten nested properties for simpler string look-ups
-function flattenProperties (obj, prefix = null, props = {}) {
-    prefix = prefix ? (prefix + '.') : '';
+function flattenProperties (obj, prefix = null, globals = {}) {
+    prefix = prefix ? (prefix + '.') : 'global.';
 
-    for (let p in obj) {
-        let key = prefix + p;
-        let val = obj[p];
-        props[key] = val;
+    for (const p in obj) {
+        const key = prefix + p;
+        const val = obj[p];
+        globals[key] = val;
 
         if (typeof val === 'object' && !Array.isArray(val)) {
-            flattenProperties(val, key, props);
+            flattenProperties(val, key, globals);
         }
     }
-    return props;
+    return globals;
 }
 
 subscribeMixin(SceneLoader);
