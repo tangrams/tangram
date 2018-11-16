@@ -466,7 +466,7 @@ export default class Scene {
     render({ main, selection }) {
         var gl = this.gl;
 
-        // Update styles, camera, lights
+        this.updateBackground();
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
         // Render main pass
@@ -506,7 +506,7 @@ export default class Scene {
                 // Reset to screen buffer
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-                gl.clearColor(...this.background.color); // restore scene background color
+                gl.clearColor(...this.background.computed_color); // restore scene background color
                 this.last_selection_render = this.frame;
             }
 
@@ -1093,27 +1093,37 @@ export default class Scene {
         Light.inject(this.lights);
     }
 
-    // Set background color
+    // Set background color from scene config
     setBackground() {
-        let bg = this.config.scene.background;
+        const bg = this.config.scene.background;
+
         this.background = {};
         if (bg && bg.color) {
-            this.background.color = StyleParser.parseColor(bg.color);
+            this.background.color = StyleParser.createColorPropertyCache(bg.color);
         }
         if (!this.background.color) {
             this.background.color = [0, 0, 0, 0]; // default background TODO: vary w/scene alpha
         }
+    }
 
-        // if background is fully opaque, set canvas background to match
-        if (this.background.color[3] === 1) {
-            this.canvas.style.backgroundColor =
-                `rgba(${this.background.color.map(c => Math.floor(c * 255)).join(', ')})`;
-        }
-        else {
-            this.canvas.style.backgroundColor = 'transparent';
-        }
+    // Update background color each frame as needed (e.g. may be zoom-interpolated)
+    updateBackground () {
+        const last_color = this.background.computed_color;
+        const color = this.background.computed_color = StyleParser.evalCachedColorProperty(this.background.color, { zoom: this.view.tile_zoom });
 
-        this.gl.clearColor(...this.background.color);
+        // update GL/canvas if color has changed
+        if (!last_color || color.some((v, i) => last_color[i] !== v)) {
+            // if background is fully opaque, set canvas background to match
+            if (color[3] === 1) {
+                this.canvas.style.backgroundColor =
+                    `rgba(${color.map(c => Math.floor(c * 255)).join(', ')})`;
+            }
+            else {
+                this.canvas.style.backgroundColor = 'transparent';
+            }
+
+            this.gl.clearColor(...color);
+        }
     }
 
     // Turn introspection mode on/off
