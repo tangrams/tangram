@@ -925,7 +925,6 @@ export default class Scene {
     */
     loadScene(config_source = null, { base_path, file_type } = {}) {
         this.config_source = config_source || this.config_source;
-        this.config_globals_applied = [];
 
         if (typeof this.config_source === 'string') {
             this.base_path = URLs.pathForURL(base_path || this.config_source);
@@ -1142,7 +1141,7 @@ export default class Scene {
         this.generation = ++Scene.generation;
         this.updating++;
 
-        this.config = SceneLoader.applyGlobalProperties(this.config, this.config_globals_applied);
+        this.config = SceneLoader.applyGlobalProperties(this.config);
         if (normalize) {
             // normalize whole scene
             SceneLoader.normalize(this.config, this.config_bundle);
