@@ -296,7 +296,19 @@ export default SceneLoader = {
                 target._global_prop[key] = prop;
 
                 // Get current global value
-                const val = globals[prop];
+                let val = globals[prop];
+                let stack;
+                while (typeof val === 'string' && val.slice(0, 7) === 'global.') {
+                    // handle globals that refer to other globals, detecting any cyclical references
+                    stack = stack || [prop];
+                    if (stack.indexOf(val) > -1) {
+                        log({ level: 'warn', once: true }, `Global properties: cyclical reference detected`, stack);
+                        val = null;
+                        break;
+                    }
+                    stack.push(val);
+                    val = globals[val];
+                }
 
                 // Create getter/setter
                 Object.defineProperty(target, key, {
