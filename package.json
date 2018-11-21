@@ -6,7 +6,7 @@
     "type": "git",
     "url": "git://github.com/tangrams/tangram.git"
   },
-  "main": "dist/tangram.es5.min.js",
+  "main": "dist/tangram.min.js",
   "homepage": "https://github.com/tangrams/tangram",
   "keywords": [
     "maps",
@@ -25,30 +25,30 @@
   },
   "scripts": {
     "start": "npm run watch",
-    "build": "npm run build:nomodules && npm run build:minify:nomodules && npm run build:modules && npm run build:minify:modules && npm run build:size",
-    "build:modules": "ES5=false ./node_modules/.bin/rollup -c",
-    "build:nomodules": "ES5=true ./node_modules/.bin/rollup -c",
-    "build:minify:modules": "ES5=false MINIFY=true ./node_modules/.bin/rollup -c",
-    "build:minify:nomodules": "ES5=true MINIFY=true ./node_modules/.bin/rollup -c",
-    "build:size": "gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='Modules:\t%.0fk (min/gzip)' && gzip dist/tangram.es5.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='No modules:\t%.0fk (min/gzip)'",
-    "watch": "ES5=false SERVE=true ./node_modules/.bin/rollup -cw",
+    "build": "npm run build:nomodule && npm run build:nomodule:minify && npm run build:module && npm run build:module:minify && npm run build:size",
+    "build:module": "ESM=true ./node_modules/.bin/rollup -c",
+    "build:nomodule": "ESM=false ./node_modules/.bin/rollup -c",
+    "build:module:minify": "ESM=true MINIFY=true ./node_modules/.bin/rollup -c",
+    "build:nomodule:minify": "ESM=false MINIFY=true ./node_modules/.bin/rollup -c",
+    "build:size": "gzip dist/tangram.min.mjs -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='Module:\t\t%.0fk (min/gzip)' && gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='No module:\t%.0fk (min/gzip)'",
+    "watch": "ESM=true SERVE=true ./node_modules/.bin/rollup -cw",
     "lint": "./node_modules/.bin/jshint src/ && jshint test/",
     "test": "npm run lint && npm run test-local",
     "test-ci": "npm run lint && npm run test-remote",
-    "test-remote": "npm run test-build-worker && ES5=true ./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
-    "test-local": "npm run test-build-worker && ES5=true ./node_modules/karma/bin/karma start --browsers Chrome --single-run",
-    "test-build-worker": "ES5=true rollup -c test/rollup.config.worker.js",
+    "test-remote": "npm run test-build-worker && ESM=false ./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
+    "test-local": "npm run test-build-worker && ESM=false ./node_modules/karma/bin/karma start --browsers Chrome --single-run",
+    "test-build-worker": "ESM=false rollup -c test/rollup.config.worker.js",
     "karma-start": "./node_modules/karma/bin/karma start --browsers Chrome --no-watch",
     "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome"
   },
   "files": [
     "src/*",
+    "dist/tangram.debug.mjs",
+    "dist/tangram.debug.mjs.map",
+    "dist/tangram.min.mjs",
     "dist/tangram.debug.js",
     "dist/tangram.debug.js.map",
-    "dist/tangram.min.js",
-    "dist/tangram.es5.debug.js",
-    "dist/tangram.es5.debug.js.map",
-    "dist/tangram.es5.min.js"
+    "dist/tangram.min.js"
   ],
   "author": {
     "name": "Tangram contributors"

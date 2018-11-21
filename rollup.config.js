@@ -14,11 +14,11 @@ import string from 'rollup-plugin-string';
 import serve from 'rollup-plugin-serve';
 import livereload from 'rollup-plugin-livereload';
 
-const ES5 = (process.env.ES5 === 'true');
+const ESM = (process.env.ESM !== 'false'); // default to ESM on
 const MINIFY = (process.env.MINIFY === 'true');
 const SERVE = (process.env.SERVE === 'true');
 
-const outputFile = 'dist/tangram.' + (ES5 ? 'es5.' : '') + (MINIFY ? 'min' : 'debug') + '.js';
+const outputFile = `dist/tangram.${MINIFY ? 'min' : 'debug'}.${ESM ? 'm' : ''}js`;
 
 // Use two pass code splitting and re-bundling technique, for another example see:
 // https://github.com/mapbox/mapbox-gl-js/blob/master/rollup.config.js
@@ -67,7 +67,7 @@ const config = [{
     output: {
         name: 'Tangram',
         file: outputFile,
-        format: ES5 ? 'umd' : 'esm',
+        format: ESM ? 'esm' : 'umd',
         sourcemap: MINIFY ? false : true,
         indent: false,
         intro: fs.readFileSync(require.resolve('./build/intro.js'), 'utf8')
@@ -75,7 +75,7 @@ const config = [{
     treeshake: false,
     plugins: [
         replace({
-            ESMODULE: !ES5
+            ESMODULE: ESM
         }),
         sourcemaps(), // use source maps produced in the first pass
 

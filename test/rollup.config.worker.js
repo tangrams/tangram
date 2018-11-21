@@ -4,6 +4,7 @@
 import babel from 'rollup-plugin-babel';
 import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
+import json from 'rollup-plugin-json';
 import string from 'rollup-plugin-string';
 
 const config = {
@@ -20,8 +21,9 @@ const config = {
             preferBuiltins: false
         }),
         commonjs(),
+        json(), // load JSON files
         string({
-            include: ['**/*.json', '**/*.glsl'] // inline imported JSON and shader files
+            include: ['**/*.glsl'] // inline imported JSON and shader files
         }),
         babel({
           exclude: 'node_modules/**'

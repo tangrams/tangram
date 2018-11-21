@@ -1,9 +1,9 @@
 module.exports = function(context) {
-  const es5 = (process.env.ES5 === 'true');
-  const cache = context.cache(() => es5);
-  const targets = es5 ?
-    { browsers: ['last 2 versions', 'ie >= 11', 'safari >= 7'] } :
-    { esmodules: true };
+  const ESM = (process.env.ESM !== 'false'); // default to ESM on
+  const cache = context.cache(() => ESM);
+  const targets = ESM ?
+    { esmodules: true } :
+    { browsers: ['last 2 versions', 'ie >= 11', 'safari >= 7'] };
 
   return {
     presets: [
@@ -12,7 +12,7 @@ module.exports = function(context) {
           targets,
           loose: true,
           debug: true,
-          useBuiltIns: es5 ? 'usage' : false
+          useBuiltIns: ESM ? false : 'usage'
         }
       ],
     ]
