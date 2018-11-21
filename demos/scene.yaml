@@ -1,4 +1,5 @@
-﻿global:
+global:
+    api_key: '' # put your nextzen API key here
     language: en # optional ISO 2-char code
     language_text_source: |
         function() {
@@ -97,6 +98,8 @@ sources:
         url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
         tile_size: 512
         max_zoom: 15
+        url_params:
+            api_key: global.api_key
         # request_headers: # send custom headers with tile requests
         #     Authorization: Bearer xxxxxxxxx
         # Data filtering demo with 'scripts' and 'transform' properties:
