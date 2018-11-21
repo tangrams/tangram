@@ -1,3 +1,3 @@
-import meta from '../../package.json';
+import {version} from '../../package.json';
 
-export default 'v' + meta.version;
+export default 'v' + version;
