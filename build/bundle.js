@@ -5,7 +5,7 @@
 
 import './shared';          // shared code between main and worker threads
 import './scene_worker';    // worker code, gets turned into a blob URL used to instantiate workers
-import './module';          // main thread code, gets exported as main library below
+import './index';          	// main thread code, gets exported as main library below
 
 // This allows the rollup ESM build to work within a <script type="module"> tag
 // Script modules can't expose exports

@@ -3,7 +3,7 @@
 //
 // shared.js: shared dependencies between main and worker threads
 // scene_worker.js: worker thread code
-// module.js: main thread code
+// index.js: main thread code
 
 // Once all chunks have been provided, the worker thread code is assembled,
 // incorporating the shared chunk code, then turned into a blob URL which
