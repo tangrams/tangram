@@ -1101,7 +1101,7 @@ export default class Scene {
             this.background.color = StyleParser.createColorPropertyCache(bg.color);
         }
         if (!this.background.color) {
-            this.background.color = [0, 0, 0, 0]; // default background TODO: vary w/scene alpha
+            this.background.color = StyleParser.createColorPropertyCache([0, 0, 0, 0]); // default background TODO: vary w/scene alpha
         }
     }
 
