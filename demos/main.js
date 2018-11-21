@@ -23,7 +23,7 @@
 
     // Create a Leaflet map
     var map = L.map('map', {
-        maxZoom: 20,
+        maxZoom: 22,
         zoomSnap: 0,
         keyboard: false
     });
