@@ -10,6 +10,7 @@ import './index';          	// main thread code, gets exported as main library b
 // This allows the rollup ESM build to work within a <script type="module"> tag
 // Script modules can't expose exports
 try {
+	Tangram.debug.ESM = ESMODULE; // mark build as ES module
 	if (ESMODULE === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
