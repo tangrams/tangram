@@ -1,5 +1,5 @@
 import StyleParser from './style_parser';
-import Utils from '../utils/utils';
+import {compileFunctionStrings} from '../utils/functions';
 import log from '../utils/log';
 import mergeObjects from '../utils/merge';
 import {buildFilter} from './filter';
@@ -128,13 +128,13 @@ class Layer {
     }
 
     buildDraw() {
-        this.draw = Utils.stringsToFunctions(this.draw, StyleParser.wrapFunction);
+        this.draw = compileFunctionStrings(this.draw, StyleParser.wrapFunction);
         this.calculatedDraw = calculateDraw(this);
     }
 
     buildFilter() {
         this.filter_original = this.filter;
-        this.filter = Utils.stringsToFunctions(this.filter, StyleParser.wrapFunction);
+        this.filter = compileFunctionStrings(this.filter, StyleParser.wrapFunction);
 
         let type = typeof this.filter;
         if (this.filter != null && type !== 'object' && type !== 'function') {

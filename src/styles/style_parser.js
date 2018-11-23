@@ -1,4 +1,5 @@
 import Utils from '../utils/utils';
+import {compileFunctionString} from '../utils/functions';
 import Geo from '../geo';
 import log from '../utils/log';
 
@@ -147,7 +148,7 @@ StyleParser.createPropertyCache = function (obj, transform = null) {
 StyleParser.createColorPropertyCache = function (obj) {
     return StyleParser.createPropertyCache(obj, v => {
         if (v === 'Style.color.pseudoRandomColor') {
-            return Utils.stringToFunction(StyleParser.wrapFunction(StyleParser.macros['Style.color.pseudoRandomColor']));
+            return compileFunctionString(StyleParser.wrapFunction(StyleParser.macros['Style.color.pseudoRandomColor']));
         }
         else if (v === 'Style.color.randomColor') {
             return StyleParser.macros['Style.color.randomColor'];

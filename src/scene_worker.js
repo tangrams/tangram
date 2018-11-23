@@ -1,7 +1,8 @@
 /*jshint worker: true*/
 
 import Utils from './utils/utils';
-import {mergeDebugSettings} from './utils/debug_settings';
+import {compileFunctionStrings, functionStringCache, clearFunctionStringCache} from './utils/functions';
+import debugSettings, {mergeDebugSettings} from './utils/debug_settings';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Tile from './tile';
@@ -11,7 +12,7 @@ import './sources/sources';
 import FeatureSelection from './selection';
 import StyleParser from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
-import {parseLayers, FilterOptions} from './styles/layer';
+import {parseLayers, FilterOptions, layerCache} from './styles/layer';
 import {buildFilter} from './styles/filter';
 import Texture from './gl/texture';
 import VertexElements from './gl/vertex_elements';
@@ -71,13 +72,13 @@ const SceneWorker = Object.assign(self, {
         this.introspection = introspection;
 
         // Expand global properties
-        this.global = Utils.stringsToFunctions(config.global);
+        this.global = compileFunctionStrings(config.global);
 
         // Create data sources
         this.createDataSources(config);
 
         // Expand styles
-        config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
+        config.styles = compileFunctionStrings(config.styles, StyleParser.wrapFunction);
         this.styles = this.style_manager.build(config.styles);
         this.style_manager.initStyles({
             generation: this.generation,
@@ -109,7 +110,7 @@ const SceneWorker = Object.assign(self, {
         let changed = [];
 
         // Parse new sources
-        config.sources = Utils.stringsToFunctions(config.sources);
+        config.sources = compileFunctionStrings(config.sources);
         this.sources = {}; // clear previous sources
         for (let name in config.sources) {
             if (JSON.stringify(this.last_config_sources[name]) === JSON.stringify(config.sources[name])) {
@@ -252,7 +253,7 @@ const SceneWorker = Object.assign(self, {
         // Compile feature filter
         if (filter != null) {
             filter = ['{', '['].indexOf(filter[0]) > -1 ? JSON.parse(filter) : filter; // de-serialize if looks like an object
-            filter = Utils.stringsToFunctions(filter, StyleParser.wrapFunction);
+            filter = compileFunctionStrings(filter, StyleParser.wrapFunction);
         }
         filter = buildFilter(filter, FilterOptions);
 
@@ -340,6 +341,10 @@ const SceneWorker = Object.assign(self, {
         Utils.device_pixel_ratio = device_pixel_ratio;
     },
 
+    clearFunctionStringCache () {
+        clearFunctionStringCache();
+    },
+
     // Profiling helpers
     profile (name) {
         console.profile(`worker ${this._worker_id}: ${name}`);
@@ -347,6 +352,12 @@ const SceneWorker = Object.assign(self, {
 
     profileEnd (name) {
         console.profileEnd(`worker ${this._worker_id}: ${name}`);
+    },
+
+    debug: {
+        debugSettings,
+        layerCache,
+        functionStringCache
     }
 
 });

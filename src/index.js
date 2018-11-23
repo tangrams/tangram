@@ -18,7 +18,6 @@ import Texture from './gl/texture';
 import Material from './material';
 import Light from './light';
 import WorkerBroker from './utils/worker_broker';
-import {layerCache} from './styles/layer';
 import {StyleManager} from './styles/style_manager';
 import StyleParser from './styles/style_parser';
 import Collision from './labels/collision';
@@ -29,7 +28,7 @@ import debugSettings from './utils/debug_settings';
 import yaml from 'js-yaml';
 
 // Make some modules accessible for debugging
-var debug = {
+const debug = {
     log,
     yaml,
     Utils,
@@ -44,7 +43,6 @@ var debug = {
     Light,
     Scene,
     WorkerBroker,
-    layerCache,
     StyleManager,
     StyleParser,
     Collision,
