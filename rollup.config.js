@@ -82,7 +82,10 @@ const config = [{
         // optionally start server and watch for rebuild
         SERVE ? serve({
             port: 8000,
-            contentBase: ''
+            contentBase: '',
+            headers: {
+                'Access-Control-Allow-Origin': '*'
+            }
         }): false,
         SERVE ? livereload({
             watch: 'dist'
