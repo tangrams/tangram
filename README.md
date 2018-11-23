@@ -15,10 +15,10 @@ Tangram is instantiated as a [Leaflet](http://leafletjs.com/) plugin for integra
 
 ## Getting Started
 
-Tangram is published in two build flavors, one for current browsers (bundled as an ES module, using modern JS and web platform features), and one for older browsers (specifically IE11, with modern JS transpiled to older ES5 syntax). You can use this snippet to automatically load the best one for your browser, using the [`module`/`nomodule` pattern](https://developers.google.com/web/fundamentals/primers/modules#browser):
+Tangram is published in two build flavors: one for current browsers (bundled as an ES module, using modern JS and web platform features), and one for older browsers (specifically IE11, with modern JS transpiled to older ES5 syntax). You can use this snippet to automatically load the best one for your browser, using the [`module`/`nomodule` pattern](https://developers.google.com/web/fundamentals/primers/modules#browser):
 
 ```html
-<!-- recent browsers load the top "module" bundle, older browsers (e.g. IE11) load the bottom "nomodule" one -->
+<!-- modern browsers load the optimized .mjs file, older browsers (IE11) load the transpiled .js file -->
 <script type="module" src="https://unpkg.com/tangram/dist/tangram.min.mjs"></script>
 <script nomodule src="https://unpkg.com/tangram/dist/tangram.min.js"></script>
 ```
@@ -27,7 +27,7 @@ Tangram is published in two build flavors, one for current browsers (bundled as 
 
 `<script defer src="index.js"></script>`
 
-Specific Tangram library versions can also be loaded with `@version` syntax(see [unpkg](https://unpkg.com/) for details). Versions earlier than v0.16.0 do not use the `module` syntax; use a single script tag to load them instead: `<script src="https://unpkg.com/tangram@0.15.4/dist/tangram.min.js"></script>`.
+Specific Tangram library versions can also be loaded with `@version` syntax(see [unpkg](https://unpkg.com/) for details). Versions earlier than v0.16.0 do not use the `module` syntax; use a single script tag to load them instead: `<script src="https://unpkg.com/tangram@0.15.5/dist/tangram.min.js"></script>`.
 
 Tangram is [published on NPM](https://www.npmjs.com/package/tangram) and can be [bundled using `import` or `require`](https://github.com/tangrams/tangram-play/wiki/Using-Tangram-with-Bundlers-&-Frameworks).
 

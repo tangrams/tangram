@@ -22,7 +22,7 @@ http://mapzen.com/tangram
     <script defer src="demos/lib/keymaster.js"></script> <!-- Keymaster handles keyboard input -->
 
     <!-- Tangram library -->
-    <!-- modern browsers load the module (ES6) bundle, older browsers (e.g. IE11) load the "nomodule" (ES5) bundle -->
+    <!-- modern browsers load the optimized .mjs file, older browsers (IE11) load the transpiled .js file -->
     <script type="module" src="dist/tangram.debug.mjs"></script>
     <script nomodule src="dist/tangram.debug.js"></script>
 
