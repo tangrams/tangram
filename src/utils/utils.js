@@ -127,52 +127,6 @@ Utils.serializeWithFunctions = function (obj) {
     return serialized;
 };
 
-// Recursively parse an object, attempting to convert string properties that look like functions back into functions
-Utils.stringsToFunctions = function(obj, wrap) {
-    // Convert string
-    if (typeof obj === 'string') {
-        obj = Utils.stringToFunction(obj, wrap);
-    }
-    // Loop through object properties
-    else if (obj != null && typeof obj === 'object') {
-        for (let p in obj) {
-            obj[p] = Utils.stringsToFunctions(obj[p], wrap);
-        }
-    }
-    return obj;
-};
-
-// Convert string back into a function
-Utils.stringToFunction = function(val, wrap) {
-    // Parse function signature and body
-    let fmatch =
-        (typeof val === 'string') &&
-        val.match(/^\s*function[^(]*\(([^)]*)\)\s*?\{([\s\S]*)\}$/m);
-
-    if (fmatch && fmatch.length > 2) {
-        try {
-            let src = fmatch[2];
-            let args = fmatch[1].length > 0 && fmatch[1].split(',').map(x => x.trim()).filter(x => x);
-            args = args.length > 0 ? args : ['context']; // default to single 'context' argument
-
-            let func;
-            if (typeof wrap === 'function') {
-                func = new Function(args.toString(), wrap(src)); // jshint ignore:line
-            }
-            else {
-                func = new Function(args.toString(), src); // jshint ignore:line
-            }
-            func.source = src; // save original, un-wrapped function source
-            return func;
-        }
-        catch (e) {
-            // fall-back to original value if parsing failed
-            return val;
-        }
-    }
-    return val;
-};
-
 // Default to allowing high pixel density
 // Returns true if display density changed
 Utils.use_high_density_display = true;

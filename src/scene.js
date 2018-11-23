@@ -139,7 +139,9 @@ export default class Scene {
         this.initializing = this.loadScene(config_source, options)
             .then(() => this.createWorkers())
             .then(() => {
+                // Clean up resources from prior scene
                 this.destroyFeatureSelection();
+                WorkerBroker.postMessage(this.workers, 'self.clearFunctionStringCache');
 
                 // Scene loaded from a JS object, or modified by a `load` event, may contain compiled JS functions
                 // which need to be serialized, while one loaded only from a URL does not.
