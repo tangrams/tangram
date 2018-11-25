@@ -472,12 +472,12 @@ export default class Scene {
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
         // Render main pass
+        this.render_count_changed = false;
         if (main) {
             this.render_count = this.renderPass();
             this.last_main_render = this.frame;
 
             // Update feature selection map if necessary
-            this.render_count_changed = false;
             if (this.render_count !== this.last_render_count) {
                 this.render_count_changed = true;
                 this._logFirstFrame();
