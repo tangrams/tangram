@@ -18,6 +18,7 @@ import Texture from './gl/texture';
 import Material from './material';
 import Light from './light';
 import WorkerBroker from './utils/worker_broker';
+import Task from './utils/task';
 import {StyleManager} from './styles/style_manager';
 import StyleParser from './styles/style_parser';
 import Collision from './labels/collision';
@@ -43,6 +44,7 @@ const debug = {
     Light,
     Scene,
     WorkerBroker,
+    Task,
     StyleManager,
     StyleParser,
     Collision,
