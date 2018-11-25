@@ -21,18 +21,22 @@ function methodForLevel (level) {
     }
 }
 
+// Logs message, proxying any log requests from worker threads back to the main thread.
+// Returns (asynchronously, due to proxying) a boolean indicating if the message was logged.
+// Option `once: true` can be used to only log each unique log message once (e.g. for warnings
+// that would otherwise be repetitive or possibly logged thousands of times, such as per feature).
 export default function log (opts, ...msg) {
     let level = (typeof opts === 'object') ? opts.level : opts;
     if (LEVELS[level] <= LEVELS[log.level]) {
         if (Thread.is_worker) {
             // Proxy to main thread
-            WorkerBroker.postMessage({ method: '_logProxy', stringify: true }, opts, ...msg);
+            return WorkerBroker.postMessage({ method: '_logProxy', stringify: true }, opts, ...msg);
         }
         else {
             // Only log message once?
             if (typeof opts === 'object' && opts.once === true) {
                 if (logged_once[JSON.stringify(msg)]) {
-                    return;
+                    return Promise.resolve(false);
                 }
                 logged_once[JSON.stringify(msg)] = true;
             }
@@ -46,7 +50,9 @@ export default function log (opts, ...msg) {
                 logger(`Tangram ${version} [${level}]: ${msg[0]}`);
             }
         }
+        return Promise.resolve(true);
     }
+    return Promise.resolve(false);
 }
 
 log.level = 'info';
