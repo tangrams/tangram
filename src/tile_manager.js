@@ -19,10 +19,8 @@ export default class TileManager {
         this.renderable_tiles = [];
         this.active_styles = [];
         this.collision = {
-            tiles: [],
-            generations: [],
-            style_counts: [],
-            pending_label_style_counts: [],
+            tile_keys: null,
+            mesh_set: null,
             zoom: null,
             zoom_steps: 3 // divisions per zoom at which labels are re-collided (e.g. 0, 0.33, 0.66)
         };
@@ -143,35 +141,30 @@ export default class TileManager {
         tiles.sort((a, b) => a.build_id < b.build_id ? -1 : (a.build_id > b.build_id ? 1 : 0));
 
         // check if tile set has changed (in ways that affect collision)
-        if (roundPrecision(this.view.zoom, this.collision.zoom_steps) === this.collision.zoom &&
-            tiles.every(t => {
-                let i = this.collision.tiles.indexOf(t);
-                return i > -1 &&
-                    this.collision.generations[i] === t.generation &&
-                    this.collision.style_counts[i] === Object.keys(t.meshes).length &&
-                    this.collision.pending_label_style_counts[i] === t.pendingLabelStyleCount();
-            })) {
-            // log('debug', `Skip label layout due to same tile/meshes (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+        if (// 1st: check if same zoom level
+            this.collision.zoom === roundPrecision(this.view.zoom, this.collision.zoom_steps) &&
+            // 2nd: check if same set of tiles
+            this.collision.tile_keys === JSON.stringify(tiles.map(t => t.key)) &&
+            // 3rd: check if same set of meshes
+            this.collision.mesh_set === meshSetString(tiles)) {
+            // log('debug', `Skip label layout due to same tile/meshes (zoom ${this.view.zoom.toFixed(2)}, tiles ${this.collision.tile_keys})`);
             return Promise.resolve({});
         }
 
         // update collision if not already updating
         if (!this.collision.task) {
-            this.collision.tiles = tiles;
-            this.collision.generations = tiles.map(t => t.generation);
-            this.collision.style_counts = tiles.map(t => Object.keys(t.meshes).length);
-            this.collision.pending_label_style_counts = tiles.map(t => t.pendingLabelStyleCount());
             this.collision.zoom = roundPrecision(this.view.zoom, this.collision.zoom_steps);
-            // log('debug', `Update label collisions (zoom ${this.collision.zoom}, ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+            this.collision.tile_keys = JSON.stringify(tiles.map(t => t.key));
+            this.collision.mesh_set = meshSetString(tiles);
+            // log('debug', `Update label collisions (zoom ${this.collision.zoom}, ${this.collision.tile_keys})`);
 
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
                 run: (task) => {
-                    return mainThreadLabelCollisionPass(this.collision.tiles, this.collision.zoom, this.isLoadingVisibleTiles()).then(results => {
+                    return mainThreadLabelCollisionPass(tiles, this.collision.zoom, this.isLoadingVisibleTiles()).then(results => {
                         this.collision.task = null;
                         Task.finish(task, results);
                         this.updateTileStates().then(() => this.scene.immediateRedraw());
-
                     });
                 },
                 user_moving_view: false // don't run task when user is moving view
@@ -179,7 +172,7 @@ export default class TileManager {
             Task.add(this.collision.task);
         }
         // else {
-        //     log('debug', `Skip label layout due to on-going layout (zoom ${this.view.zoom.toFixed(2)}, tiles ${JSON.stringify(this.collision.tiles.map(t => t.key))}, mesh counts ${JSON.stringify(this.collision.style_counts)}, pending label mesh counts ${JSON.stringify(this.collision.pending_label_style_counts)})`);
+        //     log('debug', `Skip label layout due to on-going layout (zoom ${this.view.zoom.toFixed(2)}, tiles ${this.collision.tile_keys})`);
         // }
         return this.collision.task.promise;
     }
@@ -382,7 +375,7 @@ export default class TileManager {
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.scene.generation) {
-            log('debug', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` +
+            log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` +
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
             Tile.abortBuild(tile);
             this.updateTileStates();
@@ -478,4 +471,16 @@ export default class TileManager {
 // e.g. roundPrecision(x, 4) rounds a number to increments of 0.25
 function roundPrecision (x, d, places = 2) {
     return (Math.floor(x * d) / d).toFixed(places);
+}
+
+// Create a string representing the current set of meshes for a given set of tiles,
+// based on their created timestamp. Used to determine when tiles should be re-collided.
+function meshSetString (tiles) {
+    return JSON.stringify(
+        Object.entries(tiles).map(([,t]) => {
+            return Object.entries(t.meshes).map(([,s]) => {
+                return s.map(m => m.created_at);
+            });
+        })
+    );
 }
