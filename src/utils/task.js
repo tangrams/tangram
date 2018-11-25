@@ -17,6 +17,7 @@ const Task = {
         });
         task.promise = promise;
 
+        task.elapsed = 0;
         task.total_elapsed = 0;
         task.stats = { calls: 0 };
         this.queue.push(task);
