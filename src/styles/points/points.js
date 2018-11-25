@@ -168,7 +168,7 @@ Object.assign(Points, {
                         if (logged) {
                             log('debug', `Example feature for layer group '${draw.layers.join(', ')}'`, feature);
                         }
-                    })
+                    });
                 return;
             }
         } else if (draw.sprite) {
