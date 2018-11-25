@@ -23,8 +23,10 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
         const meters_per_pixel = Geo.metersPerPixel(view_zoom);
 
         // First pass: create label instances and centralize collision containers
+        // Combine existing (previously collided) and pending (waiting to be collided for first time) meshes
+        const tile_meshes = Object.assign({}, tile.meshes, tile.pending_label_meshes);
         for (let style in tile.meshes) {
-            const meshes = tile.meshes[style];
+            const meshes = tile_meshes[style];
             meshes.forEach(mesh => {
                 if (mesh.labels) {
                     for (let label_id in mesh.labels) {
