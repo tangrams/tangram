@@ -161,13 +161,21 @@ Object.assign(Points, {
             }
             else {
                 // sprites are defined in the style's texture, but none are used in the current layer
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}' uses a texture '${style.texture}' with defined sprites, but no sprite is specified. Skipping features in layer`);
+                log({ level: 'debug', once: true }, `Layer group '${draw.layers.join(', ')}' ` +
+                    `uses a texture '${style.texture}', but doesn't specify which sprite to draw. ` +
+                    `Features that match this layer group won't be drawn without specifying the sprite with the ` +
+                    `'sprite' or 'sprite_default' properties. The merged draw parameters for this layer group are:`, draw).then(logged => {
+                        if (logged) {
+                            log('debug', `Example feature for layer group '${draw.layers.join(', ')}'`, feature);
+                        }
+                    })
                 return;
             }
         } else if (draw.sprite) {
             // sprite specified in the draw layer but no sprites defined in the texture
-            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-            `a sprite '${draw.sprite}' is specified but no sprites are defined in texture '${draw.texture}', skipping features in layer`);
+            log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}' ` +
+                `specifies sprite '${draw.sprite}', but the texture '${draw.texture}' doesn't define any sprites. ` +
+                `Features that match this layer group won't be drawn. The merged draw parameters for this layer group are:`, draw);
             return;
         }
 
@@ -183,8 +191,9 @@ Object.assign(Points, {
             style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
             if (style.size == null) {
                 // the StyleParser couldn't evaluate a sprite size
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-                    `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, skipping features in layer`);
+                log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
+                    `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, features that match ` +
+                    `this layer group won't be drawn`);
                 return;
             }
             else if (typeof style.size === 'number') {
@@ -237,7 +246,7 @@ Object.assign(Points, {
 
         if (Array.isArray(tf)) {
             tf = null; // NB: boundary labels not supported for point label attachments, should log warning
-            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+            log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
                 `cannot use boundary labels (e.g. 'text_source: { left: ..., right: ... }') for 'text' labels attached to 'points'; ` +
                 `provided 'text_source' value was ${JSON.stringify(draw.text.text_source)}`);
         }
@@ -417,8 +426,8 @@ Object.assign(Points, {
             draw.size = StyleParser.createPointSizePropertyCache(draw.size);
         }
         catch(e) {
-            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-                `${e} (${JSON.stringify(draw.size)}), skipping features in layer`);
+            log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
+                `${e} (${JSON.stringify(draw.size)}), features that match this layer group won't be drawn.`);
             return null;
         }
 

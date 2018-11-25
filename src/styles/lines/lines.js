@@ -334,9 +334,9 @@ Object.assign(Lines, {
                 this.computeVariant(draw.outline);
             }
             else {
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+                log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
                     `line 'outline' specifies non-existent draw style '${draw.outline.style}' (or maybe the style is ` +
-                    `defined but is missing a 'base' or has another error), skipping outlines in layer`);
+                    `defined but is missing a 'base' or has another error), skipping outlines for features matching this layer group`);
                 draw.outline = null;
             }
         }
