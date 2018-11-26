@@ -220,8 +220,6 @@ export default class Texture {
         }
 
         this.bind();
-        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
-        this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
         // Image or Canvas element
         if (source instanceof HTMLCanvasElement || source instanceof HTMLVideoElement ||
@@ -229,10 +227,17 @@ export default class Texture {
 
             this.width = source.width;
             this.height = source.height;
+            this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
+            this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
             this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
         }
         // Raw image buffer
         else {
+            // these pixel store params are deprecated for non-DOM element uploads
+            // (e.g. when creating texture from raw data)
+            // setting them to null avoids a Firefox warning
+            this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, null);
+            this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, null);
             this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
         }
 
