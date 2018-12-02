@@ -64,7 +64,7 @@ export class TopoJSONTileSource extends GeoJSONTileSource {
 
         // Replace with non-tiled source if tiled source failed to instantiate
         if (!this.urlHasTilePattern(this.url)) {
-            return new TopoJSONSource(source);
+            return new TopoJSONSource(source, sources);
         }
         return this;
     }

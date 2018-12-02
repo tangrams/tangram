@@ -222,7 +222,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
             // Check instance type from parent class
             if (source.type === 'GeoJSON') {
                 // Replace instance type
-                return new GeoJSONSource(source);
+                return new GeoJSONSource(source, sources);
             }
             else {
                 // Pass back to parent class to instantiate
