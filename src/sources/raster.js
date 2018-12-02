@@ -63,4 +63,4 @@ export class RasterTileSource extends NetworkTileSource {
 
 }
 
-DataSource.register(RasterTileSource, 'Raster');
+DataSource.register('Raster', () => RasterTileSource);

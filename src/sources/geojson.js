@@ -216,20 +216,6 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
     constructor(source, sources) {
         super(source, sources);
-
-        // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
-        if (!this.urlHasTilePattern(this.url)) {
-            // Check instance type from parent class
-            if (source.type === 'GeoJSON') {
-                // Replace instance type
-                return new GeoJSONSource(source, sources);
-            }
-            else {
-                // Pass back to parent class to instantiate
-                return undefined;
-            }
-        }
-        return this;
     }
 
     parseSourceData (tile, source, response) {
@@ -262,7 +248,11 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
 }
 
-DataSource.register(GeoJSONTileSource, 'GeoJSON');      // prefered shorter name
+// Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
+DataSource.register('GeoJSON', source => {
+    return GeoJSONTileSource.urlHasTilePattern(source.url) ? GeoJSONTileSource : GeoJSONSource;
+});
+
 
 // Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
 function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {

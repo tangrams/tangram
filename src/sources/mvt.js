@@ -136,4 +136,4 @@ export function decodeMultiPolygon (geom) {
     return geom;
 }
 
-DataSource.register(MVTSource, 'MVT');
+DataSource.register('MVT', () => MVTSource);

@@ -53,10 +53,24 @@ export default class DataSource {
         this.max_display_zoom = (config.max_display_zoom != null) ? config.max_display_zoom : null;
     }
 
-    // Create a tile source by type, factory-style
+    // Register a new data source type name, providing a function that returns the class name
+    // to instantiate based on the source definition in the scene
+    static register(type_name, type_func) {
+        if (!type_name || !type_func) {
+            return;
+        }
+
+        DataSource.types[type_name] = type_func;
+    }
+
+    // Create a data source, factory-style
     static create (source, sources) {
-        if (DataSource.types[source.type]) {
-            return new DataSource.types[source.type](source, sources);
+        // Find the class to instantiate based on the source definition
+        if (typeof DataSource.types[source.type] === 'function') {
+            const source_class = DataSource.types[source.type](source);
+            if (source_class) {
+                return new source_class(source, sources);
+            }
         }
     }
 
@@ -193,15 +207,6 @@ export default class DataSource {
         }
 
         return true;
-    }
-
-    // Register a new data source type, under a type name
-    static register(type_class, type_name) {
-        if (!type_class || !type_name) {
-            return;
-        }
-
-        DataSource.types[type_name] = type_class;
     }
 
 }
@@ -391,7 +396,7 @@ export class NetworkTileSource extends NetworkSource {
     }
 
     // Checks for the x/y/z tile pattern in URL template
-    urlHasTilePattern(url) {
+    static urlHasTilePattern(url) {
         return url &&
             url.search('{x}') > -1 &&
             url.search('{y}') > -1 &&
