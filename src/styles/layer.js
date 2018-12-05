@@ -165,9 +165,9 @@ class Layer {
 
     // Zooms often cull large swaths of the layer tree, so they get special treatment and are checked first
     buildZooms() {
-        let zoom = this.filter && this.filter.$zoom;
+        let zoom = this.filter && this.filter.$zoom; // has an explicit zoom filter
         let ztype = typeof zoom;
-        if (zoom != null && ztype !== 'function') { // don't accelerate function-based filters
+        if (zoom != null) {
             this.zooms = {};
 
             if (ztype === 'number') {
