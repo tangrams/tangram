@@ -25,7 +25,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
         // First pass: create label instances and centralize collision containers
         // Combine existing (previously collided) and pending (waiting to be collided for first time) meshes
         const tile_meshes = Object.assign({}, tile.meshes, tile.pending_label_meshes);
-        for (let style in tile.meshes) {
+        for (let style in tile_meshes) {
             const meshes = tile_meshes[style];
             meshes.forEach(mesh => {
                 if (mesh.labels) {
