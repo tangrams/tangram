@@ -521,7 +521,7 @@ var _iterDefine = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORC
       // Set @@toStringTag to native iterators
       _setToStringTag(IteratorPrototype, TAG, true);
       // fix for some old engines
-      if (!_library && typeof IteratorPrototype[ITERATOR] != 'function') _hide(IteratorPrototype, ITERATOR, returnThis);
+      if (typeof IteratorPrototype[ITERATOR] != 'function') _hide(IteratorPrototype, ITERATOR, returnThis);
     }
   }
   // fix Array#{values, @@iterator}.name in V8 / FF
@@ -530,7 +530,7 @@ var _iterDefine = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORC
     $default = function values() { return $native.call(this); };
   }
   // Define iterator
-  if ((!_library || FORCED) && (BUGGY || VALUES_BUG || !proto[ITERATOR])) {
+  if (BUGGY || VALUES_BUG || !proto[ITERATOR]) {
     _hide(proto, ITERATOR, $default);
   }
   // Plug for library
@@ -1527,7 +1527,7 @@ function _assertThisInitialized(self) {
   return self;
 }
 
-var version = "0.16.0";
+var version = "0.16.1";
 
 var version$1 = 'v' + version;
 
@@ -4507,16 +4507,21 @@ function () {
       return;
     }
 
-    this.bind();
-    this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, options.UNPACK_FLIP_Y_WEBGL === false ? false : true);
-    this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false); // Image or Canvas element
+    this.bind(); // Image or Canvas element
 
     if (source instanceof HTMLCanvasElement || source instanceof HTMLVideoElement || source instanceof HTMLImageElement && source.complete) {
       this.width = source.width;
       this.height = source.height;
+      this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, options.UNPACK_FLIP_Y_WEBGL === false ? false : true);
+      this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
     } // Raw image buffer
     else {
+        // these pixel store params are deprecated for non-DOM element uploads
+        // (e.g. when creating texture from raw data)
+        // setting them to null avoids a Firefox warning
+        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, null);
+        this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, null);
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
       }
 
@@ -13600,6 +13605,8 @@ function renderDashArray(pattern, options) {
     dash = !dash; // alternate between dashes and spaces
   }
 
+  pixels.reverse(); // flip Y (GL textures are upside down)
+
   pixels = new Uint8Array(pixels); // convert to typed array
 
   var length = pixels.length / 4; // one RGBA byte sequences to one pixel
@@ -19769,11 +19776,11 @@ function () {
 
 
   _proto.buildZooms = function buildZooms() {
-    var zoom = this.filter && this.filter.$zoom;
+    var zoom = this.filter && this.filter.$zoom; // has an explicit zoom filter
+
     var ztype = typeof zoom;
 
-    if (zoom != null && ztype !== 'function') {
-      // don't accelerate function-based filters
+    if (zoom != null) {
       this.zooms = {};
 
       if (ztype === 'number') {
@@ -22696,7 +22703,7 @@ function (_NetworkTileSource) {
       // Check instance type from parent class
       if (source.type === 'GeoJSON') {
         // Replace instance type
-        return new GeoJSONSource(source) || _assertThisInitialized(_this3);
+        return new GeoJSONSource(source, sources) || _assertThisInitialized(_this3);
       } else {
         // Pass back to parent class to instantiate
         return undefined || _assertThisInitialized(_this3);
@@ -22940,7 +22947,7 @@ function (_GeoJSONTileSource) {
     _this = _GeoJSONTileSource.call(this, source, sources) || this; // Replace with non-tiled source if tiled source failed to instantiate
 
     if (!_this.urlHasTilePattern(_this.url)) {
-      return new TopoJSONSource(source) || _assertThisInitialized(_this);
+      return new TopoJSONSource(source, sources) || _assertThisInitialized(_this);
     }
 
     return _assertThisInitialized(_assertThisInitialized(_this)) || _assertThisInitialized(_this);
@@ -44064,7 +44071,7 @@ function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
 
     var tile_meshes = Object.assign({}, tile.meshes, tile.pending_label_meshes);
 
-    for (var style in tile.meshes) {
+    for (var style in tile_meshes) {
       var meshes = tile_meshes[style];
       meshes.forEach(function (mesh) {
         if (mesh.labels) {
