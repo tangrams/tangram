@@ -45,6 +45,9 @@ export default class DataSource {
         // overzoom will apply for zooms higher than this
         this.max_zoom = (config.max_zoom != null) ? config.max_zoom : Geo.default_source_max_zoom;
 
+        // set a custom extra overzoom factor to load consistently lower zoom levels
+        this.overzoom = (config.overzoom != null) ? config.overzoom : 0;
+
         this.setTileSize(config.tile_size);
         this.max_coord_zoom = this.max_zoom + this.zoom_bias;
 
@@ -159,7 +162,10 @@ export default class DataSource {
         }
 
         // # of zoom levels bigger than 256px tiles - 8 in place of log2(256)
-        this.zoom_bias = Math.log2(this.tile_size) - 8;
+        // Many Tangram functions assume 256px tiles, this factor adjusts for the
+        // case of bigger tile sizes - eg 512px tiles are 1 zoom level bigger,
+        // 1024px tiles are 2 levels bigger
+        this.zoom_bias = Math.log2(this.tile_size) - 8 + this.overzoom;
     }
 
     // Infer winding for data source from first ring of provided geometry
