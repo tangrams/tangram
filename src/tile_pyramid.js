@@ -76,6 +76,7 @@ export default class TilePyramid {
         }
     }
 
+    // Find the parent tile for a given point and zoom level
     getAncestor ({ coords, style_zoom, source }, level = 1) {
         if (level > this.max_proxy_ancestor_depth) {
             return;
@@ -107,6 +108,7 @@ export default class TilePyramid {
         }
     }
 
+    // Find the descendant tiles for a given point and zoom level
     getDescendants ({ coords, style_zoom, source }, level = 1) {
         let descendants = [];
 
