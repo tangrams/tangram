@@ -49,6 +49,7 @@ export default class DataSource {
         this.overzoom = (config.overzoom != null) ? config.overzoom : 0;
 
         this.setTileSize(config.tile_size);
+        // factor in zoom_bias to account for tile sizes > than 256px
         this.max_coord_zoom = this.max_zoom + this.zoom_bias;
 
         // no tiles will be requested or displayed outside of these min/max values
