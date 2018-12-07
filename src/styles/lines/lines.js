@@ -367,52 +367,51 @@ Object.assign(Lines, {
     },
 
     // Override
-    endData (tile) {
-        return Style.endData.call(this, tile).then(tile_data => {
-            if (tile_data) {
-                tile_data.uniforms.u_has_line_texture = false;
-                tile_data.uniforms.u_texture = Texture.default;
-                tile_data.uniforms.u_v_scale_adjust = Geo.tile_scale;
+    async endData (tile) {
+        const tile_data = await Style.endData.call(this, tile);
+        if (tile_data) {
+            tile_data.uniforms.u_has_line_texture = false;
+            tile_data.uniforms.u_texture = Texture.default;
+            tile_data.uniforms.u_v_scale_adjust = Geo.tile_scale;
 
-                let pending = [];
-                for (let m in tile_data.meshes) {
-                    let variant = tile_data.meshes[m].variant;
-                    if (variant.texture) {
-                        let uniforms = tile_data.meshes[m].uniforms = tile_data.meshes[m].uniforms || {};
-                        uniforms.u_has_line_texture = true;
-                        uniforms.u_texture = variant.texture;
-                        uniforms.u_texture_ratio = 1;
+            let pending = [];
+            for (let m in tile_data.meshes) {
+                let variant = tile_data.meshes[m].variant;
+                if (variant.texture) {
+                    let uniforms = tile_data.meshes[m].uniforms = tile_data.meshes[m].uniforms || {};
+                    uniforms.u_has_line_texture = true;
+                    uniforms.u_texture = variant.texture;
+                    uniforms.u_texture_ratio = 1;
 
-                        if (variant.dash) {
-                            uniforms.u_v_scale_adjust = Geo.tile_scale * DASH_SCALE;
-                            uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
-                        }
+                    if (variant.dash) {
+                        uniforms.u_v_scale_adjust = Geo.tile_scale * DASH_SCALE;
+                        uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
+                    }
 
-                        if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
-                            Lines.dash_textures[variant.dash_key] = true;
-                            WorkerBroker.postMessage(this.main_thread_target+'.getDashTexture', variant.dash);
-                        }
+                    if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
+                        Lines.dash_textures[variant.dash_key] = true;
+                        WorkerBroker.postMessage(this.main_thread_target+'.getDashTexture', variant.dash);
+                    }
 
-                        if (Texture.textures[variant.texture] == null) {
-                            pending.push(
-                                Texture.syncTexturesToWorker([variant.texture]).then(textures => {
-                                    let texture = textures[variant.texture];
-                                    if (texture) {
-                                        uniforms.u_texture_ratio = texture.height / texture.width;
-                                    }
-                                })
-                            );
-                        }
-                        else {
-                            let texture = Texture.textures[variant.texture];
-                            uniforms.u_texture_ratio = texture.height / texture.width;
-                        }
+                    if (Texture.textures[variant.texture] == null) {
+                        pending.push(
+                            Texture.syncTexturesToWorker([variant.texture]).then(textures => {
+                                let texture = textures[variant.texture];
+                                if (texture) {
+                                    uniforms.u_texture_ratio = texture.height / texture.width;
+                                }
+                            })
+                        );
+                    }
+                    else {
+                        let texture = Texture.textures[variant.texture];
+                        uniforms.u_texture_ratio = texture.height / texture.width;
                     }
                 }
-                return Promise.all(pending).then(() => tile_data);
             }
-            return tile_data;
-        });
+            await Promise.all(pending);
+        }
+        return tile_data;
     },
 
     // Calculate and store mesh variant (unique by draw group but not feature)

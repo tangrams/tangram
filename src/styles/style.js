@@ -126,7 +126,7 @@ export var Style = {
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
-    endData (tile) {
+    async endData (tile) {
         var tile_data = this.tile_data[tile.id];
         this.tile_data[tile.id] = null;
 
@@ -148,10 +148,10 @@ export var Style = {
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
-            return this.buildRasterTextures(tile, tile_data).then(tile_data => tile_data);
+            return this.buildRasterTextures(tile, tile_data);
         }
         else {
-            return Promise.resolve(null); // don't send tile data back if doesn't have geometry
+            return null; // don't send tile data back if doesn't have geometry
         }
     },
 

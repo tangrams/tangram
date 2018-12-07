@@ -310,10 +310,10 @@ Object.assign(Points, {
     },
 
     // Override
-    endData (tile) {
+    async endData (tile) {
         if (tile.canceled) {
             log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}`);
-            return Promise.resolve();
+            return null;
         }
 
         let queue = this.queues[tile.id];
@@ -363,51 +363,49 @@ Object.assign(Points, {
         });
 
         // Collide both points and text, then build features
-        return Promise.
-            all([
-                // Points
-                Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
-                    point_objs.forEach(q => {
-                        this.feature_style = q.style;
-                        this.feature_style.label = q.label;
-                        this.feature_style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
-                        Style.addFeature.call(this, q.feature, q.draw, q.context);
-                    });
-                }),
-                // Labels
-                this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)
-            ]).then(([, { labels, texts, textures }]) => {
-                // Process labels
-                if (labels && texts) {
-                    // Build queued features
-                    labels.forEach(q => {
-                        let text_settings_key = q.text_settings_key;
-                        let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-
-                        // setup styling object expected by Style class
-                        let style = this.feature_style;
-                        style.label = q.label;
-                        style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
-                        style.size = text_info.size.logical_size;
-                        style.angle = 0; // text attached to point is always upright
-                        style.texcoords = text_info.align[q.label.align].texcoords;
-                        style.label_texture = textures[text_info.align[q.label.align].texture_id];
-
-                        Style.addFeature.call(this, q.feature, q.draw, q.context);
-                    });
-                }
-                this.freeText(tile);
-
-                // Finish tile mesh
-                return Style.endData.call(this, tile).then(tile_data => {
-                    // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (tile_data && textures && textures.length) {
-                        tile_data.textures = tile_data.textures || [];
-                        tile_data.textures.push(...textures); // assign texture ownership to tile
-                    }
-                    return tile_data;
+        const [, { labels, texts, textures }] = await Promise.all([
+            // Points
+            Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
+                point_objs.forEach(q => {
+                    this.feature_style = q.style;
+                    this.feature_style.label = q.label;
+                    this.feature_style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
+                    Style.addFeature.call(this, q.feature, q.draw, q.context);
                 });
+            }),
+            // Labels
+            this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)
+        ]);
+
+        // Process labels
+        if (labels && texts) {
+            // Build queued features
+            labels.forEach(q => {
+                let text_settings_key = q.text_settings_key;
+                let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+
+                // setup styling object expected by Style class
+                let style = this.feature_style;
+                style.label = q.label;
+                style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
+                style.size = text_info.size.logical_size;
+                style.angle = 0; // text attached to point is always upright
+                style.texcoords = text_info.align[q.label.align].texcoords;
+                style.label_texture = textures[text_info.align[q.label.align].texture_id];
+
+                Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
+        }
+        this.freeText(tile);
+
+        // Finish tile mesh
+        const tile_data = await Style.endData.call(this, tile);
+        // Attach tile-specific label atlas to mesh as a texture uniform
+        if (tile_data && textures && textures.length) {
+            tile_data.textures = tile_data.textures || [];
+            tile_data.textures.push(...textures); // assign texture ownership to tile
+        }
+        return tile_data;
     },
 
     _preprocess (draw) {
