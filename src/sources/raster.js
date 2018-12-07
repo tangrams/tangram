@@ -47,9 +47,9 @@ export class RasterTileSource extends NetworkTileSource {
 
     // Return texture info for a raster tile
     async tileTexture (tile) {
-        let key = tile.coords.key;
+        let coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
+        let key = coords.key;
         if (!this.textures[key]) {
-            let coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
             let url = this.formatUrl(this.url, { coords });
             this.textures[key] = {
                 name: url,
