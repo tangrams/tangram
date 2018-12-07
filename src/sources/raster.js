@@ -4,7 +4,7 @@ import Geo from '../geo';
 
 export class RasterTileSource extends NetworkTileSource {
 
-    constructor(source, sources) {
+    constructor (source, sources) {
         super(source, sources);
 
         if (this.rasters.indexOf(this.name) === -1) {
@@ -17,7 +17,7 @@ export class RasterTileSource extends NetworkTileSource {
         this.textures = {};
     }
 
-    load(tile) {
+    async load (tile) {
         tile.source_data = {};
         tile.source_data.layers = {};
         tile.pad_scale = this.pad_scale;
@@ -42,11 +42,11 @@ export class RasterTileSource extends NetworkTileSource {
         };
 
         tile.default_winding = 'CW';
-        return Promise.resolve(tile);
+        return tile;
     }
 
     // Return texture info for a raster tile
-    tileTexture (tile) {
+    async tileTexture (tile) {
         let key = tile.coords.key;
         if (!this.textures[key]) {
             let coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
