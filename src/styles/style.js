@@ -560,6 +560,13 @@ export var Style = {
 
         this.defines.TANGRAM_NUM_RASTER_SOURCES = `${num_raster_sources}`; // force to string to avoid auto-float conversion
         if (num_raster_sources > 0) {
+            // Track how many raster sources have alpha masking (used for handling transparency outside raster image)
+            const num_masked_rasters = Object.keys(this.sources)
+                .filter(s => this.sources[s].mask_alpha)
+                .length;
+            this.defines.TANGRAM_HAS_MASKED_RASTERS = (num_masked_rasters > 0);
+            this.defines.TANGRAM_ALL_MASKED_RASTERS = (num_masked_rasters === num_raster_sources);
+
             // Use model position of tile's coordinate zoom for raster tile texture UVs
             this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
 
@@ -595,6 +602,9 @@ export var Style = {
         else if (textures.some(t => !t.loaded)) { // some textures failed, throw out style for this tile
             return null;
         }
+
+        // Enable alpha masking if needed (for transparency outside raster image, on first raster only)
+        tile_data.uniforms['u_raster_mask_alpha'] = (this.sources[tile.rasters[0]].mask_alpha === true);
 
         // Set texture uniforms (returned after loading from main thread)
         const u_samplers = tile_data.uniforms['u_rasters'] = [];

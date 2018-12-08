@@ -49,33 +49,56 @@ void main (void) {
 
     // Apply raster to vertex color
     #ifdef TANGRAM_RASTER_TEXTURE_COLOR
-        color *= sampleRaster(0); // multiplied to tint texture color
+    { // enclose in scope to avoid leakage of internal variables
+        vec4 raster_color = sampleRaster(0);
+
+        #ifdef TANGRAM_BLEND_OPAQUE
+            // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.
+            // This is used for handling transparency outside the raster image when rendering with opaque blending,
+            // which doesn't support alpha (with expected results anyway).
+            #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources
+            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip conditional if *only* masked raster sources (always true)
+            if (u_raster_mask_alpha) {
+            #else
+            {
+            #endif
+                if (raster_color.a < 1. - TANGRAM_EPSILON) {
+                    discard;
+                }
+                // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)
+                raster_color.a = 1.;
+            }
+            #endif
+        #endif
+
+        color *= raster_color; // multiplied to tint texture color
+    }
     #endif
 
     // Apply line texture
     #ifdef TANGRAM_EXTRUDE_LINES
+    { // enclose in scope to avoid leakage of internal variables
         if (u_has_line_texture) {
             vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));
             vec4 _line_color = texture2D(u_texture, _line_st);
 
             if (_line_color.a < TANGRAM_ALPHA_TEST) {
-                #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) // TODO: should be for opaque blend only?
+                #if defined(TANGRAM_BLEND_OPAQUE)
                     // use discard when alpha blending is unavailable
-                    if (u_dash_background_color.a == 0.) {
+                    if (u_dash_background_color.a < 1. - TANGRAM_EPSILON) {
                         discard;
                     }
-                    color = u_dash_background_color;
+                    color = vec4(u_dash_background_color.rgb, 1.); // only allow full alpha in opaque blend mode
                 #else
                     // use alpha channel when blending is available
                     color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));
                 #endif
-
-
             }
             else {
                 color *= _line_color;
             }
         }
+    }
     #endif
 
     // First, get normal from raster tile (if applicable)

@@ -5,6 +5,12 @@ uniform sampler2D u_rasters[TANGRAM_NUM_RASTER_SOURCES];    // raster tile textu
 uniform vec2 u_raster_sizes[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture sizes (width/height in pixels)
 uniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile texture UV starting offset for tile
 
+// Raster sources can optionally mask by the alpha channel (render with only full or no alpha, based on a threshold),
+// which is used for handling transparency outside the raster image when rendering with opaque blending
+#if defined(TANGRAM_HAS_MASKED_RASTERS) && !defined(TANGRAM_ALL_MASKED_RASTERS) // only add uniform if we need it
+uniform bool u_raster_mask_alpha;
+#endif
+
 // Note: the raster accessors below are #defines rather than functions to
 // avoid issues with constant integer expressions for array indices
 
