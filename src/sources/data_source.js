@@ -167,7 +167,7 @@ export default class DataSource {
         // Many Tangram functions assume 256px tiles, this factor adjusts for the
         // case of bigger tile sizes - eg 512px tiles are 1 zoom level bigger,
         // 1024px tiles are 2 levels bigger
-        this.zoom_bias = Math.log2(this.tile_size) - 8 + this.tile_adjust;
+        this.zoom_bias = Math.log2(this.tile_size) - 8 + this.zoom_offset;
     }
 
     // Infer winding for data source from first ring of provided geometry
