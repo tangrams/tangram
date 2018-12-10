@@ -48,9 +48,9 @@ export class RasterTileSource extends NetworkTileSource {
     // Return texture info for a raster tile
     tileTexture (tile) {
         let new_coords = tile.coords;
-        if (this.overzoom !== 0) {
-            // account for any overzoom parameter on the raster datasource
-            new_coords = Tile.coordinateAtZoom({x: tile.coords.x, y: tile.coords.y, z: tile.coords.z}, Math.max(tile.coords.z - this.overzoom, 0));
+        if (this.zoom_offset !== 0) {
+            // account for any zoom_offset parameter on the raster datasource
+            new_coords = Tile.coordinateAtZoom({x: tile.coords.x, y: tile.coords.y, z: tile.coords.z}, Math.max(tile.coords.z - this.zoom_offset, 0));
         }
         let key = new_coords.key;
         if (!this.textures[key]) {
