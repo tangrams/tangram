@@ -44,7 +44,7 @@ export default class Tile {
         this.debug = {};
 
         this.style_zoom = style_zoom; // zoom level to be used for styling
-        this.coords = Tile.normalizedCoordinate(coords, this.source, this.style_zoom);
+        this.coords = Tile.normalizedCoordinate(coords, this.source);
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
         this.overzoom2 = Math.pow(2, this.overzoom);
@@ -80,10 +80,10 @@ export default class Tile {
     }
 
     static normalizedKey (coords, source, style_zoom) {
-        return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source, style_zoom);
+        return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source);
     }
 
-    static normalizedCoordinate (coords, source, style_zoom) {
+    static normalizedCoordinate (coords, source) {
         if (source.zoom_bias) {
             coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
         }
