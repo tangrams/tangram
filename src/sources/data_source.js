@@ -308,7 +308,7 @@ export class NetworkTileSource extends NetworkSource {
         super(source, sources);
 
         this.tiled = true;
-        this.parseBounds(source);
+        this.bounds = this.parseBounds(source);
 
         // indicates if source should build geometry tiles, enabled for sources referenced in the scene's layers,
         // and left disabled for sources that are never referenced, or only used as raster textures
@@ -333,30 +333,36 @@ export class NetworkTileSource extends NetworkSource {
     // Get bounds from source config parameters
     parseBounds (source) {
         if (Array.isArray(source.bounds) && source.bounds.length === 4) {
-            this.bounds = source.bounds;
-            let [w, s, e, n] = this.bounds;
-            this.bounds_meters = {
-                min: Geo.latLngToMeters([w, n]),
-                max: Geo.latLngToMeters([e, s]),
+            const [w, s, e, n] = source.bounds;
+            return {
+                latlng: [...source.bounds],
+                meters: {
+                    min: Geo.latLngToMeters([w, n]),
+                    max: Geo.latLngToMeters([e, s]),
+                },
+                tiles: { // max tile bounds per zoom (lazily evaluated)
+                    min: {},
+                    max: {}
+                }
             };
-            this.bounds_tiles = { min: {}, max: {} }; // max tile bounds per zoom (lazily evaluated)
         }
     }
 
     // Returns false if tile is outside data source's bounds, true if within
-    checkBounds (coords) {
+    checkBounds (coords, bounds) {
         // Check tile bounds
-        if (this.bounds) {
+        if (bounds) {
+            // TODO: check/fix for Alaska
             coords = Geo.wrapTile(coords, { x: true });
 
-            let min = this.bounds_tiles.min[coords.z];
+            let min = bounds.tiles.min[coords.z];
             if (!min) {
-                min = this.bounds_tiles.min[coords.z] = Geo.tileForMeters(this.bounds_meters.min, coords.z);
+                min = bounds.tiles.min[coords.z] = Geo.tileForMeters(bounds.meters.min, coords.z);
             }
 
-            let max = this.bounds_tiles.max[coords.z];
+            let max = bounds.tiles.max[coords.z];
             if (!max) {
-                max = this.bounds_tiles.max[coords.z] = Geo.tileForMeters(this.bounds_meters.max, coords.z);
+                max = bounds.tiles.max[coords.z] = Geo.tileForMeters(bounds.meters.max, coords.z);
             }
 
             if (coords.x < min.x || coords.x > max.x ||
@@ -373,7 +379,7 @@ export class NetworkTileSource extends NetworkSource {
         }
 
         // Check tile bounds
-        if (!this.checkBounds(coords)) {
+        if (!this.checkBounds(coords, this.bounds)) {
             return false;
         }
         return true;
