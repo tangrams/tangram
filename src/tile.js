@@ -80,7 +80,7 @@ export default class Tile {
     }
 
     static normalizedKey (coords, source, style_zoom) {
-        return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source);
+        return Tile.key(Tile.normalizedCoordinate(coords, source), source, style_zoom);
     }
 
     static normalizedCoordinate (coords, source) {
