@@ -49,14 +49,12 @@ export default class DataSource {
         // than the current map zoom level – eg a zoom_offset of 1 would load z3 data at z4
         this.zoom_offset = (config.zoom_offset != null) ? config.zoom_offset : 0;
         if (this.zoom_offset < 0) {
-            let msg = `Data source '${this.name}' zoom_offset must not be negative – setting to 0. `;
+            let msg = `Data source '${this.name}' zoom_offset must not be negative – setting to 0.`;
             log({ level: 'warn', once: true }, msg);
             this.zoom_offset = 0;
         }
 
         this.setTileSize(config.tile_size);
-        // factor in zoom_bias to account for tile sizes > than 256px
-        this.max_coord_zoom = this.max_zoom + this.zoom_bias;
 
         // no tiles will be requested or displayed outside of these min/max values
         this.min_display_zoom = (config.min_display_zoom != null) ? config.min_display_zoom : 0;
@@ -173,6 +171,12 @@ export default class DataSource {
         // case of bigger tile sizes - eg 512px tiles are 1 zoom level bigger,
         // 1024px tiles are 2 levels bigger
         this.zoom_bias = Math.log2(this.tile_size) - 8 + this.zoom_offset;
+
+        // the max/min coordinate zoom level at which tiles will be loaded from server
+        // (but tiles can be styled at other zooms)
+        // zoom_bias adjusts for tile sizes > than 256px, and manual zoom_offset
+        this.max_coord_zoom = this.max_zoom + this.zoom_bias;
+        this.min_coord_zoom = this.zoom_bias;
     }
 
     // Infer winding for data source from first ring of provided geometry
