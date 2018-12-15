@@ -1,147 +1,100 @@
-import Geo from './geo';
 import Tile from './tile';
 
 export default class TilePyramid {
 
     constructor() {
-        this.coords = {};
+        this.tiles = {};
         this.max_proxy_descendant_depth = 3; // # of levels to search up/down for proxy tiles
         this.max_proxy_ancestor_depth = 5;
     }
 
-    sourceTiles(coord, source) {
-        return (
-            this.coords[coord.key] &&
-            this.coords[coord.key].sources &&
-            this.coords[coord.key].sources[source.name]);
-    }
-
     addTile(tile) {
         // Add target tile
-        let key = tile.coords.key;
-        let coord = this.coords[key];
-        if (!coord) {
-            coord = this.coords[key] = { descendants: 0 };
-        }
+        this.tiles[tile.key] = this.tiles[tile.key] || { descendants: 0 };
+        this.tiles[tile.key].tile = tile;
 
-        if (!coord.sources) {
-            coord.sources = {};
-        }
-
-        if (!coord.sources[tile.source.name]) {
-            coord.sources[tile.source.name] = {};
-        }
-        coord.sources[tile.source.name][tile.style_zoom] = tile;
-
-        // Increment reference count up the tile pyramid
-        for (let z = tile.coords.z - 1; z >= 0; z--) {
-            let up = Tile.coordinateAtZoom(tile.coords, z);
-            if (!this.coords[up.key]) {
-                this.coords[up.key] = { descendants: 0 };
+        // Add to parents
+        while (tile.style_zoom >= 0) {
+            tile = Tile.parentInfo(tile);
+            if (!tile) {
+                return;
             }
-            this.coords[up.key].descendants++;
+
+            if (!this.tiles[tile.key]) {
+                this.tiles[tile.key] = { descendants: 0 };
+            }
+            this.tiles[tile.key].descendants++;
         }
     }
 
     removeTile(tile) {
         // Remove target tile
-        let source_tiles = this.sourceTiles(tile.coords, tile.source);
-        let key = tile.coords.key;
+        if (this.tiles[tile.key]) {
+            delete this.tiles[tile.key].tile;
 
-        if (source_tiles) {
-            delete source_tiles[tile.style_zoom];
-            if (Object.keys(source_tiles).length === 0) {
-                // remove source
-                delete this.coords[key].sources[tile.source.name];
-                if (Object.keys(this.coords[key].sources).length === 0) {
-                    delete this.coords[key].sources;
-
-                    if (this.coords[key].descendants === 0) {
-                        // remove whole coord
-                        delete this.coords[key];
-                    }
-                }
+            if (this.tiles[tile.key].descendants === 0) {
+                delete this.tiles[tile.key]; // remove whole tile in tree
             }
         }
 
         // Decrement reference count up the tile pyramid
-        for (let z = tile.coords.z - 1; z >= 0; z--) {
-            let down = Tile.coordinateAtZoom(tile.coords, z);
-            if (this.coords[down.key] && this.coords[down.key].descendants > 0) {
-                this.coords[down.key].descendants--;
-                if (this.coords[down.key].descendants === 0 && !this.coords[down.key].sources) {
-                    delete this.coords[down.key];
+        while (tile.style_zoom >= 0) {
+            tile = Tile.parentInfo(tile);
+            if (!tile) {
+                return;
+            }
+
+            if (this.tiles[tile.key] && this.tiles[tile.key].descendants > 0) {
+                this.tiles[tile.key].descendants--;
+                if (this.tiles[tile.key].descendants === 0 && !this.tiles[tile.key].tile) {
+                    delete this.tiles[tile.key]; // remove whole tile in tree
                 }
             }
         }
     }
 
-    // Find the parent tile for a given point and zoom level
-    getAncestor ({ coords, style_zoom, source }, level = 1) {
-        if (level > this.max_proxy_ancestor_depth) {
-            return;
-        }
-
-        // First check overzoomed tiles at same coordinate zoom
-        if (style_zoom > source.max_coord_zoom) {
-            let source_tiles = this.sourceTiles(coords, source);
-            if (source_tiles) {
-                for (let z = style_zoom - 1; z >= source.max_coord_zoom; z--) {
-                    if (source_tiles[z] && source_tiles[z].loaded) {
-                        return source_tiles[z];
-                    }
-                }
+    // Find the parent tile for a given tile and style zoom level
+    getAncestor (tile) {
+        let level = 0;
+        while (level < this.max_proxy_ancestor_depth) {
+            const last_z = tile.coords.z;
+            tile = Tile.parentInfo(tile);
+            if (!tile) {
+                return;
             }
-            style_zoom = source.max_coord_zoom;
-        }
 
-        // Check tiles at next zoom up
-        style_zoom--;
-        let parent = Tile.coordinateAtZoom(coords, coords.z - 1);
-        let parent_tiles = this.sourceTiles(parent, source);
-        if (parent_tiles && parent_tiles[style_zoom] && parent_tiles[style_zoom].loaded) {
-            return parent_tiles[style_zoom];
-        }
-        // didn't find ancestor, try next level
-        if (parent.z > 0) {
-            return this.getAncestor({ coords: parent, style_zoom, source }, level + 1);
+            if (this.tiles[tile.key] &&
+                this.tiles[tile.key].tile &&
+                this.tiles[tile.key].tile.loaded) {
+                return this.tiles[tile.key].tile;
+            }
+
+            if (tile.coords.z !== last_z) {
+                level++;
+            }
         }
     }
 
-    // Find the descendant tiles for a given point and zoom level
-    getDescendants ({ coords, style_zoom, source }, level = 1) {
+    // Find the descendant tiles for a given tile and style zoom level
+    getDescendants (tile, level = 0) {
         let descendants = [];
+        if (level < this.max_proxy_descendant_depth) {
+            let tiles = Tile.childrenInfo(tile);
+            if (!tiles) {
+                return;
+            }
 
-        // First check overzoomed tiles at same coordinate zoom
-        if (style_zoom >= source.max_coord_zoom) {
-            let source_tiles = this.sourceTiles(coords, source);
-            if (source_tiles) {
-                let search_max_zoom = Math.max(Geo.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
-                for (let z = style_zoom + 1; z <= search_max_zoom; z++) {
-                    if (source_tiles[z] && source_tiles[z].loaded) {
-                        descendants.push(source_tiles[z]);
-                        return descendants;
+            tiles.forEach(t => {
+                if (this.tiles[t.key]) {
+                    if (this.tiles[t.key].tile &&
+                        this.tiles[t.key].tile.loaded) {
+                        descendants.push(this.tiles[t.key].tile);
+                    }
+                    else if (this.tiles[t.key].descendants > 0) { // didn't find any children, try next level
+                        descendants.push(...this.getDescendants(t, level + (t.coords.z !== tile.coords.z)));
                     }
                 }
-            }
-            return descendants;
-        }
-
-        // Check tiles at next zoom down
-        if (this.coords[coords.key] && this.coords[coords.key].descendants > 0) {
-            style_zoom++;
-            const children = Tile.childrenForCoordinate(coords);
-            for (let c=0; c < children.length; c++) {
-                const child = children[c];
-                let child_tiles = this.sourceTiles(child, source);
-                if (child_tiles && child_tiles[style_zoom] && child_tiles[style_zoom].loaded) {
-                    descendants.push(child_tiles[style_zoom]);
-                }
-                // didn't find child, try next level
-                else if (level <= this.max_proxy_descendant_depth && child.z <= source.max_coord_zoom) {
-                    descendants.push(...this.getDescendants({ coords: child, source, style_zoom }, level + 1));
-                }
-            }
+            });
         }
 
         return descendants;

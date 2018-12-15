@@ -128,6 +128,52 @@ export default class Tile {
         return false;
     }
 
+    // Return identifying info for tile's parent tile
+    static parentInfo ({ coords, source, style_zoom }) {
+        if (style_zoom > source.max_coord_zoom || style_zoom <= source.min_coord_zoom) {
+            if (style_zoom > 0) { // no more tiles above style zoom 0
+                return {
+                    key: Tile.key(coords, source, style_zoom - 1),
+                    coords,
+                    style_zoom: style_zoom - 1,
+                    source
+                };
+            }
+            return;
+        }
+        else if (style_zoom > 0) { // no more tiles above style zoom 0
+            const c = Tile.coordinateAtZoom(coords, coords.z - 1);
+            return {
+                key: Tile.key(c, source, style_zoom - 1),
+                coords: c,
+                style_zoom: style_zoom - 1,
+                source
+            };
+        }
+    }
+
+    // Return identifying info for tile's child tiles
+    static childrenInfo ({ coords, source, style_zoom }) {
+        if (style_zoom >= source.max_coord_zoom || style_zoom < source.min_coord_zoom) {
+            return [{
+                key: Tile.key(coords, source, style_zoom + 1),
+                coords,
+                style_zoom: style_zoom + 1,
+                source
+            }];
+        }
+
+        const children = Tile.childrenForCoordinate(coords);
+        return children.map(c => {
+            return {
+                key: Tile.key(c, source, style_zoom + 1),
+                coords: c,
+                style_zoom: style_zoom + 1,
+                source
+            };
+        });
+    }
+
     // Free resources owned by tile
     freeResources () {
         for (let m in this.meshes) {

@@ -27,65 +27,49 @@ describe('TilePyramid', function() {
                 source,
                 loaded: true
             };
+            tile.key = Tile.key(tile.coords, source, style_zoom);
         });
 
         it('creates one entry per zoom', () => {
             pyramid.addTile(tile);
-            assert.equal(Object.keys(pyramid.coords).length, coords.z + 1);
+
+            assert.equal(Object.keys(pyramid.tiles).length, coords.z + 1);
         });
 
         it('creates one entry for non-overzoomed tile', () => {
             pyramid.addTile(tile);
 
-            let entries = pyramid.coords[tile.coords.key].sources[tile.source.name];
-            assert.equal(Object.keys(entries).length, 1);
+            assert.isNotNull(pyramid.tiles[tile.key]);
         });
 
-        it('creates one entry for an overzoomed tile', () => {
+        it('creates entries for overzoomed tiles', () => {
             tile = Object.assign({}, tile);
             tile.coords = Tile.coordinateAtZoom(coords, 18);
             tile.style_zoom = 20;
             pyramid.addTile(tile);
 
-            let entries = pyramid.coords[tile.coords.key].sources[tile.source.name];
-            assert.equal(Object.keys(entries).length, 1);
-        });
-
-        it('creates additional entries for overzoomed tiles', () => {
-            tile = Object.assign({}, tile);
-            tile.coords = Tile.coordinateAtZoom(coords, 18);
-            tile.style_zoom = 19;
-            pyramid.addTile(tile);
-
-            tile = Object.assign({}, tile);
-            tile.style_zoom = 20;
-            pyramid.addTile(tile);
-
-            let entries = pyramid.coords[tile.coords.key].sources[tile.source.name];
-            assert.equal(Object.keys(entries).length, 2);
+            assert.isNotNull(pyramid.tiles[Tile.key(tile.coords, source, tile.style_zoom)]);
         });
 
         it('removes all entries for single tile', () => {
             pyramid.addTile(tile);
             pyramid.removeTile(tile);
-            assert.equal(Object.keys(pyramid.coords).length, 0);
+
+            assert.equal(Object.keys(pyramid.tiles).length, 0);
         });
 
         it('gets tile ancestor', () => {
             pyramid.addTile(tile);
-            tile = Object.assign({}, tile);
-            tile.coords = Tile.coordinateAtZoom(tile.coords, tile.coords.z + 2);
-            tile.style_zoom = tile.coords.z;
             let ancestor = pyramid.getAncestor(tile);
+
             assert.isNotNull(ancestor);
         });
 
         it('gets tile descendant', () => {
             pyramid.addTile(tile);
-            tile = Object.assign({}, tile);
-            tile.coords = Tile.coordinateAtZoom(tile.coords, tile.coords.z - 2);
-            tile.style_zoom = tile.coords.z;
-            let descendants = pyramid.getDescendants(tile);
+            let ancestor = Tile.parentInfo(Tile.parentInfo(tile));
+            let descendants = pyramid.getDescendants(ancestor);
+
             assert.equal(descendants.length, 1);
         });
 
