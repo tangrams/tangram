@@ -4,8 +4,8 @@ export default class TilePyramid {
 
     constructor() {
         this.tiles = {};
-        this.max_proxy_descendant_depth = 3; // # of levels to search up/down for proxy tiles
-        this.max_proxy_ancestor_depth = 5;
+        this.max_proxy_descendant_depth = 6; // # of levels to search up/down for proxy tiles
+        this.max_proxy_ancestor_depth = 7;
     }
 
     addTile(tile) {
