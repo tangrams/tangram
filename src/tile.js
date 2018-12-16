@@ -85,12 +85,13 @@ export default class Tile {
 
     static normalizedCoordinate (coords, source) {
         if (source.zoom_bias) {
-            coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
+            coords = Tile.coordinateAtZoom(coords, coords.z - source.zoom_bias);
         }
         return Tile.coordinateWithMaxZoom(coords, source.max_zoom);
     }
 
     static coordinateAtZoom({x, y, z}, zoom) {
+        zoom = Math.max(0, zoom); // zoom can't go below zero
         if (z !== zoom) {
             let zscale = Math.pow(2, z - zoom);
             x = Math.floor(x / zscale);
@@ -101,7 +102,7 @@ export default class Tile {
     }
 
     static coordinateWithMaxZoom({x, y, z}, max_zoom) {
-        if (max_zoom !== undefined && z > max_zoom) {
+        if (max_zoom != null && z > max_zoom) {
             return Tile.coordinateAtZoom({x, y, z}, max_zoom);
         }
         return Tile.coord({x, y, z});
