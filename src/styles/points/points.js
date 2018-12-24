@@ -327,7 +327,6 @@ Object.assign(Points, {
             let style = q.style;
             let feature = q.feature;
             let geometry = feature.geometry;
-
             let feature_labels = this.buildLabels(style.size, geometry, style);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];
@@ -861,9 +860,11 @@ Object.assign(Points, {
         return geom_count;
     },
 
-    // track mesh data for label (byte ranges occupied by label in VBO)
+    // track mesh data for label on main thread, for additional cross-tile collision/repeat passes
     trackLabel (label, linked, mesh, geom_count, context) {
-        if (label.layout.collide) {
+        // track if collision is enabled, or if the label is near enough to the tile edge to
+        // necessitate further repeat checking
+        if (label.layout.collide || label.may_repeat_across_tiles) {
             mesh.labels = mesh.labels || {};
             mesh.labels[label.id] = mesh.labels[label.id] || {
                 container: {
@@ -879,6 +880,7 @@ Object.assign(Points, {
                 // }
             };
 
+            // store byte ranges occupied by label in VBO, so they can be updated on main thread
             const vertex_count = geom_count * 2; // geom count is triangles: 2 triangles = 1 quad = 4 vertices
             const start = mesh.vertex_data.offset - mesh.vertex_data.stride * vertex_count; // start offset of byte range
             mesh.labels[label.id].ranges.push([

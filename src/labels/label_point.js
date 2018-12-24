@@ -1,6 +1,5 @@
 import Label from './label';
 import PointAnchor from './point_anchor';
-import Geo from '../geo';
 import OBB from '../utils/obb';
 import StyleParser from '../styles/style_parser';
 
@@ -63,41 +62,14 @@ export default class LabelPoint extends Label {
 
         this.obb = new OBB(p[0], p[1], 0, width, height);
         this.aabb = this.obb.getExtent();
+
         if (this.inTileBounds) {
             this.breach = !this.inTileBounds();
         }
-    }
 
-    // Try to move the label into the tile bounds
-    // Returns true if label was moved into tile, false if it couldn't be moved
-    moveIntoTile () {
-        let updated = false;
-
-        if (this.aabb[0] < 0) {
-            this.position[0] += -this.aabb[0];
-            updated = true;
+        if (this.mayRepeatAcrossTiles) {
+            this.may_repeat_across_tiles = this.mayRepeatAcrossTiles();
         }
-
-        if (this.aabb[2] >= Geo.tile_scale) {
-            this.position[0] -= this.aabb[2] - Geo.tile_scale + 1;
-            updated = true;
-        }
-
-        if (this.aabb[3] > 0) {
-            this.position[1] -= this.aabb[3];
-            updated = true;
-        }
-
-        if (this.aabb[1] <= -Geo.tile_scale) {
-            this.position[1] -= this.aabb[1] + Geo.tile_scale - 1;
-            updated = true;
-        }
-
-        if (updated) {
-            this.updateBBoxes();
-        }
-
-        return updated;
     }
 
     discard (bboxes, exclude = null) {

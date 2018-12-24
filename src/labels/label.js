@@ -2,6 +2,7 @@ import PointAnchor from './point_anchor';
 import {boxIntersectsList} from './intersect';
 import Utils from '../utils/utils';
 import OBB from '../utils/obb';
+import Geo from '../geo';
 // import log from '../utils/log';
 
 export default class Label {
@@ -32,6 +33,7 @@ export default class Label {
             size: this.size,
             offset: this.offset,
             breach: this.breach,
+            may_repeat_across_tiles: this.may_repeat_across_tiles,
             layout: textLayoutToJSON(this.layout)
         };
     }
@@ -85,6 +87,22 @@ export default class Label {
         }
 
         return true;
+    }
+
+    // some labels need further repeat culling checks on the main thread
+    // checks whether the label is within its repeat distance of the tile boundaries
+    mayRepeatAcrossTiles () {
+        if (this.layout.collide) {
+            return true; // additional collision pass will already apply, so skip further distance checks
+        }
+
+        const dist = this.layout.repeat_distance;
+        if (dist === 0) {
+            return false;
+        }
+
+        return (Math.abs(this.position[0]) < dist ||  Math.abs(this.position[0] - Geo.tile_scale) < dist) ||
+               (Math.abs(this.position[1]) < dist ||  Math.abs(-(this.position[1] - Geo.tile_scale)) < dist);
     }
 
     // Whether the label should be discarded
