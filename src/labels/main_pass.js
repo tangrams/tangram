@@ -156,7 +156,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
 }
 
 // Generic discard function for labels, does simple occlusion with one or more bounding boxes
-// (no additional logic to try alternate anchors or other layour options, etc.)
+// (no additional logic to try alternate anchors or other layout options, etc.)
 function discard (bboxes, exclude = null) {
     if (this.obb) { // single collision box
         return Label.prototype.occluded.call(this, bboxes, exclude);

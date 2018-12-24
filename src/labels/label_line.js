@@ -72,6 +72,7 @@ export class LabelLineBase {
             offset: this.offset,
             angle: this.angle,
             breach: this.breach,
+            may_repeat_across_tiles: this.may_repeat_across_tiles,
             layout: textLayoutToJSON(this.layout)
         };
     }
@@ -334,8 +335,13 @@ export class LabelLineStraight extends LabelLineBase {
 
         this.obbs.push(obb);
         this.aabbs.push(aabb);
+
         if (this.inTileBounds) {
             this.breach = !this.inTileBounds();
+        }
+
+        if (this.mayRepeatAcrossTiles) {
+            this.may_repeat_across_tiles = this.mayRepeatAcrossTiles();
         }
     }
 }
@@ -365,6 +371,7 @@ class LabelLineCurved extends LabelLineBase {
             obbs: this.obbs.map(o => o.toJSON()),
             position: this.position,
             breach: this.breach,
+            may_repeat_across_tiles: this.may_repeat_across_tiles,
             layout: textLayoutToJSON(this.layout)
         };
     }

@@ -120,6 +120,12 @@ export default Collision = {
                                 object.linked.label.breach = true;
                             }
 
+                            // Similarly for labels that need main thread repeat culling, keep linked labels in sync
+                            if (object.label.may_repeat_across_tiles || object.linked.label.may_repeat_across_tiles) {
+                                object.label.may_repeat_across_tiles = true;
+                                object.linked.label.may_repeat_across_tiles = true;
+                            }
+
                             labels[style].push(object);
                             this.place(object, tile, state);
                             this.place(object.linked, tile, state);
