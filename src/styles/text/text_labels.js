@@ -304,6 +304,12 @@ export const TextLabels = {
             StyleParser.parsePositiveNumber
         );
 
+        // Repeat group - if not defined, use layer names
+        // (but only if available - will be null for text attached to a point, and will inherit point's repeat group)
+        if (draw.repeat_group == null && draw.layers != null) {
+            draw.repeat_group = draw.layers.join('-');
+        }
+
         return draw;
     },
 
