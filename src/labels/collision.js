@@ -154,10 +154,8 @@ export default Collision = {
         // Test the label for intersections with other labels in the tile
         let bboxes = this.tiles[tile].bboxes;
         if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
-            // check for repeats
-            let is_repeat = repeat && RepeatGroup.check(label, layout, tile);
-            if (is_repeat) {
-                // log('trace', `hide label '${label.text}', dist ${Math.sqrt(is_repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(is_repeat.repeat_dist_sq)/layout.units_per_pixel}`);
+            // repeat culling with nearby labels
+            if (repeat && RepeatGroup.check(label, layout, tile)) {
                 label.placed = false;
             }
             else {
