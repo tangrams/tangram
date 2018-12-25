@@ -139,6 +139,8 @@
                     '<div class="featureCell">' + feature.properties[p] + '</div></div>';
             }
         });
+        info += '<div class="featureRow"><div class="featureCell"><b>scene layers</b></div>' +
+                '<div class="featureCell">' + feature.layers.join('<br>') + '</div></div>';
         info += '</div>';
         return info;
     }
