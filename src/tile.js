@@ -349,7 +349,7 @@ export default class Tile {
                     }
                 })
                 .catch((e) => {
-                    log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e.stack);
+                    log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e);
                 });
             }
         }
@@ -504,8 +504,8 @@ export default class Tile {
             this.new_mesh_styles = [];
 
             this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
-            this.printDebug();
         }
+        this.printDebug(progress);
     }
 
     // How many styles are currently pending label collision
@@ -637,7 +637,8 @@ export default class Tile {
         return this;
     }
 
-    printDebug (exclude = ['layers']) {
+    printDebug (progress) {
+        const exclude = ['layers'];
         let copy = {};
         for (let key in this.debug) {
             if (exclude.indexOf(key) === -1) {
@@ -645,7 +646,7 @@ export default class Tile {
             }
         }
 
-        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
+        log('debug', `Tile ${progress.done ? '(done)' : ''}: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
     }
 
     // Sum up layer feature/geometry stats from a set of tiles
