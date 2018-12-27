@@ -9,6 +9,8 @@ import log from '../utils/log';
 export default class DataSource {
 
     constructor (config, sources) {
+        this.validate(config);
+
         this.config = config; // save original config
         this.sources = sources; // full set of data sources TODO: centralize these like textures?
         this.id = config.id;
@@ -218,6 +220,9 @@ export default class DataSource {
         return true;
     }
 
+    validate (source) {
+    }
+
 }
 
 DataSource.types = {}; // set of supported data source classes, referenced by type name
@@ -232,10 +237,6 @@ export class NetworkSource extends DataSource {
     constructor (source, sources) {
         super(source, sources);
         this.response_type = ""; // use to set explicit XHR type
-
-        if (typeof source.url !== 'string') {
-            throw Error('Network data source must provide a string `url` property');
-        }
 
         // Add extra URL params, and warn on duplicates
         let [url, dupes] = URLs.addParamsToURL(source.url, source.url_params);
@@ -253,7 +254,7 @@ export class NetworkSource extends DataSource {
     }
 
     _load (dest) {
-        let url = this.formatUrl(this.url, dest);
+        let url = this.formatURL(this.url, dest);
 
         let source_data = dest.source_data;
         source_data.url = url;
@@ -297,10 +298,16 @@ export class NetworkSource extends DataSource {
         });
     }
 
+    validate (source) {
+        if (typeof source.url !== 'string') {
+            throw Error('Network data source must provide a string `url` property');
+        }
+    }
+
     // Sub-classes must implement:
 
-    formatUrl (url_template, dest) {
-        throw new MethodNotImplemented('formatUrl');
+    formatURL (url_template, dest) {
+        throw new MethodNotImplemented('formatURL');
     }
 
     parseSourceData (dest, source, reponse) {
@@ -326,7 +333,7 @@ export class NetworkTileSource extends NetworkSource {
         this.tms = (source.tms === true); // optionally flip tile coords for TMS
 
         // optional list of subdomains to round-robin through
-        if (this.url.search('{s}') > -1) {
+        if (this.url && this.url.search('{s}') > -1) {
             if (Array.isArray(source.url_subdomains) && source.url_subdomains.length > 0) {
                 this.url_subdomains = source.url_subdomains;
                 this.next_url_subdomain = 0;
@@ -394,7 +401,7 @@ export class NetworkTileSource extends NetworkSource {
         return true;
     }
 
-    formatUrl(url_template, tile) {
+    formatURL(url_template, tile) {
         let coords = Geo.wrapTile(tile.coords, { x: true });
 
         if (this.tms) {

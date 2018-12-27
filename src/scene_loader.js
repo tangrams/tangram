@@ -106,6 +106,12 @@ export default SceneLoader = {
     normalizeDataSource(source, bundle) {
         source.url = bundle.urlFor(source.url);
 
+        // composite untiled raster sources
+        if (Array.isArray(source.composite)) {
+            source.composite.forEach(c => c.url = bundle.urlFor(c.url));
+        }
+
+        // custom scripts
         if (source.scripts) {
             // convert legacy array-style scripts to object format (script URL is used as both key and value)
             if (Array.isArray(source.scripts)) {

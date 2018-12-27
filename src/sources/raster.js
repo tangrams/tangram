@@ -4,6 +4,8 @@ import Tile from '../tile';
 import Geo from '../geo';
 import Utils from '../utils/utils';
 
+// TODO: support high-density `@2x`-style filenames for raster tiles and geo-referenced images
+
 export class RasterTileSource extends NetworkTileSource {
 
     constructor (source, sources) {
@@ -52,7 +54,7 @@ export class RasterTileSource extends NetworkTileSource {
         let coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
         let key = coords.key;
         if (!this.textures[key]) {
-            let url = this.formatUrl(this.url, { coords });
+            let url = this.formatURL(this.url, { coords });
             this.textures[key] = {
                 name: url,
                 url,
@@ -74,9 +76,33 @@ export class RasterSource extends RasterTileSource {
     constructor (source, sources) {
         super(source, sources);
 
-        // TODO: require `bounds` param, log warning
-        this.load_image = null; // resolves to image, cached for life of data source
-        this.mask_alpha = true; // non-full-alpha pixels should be discarded (for rendering rasters w/opaque blend)
+        this.load_image = {}; // resolves to image, cached for life of data source
+
+        // alpha factor applied at time raster images are loaded and tiled (*not* at shader render-time)
+        this.alpha = (source.alpha != null) ? Math.max(Math.min(source.alpha, 1), 0) : null;
+
+        // non-full-alpha pixels should be discarded (for rendering rasters w/opaque blend)
+        this.mask_alpha = true;
+
+        // Optionally composite multiple images into one raster layer
+        if (Array.isArray(source.composite)) {
+            // TODO: calculate enclosing bounding box to speed tile intersection checks
+            this.images = source.composite.map(s => {
+                return {
+                    url: s.url,
+                    bounds: this.parseBounds(s),
+                    alpha: (s.alpha != null) ? Math.max(Math.min(s.alpha, 1), 0) : null
+                };
+            })
+        }
+        // Single image raster layer
+        else {
+            this.images = [{
+                url: this.url,
+                bounds: this.bounds,
+                alpha: this.alpha
+            }];
+        }
     }
 
     // Render the sub-rectangle of the source raster image for the given tile, to a texture.
@@ -84,9 +110,10 @@ export class RasterSource extends RasterTileSource {
     // (which may be large or only have a small portion in current view), and maintains
     // consistency with the raster tile pipeline allowing for sampling within the fragment shader,
     // and clipping the raster against vector source data.
-    async tileTexture (tile) {
+    async tileTexture (tile, { blend }) {
         const coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
-        const name = `raster-${this.name}-${coords.key}`; // unique texture name
+        const use_alpha = (blend !== 'opaque'); // ignore source alpha multiplier with opaque blending
+        const name = `raster-${this.name}-${coords.key}-${use_alpha ? 'alpha' : 'opaque'}`; // unique texture name
 
         // Display density, with extra 2x for better intra-zoom scaling, because raster tiles
         // can be scaled up to 100% before next zoom level is loaded
@@ -97,29 +124,17 @@ export class RasterSource extends RasterTileSource {
         canvas.width = this.tile_size * dpr; // adjusted for display density
         canvas.height = this.tile_size * dpr;
 
-        // Get source raster image
-        this.load_image = this.load_image || this.loadImage(this.url);
-        const image = await this.load_image;
+        // Applies nearest neighbor filtering to the canvas image rendering when data source requests it
+        // NB: does not work on IE11 (image will be blurry when scaled)
+        ctx.imageSmoothingEnabled = (this.filtering !== 'nearest');
 
-        // Meters per pixel for this zoom, adjusted for display density and source tile size (e.g. 512px tiles)
-        const mpp = Geo.metersPerPixel(tile.coords.z) / dpr / (this.tile_size / Geo.tile_size);
-
-        // Raster origin relative to tile origin (get delta in meters, then convert to pixels)
-        const dx = (this.bounds_meters.min[0] - tile.min.x) / mpp;
-        const dy = -(this.bounds_meters.min[1] - tile.min.y) / mpp;
-
-        // Raster size in pixels for current zoom
-        const sx = (this.bounds_meters.max[0] - this.bounds_meters.min[0]) / mpp;
-        const sy = -(this.bounds_meters.max[1] - this.bounds_meters.min[1]) / mpp;
-
-        // Draw the raster, clipped to the current tile
-        // NB: this is drawing the *whole* raster, no matter how large, and relying on the native Canvas clipping.
-        // May want to benchmark with a pre-clipped draw area, though the native implementation is likely fast,
-        // and has to apply its own clipping check anyway.
-        ctx.drawImage(image, dx, dy, sx, sy);
-
-        // TODO: can we use canvas filtering options in lieu of (in addition to) GL ones
-        // otherwise 'nearest' filtering doesn't generate expected results
+        // Draw one or more images
+        const images = this.images.filter(r => this.checkBounds(tile.coords, r.bounds));
+        await Promise.all(images.map(i => {
+            // TODO: log warning if alpha specified but will be ignored (in opaque mode)?
+            const alpha = (use_alpha ? (i.alpha != null ? i.alpha : this.alpha) : 1);
+            return this.drawImage(i.url, i.bounds, alpha, tile, dpr, ctx);
+        }));
 
         // texture config
         return {
@@ -129,6 +144,31 @@ export class RasterSource extends RasterTileSource {
             coords,
             UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
         };
+    }
+
+    // Draw a single image to the tile canvas based on on its bounds
+    async drawImage (url, bounds, alpha, tile, dpr, ctx) {
+        // Get source raster image
+        this.load_image[url] = this.load_image[url] || this.loadImage(url);
+        const image = await this.load_image[url];
+
+        // Meters per pixel for this zoom, adjusted for display density and source tile size (e.g. 512px tiles)
+        const mpp = Geo.metersPerPixel(tile.coords.z) / dpr / (this.tile_size / Geo.tile_size);
+
+        // Raster origin relative to tile origin (get delta in meters, then convert to pixels)
+        const dx = (bounds.meters.min[0] - tile.min.x) / mpp;
+        const dy = -(bounds.meters.min[1] - tile.min.y) / mpp;
+
+        // Raster size in pixels for current zoom
+        const sx = (bounds.meters.max[0] - bounds.meters.min[0]) / mpp;
+        const sy = -(bounds.meters.max[1] - bounds.meters.min[1]) / mpp;
+
+        // Draw the raster, clipped to the current tile
+        // NB: this is drawing the *whole* raster, no matter how large, and relying on the native Canvas clipping.
+        // May want to benchmark with a pre-clipped draw area, though the native implementation is likely fast,
+        // and has to apply its own clipping check anyway.
+        ctx.globalAlpha = (alpha != null) ? alpha : 1;
+        ctx.drawImage(image, dx, dy, sx, sy);
     }
 
     // Load source raster image
@@ -152,9 +192,55 @@ export class RasterSource extends RasterTileSource {
         });
     }
 
+    // Checks if tile interects any rasters in this source
+    includesTile (coords, style_zoom) {
+        // Checks zoom range and dependent rasters
+        if (!DataSource.prototype.includesTile.call(this, coords, style_zoom)) {
+            return false;
+        }
+
+        return this.images.some(r => this.checkBounds(coords, r.bounds)); // check if any images intersect
+    }
+
+    validate (source) {
+        const is_composite = Array.isArray(source.composite);
+
+        let url_msg = 'Raster data source must provide a string `url` parameter, or an array of `composite` raster ';
+        url_msg += 'image objects that each have a `url` parameter';
+
+        let bounds_msg = 'Raster data source must provide a `bounds` parameter, or an array of `composite` raster ';
+        bounds_msg += 'image objects that each have a `bounds` parameter';
+
+        let mutex_msg = 'Raster data source must have *either* a single image specified as `url` and `bounds `';
+        mutex_msg += 'parameters, or an array of `composite` raster image objects, each with `url` and `bounds`.';
+
+        if (is_composite) {
+            if (source.composite.some(s => typeof s.url !== 'string')) {
+                throw Error(url_msg);
+            }
+
+            if (source.composite.some(s => !(Array.isArray(s.bounds) && s.bounds.length === 4))) {
+                throw Error(bounds_msg);
+            }
+
+            if (source.url != null || source.bounds != null) {
+                throw Error(mutex_msg);
+            }
+        }
+        else {
+            if (typeof source.url !== 'string') {
+                throw Error(url_msg);
+            }
+
+            if (!(Array.isArray(source.bounds) && source.bounds.length === 4)) {
+                throw Error(bounds_msg);
+            }
+        }
+    }
+
 }
 
-// Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
+// Check for URL tile pattern, if not found, treat as geo-referenced raster layer
 DataSource.register('Raster', source => {
     return RasterTileSource.urlHasTilePattern(source.url) ? RasterTileSource : RasterSource;
 });

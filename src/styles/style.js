@@ -649,7 +649,7 @@ export var Style = {
         // Find raster textures that need to be loaded
         tile.rasters.map(r => this.sources[r]).filter(x => x).forEach((source, i) => {
             if (source instanceof RasterTileSource) {
-                queue.push(source.tileTexture(tile).then(config => {
+                queue.push(source.tileTexture(tile, this).then(config => {
                     configs[config.name] = config;
                     index[config.name] = i;
                 }));
