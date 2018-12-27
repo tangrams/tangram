@@ -2,6 +2,7 @@
 import Geo from '../geo';
 import {MethodNotImplemented} from '../utils/errors';
 import Utils from '../utils/utils';
+import sliceObject from '../utils/slice';
 import * as URLs from '../utils/urls';
 import log from '../utils/log';
 
@@ -74,14 +75,22 @@ export default class DataSource {
         }
     }
 
-    // Check if a data source definition changed
-    static changed (source, prev_source) {
+    // Check if a data source definition changed in a way that could affect which tiles are in view
+    static tileLayoutChanged (source, prev_source) {
         if (!source || !prev_source) {
             return true;
         }
 
-        let cur = Object.assign({}, source.config, { id: null }); // null out ids since we don't want to compare them
-        let prev = Object.assign({}, prev_source.config, { id: null });
+        // subset of parameters that affect tile layout
+        const rebuild_params = [
+            'max_zoom',
+            'min_display_zoom',
+            'max_display_zoom',
+            'bounds',
+            'tile_size'
+        ];
+        const cur = sliceObject(source.config, rebuild_params);
+        const prev = sliceObject(prev_source.config, rebuild_params);
 
         return JSON.stringify(cur) !== JSON.stringify(prev);
     }

@@ -982,16 +982,16 @@ export default class Scene {
     }
 
     createDataSources() {
-        let reset = []; // sources to reset
-        let prev_source_names = Object.keys(this.sources);
+        const reset = []; // sources to reset
+        const prev_source_names = Object.keys(this.sources);
         let source_id = 0;
 
         for (var name in this.config.sources) {
-            let source = this.config.sources[name];
-            let prev_source = this.sources[name];
+            const source = this.config.sources[name];
+            const prev_source = this.sources[name];
 
             try {
-                let config = Object.assign({}, source, { name, id: source_id++ });
+                const config = { ...source, name, id: source_id++ };
                 this.sources[name] = DataSource.create(config, this.sources);
                 if (!this.sources[name]) {
                     throw {};
@@ -999,13 +999,14 @@ export default class Scene {
             }
             catch(e) {
                 delete this.sources[name];
-                let message = `Could not create data source: ${e.message}`;
+                const message = `Could not create data source: ${e.message}`;
                 log('warn', `Scene: ${message}`, source);
                 this.trigger('warning', { type: 'sources', source, message });
             }
 
-            // Data source changed?
-            if (DataSource.changed(this.sources[name], prev_source)) {
+            // Data source changed in a way that affects tile layout?
+            // If so, we'll re-calculate the tiles in view for this source and rebuild them
+            if (DataSource.tileLayoutChanged(this.sources[name], prev_source)) {
                 reset.push(name);
             }
         }
@@ -1025,8 +1026,7 @@ export default class Scene {
             });
         }
 
-        // Mark sources that will generate geometry tiles
-        // (all except those that are only raster sources attached to other sources)
+        // Mark sources that will generate geometry tiles (any that are referenced in scene layers)
         for (let ln in this.config.layers) {
             let layer = this.config.layers[ln];
             if (layer.enabled !== false && layer.data && this.sources[layer.data.source]) {
