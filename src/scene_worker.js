@@ -110,13 +110,15 @@ const SceneWorker = Object.assign(self, {
         let changed = [];
 
         // Parse new sources
-        config.sources = compileFunctionStrings(config.sources);
         this.sources = {}; // clear previous sources
         for (let name in config.sources) {
             if (JSON.stringify(this.last_config_sources[name]) === JSON.stringify(config.sources[name])) {
                 this.sources[name] = last_sources[name];
                 continue;
             }
+
+            // compile any user-defined JS functions
+            config.sources[name] = compileFunctionStrings(config.sources[name]);
 
             let source;
             try {
