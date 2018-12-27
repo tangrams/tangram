@@ -159,31 +159,31 @@ export default class Scene {
                 this.last_valid_options = { base_path: options.base_path, file_type: options.file_type };
 
                 this.requestRedraw();
-        }).catch(error => {
-            this.initializing = null;
-            this.updating = 0;
+            }).catch(error => {
+                this.initializing = null;
+                this.updating = 0;
 
-            // Report and revert to last valid config if available
-            let type, message;
-            if (error.name === 'YAMLException') {
-                type = 'yaml';
-                message = 'Error parsing scene YAML';
-            }
-            else {
+                // Report and revert to last valid config if available
+                let type, message;
+                if (error.name === 'YAMLException') {
+                    type = 'yaml';
+                    message = 'Error parsing scene YAML';
+                }
+                else {
                 // TODO: more error types
-                message = 'Error initializing scene';
-            }
-            this.trigger('error', { type, message, error, url: this.config_source });
+                    message = 'Error initializing scene';
+                }
+                this.trigger('error', { type, message, error, url: this.config_source });
 
-            message = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
-            if (this.last_valid_config_source) {
-                log('warn', message, error);
-                log('info', `Scene.load() reverting to last valid configuration`);
-                return this.load(this.last_valid_config_source, this.last_valid_base_path);
-            }
-            log('error', message, error);
-            throw error;
-        });
+                message = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
+                if (this.last_valid_config_source) {
+                    log('warn', message, error);
+                    log('info', 'Scene.load() reverting to last valid configuration');
+                    return this.load(this.last_valid_config_source, this.last_valid_base_path);
+                }
+                log('error', message, error);
+                throw error;
+            });
 
         return this.initializing;
     }
@@ -249,9 +249,9 @@ export default class Scene {
         }
         catch(e) {
             throw new Error(
-                "Couldn't create WebGL context. " +
-                "Your browser may not support WebGL, or it's turned off? " +
-                "Visit http://webglreport.com/ for more info."
+                'Couldn\'t create WebGL context. ' +
+                'Your browser may not support WebGL, or it\'s turned off? ' +
+                'Visit http://webglreport.com/ for more info.'
             );
         }
 
@@ -310,12 +310,12 @@ export default class Scene {
     // Instantiate workers from URL, init event handlers
     makeWorkers() {
         // Let VertexElements know if 32 bit indices for element arrays are available
-        let has_element_index_uint = this.gl.getExtension("OES_element_index_uint") ? true : false;
+        let has_element_index_uint = this.gl.getExtension('OES_element_index_uint') ? true : false;
 
         let queue = [];
         this.workers = [];
         for (let id=0; id < this.num_workers; id++) {
-            let worker = new Worker(Tangram.workerURL); // jshint ignore:line
+            let worker = new Worker(Tangram.workerURL); // eslint-disable-line no-undef
             this.workers[id] = worker;
 
             WorkerBroker.addWorker(worker);
@@ -354,7 +354,7 @@ export default class Scene {
     // Scene is ready for rendering
     ready() {
         if (!this.view.ready() || Object.keys(this.sources).length === 0) {
-             return false;
+            return false;
         }
         return true;
     }
@@ -593,7 +593,7 @@ export default class Scene {
             Math.max(...renderable_tiles.map(t => {
                 return t.meshes[style_name] ?
                     Math.max(...t.meshes[style_name].map(m => m.variant.order)) : -1;
-                })
+            })
             );
 
         // One pass per mesh variant order (loop goes to max value +1 because 0 is a valid order value)
@@ -750,7 +750,7 @@ export default class Scene {
     // Request feature selection at given pixel. Runs async and returns results via a promise.
     getFeatureAt(pixel, { radius } = {}) {
         if (!this.initialized) {
-            log('debug', "Scene.getFeatureAt() called before scene was initialized");
+            log('debug', 'Scene.getFeatureAt() called before scene was initialized');
             return Promise.resolve();
         }
 
@@ -853,7 +853,7 @@ export default class Scene {
                 // Save queued request
                 let options = { initial, new_generation, sources, serialize_funcs, profile, fade_in };
                 this.building.queued = { resolve, reject, options };
-                log('trace', `Scene.rebuild(): queuing request`);
+                log('trace', 'Scene.rebuild(): queuing request');
                 return;
             }
 
@@ -902,7 +902,7 @@ export default class Scene {
         CanvasText.pruneTextCache();
 
         if (this.building) {
-            log('info', `Scene: build geometry finished`);
+            log('info', 'Scene: build geometry finished');
             if (this.building.resolve) {
                 this._logFirstBuild();
                 this.building.resolve(true);
@@ -912,7 +912,7 @@ export default class Scene {
             var queued = this.building.queued;
             this.building = null;
             if (queued) {
-                log('debug', `Scene: starting queued rebuild() request`);
+                log('debug', 'Scene: starting queued rebuild() request');
                 this.rebuild(queued.options).then(queued.resolve, queued.reject);
             }
             else {
@@ -961,7 +961,7 @@ export default class Scene {
     //
     setDataSource (name, config) {
         if (!name || !config || !config.type || (!config.url && !config.data)) {
-            log('error', "No name provided or not a valid config:", name, config);
+            log('error', 'No name provided or not a valid config:', name, config);
             return;
         }
 
@@ -1063,8 +1063,8 @@ export default class Scene {
     get animated () {
         // Disable animation is scene flag requests it, otherwise enable animation if any animated styles are in view
         return (this.config.scene.animated === false ?
-                false :
-                this.tile_manager.getActiveStyles().some(s => this.styles[s].animated));
+            false :
+            this.tile_manager.getActiveStyles().some(s => this.styles[s].animated));
     }
 
     // Get active camera - for public API
@@ -1298,12 +1298,12 @@ export default class Scene {
 
     // Profile helpers, issues a profile on main thread & all workers
     _profile(name) {
-        console.profile(`main thread: ${name}`);
+        console.profile(`main thread: ${name}`); // eslint-disable-line no-console
         WorkerBroker.postMessage(this.workers, 'self.profile', name);
     }
 
     _profileEnd(name) {
-        console.profileEnd(`main thread: ${name}`);
+        console.profileEnd(`main thread: ${name}`); // eslint-disable-line no-console
         WorkerBroker.postMessage(this.workers, 'self.profileEnd', name);
     }
 
@@ -1416,7 +1416,7 @@ export default class Scene {
                     return Tile.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
                 }
                 else {
-                    log('warn', `Enable the 'layer_stats' debug setting to collect layer stats`);
+                    log('warn', 'Enable the \'layer_stats\' debug setting to collect layer stats');
                     return {};
                 }
             },

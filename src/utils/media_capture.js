@@ -128,7 +128,7 @@ export default class MediaCapture {
             cap.media_recorder = new MediaRecorder(cap.stream, cap.options);
             cap.media_recorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
-                   cap.chunks.push(event.data);
+                    cap.chunks.push(event.data);
                 }
 
                 // Stopped recording? Create the final capture file blob

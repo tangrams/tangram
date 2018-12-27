@@ -2,9 +2,9 @@ import Label from './label';
 import RepeatGroup from './repeat_group';
 import log from '../utils/log';
 
-var Collision;
+export default Collision;
 
-export default Collision = {
+const Collision = {
 
     tiles: {},
 

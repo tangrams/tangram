@@ -24,17 +24,17 @@ export default class VertexLayout {
                 let shift = 0;
 
                 switch (attrib.type) {
-                    case gl.FLOAT:
-                    case gl.INT:
-                    case gl.UNSIGNED_INT:
-                        attrib.byte_size *= 4;
-                        shift = 2;
-                        break;
-                    case gl.SHORT:
-                    case gl.UNSIGNED_SHORT:
-                        attrib.byte_size *= 2;
-                        shift = 1;
-                        break;
+                case gl.FLOAT:
+                case gl.INT:
+                case gl.UNSIGNED_INT:
+                    attrib.byte_size *= 4;
+                    shift = 2;
+                    break;
+                case gl.SHORT:
+                case gl.UNSIGNED_SHORT:
+                    attrib.byte_size *= 2;
+                    shift = 1;
+                    break;
                 }
 
                 // Force 4-byte alignment on attributes
@@ -142,7 +142,7 @@ export default class VertexLayout {
             // `v` = plain JS array containing vertex data
             // `vs` = typed arrays (one per GL type needed for this vertex layout)
             // `off` = current offset into VBO, in bytes
-            let src = [`var t, o;`];
+            let src = ['var t, o;'];
 
             // Sort by array type to reduce redundant array look-up and offset calculation
             let last_type;

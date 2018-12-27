@@ -282,18 +282,6 @@ export class LabelLineStraight extends LabelLineBase {
                     // TODO: modify angle if line chosen within curve_angle_tolerance
                     // Currently line angle is the same as the starting angle, perhaps it should average across segments?
                     this.angle = -next_angle;
-                    let angle_offset = this.angle;
-
-                    // if line is flipped, or the orientation is "left" (-1), rotate the angle of the offset 180 deg
-                    if (typeof layout.orientation === 'number'){
-                        if (flipped){
-                            angle_offset += Math.PI;
-                        }
-
-                        if (layout.orientation === -1){
-                            angle_offset += Math.PI;
-                        }
-                    }
 
                     // ensure that all vertical labels point up (not down) by snapping angles close to pi/2 to -pi/2
                     if (Math.abs(this.angle - Math.PI/2) < VERTICAL_ANGLE_TOLERANCE) {

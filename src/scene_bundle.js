@@ -140,12 +140,12 @@ export class ZipSceneBundle extends SceneBundle {
         // No root found
         if (!this.root) {
             let msg = `Could not find root scene for bundle '${this.url}': `;
-            msg += `The zip archive's root level must contain a single scene file with the '.yaml' extension. `;
+            msg += 'The zip archive\'s root level must contain a single scene file with the \'.yaml\' extension. ';
             if (yamls.length > 0) {
                 msg += `Found multiple YAML files at the root level: ${yamls.map(r => '\'' + r + '\'' ).join(', ')}.`;
             }
             else {
-                msg += `Found NO YAML files at the root level.`;
+                msg += 'Found NO YAML files at the root level.';
             }
             return Promise.reject(Error(msg));
         }

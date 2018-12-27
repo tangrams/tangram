@@ -133,7 +133,7 @@ export default class Texture {
 
         this.url = url; // save URL reference (will be overwritten when element is loaded below)
 
-        this.loading = new Promise((resolve, reject) => {
+        this.loading = new Promise(resolve => {
             let image = new Image();
             image.onload = () => {
                 try {
@@ -203,7 +203,7 @@ export default class Texture {
         else {
             this.loaded = false;
             let msg = `the 'element' parameter (\`element: ${JSON.stringify(el)}\`) must be a CSS `;
-            msg += `selector string, or a <canvas>, <image> or <video> object`;
+            msg += 'selector string, or a <canvas>, <image> or <video> object';
             log('warn', `Texture '${this.name}': ${msg}`, options);
             Texture.trigger('warning', { message: `Failed to load texture because ${msg}`, texture: options });
         }

@@ -73,10 +73,10 @@ Object.assign(TextStyle, {
         }
 
         let type = feature.geometry.type;
-        draw.can_articulate = (type === "LineString" || type === "MultiLineString");
+        draw.can_articulate = (type === 'LineString' || type === 'MultiLineString');
 
         // supersample text rendering for angled labels, to improve clarity
-        draw.supersample_text = (type === "LineString" || type === "MultiLineString");
+        draw.supersample_text = (type === 'LineString' || type === 'MultiLineString');
 
         let q = this.parseTextFeature(feature, draw, context, tile);
         if (!q) {
@@ -206,24 +206,24 @@ Object.assign(TextStyle, {
     buildLabels (size, geometry, layout, total_size) {
         let labels = [];
 
-        if (geometry.type === "LineString") {
+        if (geometry.type === 'LineString') {
             Array.prototype.push.apply(labels, this.buildLineLabels(geometry.coordinates, size, layout, total_size));
-        } else if (geometry.type === "MultiLineString") {
+        } else if (geometry.type === 'MultiLineString') {
             let lines = geometry.coordinates;
             for (let i = 0; i < lines.length; ++i) {
                 Array.prototype.push.apply(labels, this.buildLineLabels(lines[i], size, layout, total_size));
             }
-        } else if (geometry.type === "Point") {
+        } else if (geometry.type === 'Point') {
             labels.push(new LabelPoint(geometry.coordinates, size, layout));
-        } else if (geometry.type === "MultiPoint") {
+        } else if (geometry.type === 'MultiPoint') {
             let points = geometry.coordinates;
             for (let i = 0; i < points.length; ++i) {
                 labels.push(new LabelPoint(points[i], size, layout));
             }
-        } else if (geometry.type === "Polygon") {
+        } else if (geometry.type === 'Polygon') {
             let centroid = Geo.centroid(geometry.coordinates);
             labels.push(new LabelPoint(centroid, size, layout));
-        } else if (geometry.type === "MultiPolygon") {
+        } else if (geometry.type === 'MultiPolygon') {
             let centroid = Geo.multiCentroid(geometry.coordinates);
             labels.push(new LabelPoint(centroid, size, layout));
         }

@@ -18,7 +18,7 @@ const up_vec3 = [0, 0, 1];
  * @return {number} the number of the resulting geometries (triangles)
  */
 export function buildPolygons (
-        polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize }) {
+    polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
     let vertex_elements = vertex_data.vertex_elements,
         num_polygons = polygons.length,
@@ -45,10 +45,10 @@ export function buildPolygons (
             // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box:
             if (texcoord_index) {
                 [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon),
-                    span_x = max_x - min_x,
-                    span_y = max_y - min_y,
-                    scale_u = (max_u - min_u) / span_x,
-                    scale_v = (max_v - min_v) / span_y;
+                span_x = max_x - min_x,
+                span_y = max_y - min_y,
+                scale_u = (max_u - min_u) / span_x,
+                scale_v = (max_v - min_v) / span_y;
             }
 
             for (let ring_index = 0; ring_index < polygon.length; ring_index++) {

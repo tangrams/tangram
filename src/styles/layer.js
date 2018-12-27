@@ -458,7 +458,7 @@ function parseLayerChildren (parent, children, styles) {
                 if (parent.parent) {
                     msg += ` under '${parent.parent.name}'`;
                 }
-                msg += ` instead?`;
+                msg += ' instead?';
             }
             log('warn', msg); // TODO: fire external event that clients to subscribe to
         }

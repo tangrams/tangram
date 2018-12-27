@@ -130,7 +130,7 @@ function extendLeaflet(options) {
 
                 // keep Tangram layer in sync with view via mutation observer
                 this._map_pane_observer = new MutationObserver(mutations => {
-                    mutations.forEach(mutation => this.reverseTransform());
+                    mutations.forEach(() => this.reverseTransform());
                 });
                 this._map_pane_observer.observe(map.getPanes().mapPane, { attributes: true });
 
@@ -320,9 +320,6 @@ function extendLeaflet(options) {
                         targetZoom = targetZoom === undefined ? startZoom : targetZoom;
                         targetZoom = Math.min(targetZoom, map.getMaxZoom()); // don't go past max zoom
 
-                        var from = map.project(map.getCenter(), startZoom),
-                            to = map.project(targetCenter, startZoom);
-
                         var start = Date.now(),
                             duration = 75;
 
@@ -332,10 +329,6 @@ function extendLeaflet(options) {
                             if (t <= 1) {
                                 // reuse internal flyTo frame to ensure these animations are canceled like others
                                 map._flyToFrame = L.Util.requestAnimFrame(frame, map);
-
-                                var center = from.add(to.subtract(from).multiplyBy(t));
-                                center = [center.x, center.y];
-                                center = Geo.metersToLatLng(center);
                                 setZoomAroundNoMoveEnd(layer, targetCenter, startZoom + (targetZoom - startZoom) * t);
                             } else {
                                 setZoomAroundNoMoveEnd(layer, targetCenter, targetZoom)

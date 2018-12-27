@@ -163,19 +163,19 @@ Object.assign(Points, {
                 // sprites are defined in the style's texture, but none are used in the current layer
                 log({ level: 'debug', once: true }, `Layer group '${draw.layers.join(', ')}' ` +
                     `uses a texture '${style.texture}', but doesn't specify which sprite to draw. ` +
-                    `Features that match this layer group won't be drawn without specifying the sprite with the ` +
-                    `'sprite' or 'sprite_default' properties. The merged draw parameters for this layer group are:`, draw).then(logged => {
-                        if (logged) {
-                            log('debug', `Example feature for layer group '${draw.layers.join(', ')}'`, feature);
-                        }
-                    });
+                    'Features that match this layer group won\'t be drawn without specifying the sprite with the ' +
+                    '\'sprite\' or \'sprite_default\' properties. The merged draw parameters for this layer group are:', draw).then(logged => {
+                    if (logged) {
+                        log('debug', `Example feature for layer group '${draw.layers.join(', ')}'`, feature);
+                    }
+                });
                 return;
             }
         } else if (draw.sprite) {
             // sprite specified in the draw layer but no sprites defined in the texture
             log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}' ` +
                 `specifies sprite '${draw.sprite}', but the texture '${draw.texture}' doesn't define any sprites. ` +
-                `Features that match this layer group won't be drawn. The merged draw parameters for this layer group are:`, draw);
+                'Features that match this layer group won\'t be drawn. The merged draw parameters for this layer group are:', draw);
             return;
         }
 
@@ -193,7 +193,7 @@ Object.assign(Points, {
                 // the StyleParser couldn't evaluate a sprite size
                 log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
                     `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, features that match ` +
-                    `this layer group won't be drawn`);
+                    'this layer group won\'t be drawn');
                 return;
             }
             else if (typeof style.size === 'number') {
@@ -247,7 +247,7 @@ Object.assign(Points, {
         if (Array.isArray(tf)) {
             tf = null; // NB: boundary labels not supported for point label attachments, should log warning
             log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
-                `cannot use boundary labels (e.g. 'text_source: { left: ..., right: ... }') for 'text' labels attached to 'points'; ` +
+                'cannot use boundary labels (e.g. \'text_source: { left: ..., right: ... }\') for \'text\' labels attached to \'points\'; ' +
                 `provided 'text_source' value was ${JSON.stringify(draw.text.text_source)}`);
         }
 
@@ -552,24 +552,24 @@ Object.assign(Points, {
     buildLabels (size, geometry, options) {
         let labels = [];
 
-        if (geometry.type === "Point") {
+        if (geometry.type === 'Point') {
             labels.push(new LabelPoint(geometry.coordinates, size, options));
         }
-        else if (geometry.type === "MultiPoint") {
+        else if (geometry.type === 'MultiPoint') {
             let points = geometry.coordinates;
             for (let i = 0; i < points.length; ++i) {
                 let point = points[i];
                 labels.push(new LabelPoint(point, size, options));
             }
         }
-        else if (geometry.type === "LineString") {
+        else if (geometry.type === 'LineString') {
             let line = geometry.coordinates;
             let point_labels = placePointsOnLine(line, size, options);
             for (let i = 0; i < point_labels.length; ++i) {
                 labels.push(point_labels[i]);
             }
         }
-        else if (geometry.type === "MultiLineString") {
+        else if (geometry.type === 'MultiLineString') {
             let lines = geometry.coordinates;
             for (let ln = 0; ln < lines.length; ln++) {
                 let line = lines[ln];
@@ -579,7 +579,7 @@ Object.assign(Points, {
                 }
             }
         }
-        else if (geometry.type === "Polygon") {
+        else if (geometry.type === 'Polygon') {
             // Point at polygon centroid (of outer ring)
             if (options.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.centroid(geometry.coordinates);
@@ -596,7 +596,7 @@ Object.assign(Points, {
                 }
             }
         }
-        else if (geometry.type === "MultiPolygon") {
+        else if (geometry.type === 'MultiPolygon') {
             if (options.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.multiCentroid(geometry.coordinates);
                 labels.push(new LabelPoint(centroid, size, options));
@@ -860,7 +860,7 @@ Object.assign(Points, {
     },
 
     // track mesh data for label (byte ranges occupied by label in VBO)
-    trackLabel (label, linked, mesh, geom_count, context) {
+    trackLabel (label, linked, mesh, geom_count/*, context*/) {
         if (label.layout.collide) {
             mesh.labels = mesh.labels || {};
             mesh.labels[label.id] = mesh.labels[label.id] || {

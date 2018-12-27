@@ -15,7 +15,7 @@ function lookUp(key) {
     return 'context.feature.properties[\'' + key + '\']';
 }
 
-function nullValue(key, value) {
+function nullValue(/*key, value*/) {
     return ' true ';
 }
 

@@ -58,7 +58,7 @@ export default class DataSource {
 
     // Register a new data source type name, providing a function that returns the class name
     // to instantiate based on the source definition in the scene
-    static register(type_name, type_func) {
+    static register (type_name, type_func) {
         if (!type_name || !type_func) {
             return;
         }
@@ -120,7 +120,7 @@ export default class DataSource {
     /**
      Re-scale geometries within each source to internal tile units
     */
-    static scaleData (source, {coords: {z}, min, max}) {
+    static scaleData (source, { coords: { z }, min }) {
         let units_per_meter = Geo.unitsPerMeter(z);
         for (var t in source.layers) {
             var num_features = source.layers[t].features.length;
@@ -134,7 +134,7 @@ export default class DataSource {
         }
     }
 
-    load(dest) {
+    load (dest) {
         dest.source_data = {};
         dest.source_data.layers = {};
         dest.pad_scale = this.pad_scale;
@@ -169,7 +169,7 @@ export default class DataSource {
     }
 
     // Sub-classes must implement
-    _load(dest) {
+    _load (/*dest*/) {
         throw new MethodNotImplemented('_load');
     }
 
@@ -220,7 +220,7 @@ export default class DataSource {
         return true;
     }
 
-    validate (source) {
+    validate (/*source*/) {
     }
 
 }
@@ -236,7 +236,7 @@ export class NetworkSource extends DataSource {
 
     constructor (source, sources) {
         super(source, sources);
-        this.response_type = ""; // use to set explicit XHR type
+        this.response_type = ''; // use to set explicit XHR type
 
         // Add extra URL params, and warn on duplicates
         let [url, dupes] = URLs.addParamsToURL(source.url, source.url_params);
@@ -261,18 +261,12 @@ export class NetworkSource extends DataSource {
         dest.debug = dest.debug || {};
         dest.debug.network = +new Date();
 
-        return new Promise((resolve, reject) => {
-            source_data.error = null;
-            // For testing network errors
-            // var promise = Utils.io(url, 60 * 100, this.response_type);
-            // if (Math.random() < .7) {
-            //     promise = Promise.reject(Error('fake data source error'));
-            // }
-            // promise.then((body) => {
-
+        return new Promise(resolve => {
             let request_id = (network_request_id++) + '-' + url;
             let promise = Utils.io(url, 60 * 1000, this.response_type, 'GET', this.request_headers, request_id);
+
             source_data.request_id = request_id;
+            source_data.error = null;
 
             promise.then((body) => {
                 dest.debug.response_size = body.length || body.byteLength;
@@ -306,11 +300,11 @@ export class NetworkSource extends DataSource {
 
     // Sub-classes must implement:
 
-    formatURL (url_template, dest) {
+    formatURL (/*url_template, dest*/) {
         throw new MethodNotImplemented('formatURL');
     }
 
-    parseSourceData (dest, source, reponse) {
+    parseSourceData (/*dest, source, reponse*/) {
         throw new MethodNotImplemented('parseSourceData');
     }
 }
@@ -340,8 +334,8 @@ export class NetworkTileSource extends NetworkSource {
             }
             else {
                 log({ level: 'warn', once: true },
-                    `Data source '${this.name}': source URL includes '\{s\}' subdomain marker ('${this.url}'), but no subdomains ` +
-                    `were specified in 'url_subdomains' parameter`);
+                    `Data source '${this.name}': source URL includes '{s}' subdomain marker ('${this.url}'), but no subdomains ` +
+                    'were specified in \'url_subdomains\' parameter');
             }
         }
     }
@@ -412,7 +406,7 @@ export class NetworkTileSource extends NetworkSource {
         return true;
     }
 
-    formatURL(url_template, tile) {
+    formatURL (url_template, tile) {
         let coords = Geo.wrapTile(tile.coords, { x: true });
 
         if (this.tms) {
@@ -429,7 +423,7 @@ export class NetworkTileSource extends NetworkSource {
     }
 
     // Checks for the x/y/z tile pattern in URL template
-    static urlHasTilePattern(url) {
+    static urlHasTilePattern (url) {
         return url &&
             url.search('{x}') > -1 &&
             url.search('{y}') > -1 &&

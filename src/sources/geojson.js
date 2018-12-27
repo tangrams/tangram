@@ -107,7 +107,7 @@ export class GeoJSONSource extends NetworkSource {
         return collection;
     }
 
-    formatURL (dest) {
+    formatURL () {
         return this.url;
     }
 
@@ -150,31 +150,29 @@ export class GeoJSONSource extends NetworkSource {
         // Avoids redundant label placement for each generated tile at higher zoom levels
         if (this.config.generate_label_centroids){
             let features_centroid = [];
-            let centroid_properties = {"label_placement" : true};
+            let centroid_properties = {'label_placement' : true};
 
             features.forEach(feature => {
                 let coordinates, centroid_feature;
-                switch (feature.geometry.type) {
-                    case 'Polygon':
-                        coordinates = feature.geometry.coordinates;
-                        centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
-                        features_centroid.push(centroid_feature);
-                        break;
-                    case 'MultiPolygon':
-                        // Add centroid feature for largest polygon
-                        coordinates = feature.geometry.coordinates;
-                        let max_area = -Infinity;
-                        let max_area_index = 0;
-                        for (let index = 0; index < coordinates.length; index++) {
-                            let area = Geo.polygonArea(coordinates[index]);
-                            if (area > max_area) {
-                                max_area = area;
-                                max_area_index = index;
-                            }
+                if (feature.geometry.type === 'Polygon') {
+                    coordinates = feature.geometry.coordinates;
+                    centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
+                    features_centroid.push(centroid_feature);
+                }
+                else if (feature.geometry.type === 'MultiPolygon') {
+                    // Add centroid feature for largest polygon
+                    coordinates = feature.geometry.coordinates;
+                    let max_area = -Infinity;
+                    let max_area_index = 0;
+                    for (let index = 0; index < coordinates.length; index++) {
+                        let area = Geo.polygonArea(coordinates[index]);
+                        if (area > max_area) {
+                            max_area = area;
+                            max_area_index = index;
                         }
-                        centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
-                        features_centroid.push(centroid_feature);
-                        break;
+                    }
+                    centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
+                    features_centroid.push(centroid_feature);
                 }
             });
 
@@ -266,10 +264,10 @@ function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
     Object.assign(centroid_properties, properties, newProperties);
 
     return {
-        type: "Feature",
+        type: 'Feature',
         properties: centroid_properties,
         geometry: {
-            type: "Point",
+            type: 'Point',
             coordinates: centroid
         }
     };

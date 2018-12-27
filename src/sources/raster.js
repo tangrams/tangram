@@ -93,7 +93,7 @@ export class RasterSource extends RasterTileSource {
                     bounds: this.parseBounds(s),
                     alpha: (s.alpha != null) ? Math.max(Math.min(s.alpha, 1), 0) : null
                 };
-            })
+            });
         }
         // Single image raster layer
         else {

@@ -182,11 +182,12 @@ export class StyleManager {
                                 return shaders._uniforms[u];
                             }
                             // Uniform was mixed from another style, forward request there
-                            // Identify check is needed to prevent infinite recursion if a previously defined uniform
+                            // Identity check is needed to prevent infinite recursion if a previously defined uniform
                             // is set to undefined
                             else if (styles[shaders._uniform_scopes[u]].shaders.uniforms !== shaders.uniforms) {
                                 return styles[shaders._uniform_scopes[u]].shaders.uniforms[u];
                             }
+                            return undefined;
                         },
                         set: function (v) {
                             shaders._uniforms[u] = v;
@@ -336,7 +337,7 @@ export class StyleManager {
     inheritanceDepth (key, styles) {
         let parents = 0;
 
-        while(true) {
+        for (;;) {
             let style = styles[key];
             if (!style) {
                 // this is a scene def error, trying to extend a style that doesn't exist

@@ -4,9 +4,9 @@ const rights = ['right', 'top-right', 'bottom-right'];
 const tops = ['top', 'top-left', 'top-right'];
 const bottoms = ['bottom', 'bottom-left', 'bottom-right'];
 
-let PointAnchor;
+export default PointAnchor;
 
-export default PointAnchor = {
+const PointAnchor = {
 
     computeOffset (offset, size, anchor, buffer = null) {
         if (!anchor || anchor === 'center') {

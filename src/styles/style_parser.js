@@ -73,9 +73,9 @@ StyleParser.macros = {
     // pseudo-random color by geometry id
     'Style.color.pseudoRandomColor': function() {
         return [
-            0.7 * (parseInt(feature.id, 16) / 100 % 1),     // jshint ignore:line
-            0.7 * (parseInt(feature.id, 16) / 10000 % 1),   // jshint ignore:line
-            0.7 * (parseInt(feature.id, 16) / 1000000 % 1), // jshint ignore:line
+            0.7 * (parseInt(feature.id, 16) / 100 % 1),     // eslint-disable-line no-undef
+            0.7 * (parseInt(feature.id, 16) / 10000 % 1),   // eslint-disable-line no-undef
+            0.7 * (parseInt(feature.id, 16) / 1000000 % 1), // eslint-disable-line no-undef
             1
         ];
     },
@@ -163,7 +163,7 @@ StyleParser.createColorPropertyCache = function (obj) {
 const isPercent = v => typeof v === 'string' && v[v.length-1] === '%'; // size computed by %
 const isRatio = v => v === 'auto'; // size derived from aspect ratio of one dimension
 const isComputed = v => isPercent(v) || isRatio(v);
-const dualRatioError = `'size' can specify either width or height as derived from aspect ratio, but not both`;
+const dualRatioError = '\'size\' can specify either width or height as derived from aspect ratio, but not both';
 StyleParser.createPointSizePropertyCache = function (obj) {
     // obj is the value to be parsed eg "64px" "100%" "auto"
     // mimics the structure of the size value (at each zoom stop if applicable),
@@ -195,7 +195,7 @@ StyleParser.createPointSizePropertyCache = function (obj) {
     }
 
     if (!has_pct) { // no percentage-based calculation, one cache for all sprites
-        if (obj === "auto") { throw `this value only allowed as half of an array, eg [16px, auto]:`; }
+        if (obj === 'auto') { throw 'this value only allowed as half of an array, eg [16px, auto]:'; }
         obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
     }
     else { // per-sprite based evaluation

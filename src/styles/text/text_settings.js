@@ -2,9 +2,9 @@ import Utils from '../../utils/utils';
 import Geo from '../../geo';
 import StyleParser from '../style_parser';
 
-var TextSettings;
+export default TextSettings;
 
-export default TextSettings = {
+const TextSettings = {
 
     // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
     key (settings) {

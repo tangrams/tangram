@@ -16,7 +16,7 @@ let logged_once = {};
 
 function methodForLevel (level) {
     if (Thread.is_main) {
-        methods[level] = methods[level] || (console[level] ? console[level] : console.log).bind(console);
+        methods[level] = methods[level] || (console[level] ? console[level] : console.log).bind(console); // eslint-disable-line no-console
         return methods[level];
     }
 }

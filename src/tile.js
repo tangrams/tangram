@@ -83,7 +83,7 @@ export default class Tile {
         return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source, style_zoom);
     }
 
-    static normalizedCoordinate (coords, source, style_zoom) {
+    static normalizedCoordinate (coords, source) {
         if (source.zoom_bias) {
             coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
         }
@@ -327,30 +327,30 @@ export default class Tile {
                         }
                     });
                 }))
-                .then(() => {
-                    log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
+                    .then(() => {
+                        log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
 
-                    // Clear group and check if all groups finished
-                    groups[group_name] = [];
-                    if (Object.keys(groups).every(g => groups[g].length === 0)) {
-                        progress.done = true;
-                    }
+                        // Clear group and check if all groups finished
+                        groups[group_name] = [];
+                        if (Object.keys(groups).every(g => groups[g].length === 0)) {
+                            progress.done = true;
+                        }
 
-                    // Send meshes to main thread
-                    WorkerBroker.postMessage(
-                        `TileManager_${scene_id}.buildTileStylesCompleted`,
-                        WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
-                    );
-                    progress.start = null;
-                    tile.mesh_data = {}; // reset so each group sends separate set of style meshes
+                        // Send meshes to main thread
+                        WorkerBroker.postMessage(
+                            `TileManager_${scene_id}.buildTileStylesCompleted`,
+                            WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
+                        );
+                        progress.start = null;
+                        tile.mesh_data = {}; // reset so each group sends separate set of style meshes
 
-                    if (progress.done) {
-                        Collision.resetTile(tile.id); // clear collision if we're done with the tile
-                    }
-                })
-                .catch((e) => {
-                    log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e);
-                });
+                        if (progress.done) {
+                            Collision.resetTile(tile.id); // clear collision if we're done with the tile
+                        }
+                    })
+                    .catch((e) => {
+                        log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e);
+                    });
             }
         }
         else {
@@ -490,7 +490,7 @@ export default class Tile {
             else {
                 this.pending_label_meshes = this.pending_label_meshes || {};
                 this.pending_label_meshes[m] = meshes[m];
-              }
+            }
         }
 
         if (progress.done) {

@@ -172,12 +172,12 @@ export var Style = {
         return meshes[variant.key];
     },
 
-    vertexLayoutForMeshVariant (variant) {
+    vertexLayoutForMeshVariant (/*variant*/) {
         return this.vertex_layout;
     },
 
     default_mesh_variant: { key: 0, order: 0 },
-    meshVariantTypeForDraw (draw) {
+    meshVariantTypeForDraw (/*draw*/) {
         return this.default_mesh_variant;
     },
 
@@ -264,10 +264,10 @@ export var Style = {
             style.order = this.parseOrder(draw.order, context);
             if (style.order == null && this.blend !== 'overlay') {
                 let msg = `Layer '${draw.layers.join(', ')}', draw group '${draw.group}': `;
-                msg += `'order' parameter is required unless blend mode is 'overlay'`;
+                msg += '\'order\' parameter is required unless blend mode is \'overlay\'';
                 if (draw.order != null) {
-                    msg += `; 'order' was set to a dynamic value (e.g. string tied to feature property, `;
-                    msg += `or JS function), but evaluated to null for one or more features`;
+                    msg += '; \'order\' was set to a dynamic value (e.g. string tied to feature property, ';
+                    msg += 'or JS function), but evaluated to null for one or more features';
                 }
                 log({ level: 'warn', once: true }, msg);
                 return;
@@ -301,7 +301,7 @@ export var Style = {
         }
     },
 
-    _parseFeature (feature, draw, context) {
+    _parseFeature (/*feature, draw, context*/) {
         return this.feature_style;
     },
 
@@ -555,8 +555,8 @@ export var Style = {
         // are bound (the remaining slots aren't intended to be accessed).
         let num_raster_sources =
             Object.keys(this.sources)
-            .filter(s => this.sources[s] instanceof RasterTileSource)
-            .length;
+                .filter(s => this.sources[s] instanceof RasterTileSource)
+                .length;
 
         this.defines.TANGRAM_NUM_RASTER_SOURCES = `${num_raster_sources}`; // force to string to avoid auto-float conversion
         if (num_raster_sources > 0) {

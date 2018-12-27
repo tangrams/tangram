@@ -336,7 +336,7 @@ Object.assign(Lines, {
             else {
                 log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
                     `line 'outline' specifies non-existent draw style '${draw.outline.style}' (or maybe the style is ` +
-                    `defined but is missing a 'base' or has another error), skipping outlines for features matching this layer group`);
+                    'defined but is missing a \'base\' or has another error), skipping outlines for features matching this layer group');
                 draw.outline = null;
             }
         }
@@ -568,9 +568,9 @@ Object.assign(Lines, {
     buildPolygons(polygons, style, context) {
         // Render polygons as individual lines
         let geom_count = 0;
-         for (let p=0; p < polygons.length; p++) {
+        for (let p=0; p < polygons.length; p++) {
             geom_count += this.buildLines(polygons[p], style, context, { closed_polygon: true, remove_tile_edges: true });
-         }
+        }
         return geom_count;
     }
 
