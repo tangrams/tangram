@@ -82,7 +82,7 @@ describe('Scene', function () {
     describe('.resizeMap()', () => {
         let height = 100;
         let width = 200;
-        let devicePixelRatio = 1; // TODO: fix tests when altering DPR
+        let devicePixelRatio = window.devicePixelRatio;
         let computedHeight = Math.round(height * devicePixelRatio);
         let computedWidth  = Math.round(width * devicePixelRatio);
 
