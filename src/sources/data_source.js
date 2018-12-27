@@ -368,21 +368,32 @@ export class NetworkTileSource extends NetworkSource {
     checkBounds (coords, bounds) {
         // Check tile bounds
         if (bounds) {
-            // TODO: check/fix for Alaska
-            coords = Geo.wrapTile(coords, { x: true });
+            // get tile and bounds coords at current zoom, wrapping to keep x coords in positive range
+            coords = Geo.wrapTile(coords);
 
             let min = bounds.tiles.min[coords.z];
             if (!min) {
-                min = bounds.tiles.min[coords.z] = Geo.tileForMeters(bounds.meters.min, coords.z);
+                min = bounds.tiles.min[coords.z] = Geo.wrapTile(Geo.tileForMeters(bounds.meters.min, coords.z));
             }
 
             let max = bounds.tiles.max[coords.z];
             if (!max) {
-                max = bounds.tiles.max[coords.z] = Geo.tileForMeters(bounds.meters.max, coords.z);
+                max = bounds.tiles.max[coords.z] = Geo.wrapTile(Geo.tileForMeters(bounds.meters.max, coords.z));
             }
 
-            if (coords.x < min.x || coords.x > max.x ||
-                coords.y < min.y || coords.y > max.y) {
+            // check latitude
+            if (coords.y < min.y || coords.y > max.y) {
+                return false;
+            }
+
+            // longitude bounds are between meridians
+            if (min.x <= max.x) {
+                if (coords.x < min.x || coords.x > max.x) {
+                    return false;
+                }
+            }
+            // longitude bounds cross the antimeridian
+            else if (coords.x > max.x && coords.x < min.x) {
                 return false;
             }
         }
