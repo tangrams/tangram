@@ -36,7 +36,7 @@ export default {
             ext.bindVertexArrayOES(vao._vao);
         }
 
-        vao.setup(true);
+        vao.setup();
 
         return vao;
     },
@@ -65,7 +65,7 @@ export default {
                 this.setCurrentBinding(gl, vao);
             }
             else {
-                vao.setup(false);
+                vao.setup();
             }
         }
         else {

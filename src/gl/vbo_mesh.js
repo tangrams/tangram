@@ -97,14 +97,16 @@ export default class VBOMesh  {
             VertexArrayObject.bind(this.gl, vao);
         }
         else {
-            this.vaos[program.id] = VertexArrayObject.create(this.gl, (force) => {
+            this.vaos[program.id] = VertexArrayObject.create(this.gl, () => {
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertex_buffer);
                 if (this.toggle_element_array) {
                     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
                 }
-                this.vertex_layout.enable(this.gl, program, force);
+                this.vertex_layout.enableDynamicAttributes(this.gl, program);
             });
         }
+
+        this.vertex_layout.enableStaticAttributes(this.gl, program);
     }
 
     // Upload buffer data to GPU
