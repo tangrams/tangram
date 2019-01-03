@@ -80,9 +80,11 @@ Object.assign(Polygons, {
 
     // Calculate and store mesh variant (unique by draw group but not feature)
     computeVariant (draw) {
-        let selection = ((this.selection && draw.interactive) ? 1 : 0); // NB: if interactive is function, enable selection for whole draw group
-        let texcoords = (this.texcoords ? 1 : 0);
-        let key = selection + '/' + texcoords;
+        // Factors that determine a unique mesh rendering variant
+        let selection = (draw.interactive ? 1 : 0); // whether feature has interactivity
+        let normal = (draw.extrude != null ? 1 : 0); // whether feature has extrusion (need per-vertex normals)
+        let texcoords = (this.texcoords ? 1 : 0); // whether feature has texture UVs
+        let key = [selection, normal, texcoords].join('/');
         draw.variant = key;
 
         if (Polygons.variants[key] == null) {
@@ -90,6 +92,7 @@ Object.assign(Polygons, {
                 key,
                 order: 0,
                 selection,
+                normal,
                 texcoords
             };
         }
@@ -99,9 +102,11 @@ Object.assign(Polygons, {
     // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
         if (Polygons.vertex_layouts[variant.key] == null) {
+            // Attributes for this mesh variant
+            // Optional attributes have placeholder values assigned with `static` parameter
             const attribs = [
                 { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-                { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // gets padded to 4-bytes
+                { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true, static: (variant.normal ? null : [0, 0, 1]) }, // gets padded to 4-bytes
                 { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
                 { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) },
                 { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.texcoords ? null : [0, 0]) }
@@ -124,26 +129,28 @@ Object.assign(Polygons, {
     makeVertexTemplate(style, mesh) {
         let i = 0;
 
-        // position - x & y coords will be filled in per-vertex below
+        // a_position.xyz - vertex position
+        // a_position.w - layer order
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = style.z || 0;
-
-        // layer order - w coord of 'position' attribute (for packing efficiency)
         this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // normal
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 1 * 127;
+        // a_normal.xyz - surface normal
+        // only stored per-vertex for extruded features (hardcoded to 'up' for others)
+        if (mesh.variant.normal) {
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 1 * 127;
+        }
 
-        // color
+        // a_color.rgba - feature color
         this.vertex_template[i++] = style.color[0] * 255;
         this.vertex_template[i++] = style.color[1] * 255;
         this.vertex_template[i++] = style.color[2] * 255;
         this.vertex_template[i++] = style.color[3] * 255;
 
-        // selection color
+        // a_selection_color.rgba - selection color
         if (mesh.variant.selection) {
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
@@ -151,7 +158,7 @@ Object.assign(Polygons, {
             this.vertex_template[i++] = style.selection_color[3] * 255;
         }
 
-        // Add texture UVs to template only if needed
+        // a_texcoord.uv - texture coordinates
         if (mesh.variant.texcoords) {
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
