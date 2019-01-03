@@ -108,7 +108,7 @@
                     'https://www.nextzen.org/carto/refill-style/10/themes/label-10.zip',
                     'https://www.nextzen.org/carto/refill-style/10/themes/color-blue.zip',
                     'https://www.nextzen.org/carto/refill-style/10/themes/no-texture.zip',
-                    'https://www.nextzen.org/carto/refill-style/10/themes/terrain-shading-dark.zip'
+                    'https://www.nextzen.org/carto/refill-style/10/themes/terrain-pattern-dark.zip'
                 ],
                 sources: {
                     mapzen: {
