@@ -26,9 +26,18 @@ attribute vec4 a_color;
 #ifdef TANGRAM_EXTRUDE_LINES
     attribute vec2 a_extrude; // extrusion direction in xy plane
     attribute vec2 a_offset;  // offset direction in xy plane
-    attribute vec2 a_scaling; // x: zoom scaling factor for line width, y: zoom scaling factor for line offset
+
+    // Polygon and line styles have slightly different VBO layouts, saving memory by optimizing vertex packing.
+    // All lines have a width scaling factor, but only some have a height (position.z) or offset.
+    // The vertex height is stored in different attributes to account for this.
+    attribute vec2 a_z_and_offset_scale; // stores vertex height in x, and offset scaling factor in y
+    #define TANGRAM_POSITION_Z a_z_and_offset_scale.x // vertex height is stored in separate line-specific attrib
+    #define TANGRAM_OFFSET_SCALING a_z_and_offset_scale.y // zoom scaling factor for line offset
+    #define TANGRAM_WIDTH_SCALING a_position.z // zoom scaling factor for line width (stored in position attrib)
 
     uniform float u_v_scale_adjust; // scales texture UVs for line dash patterns w/fractional pixel width
+#else
+    #define TANGRAM_POSITION_Z a_position.z // vertex height
 #endif
 
 varying vec4 v_position;
@@ -77,7 +86,7 @@ void main() {
     #endif
 
     // Position
-    vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
+    vec4 position = vec4(a_position.xy, TANGRAM_POSITION_Z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
 
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = a_extrude.xy;
@@ -93,11 +102,11 @@ void main() {
 
         // Interpolate line width between zooms
         float mdz = (dz - 0.5) * 2.; // zoom from mid-point
-        extrude -= extrude * TANGRAM_UNPACK_SCALING(a_scaling.x) * mdz;
+        extrude -= extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * mdz;
 
         // Interpolate line offset between zooms
         // Scales from the larger value to the smaller one
-        float dwdz = TANGRAM_UNPACK_SCALING(a_scaling.y);
+        float dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);
         float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates "direction" of scaling
         offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale "up" or "down"
 

@@ -416,20 +416,25 @@ Object.assign(Lines, {
 
     // Calculate and store mesh variant (unique by draw group but not feature)
     computeVariant (draw) {
-        let key = (draw.offset ? 1 : 0);
-        if (draw.dash_key) {
+        // Factors that determine a unique mesh rendering variant
+        let key = (draw.offset ? 1 : 0); // whether feature has a line offset
+        key += '/' + draw.texcoords; // whether feature has texture UVs
+        key += '/' + (draw.interactive ? 1 : 0); // whether feature has interactivity
+        key += '/' + (draw.z ? 1 : 0); // whether there translation of whole feature (separate from extrusion)
+        key += '/' + draw.is_outline; // whether this is an outline of a line feature
+
+        if (draw.dash_key) { // whether feature has a line dash pattern
             key += draw.dash_key;
             if (draw.dash_background_color) {
                 key += draw.dash_background_color;
             }
         }
 
-        if (draw.texture_merged) {
+        if (draw.texture_merged) { // whether feature has a line texture
             key += draw.texture_merged;
         }
-        key += '/' + draw.texcoords;
-        key += '/' + (draw.interactive ? 1 : 0); // NB: if interactive is function, enable selection for whole draw group
-        key += '/' + draw.is_outline;
+
+        // Create unique key
         key = hashString(key);
         draw.variant = key;
 
@@ -439,6 +444,7 @@ Object.assign(Lines, {
                 order: (draw.is_outline ? 0 : 1), // outlines should be drawn first, so inline is on top
                 selection: (draw.interactive ? 1 : 0),
                 offset: (draw.offset ? 1 : 0),
+                z_or_offset: ((draw.offset || draw.z) ? 1 : 0),
                 texcoords: draw.texcoords,
                 texture: draw.texture_merged,
                 dash: draw.dash,
@@ -452,12 +458,13 @@ Object.assign(Lines, {
     // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
         if (Lines.vertex_layouts[variant.key] == null) {
-            // Basic attributes, others can be added (see texture UVs below)
+            // Attributes for this mesh variant
+            // Optional attributes have placeholder values assigned with `static` parameter
             const attribs = [
                 { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
                 { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
                 { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false, static: (variant.offset ? null : [0, 0]) },
-                { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_z_and_offset_scale', size: 2, type: gl.SHORT, normalized: false, static: (variant.z_or_offset ? null : [0, 0]) },
                 { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.texcoords ? null : [0, 0]) },
                 { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
                 { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) }
@@ -480,14 +487,15 @@ Object.assign(Lines, {
     makeVertexTemplate(style, mesh) {
         let i = 0;
 
-        // a_position.xyz - vertex position
+        // a_position.xy - vertex position
+        // a_position.z - line width scaling factor
         // a_position.w - layer order
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = style.z || 0;
+        this.vertex_template[i++] = style.width_scale * 1024;
         this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // a_extrude.xy - extrusion vector
+        // a_extrude.xy - extrusion vector (vertex extrusion away from center of line)
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
 
@@ -498,26 +506,26 @@ Object.assign(Lines, {
             this.vertex_template[i++] = 0;
         }
 
-        // a_scaling.xy - scaling to previous and next zoom
-        this.vertex_template[i++] = style.width_scale * 1024;    // line width
-        this.vertex_template[i++] = style.offset_scale * 1024;   // line offset
+        // a_z_and_offset_scale.xy
+        if (mesh.variant.z_or_offset) {
+            this.vertex_template[i++] = style.z || 0; // feature z position
+            this.vertex_template[i++] = style.offset_scale * 1024; // line offset scaling factor
+        }
 
-        // Add texture UVs to template only if needed
+        // a_texcoord.uv - texture coordinates
         if (mesh.variant.texcoords) {
-            // a_texcoord.uv
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
         }
 
-        // a_color.rgba
+        // a_color.rgba - feature color
         this.vertex_template[i++] = style.color[0] * 255;
         this.vertex_template[i++] = style.color[1] * 255;
         this.vertex_template[i++] = style.color[2] * 255;
         this.vertex_template[i++] = style.color[3] * 255;
 
-        // selection color
+        // a_selection_color.rgba - selection color
         if (mesh.variant.selection) {
-            // a_selection_color.rgba
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
             this.vertex_template[i++] = style.selection_color[2] * 255;
