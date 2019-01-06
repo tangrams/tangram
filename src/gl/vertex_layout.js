@@ -8,8 +8,8 @@ export default class VertexLayout {
     // ex: { name: 'position', size: 3, type: gl.FLOAT, normalized: false }
     constructor (attribs) {
         this.attribs = attribs; // array of attributes, specified as standard GL attrib options
-        this.dynamic_attribs = this.attribs.filter(x => !x.static); // attributes with per-vertex values, used to build VBOs
-        this.static_attribs = this.attribs.filter(x => x.static); // attributes with fixed values
+        this.dynamic_attribs = this.attribs.filter(x => x.static == null); // attributes with per-vertex values, used to build VBOs
+        this.static_attribs = this.attribs.filter(x => x.static != null); // attributes with fixed values
         this.components = [];   // list of type and offset info about each attribute component
         this.index = {};        // JS buffer index of each attribute component, e.g. this.index.position
         this.offset = {};       // VBO buffer byte offset of each attribute component, e.g. this.offset.color
