@@ -232,7 +232,7 @@ Object.assign(Points, {
         style.angle = StyleParser.evalProperty(draw.angle, context) || 0;
 
         // points can be placed off the ground
-        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
+        style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
 
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 

@@ -47,7 +47,7 @@ Object.assign(Lines, {
 
     // Calculate width or offset at zoom given in `context`
     calcDistance (prop, context) {
-        return (prop && StyleParser.evalCachedDistanceProperty(prop, context)) || 0;
+        return StyleParser.evalCachedDistanceProperty(prop, context) || 0;
     },
 
     // Calculate width or offset at next zoom (used for zoom-based interpolation in shader)
@@ -177,7 +177,7 @@ Object.assign(Lines, {
         style.variant = draw.variant; // pre-calculated mesh variant
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z || 0, context)) || StyleParser.defaults.z;
+        style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
         style.extrude = StyleParser.evalProperty(draw.extrude, context);
         if (style.extrude) {

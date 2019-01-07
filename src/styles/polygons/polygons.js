@@ -40,7 +40,7 @@ Object.assign(Polygons, {
 
         style.variant = draw.variant; // pre-calculated mesh variant
 
-        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
+        style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
         style.z *= Geo.height_scale; // provide sub-meter precision of height values
 
         style.extrude = StyleParser.evalProperty(draw.extrude, context);
