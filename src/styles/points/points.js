@@ -29,6 +29,9 @@ const texcoord_normalize = 65535;
 export const Points = Object.create(Style);
 
 Points.variants = {}; // mesh variants by variant key
+Points.vertex_layouts = {}; // vertex layouts by variant key
+
+const SHADER_POINT_VARIANT_KEY = 'shader_point';
 
 // texture types
 const TANGRAM_POINT_TYPE_TEXTURE = 1; // style texture/sprites (assigned by user)
@@ -52,30 +55,6 @@ Object.assign(Points, {
 
     init(options = {}) {
         Style.init.call(this, options);
-
-        // Vertex layout
-        let attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
-            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: [0, 0, 0, 0] },
-            { name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false, static: 0 },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
-        ];
-
-        this.vertex_layout = new VertexLayout(attribs);
-
-        // Modified vertex layout for shader-drawn points
-        attribs = attribs.map(x => Object.assign({}, x)); // copy attribs
-        attribs.forEach(attrib => {
-            // clear the static attribute value for shader points
-            if (attrib.name === 'a_outline_color' || attrib.name === 'a_outline_edge') {
-                attrib.static = null;
-            }
-        });
-        this.vertex_layout_shader_point = new VertexLayout(attribs);
 
         // Shader defines
         this.setupDefines();
@@ -652,9 +631,7 @@ Object.assign(Points, {
         }
 
         // selection color
-        if (this.selection) {
-            this.fillVertexTemplate(vertex_layout, 'a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
-        }
+        this.fillVertexTemplate(vertex_layout, 'a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
 
         return this.vertex_template;
     },
@@ -902,26 +879,45 @@ Object.assign(Points, {
     },
 
     // Override
+    // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
-        if (variant.shader_point) {
-            return this.vertex_layout_shader_point;
+        // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
+        if (Points.vertex_layouts[variant.shader_point] == null) {
+            // Attributes for this mesh variant
+            // Optional attributes have placeholder values assigned with `static` parameter
+            // TODO: could support optional attributes for selection and offset, but may not be worth it
+            // since points generally don't consume much memory anyway
+            const attribs = [
+                { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
+                { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.shader_point ? null : [0, 0, 0, 0]) },
+                { name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false, static: (variant.shader_point ? null : 0) },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            ];
+
+            Points.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
         }
-        return this.vertex_layout;
+        return Points.vertex_layouts[variant.shader_point];
+
     },
 
     // Override
     meshVariantTypeForDraw (draw) {
-        let key = draw.label_texture || draw.texture || Style.default_mesh_variant.key; // unique key by texture name
+        let key = draw.label_texture || draw.texture || SHADER_POINT_VARIANT_KEY; // unique key by texture name
         if (Points.variants[key] == null) {
             Points.variants[key] = {
                 key,
-                shader_point: (key === Style.default_mesh_variant.key), // is shader point
+                shader_point: (key === SHADER_POINT_VARIANT_KEY), // is shader point
                 order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
             };
         }
         return Points.variants[key]; // return pre-calculated mesh variant
     },
 
+    // Override
     makeMesh (vertex_data, vertex_elements, options = {}) {
         // Add label fade time
         options = Object.assign({}, options, { fade_in_time: this.fade_in_time });

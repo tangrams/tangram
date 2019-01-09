@@ -19,20 +19,6 @@ Object.assign(TextStyle, {
     init(options = {}) {
         Style.init.call(this, options);
 
-        var attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
-            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
-            { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
-        ];
-
-        this.vertex_layout = new VertexLayout(attribs);
-
         // Shader defines
         this.setupDefines();
 
@@ -261,8 +247,30 @@ Object.assign(TextStyle, {
             }
         }
         return labels;
-    }
+    },
 
+    // Override
+    // Create or return vertex layout
+    vertexLayoutForMeshVariant (variant) {
+        if (this.vertex_layout == null) {
+            // TODO: could make selection, offset, and curved label attribs optional, but may not be worth it
+            // since text points generally don't consume much memory anyway
+            const attribs = [
+                { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
+                { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
+                { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            ];
+
+            this.vertex_layout = new VertexLayout(attribs);
+        }
+        return this.vertex_layout;
+    },
 });
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures

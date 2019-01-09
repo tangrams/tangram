@@ -173,12 +173,11 @@ export var Style = {
     },
 
     vertexLayoutForMeshVariant (/*variant*/) {
-        return this.vertex_layout;
+        // styles must implement
     },
 
-    default_mesh_variant: { key: 0, order: 0 },
     meshVariantTypeForDraw (/*draw*/) {
-        return this.default_mesh_variant;
+        // styles must implement
     },
 
     addFeature (feature, draw, context) {
@@ -196,7 +195,7 @@ export var Style = {
             return; // skip feature
         }
 
-        if (this.buildGeometry(feature.geometry, style, /*mesh,*/ context) > 0) {
+        if (this.buildGeometry(feature.geometry, style, context) > 0) {
             feature.generation = this.generation; // track scene generation that feature was rendered for
         }
     },
