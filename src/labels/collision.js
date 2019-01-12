@@ -120,6 +120,12 @@ const Collision = {
                                 object.linked.label.breach = true;
                             }
 
+                            // Similarly for labels that need main thread repeat culling, keep linked labels in sync
+                            if (object.label.may_repeat_across_tiles || object.linked.label.may_repeat_across_tiles) {
+                                object.label.may_repeat_across_tiles = true;
+                                object.linked.label.may_repeat_across_tiles = true;
+                            }
+
                             labels[style].push(object);
                             this.place(object, tile, state);
                             this.place(object.linked, tile, state);
@@ -154,10 +160,8 @@ const Collision = {
         // Test the label for intersections with other labels in the tile
         let bboxes = this.tiles[tile].bboxes;
         if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
-            // check for repeats
-            let is_repeat = repeat && RepeatGroup.check(label, layout, tile);
-            if (is_repeat) {
-                // log('trace', `hide label '${label.text}', dist ${Math.sqrt(is_repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(is_repeat.repeat_dist_sq)/layout.units_per_pixel}`);
+            // repeat culling with nearby labels
+            if (repeat && RepeatGroup.check(label, layout, tile)) {
                 label.placed = false;
             }
             else {

@@ -24,17 +24,11 @@ attribute vec4 a_color;
 
 // Optional dynamic line extrusion
 #ifdef TANGRAM_EXTRUDE_LINES
-    // xy: extrusion direction in xy plane
-    // z:  half-width of line (amount to extrude)
-    // w:  scaling factor for interpolating width between zooms
-    attribute vec2 a_extrude;
-    // xy: direction of line, for getting perpendicular offset
-    attribute vec2 a_offset;
-    // x: zoom scaling factor for line width
-    // y: zoom scaling factor for line offset
-    attribute vec2 a_scaling;
+    attribute vec2 a_extrude; // extrusion direction in xy plane
+    attribute vec2 a_offset;  // offset direction in xy plane
+    attribute vec2 a_scaling; // x: zoom scaling factor for line width, y: zoom scaling factor for line offset
 
-    uniform float u_v_scale_adjust;
+    uniform float u_v_scale_adjust; // scales texture UVs for line dash patterns w/fractional pixel width
 #endif
 
 varying vec4 v_position;

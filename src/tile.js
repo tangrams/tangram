@@ -2,6 +2,7 @@ import log from './utils/log';
 import Utils from './utils/utils';
 import mergeObjects from './utils/merge';
 import Geo from './geo';
+import {TileID} from './tile_id';
 import {addLayerDebugEntry} from './styles/style';
 import StyleParser from './styles/style_parser';
 import Collision from './labels/collision';
@@ -44,8 +45,8 @@ export default class Tile {
         this.debug = {};
 
         this.style_zoom = style_zoom; // zoom level to be used for styling
-        this.coords = Tile.normalizedCoordinate(coords, this.source, this.style_zoom);
-        this.key = Tile.key(this.coords, this.source, this.style_zoom);
+        this.coords = TileID.normalizedCoord(coords, this.source);
+        this.key = TileID.key(this.coords, this.source, this.style_zoom);
         this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
         this.overzoom2 = Math.pow(2, this.overzoom);
         this.min = Geo.metersForTile(this.coords);
@@ -62,70 +63,6 @@ export default class Tile {
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
         this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
-    }
-
-    static coord(c) {
-        return {x: c.x, y: c.y, z: c.z, key: Tile.coordKey(c)};
-    }
-
-    static coordKey({x, y, z}) {
-        return x + '/' + y + '/' + z;
-    }
-
-    static key (coords, source, style_zoom) {
-        if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
-            return; // cull tiles out of range (x will wrap)
-        }
-        return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
-    }
-
-    static normalizedKey (coords, source, style_zoom) {
-        return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source, style_zoom);
-    }
-
-    static normalizedCoordinate (coords, source) {
-        if (source.zoom_bias) {
-            coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
-        }
-        return Tile.coordinateWithMaxZoom(coords, source.max_zoom);
-    }
-
-    static coordinateAtZoom({x, y, z}, zoom) {
-        if (z !== zoom) {
-            let zscale = Math.pow(2, z - zoom);
-            x = Math.floor(x / zscale);
-            y = Math.floor(y / zscale);
-            z = zoom;
-        }
-        return Tile.coord({x, y, z});
-    }
-
-    static coordinateWithMaxZoom({x, y, z}, max_zoom) {
-        if (max_zoom !== undefined && z > max_zoom) {
-            return Tile.coordinateAtZoom({x, y, z}, max_zoom);
-        }
-        return Tile.coord({x, y, z});
-    }
-
-    static childrenForCoordinate({x, y, z, key}) {
-        if (!Tile.coord_children[key]) {
-            z++;
-            x *= 2;
-            y *= 2;
-            Tile.coord_children[key] = [
-                Tile.coord({x, y,      z}), Tile.coord({x: x+1, y,      z}),
-                Tile.coord({x, y: y+1, z}), Tile.coord({x: x+1, y: y+1, z})
-            ];
-        }
-        return Tile.coord_children[key];
-    }
-
-    static isDescendant(parent, descendant) {
-        if (descendant.z > parent.z) {
-            let {x, y} = Tile.coordinateAtZoom(descendant, parent.z);
-            return (parent.x === x && parent.y === y);
-        }
-        return false;
     }
 
     // Free resources owned by tile

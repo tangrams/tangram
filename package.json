@@ -31,7 +31,7 @@
     "build:module:minify": "ESM=true MINIFY=true ./node_modules/.bin/rollup -c",
     "build:nomodule:minify": "ESM=false MINIFY=true ./node_modules/.bin/rollup -c",
     "build:size": "gzip dist/tangram.min.mjs -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='Module:\t\t%.0fk (min/gzip)' && gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='No module:\t%.0fk (min/gzip)'",
-    "watch": "ESM=true SERVE=true ./node_modules/.bin/rollup -cw",
+    "watch": "ESM=\"${ESM:=true}\" SERVE=true ./node_modules/.bin/rollup -cw",
     "lint": "./node_modules/.bin/eslint src/",
     "test": "npm run lint && npm run test-run",
     "test-run": "npm run test-build-worker && ESM=false ./node_modules/karma/bin/karma start --browsers Chrome --single-run",

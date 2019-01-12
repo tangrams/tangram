@@ -1,9 +1,9 @@
-import log from '../utils/log';
 import DataSource, {NetworkTileSource} from './data_source';
-import Tile from '../tile';
+import {TileID} from '../tile_id';
 import Geo from '../geo';
 import Utils from '../utils/utils';
 import hashString from '../utils/hash';
+import log from '../utils/log';
 
 // TODO: support high-density `@2x`-style filenames for raster tiles and geo-referenced images
 
@@ -52,7 +52,7 @@ export class RasterTileSource extends NetworkTileSource {
 
     // Return texture info for a raster tile
     async tileTexture (tile) {
-        let coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
+        let coords = this.adjustRasterTileZoom(tile);
         let key = coords.key;
         if (!this.textures[key]) {
             let url = this.formatURL(this.url, { coords });
@@ -64,6 +64,40 @@ export class RasterTileSource extends NetworkTileSource {
             };
         }
         return this.textures[key];
+    }
+
+    // If the raster is attached to another source, we need to compare their levels of zoom detail
+    // to see if any adjustments are needed. Both the `tile_size` and `zoom_offset` data source params
+    // cause the zoom level to be downsampled relative to the "base" zoom level of the map view.
+    // The attaching source has already applied its own zoom downsampling. If this source has a lower
+    // level of detail, we apply the remaining differential here.
+    adjustRasterTileZoom (tile) {
+        let coords = tile.coords;
+        const tile_source = this.sources[tile.source];
+        if (tile_source !== this) { // no-op if the raster source isn't being rendered as an attachment
+            let zdiff = this.zoom_bias - tile_source.zoom_bias; // difference in zoom detail between the sources
+            if (zdiff > 0) { // raster source is less detailed
+                // do extra zoom adjustment and apply this raster source's max zoom
+                coords = TileID.normalizedCoord(tile.coords, {
+                    zoom_bias: zdiff,
+                    max_zoom: this.max_zoom
+                });
+            }
+            else {
+                // raster source supports higher detail, but was downsampled to match (the downsampling already
+                // happened upstream, when the attaching source calculated its own tile coordinate)
+                if (zdiff < 0) {
+                    log({ level: 'warn', once: true},
+                        `Raster source '${this.name}' supports higher zoom detail than source '${tile_source.name}' ` +
+                        `it's attached to. Downsampling this source ${-zdiff} extra zoom levels to match.`
+                    );
+                }
+
+                // no extra zoom adjustment needed, but still need to apply this raster source's max zoom
+                coords = TileID.coordWithMaxZoom(coords, this.max_zoom);
+            }
+        }
+        return coords;
     }
 
 }
@@ -112,7 +146,7 @@ export class RasterSource extends RasterTileSource {
     // consistency with the raster tile pipeline allowing for sampling within the fragment shader,
     // and clipping the raster against vector source data.
     async tileTexture (tile, { blend }) {
-        const coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
+        let coords = this.adjustRasterTileZoom(tile);
         const use_alpha = (blend !== 'opaque'); // ignore source alpha multiplier with opaque blending
         const name = `raster-${this.name}-${coords.key}-${use_alpha ? 'alpha' : 'opaque'}`; // unique texture name
 

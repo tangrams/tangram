@@ -48,8 +48,16 @@ export default class DataSource {
         // overzoom will apply for zooms higher than this
         this.max_zoom = (config.max_zoom != null) ? config.max_zoom : Geo.default_source_max_zoom;
 
+        // set a custom extra overzoom adjustment factor to load consistently lower zoom levels
+        // than the current map zoom level – eg a zoom_offset of 1 would load z3 data at z4
+        this.zoom_offset = (config.zoom_offset != null) ? config.zoom_offset : 0;
+        if (this.zoom_offset < 0) {
+            let msg = `Data source '${this.name}' zoom_offset must not be negative – setting to 0.`;
+            log({ level: 'warn', once: true }, msg);
+            this.zoom_offset = 0;
+        }
+
         this.setTileSize(config.tile_size);
-        this.max_coord_zoom = this.max_zoom + this.zoom_bias;
 
         // no tiles will be requested or displayed outside of these min/max values
         this.min_display_zoom = (config.min_display_zoom != null) ? config.min_display_zoom : 0;
@@ -89,7 +97,8 @@ export default class DataSource {
             'min_display_zoom',
             'max_display_zoom',
             'bounds',
-            'tile_size'
+            'tile_size',
+            'zoom_offset'
         ];
         const cur = sliceObject(source.config, rebuild_params);
         const prev = sliceObject(prev_source.config, rebuild_params);
@@ -184,7 +193,16 @@ export default class DataSource {
         }
 
         // # of zoom levels bigger than 256px tiles - 8 in place of log2(256)
-        this.zoom_bias = Math.log2(this.tile_size) - 8;
+        // Many Tangram functions assume 256px tiles, this factor adjusts for the
+        // case of bigger tile sizes - eg 512px tiles are 1 zoom level bigger,
+        // 1024px tiles are 2 levels bigger
+        this.zoom_bias = Math.log2(this.tile_size) - 8 + this.zoom_offset;
+
+        // the max/min coordinate zoom level at which tiles will be loaded from server
+        // (but tiles can be styled at other zooms)
+        // zoom_bias adjusts for tile sizes > than 256px, and manual zoom_offset
+        this.max_coord_zoom = this.max_zoom + this.zoom_bias;
+        this.min_coord_zoom = this.zoom_bias;
     }
 
     // Infer winding for data source from first ring of provided geometry

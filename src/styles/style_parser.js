@@ -342,7 +342,10 @@ StyleParser.parseUnits = function (val) {
 // (caching the result for future use)
 // { value: original, zoom: { z: meters }, dynamic: function(){...} }
 StyleParser.evalCachedDistanceProperty = function(val, context) {
-    if (val.dynamic) {
+    if (val == null) {
+        return;
+    }
+    else if (val.dynamic) {
         return tryEval(val.dynamic, context);
     }
     else if (val.zoom && val.zoom[context.zoom]) {

@@ -592,7 +592,7 @@ export var Style = {
         // to avoid flickering while loading (texture will render as black)
         const textures = await WorkerBroker.postMessage(
             `${this.main_thread_target}.loadTextures`,
-            { coords: tile.coords, rasters: tile.rasters, min: tile.min, max: tile.max }
+            { coords: tile.coords, source: tile.source, rasters: tile.rasters, min: tile.min, max: tile.max }
         );
 
         if (!textures || textures.length < 1) { // no textures found (unexpected)

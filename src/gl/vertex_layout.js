@@ -9,6 +9,7 @@ export default class VertexLayout {
     constructor (attribs) {
         this.attribs = attribs; // array of attributes, specified as standard GL attrib options
         this.dynamic_attribs = this.attribs.filter(x => !x.static); // attributes with per-vertex values, used to build VBOs
+        this.static_attribs = this.attribs.filter(x => x.static); // attributes with fixed values
         this.components = [];   // list of type and offset info about each attribute component
         this.index = {};        // JS buffer index of each attribute component, e.g. this.index.position
         this.offset = {};       // VBO buffer byte offset of each attribute component, e.g. this.offset.color
@@ -70,55 +71,42 @@ export default class VertexLayout {
         }
     }
 
-    // Setup a vertex layout for a specific GL program
+    // Enables dynamic (array-based) attributes for a given GL program
     // Assumes that the desired vertex buffer (VBO) is already bound
-    // If a given program doesn't include all attributes, it can still use the vertex layout
+    // If the program doesn't include all attributes, it can still use the vertex layout
     // to read those attribs that it does recognize, using the attrib offsets to skip others.
-    enable (gl, program, force) {
-        let attrib, location;
+    enableDynamicAttributes (gl, program) {
+        // Disable all attributes
+        for (const location in VertexLayout.enabled_attribs) {
+            gl.disableVertexAttribArray(location);
+        }
+        VertexLayout.enabled_attribs = {};
 
-        // Enable all attributes for this layout
-        for (let a=0; a < this.attribs.length; a++) {
-            attrib = this.attribs[a];
-            location = program.attribute(attrib.name).location;
-
+        // Enable dynamic attributes for this layout
+        this.dynamic_attribs.forEach(attrib => {
+            const location = program.attribute(attrib.name).location;
             if (location !== -1) {
-                // Dynamic attribute
-                if (attrib.static == null) {
-                    if (!VertexLayout.enabled_attribs[location] || force) {
-                        gl.enableVertexAttribArray(location);
-                    }
-                    gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
-                    VertexLayout.enabled_attribs[location] = program;
-                }
-                // Static attribute
-                else {
-                    if (gl[attrib.method] instanceof Function) {
-                        // N.B.: Safari appears to require an explicit array enable to set vertex attribute as "active"
-                        // (the static attribute value method does not work without it). So the attribute is temporarily
-                        // enabled as an array, then disabled.
-                        gl.enableVertexAttribArray(location);
-                        gl[attrib.method](location, attrib.static);
-                        gl.disableVertexAttribArray(location);
-                        delete VertexLayout.enabled_attribs[location];
-                    }
-                }
+                gl.enableVertexAttribArray(location);
+                gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
+                VertexLayout.enabled_attribs[location] = program;
             }
-        }
-
-        // Disable any previously bound attributes that aren't for this layout
-        for (location in VertexLayout.enabled_attribs) {
-            this.disableUnusedAttribute(gl, location, program);
-        }
+        });
     }
 
-    // Disable an attribute if it was not enabled for the specified program
-    // NOTE: this was moved out of the inner loop in enable() to assist w/VM optimization
-    disableUnusedAttribute (gl, location, program) {
-        if (VertexLayout.enabled_attribs[location] !== program) {
-            gl.disableVertexAttribArray(location);
-            delete VertexLayout.enabled_attribs[location];
-        }
+    // Enable static attributes for this layout. Since these aren't captured as part of Vertex Array Object state,
+    // they are enabled separately.
+    enableStaticAttributes (gl, program) {
+        this.static_attribs.forEach(attrib => {
+            const location = program.attribute(attrib.name).location;
+            if (location !== -1 && gl[attrib.method] instanceof Function) {
+                // N.B.: Safari appears to require an explicit array enable to set vertex attribute as "active"
+                // (the static attribute value method does not work without it). So the attribute is temporarily
+                // enabled as an array, then disabled.
+                gl.enableVertexAttribArray(location);
+                gl[attrib.method](location, attrib.static);
+                gl.disableVertexAttribArray(location);
+            }
+        });
     }
 
     createVertexData () {
