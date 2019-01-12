@@ -47,7 +47,7 @@ varying float v_alpha_factor;
     varying float v_label_hidden;
 #endif
 
-#define PI 3.14159265359
+#define TANGRAM_PI 3.14159265359
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
 #pragma tangram: camera
@@ -124,8 +124,8 @@ void main() {
     #ifdef TANGRAM_CURVED_LABEL
         //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
         if (a_offsets[0] != 0.){
-            vec4 angles_scaled = (PI / 16384.) * a_angles;
-            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;
+            vec4 angles_scaled = (TANGRAM_PI / 16384.) * a_angles;
+            vec4 pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;
             vec4 offsets_scaled = (1. / 64.) * a_offsets;
 
             float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);

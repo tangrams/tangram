@@ -51,7 +51,7 @@ varying vec4 v_world_position;
     varying vec4 v_lighting;
 #endif
 
-#define UNPACK_SCALING(x) (x / 1024.)
+#define TANGRAM_UNPACK_SCALING(x) (x / 1024.)
 
 #pragma tangram: camera
 #pragma tangram: material
@@ -93,11 +93,11 @@ void main() {
 
         // Interpolate line width between zooms
         float mdz = (dz - 0.5) * 2.; // zoom from mid-point
-        extrude -= extrude * UNPACK_SCALING(a_scaling.x) * mdz;
+        extrude -= extrude * TANGRAM_UNPACK_SCALING(a_scaling.x) * mdz;
 
         // Interpolate line offset between zooms
         // Scales from the larger value to the smaller one
-        float dwdz = UNPACK_SCALING(a_scaling.y);
+        float dwdz = TANGRAM_UNPACK_SCALING(a_scaling.y);
         float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates "direction" of scaling
         offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale "up" or "down"
 
