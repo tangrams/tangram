@@ -3,6 +3,7 @@ import DataSource, {NetworkTileSource} from './data_source';
 import Tile from '../tile';
 import Geo from '../geo';
 import Utils from '../utils/utils';
+import hashString from '../utils/hash';
 
 // TODO: support high-density `@2x`-style filenames for raster tiles and geo-referenced images
 
@@ -148,8 +149,9 @@ export class RasterSource extends RasterTileSource {
     // Draw a single image to the tile canvas based on on its bounds
     async drawImage (url, bounds, alpha, tile, dpr, ctx) {
         // Get source raster image
-        this.load_image[url] = this.load_image[url] || this.loadImage(url);
-        const image = await this.load_image[url];
+        const key = hashString(url); // use hash of URL for shorter keys
+        this.load_image[key] = this.load_image[key] || this.loadImage(url);
+        const image = await this.load_image[key];
 
         // Meters per pixel for this zoom, adjusted for display density and source tile size (e.g. 512px tiles)
         const mpp = Geo.metersPerPixel(tile.coords.z) / dpr / (this.tile_size / Geo.tile_size);
