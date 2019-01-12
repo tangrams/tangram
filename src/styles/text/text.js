@@ -251,7 +251,7 @@ Object.assign(TextStyle, {
 
     // Override
     // Create or return vertex layout
-    vertexLayoutForMeshVariant (variant) {
+    vertexLayoutForMeshVariant () {
         if (this.vertex_layout == null) {
             // TODO: could make selection, offset, and curved label attribs optional, but may not be worth it
             // since text points generally don't consume much memory anyway
