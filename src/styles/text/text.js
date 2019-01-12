@@ -73,10 +73,10 @@ Object.assign(TextStyle, {
         }
 
         let type = feature.geometry.type;
-        draw.can_articulate = (type === "LineString" || type === "MultiLineString");
+        draw.can_articulate = (type === 'LineString' || type === 'MultiLineString');
 
         // supersample text rendering for angled labels, to improve clarity
-        draw.supersample_text = (type === "LineString" || type === "MultiLineString");
+        draw.supersample_text = (type === 'LineString' || type === 'MultiLineString');
 
         let q = this.parseTextFeature(feature, draw, context, tile);
         if (!q) {
@@ -105,71 +105,69 @@ Object.assign(TextStyle, {
     },
 
     // Override
-    endData (tile) {
+    async endData (tile) {
         let queue = this.queues[tile.id];
         delete this.queues[tile.id];
 
-        return this.collideAndRenderTextLabels(tile, this.name, queue).
-            then(({ labels, texts, textures }) => {
-                if (labels && texts) {
-                    this.texts[tile.id] = texts;
+        const { labels, texts, textures } = await this.collideAndRenderTextLabels(tile, this.name, queue);
 
-                    // Build queued features
-                    labels.forEach(q => {
-                        let text_settings_key = q.text_settings_key;
-                        let text_info =
-                            this.texts[tile.id][text_settings_key] &&
-                            this.texts[tile.id][text_settings_key][q.text];
+        if (labels && texts) {
+            this.texts[tile.id] = texts;
 
-                        // setup styling object expected by Style class
-                        let style = this.feature_style;
-                        style.label = q.label;
+            // Build queued features
+            labels.forEach(q => {
+                let text_settings_key = q.text_settings_key;
+                let text_info =
+                    this.texts[tile.id][text_settings_key] &&
+                    this.texts[tile.id][text_settings_key][q.text];
 
-                        if (text_info.text_settings.can_articulate){
-                            // unpack logical sizes of each segment into an array for the style
-                            style.size = {};
-                            style.texcoords = {};
+                // setup styling object expected by Style class
+                let style = this.feature_style;
+                style.label = q.label;
 
-                            if (q.label.type === 'straight'){
-                                style.size.straight = text_info.size.logical_size;
-                                style.texcoords.straight = text_info.texcoords.straight;
-                                style.label_texture = textures[text_info.texcoords.straight.texture_id];
-                            }
-                            else{
-                                style.size.curved = text_info.segment_sizes.map(function(size){ return size.logical_size; });
-                                style.texcoords_stroke = text_info.texcoords_stroke;
-                                style.texcoords.curved = text_info.texcoords.curved;
-                                style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
-                            }
-                        }
-                        else {
-                            style.size = text_info.size.logical_size;
-                            style.texcoords = text_info.align[q.label.align].texcoords;
-                            style.label_texture = textures[text_info.align[q.label.align].texture_id];
-                        }
+                if (text_info.text_settings.can_articulate){
+                    // unpack logical sizes of each segment into an array for the style
+                    style.size = {};
+                    style.texcoords = {};
 
-                        Style.addFeature.call(this, q.feature, q.draw, q.context);
-                    });
-                }
-                this.freeText(tile);
-
-                // Finish tile mesh
-                return Style.endData.call(this, tile).then(tile_data => {
-                    if (tile_data) {
-                        // Attach tile-specific label atlas to mesh as a texture uniform
-                        if (textures && textures.length) {
-                            tile_data.textures.push(...textures); // assign texture ownership to tile
-                        }
-
-                        // Always apply shader blocks to standalone text
-                        for (let m in tile_data.meshes) {
-                            tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
-                        }
+                    if (q.label.type === 'straight'){
+                        style.size.straight = text_info.size.logical_size;
+                        style.texcoords.straight = text_info.texcoords.straight;
+                        style.label_texture = textures[text_info.texcoords.straight.texture_id];
                     }
+                    else{
+                        style.size.curved = text_info.segment_sizes.map(function(size){ return size.logical_size; });
+                        style.texcoords_stroke = text_info.texcoords_stroke;
+                        style.texcoords.curved = text_info.texcoords.curved;
+                        style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
+                    }
+                }
+                else {
+                    style.size = text_info.size.logical_size;
+                    style.texcoords = text_info.align[q.label.align].texcoords;
+                    style.label_texture = textures[text_info.align[q.label.align].texture_id];
+                }
 
-                    return tile_data;
-                });
+                Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
+        }
+        this.freeText(tile);
+
+        // Finish tile mesh
+        const tile_data = await Style.endData.call(this, tile);
+        if (tile_data) {
+            // Attach tile-specific label atlas to mesh as a texture uniform
+            if (textures && textures.length) {
+                tile_data.textures.push(...textures); // assign texture ownership to tile
+            }
+
+            // Always apply shader blocks to standalone text
+            for (let m in tile_data.meshes) {
+                tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
+            }
+        }
+
+        return tile_data;
     },
 
     // Sets up caching for draw properties
@@ -208,24 +206,24 @@ Object.assign(TextStyle, {
     buildLabels (size, geometry, layout, total_size) {
         let labels = [];
 
-        if (geometry.type === "LineString") {
+        if (geometry.type === 'LineString') {
             Array.prototype.push.apply(labels, this.buildLineLabels(geometry.coordinates, size, layout, total_size));
-        } else if (geometry.type === "MultiLineString") {
+        } else if (geometry.type === 'MultiLineString') {
             let lines = geometry.coordinates;
             for (let i = 0; i < lines.length; ++i) {
                 Array.prototype.push.apply(labels, this.buildLineLabels(lines[i], size, layout, total_size));
             }
-        } else if (geometry.type === "Point") {
+        } else if (geometry.type === 'Point') {
             labels.push(new LabelPoint(geometry.coordinates, size, layout));
-        } else if (geometry.type === "MultiPoint") {
+        } else if (geometry.type === 'MultiPoint') {
             let points = geometry.coordinates;
             for (let i = 0; i < points.length; ++i) {
                 labels.push(new LabelPoint(points[i], size, layout));
             }
-        } else if (geometry.type === "Polygon") {
+        } else if (geometry.type === 'Polygon') {
             let centroid = Geo.centroid(geometry.coordinates);
             labels.push(new LabelPoint(centroid, size, layout));
-        } else if (geometry.type === "MultiPolygon") {
+        } else if (geometry.type === 'MultiPolygon') {
             let centroid = Geo.multiCentroid(geometry.coordinates);
             labels.push(new LabelPoint(centroid, size, layout));
         }

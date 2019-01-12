@@ -4,7 +4,7 @@ import {leafletLayer, LeafletLayer} from '../src/leaflet_layer';
 import sampleScene from './fixtures/sample-scene.json';
 let assert = chai.assert;
 
-let map = L.map(
+let map = window.L.map(
     document.createElement('div'),
     { maxZoom: 20, inertia: false, keyboard: false}
 );
@@ -80,13 +80,16 @@ describe('Leaflet plugin', () => {
             scene = subject.scene;
             sinon.spy(LeafletLayer.layerBaseClass.prototype, 'onRemove');
             sinon.spy(scene, 'destroy');
-
+            let called = false;
 
             subject.on('init', () => {
                 subject.remove();
             });
             subject.on('remove', () => {
-                done();
+                if (!called) {
+                    called = true;
+                    done();
+                }
             });
 
             subject.addTo(map);

@@ -129,7 +129,7 @@ const FontManager = {
                 `;
 
                 let style_el = document.createElement('style');
-                style_el.appendChild(document.createTextNode(""));
+                style_el.appendChild(document.createTextNode(''));
                 document.head.appendChild(style_el);
                 style_el.sheet.insertRule(css, 0);
                 log('trace', 'Injecting CSS font face:', css);

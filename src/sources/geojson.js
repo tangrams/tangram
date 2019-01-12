@@ -18,7 +18,7 @@ export class GeoJSONSource extends NetworkSource {
         this.load_data = null;
         this.tile_indexes = {}; // geojson-vt tile indices, by layer name
         this.max_zoom = Math.max(this.max_zoom || 0, 15); // TODO: max zoom < 15 causes artifacts/no-draw at 20, investigate
-        this.setTileSize(512); // auto-tile to 512px tiles for better labelling
+        this.setTileSize(512); // auto-tile to 512px tiles for fewer internal tiles
         this.pad_scale = 0; // we don't want padding on auto-tiled sources
     }
 
@@ -107,7 +107,7 @@ export class GeoJSONSource extends NetworkSource {
         return collection;
     }
 
-    formatUrl (dest) {
+    formatURL () {
         return this.url;
     }
 
@@ -150,31 +150,29 @@ export class GeoJSONSource extends NetworkSource {
         // Avoids redundant label placement for each generated tile at higher zoom levels
         if (this.config.generate_label_centroids){
             let features_centroid = [];
-            let centroid_properties = {"label_placement" : true};
+            let centroid_properties = {'label_placement' : true};
 
             features.forEach(feature => {
                 let coordinates, centroid_feature;
-                switch (feature.geometry.type) {
-                    case 'Polygon':
-                        coordinates = feature.geometry.coordinates;
-                        centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
-                        features_centroid.push(centroid_feature);
-                        break;
-                    case 'MultiPolygon':
-                        // Add centroid feature for largest polygon
-                        coordinates = feature.geometry.coordinates;
-                        let max_area = -Infinity;
-                        let max_area_index = 0;
-                        for (let index = 0; index < coordinates.length; index++) {
-                            let area = Geo.polygonArea(coordinates[index]);
-                            if (area > max_area) {
-                                max_area = area;
-                                max_area_index = index;
-                            }
+                if (feature.geometry.type === 'Polygon') {
+                    coordinates = feature.geometry.coordinates;
+                    centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
+                    features_centroid.push(centroid_feature);
+                }
+                else if (feature.geometry.type === 'MultiPolygon') {
+                    // Add centroid feature for largest polygon
+                    coordinates = feature.geometry.coordinates;
+                    let max_area = -Infinity;
+                    let max_area_index = 0;
+                    for (let index = 0; index < coordinates.length; index++) {
+                        let area = Geo.polygonArea(coordinates[index]);
+                        if (area > max_area) {
+                            max_area = area;
+                            max_area_index = index;
                         }
-                        centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
-                        features_centroid.push(centroid_feature);
-                        break;
+                    }
+                    centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
+                    features_centroid.push(centroid_feature);
                 }
             });
 
@@ -216,20 +214,6 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
     constructor(source, sources) {
         super(source, sources);
-
-        // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
-        if (!this.urlHasTilePattern(this.url)) {
-            // Check instance type from parent class
-            if (source.type === 'GeoJSON') {
-                // Replace instance type
-                return new GeoJSONSource(source, sources);
-            }
-            else {
-                // Pass back to parent class to instantiate
-                return undefined;
-            }
-        }
-        return this;
     }
 
     parseSourceData (tile, source, response) {
@@ -262,7 +246,11 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
 }
 
-DataSource.register(GeoJSONTileSource, 'GeoJSON');      // prefered shorter name
+// Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
+DataSource.register('GeoJSON', source => {
+    return GeoJSONTileSource.urlHasTilePattern(source.url) ? GeoJSONTileSource : GeoJSONSource;
+});
+
 
 // Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
 function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
@@ -276,10 +264,10 @@ function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
     Object.assign(centroid_properties, properties, newProperties);
 
     return {
-        type: "Feature",
+        type: 'Feature',
         properties: centroid_properties,
         geometry: {
-            type: "Point",
+            type: 'Point',
             coordinates: centroid
         }
     };

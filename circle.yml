@@ -12,4 +12,4 @@ jobs:
           command: npm install
       - run:
           name: tests
-          command: npm run test-ci
+          command: npm run test

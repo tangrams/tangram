@@ -194,7 +194,7 @@ function setupMainThread () {
     // Add a worker to communicate with - each worker must be registered from the main thread
     WorkerBroker.addWorker = function (worker) {
         if (!(worker instanceof Worker)) {
-            throw Error(`Worker broker could not add non-Worker object`, worker);
+            throw Error('Worker broker could not add non-Worker object', worker);
         }
 
         worker.addEventListener('message', function WorkerBrokerMainThreadHandler(event) {
@@ -328,7 +328,7 @@ function setupWorkerThread () {
             messages[message_id] = { method, message, resolve, reject };
         });
 
-       let payload, transferables = [];
+        let payload, transferables = [];
 
         if (message && message.length === 1 && message[0] instanceof WorkerBroker.withTransferables) {
             transferables = message[0].transferables;
@@ -468,7 +468,7 @@ WorkerBroker.withTransferables = function (...value) {
 // TODO: add option in case you DON'T want to transfer objects
 function findTransferables(source, parent = null, property = null, list = []) {
     if (!source) {
-         return list;
+        return list;
     }
 
     if (Array.isArray(source)) {

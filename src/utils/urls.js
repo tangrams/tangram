@@ -137,7 +137,7 @@ export function createObjectURL (url) {
 
         if (typeof _createObjectURL !== 'function') {
             _createObjectURL = null;
-            log('warn', `window.URL.createObjectURL (or vendor prefix) not found, unable to create local blob URLs`);
+            log('warn', 'window.URL.createObjectURL (or vendor prefix) not found, unable to create local blob URLs');
         }
     }
 
@@ -156,7 +156,7 @@ export function revokeObjectURL (url) {
 
         if (typeof _revokeObjectURL !== 'function') {
             _revokeObjectURL = null;
-            log('warn', `window.URL.revokeObjectURL (or vendor prefix) not found, unable to create local blob URLs`);
+            log('warn', 'window.URL.revokeObjectURL (or vendor prefix) not found, unable to create local blob URLs');
         }
     }
 
@@ -183,7 +183,7 @@ export function findCurrentURL (...paths) {
         for (var s=0; s < scripts.length; s++) {
             for (let p=0; p < paths.length; p++) {
                 if (scripts[s].src.indexOf(paths[p]) > -1) {
-                   return scripts[s].src;
+                    return scripts[s].src;
                 }
             }
         }
@@ -192,7 +192,7 @@ export function findCurrentURL (...paths) {
 
 // Via https://davidwalsh.name/query-string-javascript
 function getURLParameter (name, url) {
-    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    name = name.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
     var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
     var results = regex.exec(url);
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));

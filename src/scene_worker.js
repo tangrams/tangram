@@ -95,7 +95,7 @@ const SceneWorker = Object.assign(self, {
 
         // Return promise for when config refresh finishes
         this.configuring = this.syncing_textures.then(() => {
-            log('debug', `updated config`);
+            log('debug', 'updated config');
         });
 
         return this.configuring;
@@ -110,13 +110,15 @@ const SceneWorker = Object.assign(self, {
         let changed = [];
 
         // Parse new sources
-        config.sources = compileFunctionStrings(config.sources);
         this.sources = {}; // clear previous sources
         for (let name in config.sources) {
             if (JSON.stringify(this.last_config_sources[name]) === JSON.stringify(config.sources[name])) {
                 this.sources[name] = last_sources[name];
                 continue;
             }
+
+            // compile any user-defined JS functions
+            config.sources[name] = compileFunctionStrings(config.sources[name]);
 
             let source;
             try {
@@ -274,7 +276,7 @@ const SceneWorker = Object.assign(self, {
                     context.layer = layer;         // add data source layer name
 
                     if (!filter(context)) {
-                       return;
+                        return;
                     }
 
                     // Info to return with each feature
@@ -347,11 +349,11 @@ const SceneWorker = Object.assign(self, {
 
     // Profiling helpers
     profile (name) {
-        console.profile(`worker ${this._worker_id}: ${name}`);
+        console.profile(`worker ${this._worker_id}: ${name}`); // eslint-disable-line no-console
     },
 
     profileEnd (name) {
-        console.profileEnd(`worker ${this._worker_id}: ${name}`);
+        console.profileEnd(`worker ${this._worker_id}: ${name}`); // eslint-disable-line no-console
     },
 
     debug: {

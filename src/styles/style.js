@@ -126,7 +126,7 @@ export var Style = {
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
-    endData (tile) {
+    async endData (tile) {
         var tile_data = this.tile_data[tile.id];
         this.tile_data[tile.id] = null;
 
@@ -148,10 +148,10 @@ export var Style = {
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
-            return this.buildRasterTextures(tile, tile_data).then(tile_data => tile_data);
+            return this.buildRasterTextures(tile, tile_data);
         }
         else {
-            return Promise.resolve(null); // don't send tile data back if doesn't have geometry
+            return null; // don't send tile data back if doesn't have geometry
         }
     },
 
@@ -172,12 +172,12 @@ export var Style = {
         return meshes[variant.key];
     },
 
-    vertexLayoutForMeshVariant (variant) {
+    vertexLayoutForMeshVariant (/*variant*/) {
         return this.vertex_layout;
     },
 
     default_mesh_variant: { key: 0, order: 0 },
-    meshVariantTypeForDraw (draw) {
+    meshVariantTypeForDraw (/*draw*/) {
         return this.default_mesh_variant;
     },
 
@@ -264,10 +264,10 @@ export var Style = {
             style.order = this.parseOrder(draw.order, context);
             if (style.order == null && this.blend !== 'overlay') {
                 let msg = `Layer '${draw.layers.join(', ')}', draw group '${draw.group}': `;
-                msg += `'order' parameter is required unless blend mode is 'overlay'`;
+                msg += '\'order\' parameter is required unless blend mode is \'overlay\'';
                 if (draw.order != null) {
-                    msg += `; 'order' was set to a dynamic value (e.g. string tied to feature property, `;
-                    msg += `or JS function), but evaluated to null for one or more features`;
+                    msg += '; \'order\' was set to a dynamic value (e.g. string tied to feature property, ';
+                    msg += 'or JS function), but evaluated to null for one or more features';
                 }
                 log({ level: 'warn', once: true }, msg);
                 return;
@@ -301,7 +301,7 @@ export var Style = {
         }
     },
 
-    _parseFeature (feature, draw, context) {
+    _parseFeature (/*feature, draw, context*/) {
         return this.feature_style;
     },
 
@@ -555,11 +555,18 @@ export var Style = {
         // are bound (the remaining slots aren't intended to be accessed).
         let num_raster_sources =
             Object.keys(this.sources)
-            .filter(s => this.sources[s] instanceof RasterTileSource)
-            .length;
+                .filter(s => this.sources[s] instanceof RasterTileSource)
+                .length;
 
         this.defines.TANGRAM_NUM_RASTER_SOURCES = `${num_raster_sources}`; // force to string to avoid auto-float conversion
         if (num_raster_sources > 0) {
+            // Track how many raster sources have alpha masking (used for handling transparency outside raster image)
+            const num_masked_rasters = Object.keys(this.sources)
+                .filter(s => this.sources[s].mask_alpha)
+                .length;
+            this.defines.TANGRAM_HAS_MASKED_RASTERS = (num_masked_rasters > 0);
+            this.defines.TANGRAM_ALL_MASKED_RASTERS = (num_masked_rasters === num_raster_sources);
+
             // Use model position of tile's coordinate zoom for raster tile texture UVs
             this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
 
@@ -569,93 +576,105 @@ export var Style = {
     },
 
     // Load raster tile textures and set uniforms
-    buildRasterTextures (tile, tile_data) {
+    async buildRasterTextures (tile, tile_data) {
+        // skip if style doesn't support rasters
         if (!this.hasRasters()) {
             return Promise.resolve(tile_data);
         }
 
-        let configs = {}; // texture configs to pass to texture builder, keyed by texture name
-        let index = {};   // index into raster sampler array, keyed by texture name
-
-        // TODO: data source could retrieve raster texture URLs
-        tile.rasters.map(r => this.sources[r]).filter(x => x).forEach((source, i) => {
-            if (source instanceof RasterTileSource) {
-                let config = source.tileTexture(tile);
-                configs[config.url] = config;
-                index[config.url] = i;
-            }
-        });
-
-        if (Object.keys(configs).length === 0) {
+        // skip if source didn't attach any rasters to tile
+        if (tile.rasters.length === 0) {
             return Promise.resolve(tile_data);
         }
 
         // Load textures on main thread and return when done
         // We want to block the building of a raster tile mesh until its texture is loaded,
         // to avoid flickering while loading (texture will render as black)
-        return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
-            .then(textures => {
-                if (!textures || textures.length < 1) { // no textures found (unexpected)
-                    // TODO: warning
-                    return tile_data;
-                }
-                else if (textures.some(t => !t.loaded)) { // some textures failed, throw out style for this tile
-                    return null;
-                }
-
-                // Set texture uniforms (returned after loading from main thread)
-                tile_data.uniforms = tile_data.uniforms || {};
-                tile_data.textures = tile_data.textures || [];
-
-                let u_samplers = tile_data.uniforms['u_rasters'] = [];
-                let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
-                let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
-
-                textures.forEach(t => {
-                    let i = index[t.name];
-                    let raster_coords = configs[t.name].coords; // tile coords of raster tile
-
-                    u_samplers[i] = t.name;
-                    tile_data.textures.push(t.name);
-
-                    u_sizes[i] = [t.width, t.height];
-
-                    // Tile geometry may be at a higher zoom than the raster tile texture,
-                    // (e.g. an overzoomed raster tile), in which case we need to adjust the
-                    // raster texture UVs to offset to the appropriate starting point for
-                    // this geometry tile.
-                    if (tile.coords.z > raster_coords.z) {
-                        let dz = tile.coords.z - raster_coords.z; // # of levels raster source is overzoomed
-                        let dz2 = Math.pow(2, dz);
-                        u_offsets[i] = [
-                            (((tile.coords.x % dz2) + dz2) % dz2) / dz2, // double-modulo to handle negative (wrapped) tile coords
-                            (dz2 - 1 - (tile.coords.y % dz2)) / dz2, // GL texture coords are +Y up
-                            1 / dz2
-                        ];
-                    }
-                    else {
-                        u_offsets[i] = [0, 0, 1];
-                    }
-                });
-
-                return tile_data;
-            }
+        const textures = await WorkerBroker.postMessage(
+            `${this.main_thread_target}.loadTextures`,
+            { coords: tile.coords, source: tile.source, rasters: tile.rasters, min: tile.min, max: tile.max }
         );
+
+        if (!textures || textures.length < 1) { // no textures found (unexpected)
+            // TODO: warning
+            return tile_data;
+        }
+        else if (textures.some(t => !t.loaded)) { // some textures failed, throw out style for this tile
+            return null;
+        }
+
+        // Enable alpha masking if needed (for transparency outside raster image, on first raster only)
+        tile_data.uniforms['u_raster_mask_alpha'] = (this.sources[tile.rasters[0]].mask_alpha === true);
+
+        // Set texture uniforms (returned after loading from main thread)
+        const u_samplers = tile_data.uniforms['u_rasters'] = [];
+        const u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
+        const u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
+
+        textures.forEach(t => {
+            const i = t.index;
+            u_samplers[i] = t.name;
+            tile_data.textures.push(t.name);
+
+            u_sizes[i] = [t.width, t.height];
+
+            // Tile geometry may be at a higher zoom than the raster tile texture,
+            // (e.g. an overzoomed raster tile), in which case we need to adjust the
+            // raster texture UVs to offset to the appropriate starting point for
+            // this geometry tile.
+            if (tile.coords.z > t.coords.z) {
+                let dz = tile.coords.z - t.coords.z; // # of levels raster source is overzoomed
+                let dz2 = Math.pow(2, dz);
+                u_offsets[i] = [
+                    (((tile.coords.x % dz2) + dz2) % dz2) / dz2, // double-modulo to handle negative (wrapped) tile coords
+                    (dz2 - 1 - (tile.coords.y % dz2)) / dz2, // GL texture coords are +Y up
+                    1 / dz2
+                ];
+            }
+            else {
+                u_offsets[i] = [0, 0, 1];
+            }
+        });
+
+        return tile_data;
     },
 
+    // Determine which raster tile textures need to load for this tile, load them and return metadata to worker
     // Called on main thread
-    loadTextures (textures) {
+    async loadTextures (tile) {
+        let configs = {}; // texture configs to pass to texture builder, keyed by texture name
+        let index = {};   // index into raster sampler array, keyed by texture name
+        let queue = [];
+
+        // Find raster textures that need to be loaded
+        tile.rasters.map(r => this.sources[r]).filter(x => x).forEach((source, i) => {
+            if (source instanceof RasterTileSource) {
+                queue.push(source.tileTexture(tile, this).then(config => {
+                    configs[config.name] = config;
+                    index[config.name] = i;
+                }));
+            }
+        });
+        await Promise.all(queue);
+
+        // Create and load raster textures
+        await Texture.createFromObject(this.gl, configs);
+        let textures = await Promise.all(Object.keys(configs)
+            .map(t => Texture.textures[t] && Texture.textures[t].load())
+            .filter(x => x)
+        );
+        textures.forEach(t => t.retain());
+
+        // Take a subset of texture metadata, and decorate with raster-specific info
         // NB: only return name and size of textures loaded, because we can't send actual texture objects to worker
-        return Texture.createFromObject(this.gl, textures)
-            .then(() => {
-                return Promise.all(Object.keys(textures).map(t => {
-                    return Texture.textures[t] && Texture.textures[t].load();
-                }).filter(x => x));
-            })
-            .then(textures => {
-                textures.forEach(t => t.retain());
-                return textures.map(t => ({ name: t.name, width: t.width, height: t.height, loaded: t.loaded }));
-            });
+        return textures.map(t => ({
+            name: t.name,
+            width: t.width,
+            height: t.height,
+            loaded: t.loaded,
+            index: index[t.name],          // raster sampler index
+            coords: configs[t.name].coords // tile coords of raster tile
+        }));
     },
 
     // Setup any GL state for rendering

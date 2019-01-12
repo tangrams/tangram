@@ -68,13 +68,13 @@ export default SceneLoader = {
 
             return Promise.
                 all(imports.map(resource => this.loadSceneRecursive(resource, bundle, errors))).
-                    then(results => {
-                        results.forEach(r => this.normalize(r.config, r.bundle)); // first normalize imports
-                        let configs = results.map(r => r.config);
-                        config = mergeObjects(...configs, config);
-                        this.normalize(config, bundle); // last normalize parent, after merge
-                        return { config, bundle };
-                    });
+                then(results => {
+                    results.forEach(r => this.normalize(r.config, r.bundle)); // first normalize imports
+                    let configs = results.map(r => r.config);
+                    config = mergeObjects(...configs, config);
+                    this.normalize(config, bundle); // last normalize parent, after merge
+                    return { config, bundle };
+                });
         }).catch(error => {
             // Collect scene load errors as we go
             error.url = url;
@@ -106,6 +106,12 @@ export default SceneLoader = {
     normalizeDataSource(source, bundle) {
         source.url = bundle.urlFor(source.url);
 
+        // composite untiled raster sources
+        if (Array.isArray(source.composite)) {
+            source.composite.forEach(c => c.url = bundle.urlFor(c.url));
+        }
+
+        // custom scripts
         if (source.scripts) {
             // convert legacy array-style scripts to object format (script URL is used as both key and value)
             if (Array.isArray(source.scripts)) {
@@ -302,7 +308,7 @@ export default SceneLoader = {
                     // handle globals that refer to other globals, detecting any cyclical references
                     stack = stack || [prop];
                     if (stack.indexOf(val) > -1) {
-                        log({ level: 'warn', once: true }, `Global properties: cyclical reference detected`, stack);
+                        log({ level: 'warn', once: true }, 'Global properties: cyclical reference detected', stack);
                         val = null;
                         break;
                     }

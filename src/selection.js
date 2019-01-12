@@ -206,9 +206,9 @@ export default class FeatureSelection {
                             this.workers[worker_id],
                             'self.getFeatureSelection',
                             { id: request.id, key: feature_key })
-                        .then(message => {
-                            this.finishRead(message);
-                        });
+                            .then(message => {
+                                this.finishRead(message);
+                            });
                     }
                 }
                 // No feature found, but still need to resolve promise
@@ -228,7 +228,7 @@ export default class FeatureSelection {
     finishRead (message) {
         var request = this.requests[message.id];
         if (!request) {
-            log('error', "FeatureSelection.finishRead(): could not find message", message);
+            log('error', 'FeatureSelection.finishRead(): could not find message', message);
             return; // request was cleared before it returned
         }
 

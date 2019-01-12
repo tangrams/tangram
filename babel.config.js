@@ -12,9 +12,20 @@ module.exports = function(context) {
           targets,
           loose: true,
           debug: true,
-          useBuiltIns: ESM ? false : 'usage'
+          useBuiltIns: ESM ? false : 'usage',
+          exclude: [
+            // we don't want these because we're using fast-async instead
+            'transform-async-to-generator',
+            'transform-regenerator',
+            'proposal-async-generator-functions'
+          ]
         }
       ],
-    ]
+    ],
+    plugins: [
+      ESM ? false : ['module:fast-async', {
+        spec: true // spec setting sticks to pure promises
+      }]
+    ].filter(x => x)
   };
 };

@@ -6,8 +6,9 @@ import Thread from './thread';
 import WorkerBroker from './worker_broker';
 import Geo from '../geo';
 
-var Utils;
-export default Utils = {};
+export default Utils;
+
+const Utils = {};
 
 WorkerBroker.addTarget('Utils', Utils);
 
@@ -19,7 +20,7 @@ Utils.isSafari = function () {
 
 // Basic IE11 or Edge detection
 Utils.isMicrosoft = function () {
-    return /(Trident\/7.0|Edge[ /](\d+[\.\d]+))/i.test(navigator.userAgent);
+    return /(Trident\/7.0|Edge[ /](\d+[.\d]+))/i.test(navigator.userAgent);
 };
 
 Utils._requests = {};       // XHR requests on current thread
@@ -238,5 +239,5 @@ Utils.toCSSColor = function (color) {
 };
 
 Utils.pointInTile = function (point) {
-    return point[0] >= 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] <= 0;
+    return point[0] >= 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] <= 0;
 };

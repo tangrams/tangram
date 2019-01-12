@@ -22,7 +22,7 @@ Context.getContext = function getContext (canvas, options)
 
     var gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
     if (!gl) {
-        throw new Error("Couldn't create WebGL context.");
+        throw new Error('Couldn\'t create WebGL context.');
     }
     gl._tangram_id = context_id++;
 

@@ -11,60 +11,58 @@ export default function placePointsOnLine (line, size, options) {
     let strategy = options.placement;
     let min_length = Math.max(size[0], size[1]) * options.placement_min_length_ratio * options.units_per_pixel;
 
-    switch (strategy){
-        case PLACEMENT.SPACED:
-            let result = getPositionsAndAngles(line, min_length, options);
-            // false will be returned if line have no length
-            if (!result) {
-                return [];
-            }
+    if (strategy === PLACEMENT.SPACED) {
+        let result = getPositionsAndAngles(line, min_length, options);
+        // false will be returned if line have no length
+        if (!result) {
+            return [];
+        }
 
-            let positions = result.positions;
-            let angles = result.angles;
-            for (let i = 0; i < positions.length; i++){
-                let position = positions[i];
-                let angle = angles[i];
-                if (options.tile_edges === true || !isCoordOutsideTile(position)) {
-                    let label = new LabelPoint(position, size, options);
-                    label.angle = angle;
-                    labels.push(label);
-                }
+        let positions = result.positions;
+        let angles = result.angles;
+        for (let i = 0; i < positions.length; i++){
+            let position = positions[i];
+            let angle = angles[i];
+            if (options.tile_edges === true || !isCoordOutsideTile(position)) {
+                let label = new LabelPoint(position, size, options);
+                label.angle = angle;
+                labels.push(label);
             }
-            break;
-        case PLACEMENT.VERTEX:
-            let p, q, label;
-            for (let i = 0; i < line.length - 1; i++){
-                p = line[i];
-                q = line[i + 1];
-                if (options.tile_edges === true || !isCoordOutsideTile(p)) {
-                    label = new LabelPoint(p, size, options);
+        }
+    }
+    else if (strategy === PLACEMENT.VERTEX) {
+        let p, q, label;
+        for (let i = 0; i < line.length - 1; i++){
+            p = line[i];
+            q = line[i + 1];
+            if (options.tile_edges === true || !isCoordOutsideTile(p)) {
+                label = new LabelPoint(p, size, options);
+                label.angle = getAngle(p, q, options.angle);
+                labels.push(label);
+            }
+        }
+
+        // add last endpoint
+        label = new LabelPoint(q, size, options);
+        label.angle = getAngle(p, q, options.angle);
+        labels.push(label);
+    }
+    else if (strategy === PLACEMENT.MIDPOINT) {
+        for (let i = 0; i < line.length - 1; i++){
+            let p = line[i];
+            let q = line[i + 1];
+            let position = [
+                0.5 * (p[0] + q[0]),
+                0.5 * (p[1] + q[1])
+            ];
+            if (options.tile_edges === true || !isCoordOutsideTile(position)) {
+                if (!min_length || norm(p, q) > min_length) {
+                    let label = new LabelPoint(position, size, options);
                     label.angle = getAngle(p, q, options.angle);
                     labels.push(label);
                 }
             }
-
-            // add last endpoint
-            label = new LabelPoint(q, size, options);
-            label.angle = getAngle(p, q, options.angle);
-            labels.push(label);
-            break;
-        case PLACEMENT.MIDPOINT:
-            for (let i = 0; i < line.length - 1; i++){
-                let p = line[i];
-                let q = line[i + 1];
-                let position = [
-                    0.5 * (p[0] + q[0]),
-                    0.5 * (p[1] + q[1])
-                ];
-                if (options.tile_edges === true || !isCoordOutsideTile(position)) {
-                    if (!min_length || norm(p, q) > min_length) {
-                        let label = new LabelPoint(position, size, options);
-                        label.angle = getAngle(p, q, options.angle);
-                        labels.push(label);
-                    }
-                }
-            }
-            break;
+        }
     }
     return labels;
 }

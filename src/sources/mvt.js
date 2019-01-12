@@ -12,7 +12,7 @@ export class MVTSource extends NetworkTileSource {
 
     constructor (source, sources) {
         super(source, sources);
-        this.response_type = "arraybuffer"; // binary data
+        this.response_type = 'arraybuffer'; // binary data
     }
 
     parseSourceData (tile, source, response) {
@@ -136,4 +136,4 @@ export function decodeMultiPolygon (geom) {
     return geom;
 }
 
-DataSource.register(MVTSource, 'MVT');
+DataSource.register('MVT', () => MVTSource);

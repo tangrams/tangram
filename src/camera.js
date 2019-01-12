@@ -14,14 +14,14 @@ export default class Camera {
     // Create a camera by type name, factory-style
     static create(name, view, config) {
         switch (config.type) {
-            case 'isometric':
-                return new IsometricCamera(name, view, config);
-            case 'flat':
-                return new FlatCamera(name, view, config);
-            case 'perspective':
+        case 'isometric':
+            return new IsometricCamera(name, view, config);
+        case 'flat':
+            return new FlatCamera(name, view, config);
+        case 'perspective':
             /* falls through */
-            default:
-                return new PerspectiveCamera(name, view, config);
+        default:
+            return new PerspectiveCamera(name, view, config);
         }
     }
 
@@ -30,7 +30,7 @@ export default class Camera {
     }
 
     // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
-    setupProgram(program) {
+    setupProgram(/*program*/) {
     }
 
     // Sync camera position/zoom to scene view
@@ -151,7 +151,7 @@ class PerspectiveCamera extends Camera {
             view_height: viewport_height,
             focal_length: Utils.interpolate(this.view.zoom, this.focal_length),
             fov: Utils.interpolate(this.view.zoom, this.fov)
-         });
+        });
 
         // View matrix
         var position = [this.view.center.meters.x, this.view.center.meters.y, height];

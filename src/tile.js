@@ -264,30 +264,30 @@ export default class Tile {
                         }
                     });
                 }))
-                .then(() => {
-                    log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
+                    .then(() => {
+                        log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
 
-                    // Clear group and check if all groups finished
-                    groups[group_name] = [];
-                    if (Object.keys(groups).every(g => groups[g].length === 0)) {
-                        progress.done = true;
-                    }
+                        // Clear group and check if all groups finished
+                        groups[group_name] = [];
+                        if (Object.keys(groups).every(g => groups[g].length === 0)) {
+                            progress.done = true;
+                        }
 
-                    // Send meshes to main thread
-                    WorkerBroker.postMessage(
-                        `TileManager_${scene_id}.buildTileStylesCompleted`,
-                        WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
-                    );
-                    progress.start = null;
-                    tile.mesh_data = {}; // reset so each group sends separate set of style meshes
+                        // Send meshes to main thread
+                        WorkerBroker.postMessage(
+                            `TileManager_${scene_id}.buildTileStylesCompleted`,
+                            WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
+                        );
+                        progress.start = null;
+                        tile.mesh_data = {}; // reset so each group sends separate set of style meshes
 
-                    if (progress.done) {
-                        Collision.resetTile(tile.id); // clear collision if we're done with the tile
-                    }
-                })
-                .catch((e) => {
-                    log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e.stack);
-                });
+                        if (progress.done) {
+                            Collision.resetTile(tile.id); // clear collision if we're done with the tile
+                        }
+                    })
+                    .catch((e) => {
+                        log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e);
+                    });
             }
         }
         else {
@@ -427,7 +427,7 @@ export default class Tile {
             else {
                 this.pending_label_meshes = this.pending_label_meshes || {};
                 this.pending_label_meshes[m] = meshes[m];
-              }
+            }
         }
 
         if (progress.done) {
@@ -441,8 +441,8 @@ export default class Tile {
             this.new_mesh_styles = [];
 
             this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
-            this.printDebug();
         }
+        this.printDebug(progress);
     }
 
     // How many styles are currently pending label collision
@@ -574,7 +574,8 @@ export default class Tile {
         return this;
     }
 
-    printDebug (exclude = ['layers']) {
+    printDebug (progress) {
+        const exclude = ['layers'];
         let copy = {};
         for (let key in this.debug) {
             if (exclude.indexOf(key) === -1) {
@@ -582,7 +583,7 @@ export default class Tile {
             }
         }
 
-        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
+        log('debug', `Tile ${progress.done ? '(done)' : ''}: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
     }
 
     // Sum up layer feature/geometry stats from a set of tiles

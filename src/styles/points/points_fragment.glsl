@@ -103,10 +103,11 @@ void main (void) {
     #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute
-    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)
-        if (color.a < TANGRAM_ALPHA_TEST) {
+    #ifdef TANGRAM_BLEND_OPAQUE
+        if (color.a < 1. - TANGRAM_EPSILON) {
             discard;
         }
+        color.a = 1.; // only allow full alpha in opaque blend mode
     #endif
 
     gl_FragColor = color;

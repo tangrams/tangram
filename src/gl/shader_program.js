@@ -399,45 +399,45 @@ export default class ShaderProgram {
         let value = uniform.value;
 
         switch (uniform.method) {
-            case '1i':
-                this.gl.uniform1i(location, value);
-                break;
-            case '1f':
-                this.gl.uniform1f(location, value);
-                break;
-            case '2f':
-                this.gl.uniform2f(location, value[0], value[1]);
-                break;
-            case '3f':
-                this.gl.uniform3f(location, value[0], value[1], value[2]);
-                break;
-            case '4f':
-                this.gl.uniform4f(location, value[0], value[1], value[2], value[3]);
-                break;
-            case '1iv':
-                this.gl.uniform1iv(location, value);
-                break;
-            case '3iv':
-                this.gl.uniform3iv(location, value);
-                break;
-            case '1fv':
-                this.gl.uniform1fv(location, value);
-                break;
-            case '2fv':
-                this.gl.uniform2fv(location, value);
-                break;
-            case '3fv':
-                this.gl.uniform3fv(location, value);
-                break;
-            case '4fv':
-                this.gl.uniform4fv(location, value);
-                break;
-            case 'Matrix3fv':
-                this.gl.uniformMatrix3fv(location, false, value);
-                break;
-            case 'Matrix4fv':
-                this.gl.uniformMatrix4fv(location, false, value);
-                break;
+        case '1i':
+            this.gl.uniform1i(location, value);
+            break;
+        case '1f':
+            this.gl.uniform1f(location, value);
+            break;
+        case '2f':
+            this.gl.uniform2f(location, value[0], value[1]);
+            break;
+        case '3f':
+            this.gl.uniform3f(location, value[0], value[1], value[2]);
+            break;
+        case '4f':
+            this.gl.uniform4f(location, value[0], value[1], value[2], value[3]);
+            break;
+        case '1iv':
+            this.gl.uniform1iv(location, value);
+            break;
+        case '3iv':
+            this.gl.uniform3iv(location, value);
+            break;
+        case '1fv':
+            this.gl.uniform1fv(location, value);
+            break;
+        case '2fv':
+            this.gl.uniform2fv(location, value);
+            break;
+        case '3fv':
+            this.gl.uniform3fv(location, value);
+            break;
+        case '4fv':
+            this.gl.uniform4fv(location, value);
+            break;
+        case 'Matrix3fv':
+            this.gl.uniformMatrix3fv(location, false, value);
+            break;
+        case 'Matrix4fv':
+            this.gl.uniformMatrix4fv(location, false, value);
+            break;
         }
     }
 
@@ -592,19 +592,19 @@ ShaderProgram.reset();
 
 // Turn an object of key/value pairs into single string of #define statements
 ShaderProgram.buildDefineString = function (defines) {
-    var define_str = "";
+    var define_str = '';
     for (var d in defines) {
         if (defines[d] == null || defines[d] === false) {
             continue;
         }
         else if (typeof defines[d] === 'boolean' && defines[d] === true) { // booleans are simple defines with no value
-            define_str += "#define " + d + "\n";
+            define_str += '#define ' + d + '\n';
         }
         else if (typeof defines[d] === 'number' && Math.floor(defines[d]) === defines[d]) { // int to float conversion to satisfy GLSL floats
-            define_str += "#define " + d + " " + defines[d].toFixed(1) + "\n";
+            define_str += '#define ' + d + ' ' + defines[d].toFixed(1) + '\n';
         }
         else { // any other float or string value
-            define_str += "#define " + d + " " + defines[d] + "\n";
+            define_str += '#define ' + d + ' ' + defines[d] + '\n';
         }
     }
     return define_str;
@@ -613,7 +613,7 @@ ShaderProgram.buildDefineString = function (defines) {
 // Turn a list of extension names into single string of #extension statements
 ShaderProgram.buildExtensionString = function (extensions) {
     extensions = extensions || [];
-    let str = "";
+    let str = '';
     extensions.forEach(ext => {
         str += `#ifdef GL_${ext}\n#extension GL_${ext} : enable\n#endif\n`;
     });

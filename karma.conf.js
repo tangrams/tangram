@@ -10,28 +10,11 @@ var string = require('rollup-plugin-string');
 
 module.exports = function (config) {
 
-    var customLaunchers = {
-        'SL_Firefox': {
-            base: 'SauceLabs',
-            platform: 'Windows 2012',
-            browserName: 'firefox',
-            version: '34',
-            firefox_profile: {
-                'webgl.force-enabled': true,
-                'webgl.disable': false,
-                'webgl.msaa-force': true
-            }
-        }
-    };
-
-    var browserList = Object.keys(customLaunchers);
-    browserList.push('Chrome');
-
     config.set({
         basePath: '',
         frameworks: ['mocha', 'sinon'],
         files: [
-            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js',
+            'https://unpkg.com/leaflet@1.3.4/dist/leaflet.js',
             {
                 pattern : 'test/fixtures/*',
                 watched : false,
@@ -97,7 +80,6 @@ module.exports = function (config) {
             'karma-mocha',
             'karma-sinon',
             'karma-chrome-launcher',
-            'karma-sauce-launcher',
             'karma-mocha-reporter'
         ],
         reporters: ['mocha'],
@@ -105,18 +87,9 @@ module.exports = function (config) {
         port: 9876,
         colors: true,
 
-        sauceLabs: {
-            testName: 'Tangram test Suite',
-            recordScreenshots: true,
-            connectOptions: {
-                logfile: 'sauce_connect.log'
-            }
-        },
-
         logLevel: config.LOG_INFO,
         autoWatch: false,
-        customLaunchers: customLaunchers,
-        browsers: browserList,
+        browsers: ['Chrome'],
 
         singleRun: false
 

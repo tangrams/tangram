@@ -67,7 +67,7 @@ export default class Light {
         }
 
         // Construct code to calculate each light instance
-        let calculateLights = "";
+        let calculateLights = '';
         if (lights && Object.keys(lights).length > 0) {
             // Collect uniques types of lights
             let types = {};
