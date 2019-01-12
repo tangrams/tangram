@@ -1,4 +1,5 @@
 import Tile from './tile';
+import {TileID} from './tile_id';
 import TilePyramid from './tile_pyramid';
 import Geo from './geo';
 import mainThreadLabelCollisionPass from './labels/main_pass';
@@ -224,7 +225,7 @@ export default class TileManager {
             else {
                 // brute force
                 for (let key in this.visible_coords) {
-                    if (Tile.isDescendant(tile.coords, this.visible_coords[key])) {
+                    if (TileID.isDescendant(tile.coords, this.visible_coords[key])) {
                         tile.visible = true;
                         break;
                     }
@@ -344,7 +345,7 @@ export default class TileManager {
                 continue;
             }
 
-            let key = Tile.normalizedKey(coords, source, this.view.tile_zoom);
+            let key = TileID.normalizedKey(coords, source, this.view.tile_zoom);
             if (key && !this.hasTile(key)) {
                 log('trace', `load tile ${key}, distance from view center: ${coords.center_dist}`);
                 let tile = new Tile({

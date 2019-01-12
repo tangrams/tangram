@@ -1,5 +1,5 @@
 import Geo from './geo';
-import Tile from './tile';
+import {TileID} from './tile_id';
 import Camera from './camera';
 import Utils from './utils/utils';
 import subscribeMixin from './utils/subscribe';
@@ -243,7 +243,7 @@ export default class View {
         let coords = [];
         for (let x = range[0]; x <= range[1]; x++) {
             for (let y = range[2]; y <= range[3]; y++) {
-                coords.push(Tile.coord({ x, y, z }));
+                coords.push(TileID.coord({ x, y, z }));
             }
         }
         return coords;
@@ -280,7 +280,7 @@ export default class View {
             }
 
             // Handle tiles at different zooms
-            let coords = Tile.coordinateAtZoom(tile.coords, this.tile_zoom);
+            let coords = TileID.coordAtZoom(tile.coords, this.tile_zoom);
 
             // Discard tiles outside an area surrounding the viewport
             if (Math.abs(coords.x - this.center.tile.x) - border_tiles[0] > this.buffer) {

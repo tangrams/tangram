@@ -1,4 +1,4 @@
-import Tile from './tile';
+import {TileID} from './tile_id';
 
 export default class TilePyramid {
 
@@ -15,7 +15,7 @@ export default class TilePyramid {
 
         // Add to parents
         while (tile.style_zoom >= 0) {
-            tile = Tile.parentInfo(tile);
+            tile = TileID.parent(tile);
             if (!tile) {
                 return;
             }
@@ -39,7 +39,7 @@ export default class TilePyramid {
 
         // Decrement reference count up the tile pyramid
         while (tile.style_zoom >= 0) {
-            tile = Tile.parentInfo(tile);
+            tile = TileID.parent(tile);
             if (!tile) {
                 return;
             }
@@ -58,7 +58,7 @@ export default class TilePyramid {
         let level = 0;
         while (level < this.max_proxy_ancestor_depth) {
             const last_z = tile.coords.z;
-            tile = Tile.parentInfo(tile);
+            tile = TileID.parent(tile);
             if (!tile) {
                 return;
             }
@@ -79,7 +79,7 @@ export default class TilePyramid {
     getDescendants (tile, level = 0) {
         let descendants = [];
         if (level < this.max_proxy_descendant_depth) {
-            let tiles = Tile.childrenInfo(tile);
+            let tiles = TileID.children(tile);
             if (!tiles) {
                 return;
             }

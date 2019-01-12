@@ -1,7 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
 import TilePyramid from '../src/tile_pyramid';
-import Tile from '../src/tile';
+import {TileID} from '../src/tile_id';
 
 describe('TilePyramid', function() {
 
@@ -22,12 +22,12 @@ describe('TilePyramid', function() {
             };
 
             tile = {
-                coords: Tile.coord(coords),
+                coords: TileID.coord(coords),
                 style_zoom,
                 source,
                 loaded: true
             };
-            tile.key = Tile.key(tile.coords, source, style_zoom);
+            tile.key = TileID.key(tile.coords, source, style_zoom);
         });
 
         it('creates one entry per zoom', () => {
@@ -44,11 +44,11 @@ describe('TilePyramid', function() {
 
         it('creates entries for overzoomed tiles', () => {
             tile = Object.assign({}, tile);
-            tile.coords = Tile.coordinateAtZoom(coords, 18);
+            tile.coords = TileID.coordAtZoom(coords, 18);
             tile.style_zoom = 20;
             pyramid.addTile(tile);
 
-            assert.isNotNull(pyramid.tiles[Tile.key(tile.coords, source, tile.style_zoom)]);
+            assert.isNotNull(pyramid.tiles[TileID.key(tile.coords, source, tile.style_zoom)]);
         });
 
         it('removes all entries for single tile', () => {
@@ -67,7 +67,7 @@ describe('TilePyramid', function() {
 
         it('gets tile descendant', () => {
             pyramid.addTile(tile);
-            let ancestor = Tile.parentInfo(Tile.parentInfo(tile));
+            let ancestor = TileID.parent(TileID.parent(tile));
             let descendants = pyramid.getDescendants(ancestor);
 
             assert.equal(descendants.length, 1);
