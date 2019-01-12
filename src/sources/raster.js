@@ -1,5 +1,5 @@
 import DataSource, {NetworkTileSource} from './data_source';
-import Tile from '../tile';
+import {TileID} from '../tile_id';
 import Geo from '../geo';
 import log from '../utils/log';
 
@@ -70,7 +70,7 @@ export class RasterTileSource extends NetworkTileSource {
             let zdiff = this.zoom_bias - tile_source.zoom_bias; // difference in zoom detail between the sources
             if (zdiff > 0) { // raster source is less detailed
                 // do extra zoom adjustment and apply this raster source's max zoom
-                coords = Tile.normalizedCoordinate(tile.coords, {
+                coords = TileID.normalizedCoord(tile.coords, {
                     zoom_bias: zdiff,
                     max_zoom: this.max_zoom
                 });
@@ -86,7 +86,7 @@ export class RasterTileSource extends NetworkTileSource {
                 }
 
                 // no extra zoom adjustment needed, but still need to apply this raster source's max zoom
-                coords = Tile.coordinateWithMaxZoom(coords, this.max_zoom);
+                coords = TileID.coordWithMaxZoom(coords, this.max_zoom);
             }
         }
         return coords;

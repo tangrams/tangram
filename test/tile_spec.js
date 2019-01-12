@@ -1,6 +1,6 @@
 import chai from 'chai';
 let assert = chai.assert;
-import Tile from '../src/tile';
+import {TileID} from '../src/tile_id';
 
 describe('Tile', function() {
 
@@ -9,7 +9,7 @@ describe('Tile', function() {
     describe('overzooming', () => {
 
         it('does NOT overzoom a coordinate at the max zoom', () => {
-            let coords2 = Tile.coordinateWithMaxZoom(coords, coords.z);
+            let coords2 = TileID.coordWithMaxZoom(coords, coords.z);
 
             assert.deepEqual(coords2.x, coords.x);
             assert.deepEqual(coords2.y, coords.y);
@@ -17,7 +17,7 @@ describe('Tile', function() {
         });
 
         it('does NOT overzoom a coordinate below the max zoom', () => {
-            let coords2 = Tile.coordinateWithMaxZoom(coords, coords.z + 1);
+            let coords2 = TileID.coordWithMaxZoom(coords, coords.z + 1);
 
             assert.deepEqual(coords2.x, coords.x);
             assert.deepEqual(coords2.y, coords.y);
@@ -28,7 +28,7 @@ describe('Tile', function() {
             let unzoomed = { x: Math.floor(coords.x*2), y: Math.floor(coords.y*2), z: coords.z + 1 };
             let overzoomed = { x: Math.floor(coords.x/4), y: Math.floor(coords.y/4), z: coords.z - 2 };
 
-            let coords2 = Tile.coordinateWithMaxZoom(unzoomed, coords.z - 2);
+            let coords2 = TileID.coordWithMaxZoom(unzoomed, coords.z - 2);
 
             assert.deepEqual(coords2.x, overzoomed.x);
             assert.deepEqual(coords2.y, overzoomed.y);
