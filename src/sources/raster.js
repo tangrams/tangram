@@ -141,8 +141,7 @@ export class RasterSource extends RasterTileSource {
             name,
             element: canvas,
             filtering: this.filtering,
-            coords,
-            UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+            coords
         };
     }
 
