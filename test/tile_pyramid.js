@@ -1,7 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
-import TilePyramid from '../src/tile_pyramid';
-import {TileID} from '../src/tile_id';
+import TilePyramid from '../src/tile/tile_pyramid';
+import { TileID } from '../src/tile/tile_id';
 
 describe('TilePyramid', function() {
 

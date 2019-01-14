@@ -1,16 +1,16 @@
-import log from './utils/log';
-import Utils from './utils/utils';
-import mergeObjects from './utils/merge';
-import Geo from './geo';
+import log from '../utils/log';
+import Utils from '../utils/utils';
+import mergeObjects from '../utils/merge';
+import Geo from '../geo';
 import {TileID} from './tile_id';
-import {addLayerDebugEntry} from './styles/style';
-import StyleParser from './styles/style_parser';
-import Collision from './labels/collision';
-import WorkerBroker from './utils/worker_broker';
-import Task from './utils/task';
-import Texture from './gl/texture';
+import {addLayerDebugEntry} from '../styles/style';
+import StyleParser from '../styles/style_parser';
+import Collision from '../labels/collision';
+import WorkerBroker from '../utils/worker_broker';
+import Task from '../utils/task';
+import Texture from '../gl/texture';
 
-import {mat4, vec3} from './utils/gl-matrix';
+import {mat4, vec3} from '../utils/gl-matrix';
 
 let id = 0; // unique tile id
 let build_id = 0; // id tracking order in which tiles were build

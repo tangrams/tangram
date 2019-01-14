@@ -1,6 +1,6 @@
 import chai from 'chai';
 let assert = chai.assert;
-import {TileID} from '../src/tile_id';
+import { TileID } from '../src/tile/tile_id';
 
 describe('Tile', function() {
 

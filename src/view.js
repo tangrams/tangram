@@ -1,5 +1,5 @@
 import Geo from './geo';
-import {TileID} from './tile_id';
+import {TileID} from './tile/tile_id';
 import Camera from './camera';
 import Utils from './utils/utils';
 import subscribeMixin from './utils/subscribe';

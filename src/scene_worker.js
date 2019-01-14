@@ -5,7 +5,7 @@ import {compileFunctionStrings, functionStringCache, clearFunctionStringCache} f
 import debugSettings, {mergeDebugSettings} from './utils/debug_settings';
 import log from './utils/log';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
-import Tile from './tile';
+import Tile from './tile/tile';
 import Geo from './geo';
 import DataSource from './sources/data_source';
 import './sources/sources';

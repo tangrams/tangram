@@ -1,11 +1,11 @@
 import Tile from './tile';
 import {TileID} from './tile_id';
 import TilePyramid from './tile_pyramid';
-import Geo from './geo';
-import mainThreadLabelCollisionPass from './labels/main_pass';
-import log from './utils/log';
-import WorkerBroker from './utils/worker_broker';
-import Task from './utils/task';
+import Geo from '../geo';
+import mainThreadLabelCollisionPass from '../labels/main_pass';
+import log from '../utils/log';
+import WorkerBroker from '../utils/worker_broker';
+import Task from '../utils/task';
 
 export default class TileManager {
 

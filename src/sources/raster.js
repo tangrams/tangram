@@ -1,5 +1,5 @@
 import DataSource, {NetworkTileSource} from './data_source';
-import {TileID} from '../tile_id';
+import {TileID} from '../tile/tile_id';
 import Geo from '../geo';
 import Utils from '../utils/utils';
 import hashString from '../utils/hash';
