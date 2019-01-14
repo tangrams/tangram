@@ -147,7 +147,7 @@ export default class Scene {
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
 
-                const updating = this.updateConfig({ serialize_funcs, normalize: false, load_event: true, fade_in: true });
+                const updating = this.updateConfig({ serialize_funcs, normalize: false, loading: true, fade_in: true });
                 if (options.blocking === true) {
                     return updating;
                 }
@@ -981,7 +981,10 @@ export default class Scene {
         }
     }
 
-    createDataSources() {
+    // (Re-)create all data sources. Re-layout view and rebuild tiles when either:
+    // 1) all tiles if `rebuild_all` parameter is specified (used when loading a new scene)
+    // 2) the data source has changed in a way that affects tile layout (e.g. tile size, max_zoom, etc.)
+    createDataSources(rebuild_all = false) {
         const reset = []; // sources to reset
         const prev_source_names = Object.keys(this.sources);
         let source_id = 0;
@@ -1006,7 +1009,7 @@ export default class Scene {
 
             // Data source changed in a way that affects tile layout?
             // If so, we'll re-calculate the tiles in view for this source and rebuild them
-            if (DataSource.tileLayoutChanged(this.sources[name], prev_source)) {
+            if (rebuild_all || DataSource.tileLayoutChanged(this.sources[name], prev_source)) {
                 reset.push(name);
             }
         }
@@ -1139,7 +1142,7 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ load_event = false, rebuild = true, serialize_funcs, normalize = true, fade_in = false } = {}) {
+    updateConfig({ loading = false, rebuild = true, serialize_funcs, normalize = true, fade_in = false } = {}) {
         this.generation = ++Scene.generation;
         this.updating++;
 
@@ -1155,12 +1158,12 @@ export default class Scene {
             // just normalize top-level textures - necessary for adding base path to globals
             SceneLoader.normalizeTextures(this.config, this.config_bundle);
         }
-        this.trigger(load_event ? 'load' : 'update', { config: this.config });
+        this.trigger(loading ? 'load' : 'update', { config: this.config });
 
         this.style_manager.init();
         this.view.reset();
         this.createLights();
-        this.createDataSources();
+        this.createDataSources(loading);
         this.loadTextures();
         this.setBackground();
         FontManager.loadFonts(this.config.fonts);
@@ -1170,7 +1173,7 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuild(Object.assign({ initial: load_event, new_generation: false, serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
+            this.rebuild(Object.assign({ initial: loading, new_generation: false, serialize_funcs, fade_in }, typeof rebuild === 'object' && rebuild)) :
             this.syncConfigToWorker({ serialize_funcs }); // rebuild() also syncs config
 
         // Finish by updating bounds and re-rendering
