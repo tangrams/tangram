@@ -419,9 +419,6 @@ Object.assign(Points, {
 
         // Repeat rules - no repeat limitation for points by default
         draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, StyleParser.parseNumber);
-        if (draw.repeat_group == null) {
-            draw.repeat_group = draw.layers.join('-');
-        }
 
         // Placement strategies
         draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
@@ -494,7 +491,9 @@ Object.assign(Points, {
                 layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
             }
             else {
-                layout.repeat_group = draw.repeat_group; // pre-computed repeat group
+                // default to top-level layer name
+                // (e.g. all labels under `roads` layer, including sub-layers, are in one repeat group)
+                layout.repeat_group = draw.repeat_group || context.layer;
             }
         }
 
