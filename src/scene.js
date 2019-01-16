@@ -175,7 +175,7 @@ export default class Scene {
                 }
                 this.trigger('error', { type, message, error, url: this.config_source });
 
-                message = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
+                message = `Scene.load() failed to load ${JSON.stringify(this.config_source)}: ${error.message}`;
                 if (this.last_valid_config_source) {
                     log('warn', message, error);
                     log('info', 'Scene.load() reverting to last valid configuration');
