@@ -1414,6 +1414,11 @@ export default class Scene {
                 return Object.keys(styles).reduce((p, c) => styles[c] + p, 0);
             },
 
+            // Return sum of all texture memory usage
+            textureSizeTotal() {
+                return Object.values(Texture.textures).map(t => t.byteSize()).reduce((p, c) => p + c);
+            },
+
             layerStats () {
                 if (debugSettings.layer_stats) {
                     return Tile.debugSumLayerStats(scene.tile_manager.getRenderableTiles());

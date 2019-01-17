@@ -325,6 +325,12 @@ export default class Texture {
         }
     }
 
+    // Get the tetxure size in bytes
+    byteSize() {
+        // mipmaps use 33% additional memory
+        return Math.round(this.width * this.height * 4 * (this.filtering == 'mipmap' ? 1.33 : 1));
+    }
+
 }
 
 
