@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { execSync } from 'child_process';
 
 import babel from 'rollup-plugin-babel';
 import resolve from 'rollup-plugin-node-resolve';
@@ -75,7 +76,8 @@ const config = [{
     treeshake: false,
     plugins: [
         replace({
-            ESMODULE: ESM
+            _ESM: ESM,
+            _SHA: '\'' + String(execSync('git rev-parse HEAD')).trim(1) + '\''
         }),
         sourcemaps(), // use source maps produced in the first pass
 
