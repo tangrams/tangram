@@ -53,7 +53,6 @@ export default class Tile {
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
-        this.center_dist = 0;
 
         this.meters_per_pixel = Geo.metersPerPixel(this.style_zoom);
         this.meters_per_pixel_sq = this.meters_per_pixel * this.meters_per_pixel;
