@@ -58,6 +58,7 @@ export default class Tile {
         this.meters_per_pixel_sq = this.meters_per_pixel * this.meters_per_pixel;
         this.units_per_pixel = Geo.units_per_pixel / this.overzoom2; // adjusted for overzoom
         this.units_per_meter_overzoom = Geo.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
+        this.preserve_tiles_within_zoom = this.source.preserve_tiles_within_zoom; // source-specific tile retention policy
 
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation

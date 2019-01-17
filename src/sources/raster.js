@@ -119,6 +119,9 @@ export class RasterSource extends RasterTileSource {
         // non-full-alpha pixels should be discarded (for rendering rasters w/opaque blend)
         this.mask_alpha = true;
 
+        // don't retain tiles for this source from nearby zooms (to improve memory usage)
+        this.preserve_tiles_within_zoom = 0;
+
         // Optionally composite multiple images into one raster layer
         if (Array.isArray(source.composite)) {
             // TODO: calculate enclosing bounding box to speed tile intersection checks

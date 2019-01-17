@@ -274,8 +274,10 @@ export default class View {
             }
 
             // Discard if too far from current zoom
-            let zdiff = Math.abs(tile.style_zoom - this.tile_zoom);
-            if (zdiff > this.preserve_tiles_within_zoom) {
+            const zdiff = Math.abs(tile.style_zoom - this.tile_zoom);
+            const preserve_tiles_within_zoom = (tile.preserve_tiles_within_zoom != null ?
+                tile.preserve_tiles_within_zoom : this.preserve_tiles_within_zoom); // optionally tile source specific
+            if (zdiff > preserve_tiles_within_zoom) {
                 return true;
             }
 
