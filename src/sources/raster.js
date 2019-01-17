@@ -122,6 +122,9 @@ export class RasterSource extends RasterTileSource {
         // don't retain tiles for this source from nearby zooms (to improve memory usage)
         this.preserve_tiles_within_zoom = 0;
 
+        // optionally set a max pixel density used for generated raster tiles (to improve memory usage)
+        this.max_display_density = source.max_display_density;
+
         // Optionally composite multiple images into one raster layer
         if (Array.isArray(source.composite)) {
             // TODO: calculate enclosing bounding box to speed tile intersection checks
@@ -155,7 +158,11 @@ export class RasterSource extends RasterTileSource {
 
         // Display density, with extra 2x for better intra-zoom scaling, because raster tiles
         // can be scaled up to 100% before next zoom level is loaded
-        const dpr = Utils.device_pixel_ratio * 2;
+        let dpr = Utils.device_pixel_ratio;
+        if (this.max_display_density) {
+            dpr = Math.min(dpr, this.max_display_density); // optionally cap pixel density
+        }
+        dpr *= 2;
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
