@@ -62,10 +62,10 @@ export default class Texture {
         }
         this.gl.deleteTexture(this.texture);
         this.texture = null;
-        delete this.data;
-        this.data = null;
-        delete Texture.textures[this.name];
-        delete Texture.texture_configs[this.name];
+        if (Texture.textures[this.name] === this) {
+            delete Texture.textures[this.name];
+            delete Texture.texture_configs[this.name];
+        }
         this.valid = false;
         log('trace', `destroying Texture ${this.name}`);
     }
