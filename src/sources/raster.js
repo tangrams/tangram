@@ -1,6 +1,7 @@
 import DataSource, {NetworkTileSource} from './data_source';
 import {TileID} from '../tile/tile_id';
 import Geo from '../geo';
+import Texture from '../gl/texture';
 import Utils from '../utils/utils';
 import hashString from '../utils/hash';
 import log from '../utils/log';
@@ -153,10 +154,24 @@ export class RasterSource extends RasterTileSource {
     // (which may be large or only have a small portion in current view), and maintains
     // consistency with the raster tile pipeline allowing for sampling within the fragment shader,
     // and clipping the raster against vector source data.
-    async tileTexture (tile, { blend }) {
+    async tileTexture (tile, { blend, generation }) {
         let coords = this.adjustRasterTileZoom(tile);
         const use_alpha = (blend !== 'opaque'); // ignore source alpha multiplier with opaque blending
-        const name = `raster-${this.name}-${coords.key}-${use_alpha ? 'alpha' : 'opaque'}`; // unique texture name
+        const name = `raster-${this.name}-${coords.key}-${use_alpha ? 'alpha' : 'opaque'}-${generation}`; // unique texture name
+
+        // only render each raster tile once (per scene generation)
+        if (Texture.textures[name]) {
+            return {
+                name,
+                coords,
+
+                // tell style to skip re-creating this texture
+                // we have an explicit flag for this because element-based (e.g. canvas) textures
+                // are usually considered dynamic and always re-created when a new tile needs them
+                // (because the user could have updated the canvas pixel contents outside of Tangram)
+                skip_create: true
+            };
+        }
 
         // Display density, with extra 2x for better intra-zoom scaling, because raster tiles
         // can be scaled up to 100% before next zoom level is loaded

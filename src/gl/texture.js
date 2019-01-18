@@ -394,6 +394,13 @@ Texture.createFromObject = function (gl, textures) {
         for (let texname in textures) {
             let config = textures[texname];
 
+            if (config.skip_create) {
+                // explicitly skip (re-)creating this texture
+                // used for dynamic canvas textures that we *know* haven't changed
+                // (internal raster tiles, vs. user-supplied canvas where pixels may have changed)
+                continue;
+            }
+
             // If texture already exists and definition hasn't changed, no need to re-create
             // Note: to avoid flicker when other textures/scene items change
             if (!Texture.changed(texname, config)) {
