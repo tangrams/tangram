@@ -295,7 +295,7 @@ export var Style = {
 
             return style;
         }
-        catch(error) {
+        catch (error) {
             log('error', 'Style.parseFeature: style parsing error', feature, style, error.stack);
         }
     },
@@ -403,7 +403,7 @@ export var Style = {
             try {
                 program.compile();
             }
-            catch(e) {
+            catch (e) {
                 log('error', `Style: error compiling program for style '${this.name}' (program key '${key}')`, this, e.stack);
             }
         }

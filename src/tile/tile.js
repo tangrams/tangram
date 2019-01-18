@@ -257,13 +257,15 @@ export default class Tile {
             for (let group_name in groups) {
                 let group = groups[group_name];
 
-                Promise.all(group.map(style => {
-                    return style.endData(tile).then(style_data => {
-                        if (style_data) {
-                            tile.mesh_data[style.name] = style_data;
-                        }
-                    });
-                }))
+                Promise.all(
+                    group.map(style => {
+                        return style.endData(tile)
+                            .then(style_data => {
+                                if (style_data) {
+                                    tile.mesh_data[style.name] = style_data;
+                                }
+                            });
+                    }))
                     .then(() => {
                         log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
 
