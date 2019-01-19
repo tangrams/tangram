@@ -82,6 +82,7 @@ export default class Scene {
         this.selection = null;
         this.selection_feature_count = 0;
         this.fetching_selection_map = null;
+        this.prev_textures = null; // textures from previously loaded scene (used for cleanup)
         this.introspection = (options.introspection === true) ? true : false;
         this.times = {}; // internal time logs (mostly for dev/profiling)
         this.resetTime();
@@ -136,6 +137,7 @@ export default class Scene {
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
         this.createCanvas();
+        this.prev_textures = this.config && Object.keys(this.config.textures); // save textures from last scene
         this.initializing = this.loadScene(config_source, options)
             .then(() => this.createWorkers())
             .then(() => {
@@ -152,6 +154,7 @@ export default class Scene {
                     return updating;
                 }
             }).then(() => {
+                this.freePreviousTextures();
                 this.updating--;
                 this.initializing = null;
                 this.initialized = true;
@@ -1038,8 +1041,27 @@ export default class Scene {
 
     // Load all textures in the scene definition
     loadTextures() {
-        return Texture.createFromObject(this.gl, this.config.textures).
-            then(() => Texture.createDefault(this.gl)); // create a 'default' texture for placeholders
+        return Texture.createFromObject(this.gl, this.config.textures)
+            .then(() => Texture.createDefault(this.gl)); // create a 'default' texture for placeholders
+    }
+
+    // Free textures from previously loaded scene
+    freePreviousTextures() {
+        if (!this.prev_textures) {
+            return;
+        }
+
+        this.prev_textures.forEach(t => {
+            if (!this.config.textures[t]) {
+                if (!Texture.textures[t]) {
+                    // debugger;
+                }
+                else {
+                    Texture.textures[t].destroy();
+                }
+            }
+        });
+        this.prev_textures = null;
     }
 
     // Called (currently manually) after styles are updated in stylesheet

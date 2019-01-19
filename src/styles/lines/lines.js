@@ -20,7 +20,7 @@ export const Lines = Object.create(Style);
 
 Lines.variants = {}; // mesh variants by variant key
 Lines.vertex_layouts = {}; // vertex layouts by variant key
-Lines.dash_textures = {}; // needs to be cleared on scene config update
+Lines.dash_textures = {}; // cache previously rendered line dash pattern textures
 
 const DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
 
