@@ -396,10 +396,8 @@ export default class Scene {
     renderLoop () {
         this.render_loop_active = true; // only let the render loop instantiate once
 
-        if (this.initialized) {
-            // Render the scene
-            this.update();
-        }
+        // Update and render the scene
+        this.update();
 
         // Pending background tasks
         Task.setState({ user_moving_view: this.view.user_input_active });
