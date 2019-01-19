@@ -26,7 +26,7 @@ export default class FeatureSelection {
         this.fbo_size = { width: 256, height: 256 }; // TODO: make configurable / adaptive based on canvas size
 
         // Texture for the FBO color attachment
-        var fbo_texture = Texture.create( this.gl, 'selection_fbo', { filtering: 'nearest' });
+        var fbo_texture = Texture.create( this.gl, '__selection_fbo', { filtering: 'nearest' });
         fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
         this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, fbo_texture.texture, 0);
 
