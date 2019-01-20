@@ -1,10 +1,10 @@
-import log from './utils/log';
-import GLSL from './gl/glsl';
-import * as URLs from './utils/urls';
-import mergeObjects from './utils/merge';
-import subscribeMixin from './utils/subscribe';
+import log from '../utils/log';
+import GLSL from '../gl/glsl';
+import * as URLs from '../utils/urls';
+import mergeObjects from '../utils/merge';
+import subscribeMixin from '../utils/subscribe';
 import {createSceneBundle, isGlobal} from './scene_bundle';
-import {isReserved} from './styles/layer';
+import {isReserved} from '../styles/layer';
 
 var SceneLoader;
 

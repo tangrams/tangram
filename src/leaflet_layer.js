@@ -1,5 +1,5 @@
 import Thread from './utils/thread';
-import Scene from './scene';
+import Scene from './scene/scene';
 import Geo from './geo';
 import debounce from './utils/debounce';
 import {mergeDebugSettings} from './utils/debug_settings';
