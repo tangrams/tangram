@@ -15,7 +15,7 @@ import {Style} from '../styles/style';
 import StyleParser from '../styles/style_parser';
 import SceneLoader from './scene_loader';
 import View from './view';
-import Light from '../light';
+import Light from '../lights/light';
 import Tile from '../tile/tile';
 import TileManager from '../tile/tile_manager';
 import DataSource from '../sources/data_source';

@@ -1,7 +1,7 @@
-import GLSL from './gl/glsl';
-import StyleParser from './styles/style_parser';
+import GLSL from '../gl/glsl';
+import StyleParser from '../styles/style_parser';
 
-import material_source from './gl/shaders/material.glsl';
+import material_source from './material.glsl';
 
 const material_props = ['emission', 'ambient', 'diffuse', 'specular'];
 
