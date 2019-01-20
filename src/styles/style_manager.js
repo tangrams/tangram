@@ -10,8 +10,7 @@ import {Points} from './points/points';
 import {TextStyle} from './text/text';
 import {RasterStyle} from './raster/raster';
 
-import accessors_source from '../gl/shaders/accessors.glsl';
-import layer_order_source from '../gl/shaders/layer_order.glsl';
+import style_globals_source from './style_globals.glsl';
 import selection_globals_source from '../selection/selection_globals.glsl';
 import selection_vertex_source from '../selection/selection_vertex.glsl';
 
@@ -34,11 +33,8 @@ export class StyleManager {
         ShaderProgram.removeBlock('global');
         ShaderProgram.removeBlock('setup');
 
-        // Model and world position accessors
-        ShaderProgram.addBlock('global', accessors_source);
-
-        // Layer re-ordering function
-        ShaderProgram.addBlock('global', layer_order_source);
+        // Model and world position accessors, layer re-ordering function
+        ShaderProgram.addBlock('global', style_globals_source);
 
         // Feature selection global
         ShaderProgram.addBlock('global', selection_globals_source);

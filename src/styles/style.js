@@ -15,7 +15,7 @@ import WorkerBroker from '../utils/worker_broker';
 import debugSettings from '../utils/debug_settings';
 
 import selection_fragment_source from '../selection/selection_fragment.glsl';
-import rasters_source from '../gl/shaders/rasters.glsl';
+import rasters_source from './raster/raster_globals.glsl';
 
 // Base class
 
