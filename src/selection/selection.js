@@ -1,6 +1,6 @@
-import log from './utils/log';
-import Texture from './gl/texture';
-import WorkerBroker from './utils/worker_broker';
+import log from '../utils/log';
+import Texture from '../gl/texture';
+import WorkerBroker from '../utils/worker_broker';
 
 export default class FeatureSelection {
 

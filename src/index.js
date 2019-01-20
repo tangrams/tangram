@@ -22,7 +22,7 @@ import Task from './utils/task';
 import {StyleManager} from './styles/style_manager';
 import StyleParser from './styles/style_parser';
 import Collision from './labels/collision';
-import FeatureSelection from './selection';
+import FeatureSelection from './selection/selection';
 import CanvasText from './styles/text/canvas_text';
 import debugSettings from './utils/debug_settings';
 

@@ -12,8 +12,8 @@ import {RasterStyle} from './raster/raster';
 
 import accessors_source from '../gl/shaders/accessors.glsl';
 import layer_order_source from '../gl/shaders/layer_order.glsl';
-import selection_globals_source from '../gl/shaders/selection_globals.glsl';
-import selection_vertex_source from '../gl/shaders/selection_vertex.glsl';
+import selection_globals_source from '../selection/selection_globals.glsl';
+import selection_vertex_source from '../selection/selection_vertex.glsl';
 
 export class StyleManager {
 

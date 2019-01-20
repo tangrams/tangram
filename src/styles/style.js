@@ -1,7 +1,7 @@
 // Rendering styles
 
 import StyleParser from './style_parser';
-import FeatureSelection from '../selection';
+import FeatureSelection from '../selection/selection';
 import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
 import Texture from '../gl/texture';
@@ -14,7 +14,7 @@ import Thread from '../utils/thread';
 import WorkerBroker from '../utils/worker_broker';
 import debugSettings from '../utils/debug_settings';
 
-import selection_fragment_source from '../gl/shaders/selection_fragment.glsl';
+import selection_fragment_source from '../selection/selection_fragment.glsl';
 import rasters_source from '../gl/shaders/rasters.glsl';
 
 // Base class

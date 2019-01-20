@@ -20,7 +20,7 @@ import Tile from '../tile/tile';
 import TileManager from '../tile/tile_manager';
 import DataSource from '../sources/data_source';
 import '../sources/sources';
-import FeatureSelection from '../selection';
+import FeatureSelection from '../selection/selection';
 import RenderStateManager from '../gl/render_state';
 import CanvasText from '../styles/text/canvas_text';
 import FontManager from '../styles/text/font_manager';
