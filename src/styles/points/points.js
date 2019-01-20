@@ -13,7 +13,7 @@ import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import placePointsOnLine from '../../labels/point_placement';
 import {TextLabels} from '../text/text_labels';
-import {VIEW_PAN_SNAP_TIME} from '../../view';
+import {VIEW_PAN_SNAP_TIME} from '../../scene/view';
 import debugSettings from '../../utils/debug_settings';
 
 import points_vs from './points_vertex.glsl';
