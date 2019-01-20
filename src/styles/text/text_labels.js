@@ -140,79 +140,75 @@ export const TextLabels = {
         return text;
     },
 
-    prepareTextLabels (tile, collision_group, queue) {
+    async prepareTextLabels (tile, queue) {
         if (Object.keys(this.texts[tile.id]||{}).length === 0) {
             return Promise.resolve([]);
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.id, this.texts[tile.id]).then(({ texts }) => {
-            if (tile.canceled) {
-                log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
-                return [];
-            }
+        const texts = await WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.id, this.texts[tile.id]);
+        if (tile.canceled) {
+            log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
+            return [];
+        }
 
-            this.texts[tile.id] = texts || [];
-            if (!texts) {
-                Collision.abortTile(tile.id);
-                return [];
-            }
+        this.texts[tile.id] = texts || [];
+        if (!texts) {
+            Collision.abortTile(tile.id);
+            return [];
+        }
 
-            return this.buildTextLabels(tile, queue);
-        });
+        return this.buildTextLabels(tile, queue);
     },
 
-    collideAndRenderTextLabels (tile, collision_group, queue) {
-        return this.prepareTextLabels(tile, collision_group, queue).then(labels => {
-            if (labels.length === 0) {
-                Collision.collide([], collision_group, tile.id);
-                return Promise.resolve({});
+    async collideAndRenderTextLabels (tile, collision_group, queue) {
+        let labels = await this.prepareTextLabels(tile, queue);
+        if (labels.length === 0) {
+            Collision.collide([], collision_group, tile.id);
+            return Promise.resolve({});
+        }
+
+        labels = await Collision.collide(labels, collision_group, tile.id);
+        if (tile.canceled) {
+            log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
+            return {};
+        }
+
+        let texts = this.texts[tile.id];
+        if (texts == null || labels.length === 0) {
+            return {};
+        }
+
+        this.cullTextStyles(texts, labels);
+
+        // set alignments
+        labels.forEach(q => {
+            let text_settings_key = q.text_settings_key;
+            let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+            if (!text_info.text_settings.can_articulate){
+                text_info.align = text_info.align || {};
+                text_info.align[q.label.align] = {};
             }
-
-            return Collision.collide(labels, collision_group, tile.id).then(labels => {
-                if (tile.canceled) {
-                    log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
-                    return {};
+            else {
+                // consider making it a set
+                if (!text_info.type) {
+                    text_info.type = [];
                 }
 
-                let texts = this.texts[tile.id];
-                if (texts == null || labels.length === 0) {
-                    return {};
+                if (text_info.type.indexOf(q.label.type) === -1){
+                    text_info.type.push(q.label.type);
                 }
-
-                this.cullTextStyles(texts, labels);
-
-                // set alignments
-                labels.forEach(q => {
-                    let text_settings_key = q.text_settings_key;
-                    let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-                    if (!text_info.text_settings.can_articulate){
-                        text_info.align = text_info.align || {};
-                        text_info.align[q.label.align] = {};
-                    }
-                    else {
-                        // consider making it a set
-                        if (!text_info.type) {
-                            text_info.type = [];
-                        }
-
-                        if (text_info.type.indexOf(q.label.type) === -1){
-                            text_info.type.push(q.label.type);
-                        }
-                    }
-                });
-
-                // second call to main thread, for rasterizing the set of texts
-                return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.id, tile.key, texts).then(({ texts, textures }) => {
-                    if (tile.canceled) {
-                        log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
-                        return {};
-                    }
-
-                    return { labels, texts, textures };
-                });
-            });
+            }
         });
+
+        // second call to main thread, for rasterizing the set of texts
+        const rasterized = await WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.id, tile.key, texts);
+        if (tile.canceled) {
+            log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
+            return {};
+        }
+
+        return { labels, ...rasterized };
     },
 
     // Remove unused text/style combinations to avoid unnecessary rasterization
@@ -249,20 +245,19 @@ export const TextLabels = {
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
-    rasterizeTexts (tile_id, tile_key, texts) {
+    async rasterizeTexts (tile_id, tile_key, texts) {
         let canvas = new CanvasText(); // one per style per tile (style may be rendering multiple tiles at once)
         let max_texture_size = Math.min(this.max_texture_size, 2048); // cap each label texture at 2048x2048
 
-        const textures = canvas.setTextureTextPositions(texts, max_texture_size);
+        let textures = canvas.setTextureTextPositions(texts, max_texture_size);
         let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
         text_texture_id++;
 
-        return canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl).then(({ textures }) => {
-            if (!textures) {
-                return {};
-            }
-            return { texts, textures };
-        });
+        textures = await canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl);
+        if (!textures) {
+            return {};
+        }
+        return { texts, textures };
     },
 
     preprocessText (draw) {

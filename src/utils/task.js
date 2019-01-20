@@ -100,7 +100,7 @@ const Task = {
             val = task.cancel(task); // optional cancel function
         }
 
-        task.resolve(val || {}); // resolve with result of cancel function, or empty object
+        task.resolve(val);
     },
 
     shouldContinue (task) {

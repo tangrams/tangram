@@ -42,20 +42,19 @@ export default class CanvasText {
         ctx.miterLimit = 2;
     }
 
-    textSizes (tile_id, texts) {
-        return FontManager.loadFonts().then(() => {
-            return Task.add({
-                type: 'textSizes',
-                run: this.processTextSizesTask.bind(this),
-                texts,
-                tile_id,
-                cursor: {
-                    styles: Object.keys(texts),
-                    texts: null,
-                    style_idx: null,
-                    text_idx: null
-                }
-            });
+    async textSizes (tile_id, texts) {
+        await FontManager.loadFonts();
+        return Task.add({
+            type: 'textSizes',
+            run: this.processTextSizesTask.bind(this),
+            texts,
+            tile_id,
+            cursor: {
+                styles: Object.keys(texts),
+                texts: null,
+                style_idx: null,
+                text_idx: null
+            }
         });
     }
 
@@ -123,7 +122,7 @@ export default class CanvasText {
             cursor.style_idx++;
         }
 
-        Task.finish(task, { texts });
+        Task.finish(task, texts);
         return true;
     }
 
@@ -468,7 +467,7 @@ export default class CanvasText {
             cursor.style_idx = 0;
         }
 
-        Task.finish(task, { textures: cursor.texture_names });
+        Task.finish(task, cursor.texture_names);
         return true;
     }
 
