@@ -9,7 +9,7 @@ import Tile from '../tile/tile';
 import Geo from '../geo';
 import DataSource from '../sources/data_source';
 import '../sources/sources';
-import FeatureSelection from '../selection';
+import FeatureSelection from '../selection/selection';
 import StyleParser from '../styles/style_parser';
 import {StyleManager} from '../styles/style_manager';
 import {parseLayers, FilterOptions, layerCache} from '../styles/layer';
