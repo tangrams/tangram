@@ -1,5 +1,5 @@
 import Utils from '../../utils/utils';
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
 import StyleParser from '../style_parser';
 
 export default TextSettings;

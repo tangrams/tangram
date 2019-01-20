@@ -1,5 +1,5 @@
 // Geometry building functions
-import Geo from '../geo';
+import Geo from '../utils/geo';
 
 export const tile_bounds = [
     { x: 0, y: 0},

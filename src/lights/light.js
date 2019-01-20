@@ -1,7 +1,7 @@
 import ShaderProgram from '../gl/shader_program';
 import GLSL from '../gl/glsl';
-import Geo from '../geo';
-import Vector from '../vector';
+import Geo from '../utils/geo';
+import Vector from '../utils/vector';
 import StyleParser from '../styles/style_parser';
 
 import ambient_source from './ambient_light.glsl';

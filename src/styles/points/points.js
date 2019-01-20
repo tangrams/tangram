@@ -7,8 +7,8 @@ import gl from '../../gl/constants'; // web workers don't have access to GL cont
 import VertexLayout from '../../gl/vertex_layout';
 import {buildQuadsForPoints} from '../../builders/points';
 import Texture from '../../gl/texture';
-import Geo from '../../geo';
-import Vector from '../../vector';
+import Geo from '../../utils/geo';
+import Vector from '../../utils/vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import placePointsOnLine from '../../labels/point_placement';

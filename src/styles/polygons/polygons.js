@@ -5,7 +5,7 @@ import StyleParser from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import {buildPolygons, buildExtrudedPolygons} from '../../builders/polygons';
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
 
 import polygons_vs from './polygons_vertex.glsl';
 import polygons_fs from './polygons_fragment.glsl';

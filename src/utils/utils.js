@@ -4,7 +4,7 @@
 import log from './log';
 import Thread from './thread';
 import WorkerBroker from './worker_broker';
-import Geo from '../geo';
+import Geo from './geo';
 
 export default Utils;
 

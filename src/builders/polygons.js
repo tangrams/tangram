@@ -1,6 +1,6 @@
 // Polygon builders
-import Geo from '../geo';
-import Vector from '../vector';
+import Geo from '../utils/geo';
+import Vector from '../utils/vector';
 import { default_uvs, outsideTile } from './common';
 
 import earcut from 'earcut';

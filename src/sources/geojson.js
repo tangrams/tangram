@@ -1,7 +1,7 @@
 import log from '../utils/log';
 import DataSource, {NetworkSource, NetworkTileSource} from './data_source';
 import {decodeMultiPolygon} from './mvt';
-import Geo from '../geo';
+import Geo from '../utils/geo';
 
 // For tiling GeoJSON client-side
 import geojsonvt from 'geojson-vt';

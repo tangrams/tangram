@@ -1,6 +1,6 @@
 // Text rendering style
 
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
 import {Style} from '../style';
 import {Points} from '../points/points';
 import Collision from '../../labels/collision';
