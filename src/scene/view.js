@@ -1,4 +1,4 @@
-import Geo from '../geo';
+import Geo from '../utils/geo';
 import {TileID} from '../tile/tile_id';
 import Camera from './camera';
 import Utils from '../utils/utils';

@@ -1,6 +1,6 @@
 import Utils from '../utils/utils';
 import {compileFunctionString} from '../utils/functions';
-import Geo from '../geo';
+import Geo from '../utils/geo';
 import log from '../utils/log';
 
 import parseCSSColor from 'csscolorparser';

@@ -2,7 +2,7 @@ import PointAnchor from './point_anchor';
 import {boxIntersectsList} from './intersect';
 import Utils from '../utils/utils';
 import OBB from '../utils/obb';
-import Geo from '../geo';
+import Geo from '../utils/geo';
 // import log from '../utils/log';
 
 export default class Label {

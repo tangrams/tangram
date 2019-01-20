@@ -1,7 +1,7 @@
 // Manage rendering styles
 import ShaderProgram from '../gl/shader_program';
 import mergeObjects from '../utils/merge';
-import Geo from '../geo';
+import Geo from '../utils/geo';
 import log from '../utils/log';
 
 import {Polygons} from './polygons/polygons';

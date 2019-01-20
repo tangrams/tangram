@@ -1,7 +1,7 @@
 // Text label rendering methods, can be mixed into a rendering style
 
 import StyleParser from '../style_parser';
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
 import log from '../../utils/log';
 import Thread from '../../utils/thread';
 import WorkerBroker from '../../utils/worker_broker';

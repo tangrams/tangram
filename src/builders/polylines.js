@@ -1,7 +1,7 @@
 // Geometry building functions
 
-import Vector from '../vector';
-import Geo from '../geo';
+import Vector from '../utils/vector';
+import Geo from '../utils/geo';
 import {outsideTile, isCoordOutsideTile} from './common';
 
 const zero_vec2 = [0, 0];

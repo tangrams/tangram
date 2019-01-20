@@ -1,5 +1,5 @@
 /*jshint worker: true */
-import Geo from '../geo';
+import Geo from '../utils/geo';
 import {MethodNotImplemented} from '../utils/errors';
 import Utils from '../utils/utils';
 import sliceObject from '../utils/slice';

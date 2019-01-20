@@ -1,5 +1,5 @@
 import DataSource, {NetworkTileSource} from './data_source';
-import Geo from '../geo';
+import Geo from '../utils/geo';
 
 import Pbf from 'pbf';
 import {VectorTile, VectorTileFeature} from '@mapbox/vector-tile';

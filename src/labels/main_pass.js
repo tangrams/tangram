@@ -3,7 +3,7 @@ import LabelPoint from './label_point';
 import {LabelLineStraight} from './label_line';
 import Collision from './collision';
 import OBB from '../utils/obb';
-import Geo from '../geo';
+import Geo from '../utils/geo';
 
 let visible = {};       // currently visible labels
 let prev_visible = {};  // previously visible labels (in last collision run)

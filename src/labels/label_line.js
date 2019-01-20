@@ -1,5 +1,5 @@
 import Label, {textLayoutToJSON} from './label';
-import Vector from '../vector';
+import Vector from '../utils/vector';
 import OBB from '../utils/obb';
 
 const STOPS = [0, 0.33, 0.66, 0.99];        // zoom levels for curved label snapshot data (offsets and angles)
