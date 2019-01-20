@@ -1,5 +1,10 @@
 #ifdef TANGRAM_VERTEX_SHADER
 
+// Apply layer ordering to avoid z-fighting
+void applyLayerOrder (float layer, inout vec4 position) {
+    position.z -= layer * TANGRAM_LAYER_DELTA * position.w;
+}
+
 // Vertex position in model space: [0, 1] range over the local tile
 // Note positions can be outside that range due to unclipped geometry, geometry higher than a unit cube, etc.
 vec4 modelPosition() {
