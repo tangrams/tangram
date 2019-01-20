@@ -564,7 +564,7 @@ export default class CanvasText {
         }
 
         // return computed texture sizes and UV cache
-        return Promise.resolve({ textures });
+        return textures;
     }
 
     // Place text sprite in texture atlas, enlarging current texture, or starting new one if max texture size reached

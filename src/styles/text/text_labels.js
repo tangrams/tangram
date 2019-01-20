@@ -253,20 +253,15 @@ export const TextLabels = {
         let canvas = new CanvasText(); // one per style per tile (style may be rendering multiple tiles at once)
         let max_texture_size = Math.min(this.max_texture_size, 2048); // cap each label texture at 2048x2048
 
-        return canvas.setTextureTextPositions(texts, max_texture_size).then(({ textures }) => {
+        const textures = canvas.setTextureTextPositions(texts, max_texture_size);
+        let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
+        text_texture_id++;
+
+        return canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl).then(({ textures }) => {
             if (!textures) {
                 return {};
             }
-
-            let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
-            text_texture_id++;
-
-            return canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl).then(({ textures }) => {
-                if (!textures) {
-                    return {};
-                }
-                return { texts, textures };
-            });
+            return { texts, textures };
         });
     },
 
