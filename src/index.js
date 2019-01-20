@@ -2,7 +2,7 @@
 
 // The leaflet layer plugin is currently the primary public API
 import {leafletLayer} from './leaflet_layer';
-import Scene from './scene';
+import Scene from './scene/scene';
 
 // Additional modules are exposed for debugging
 import version from './utils/version';

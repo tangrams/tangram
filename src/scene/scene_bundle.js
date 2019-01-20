@@ -1,5 +1,5 @@
-import Utils from './utils/utils';
-import * as URLs from './utils/urls';
+import Utils from '../utils/utils';
+import * as URLs from '../utils/urls';
 
 import JSZip from 'jszip';
 import yaml from 'js-yaml';

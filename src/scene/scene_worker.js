@@ -1,22 +1,22 @@
 /*jshint worker: true*/
 
-import Utils from './utils/utils';
-import {compileFunctionStrings, functionStringCache, clearFunctionStringCache} from './utils/functions';
-import debugSettings, {mergeDebugSettings} from './utils/debug_settings';
-import log from './utils/log';
-import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
-import Tile from './tile/tile';
-import Geo from './geo';
-import DataSource from './sources/data_source';
-import './sources/sources';
-import FeatureSelection from './selection';
-import StyleParser from './styles/style_parser';
-import {StyleManager} from './styles/style_manager';
-import {parseLayers, FilterOptions, layerCache} from './styles/layer';
-import {buildFilter} from './styles/filter';
-import Texture from './gl/texture';
-import VertexElements from './gl/vertex_elements';
-import Label from './labels/label';
+import Utils from '../utils/utils';
+import {compileFunctionStrings, functionStringCache, clearFunctionStringCache} from '../utils/functions';
+import debugSettings, {mergeDebugSettings} from '../utils/debug_settings';
+import log from '../utils/log';
+import WorkerBroker from '../utils/worker_broker'; // jshint ignore:line
+import Tile from '../tile/tile';
+import Geo from '../geo';
+import DataSource from '../sources/data_source';
+import '../sources/sources';
+import FeatureSelection from '../selection';
+import StyleParser from '../styles/style_parser';
+import {StyleManager} from '../styles/style_manager';
+import {parseLayers, FilterOptions, layerCache} from '../styles/layer';
+import {buildFilter} from '../styles/filter';
+import Texture from '../gl/texture';
+import VertexElements from '../gl/vertex_elements';
+import Label from '../labels/label';
 
 const SceneWorker = Object.assign(self, {
 
