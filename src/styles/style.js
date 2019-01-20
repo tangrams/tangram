@@ -578,12 +578,12 @@ export var Style = {
     async buildRasterTextures (tile, tile_data) {
         // skip if style doesn't support rasters
         if (!this.hasRasters()) {
-            return Promise.resolve(tile_data);
+            return tile_data;
         }
 
         // skip if source didn't attach any rasters to tile
         if (tile.rasters.length === 0) {
-            return Promise.resolve(tile_data);
+            return tile_data;
         }
 
         // Load textures on main thread and return when done
