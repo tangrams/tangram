@@ -1,9 +1,9 @@
-import Geo from './geo';
-import {TileID} from './tile/tile_id';
+import Geo from '../geo';
+import {TileID} from '../tile/tile_id';
 import Camera from './camera';
-import Utils from './utils/utils';
-import subscribeMixin from './utils/subscribe';
-import log from './utils/log';
+import Utils from '../utils/utils';
+import subscribeMixin from '../utils/subscribe';
+import log from '../utils/log';
 
 export const VIEW_PAN_SNAP_TIME = 0.5;
 

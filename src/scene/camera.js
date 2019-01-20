@@ -1,6 +1,6 @@
-import Utils from './utils/utils';
-import ShaderProgram from './gl/shader_program';
-import {mat4, mat3, vec3} from './utils/gl-matrix';
+import Utils from '../utils/utils';
+import ShaderProgram from '../gl/shader_program';
+import {mat4, mat3, vec3} from '../utils/gl-matrix';
 
 // Abstract base class
 export default class Camera {
