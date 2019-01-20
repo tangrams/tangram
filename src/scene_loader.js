@@ -11,39 +11,39 @@ var SceneLoader;
 export default SceneLoader = {
 
     // Load scenes definitions from URL & proprocess
-    loadScene(url, { path, type } = {}) {
+    async loadScene(url, { path, type } = {}) {
         let errors = [];
-        return this.loadSceneRecursive({ url, path, type }, null, errors).
-            then(result => this.finalize(result)).
-            then(({ config, bundle }) => {
-                if (!config) {
-                    // root scene failed to load, reject with first error
-                    return Promise.reject(errors[0]);
-                }
-                else if (errors.length > 0) {
-                    // scene loaded, but some imports had errors
-                    errors.forEach(error => {
-                        let message = `Failed to import scene: ${error.url}`;
-                        log('error', message, error);
-                        this.trigger('error', { type: 'scene_import', message, error, url: error.url });
-                    });
-                }
-                return { config, bundle };
+        const scene = await this.loadSceneRecursive({ url, path, type }, null, errors);
+        const { config, bundle } = this.finalize(scene);
+        if (!config) {
+            // root scene failed to load, reject with first error
+            throw errors[0];
+        }
+        else if (errors.length > 0) {
+            // scene loaded, but some imports had errors
+            errors.forEach(error => {
+                let message = `Failed to import scene: ${error.url}`;
+                log('error', message, error);
+                this.trigger('error', { type: 'scene_import', message, error, url: error.url });
             });
+        }
+        return { config, bundle };
     },
 
     // Loads scene files from URL, recursively loading 'import' scenes
     // Optional *initial* path only (won't be passed to recursive 'import' calls)
     // Useful for loading resources in base scene file from a separate location
     // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
-    loadSceneRecursive({ url, path, type }, parent, errors = []) {
+    async loadSceneRecursive({ url, path, type }, parent, errors = []) {
         if (!url) {
-            return Promise.resolve({});
+            return {};
         }
 
         let bundle = createSceneBundle(url, path, parent, type);
 
-        return bundle.load().then(config => {
+        try {
+            let config = await bundle.load();
+            // debugger
             if (config.import == null) {
                 this.normalize(config, bundle);
                 return { config, bundle };
@@ -61,26 +61,26 @@ export default SceneLoader = {
                 if (typeof url === 'object') {
                     url = URLs.createObjectURL(new Blob([JSON.stringify(url)]));
                 }
-
                 imports.push(bundle.resourceFor(url));
             });
             delete config.import; // don't want to merge this property
 
-            return Promise.
-                all(imports.map(resource => this.loadSceneRecursive(resource, bundle, errors))).
-                then(results => {
-                    results.forEach(r => this.normalize(r.config, r.bundle)); // first normalize imports
-                    let configs = results.map(r => r.config);
-                    config = mergeObjects(...configs, config);
-                    this.normalize(config, bundle); // last normalize parent, after merge
-                    return { config, bundle };
-                });
-        }).catch(error => {
+            // load and normalize imports
+            const queue = imports.map(resource => this.loadSceneRecursive(resource, bundle, errors));
+            const configs = (await Promise.all(queue))
+                .map(r => this.normalize(r.config, r.bundle))
+                .map(r => r.config);
+
+            config = mergeObjects(...configs, config);
+            this.normalize(config, bundle); // last normalize parent, after merge
+            return { config, bundle };
+        }
+        catch (error) {
             // Collect scene load errors as we go
             error.url = url;
             errors.push(error);
             return {};
-        });
+        }
     },
 
     // Normalize properties that should be adjust within each local scene file (usually by path)
