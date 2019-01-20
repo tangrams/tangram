@@ -1,13 +1,13 @@
-import ShaderProgram from './gl/shader_program';
-import GLSL from './gl/glsl';
-import Geo from './geo';
-import Vector from './vector';
-import StyleParser from './styles/style_parser';
+import ShaderProgram from '../gl/shader_program';
+import GLSL from '../gl/glsl';
+import Geo from '../geo';
+import Vector from '../vector';
+import StyleParser from '../styles/style_parser';
 
-import ambient_source from './gl/shaders/ambient_light.glsl';
-import directional_source from './gl/shaders/directional_light.glsl';
-import point_source from './gl/shaders/point_light.glsl';
-import spot_source from './gl/shaders/spot_light.glsl';
+import ambient_source from './ambient_light.glsl';
+import directional_source from './directional_light.glsl';
+import point_source from './point_light.glsl';
+import spot_source from './spot_light.glsl';
 
 // Abstract light
 export default class Light {
