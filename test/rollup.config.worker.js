@@ -8,7 +8,7 @@ import json from 'rollup-plugin-json';
 import string from 'rollup-plugin-string';
 
 const config = {
-    input: 'src/scene_worker.js',
+    input: 'src/scene/scene_worker.js',
     output: {
         file: 'build/worker.test.js',
         format: 'umd',

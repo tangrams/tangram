@@ -3,7 +3,7 @@ let assert = chai.assert;
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import Geo from '../src/geo';
+import Geo from '../src/utils/geo';
 import sampleTile from './fixtures/sample-tile.json';
 import sampleGeoJSONResponse from './fixtures/sample-json-response.json';
 import sampleTopoJSONResponse from './fixtures/sample-topojson-response.json';
