@@ -6,7 +6,7 @@ import Task from '../../utils/task';
 import StyleParser from '../style_parser';
 import debugSettings from '../../utils/debug_settings';
 
-export default class CanvasText {
+export default class TextCanvas {
 
     constructor () {
         this.createCanvas();                // create initial canvas and context
@@ -130,13 +130,13 @@ export default class CanvasText {
     // Includes word wrapping, returns size info for whole text block and individual lines
     textSize (style, text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
         // Check cache first
-        CanvasText.cache.text[style] = CanvasText.cache.text[style] || {};
-        if (CanvasText.cache.text[style][text]) {
-            CanvasText.cache.stats.text_hits++;
-            return CanvasText.cache.text[style][text];
+        TextCanvas.cache.text[style] = TextCanvas.cache.text[style] || {};
+        if (TextCanvas.cache.text[style][text]) {
+            TextCanvas.cache.stats.text_hits++;
+            return TextCanvas.cache.text[style][text];
         }
-        CanvasText.cache.stats.text_misses++;
-        CanvasText.cache.text_count++;
+        TextCanvas.cache.stats.text_misses++;
+        TextCanvas.cache.text_count++;
 
         // Calc and store in cache
         let dpr = Utils.device_pixel_ratio * supersample;
@@ -171,11 +171,11 @@ export default class CanvasText {
         ];
 
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
-        CanvasText.cache.text[style][text] = {
+        TextCanvas.cache.text[style][text] = {
             lines,
             size: { collision_size, texture_size, logical_size, line_height }
         };
-        return CanvasText.cache.text[style][text];
+        return TextCanvas.cache.text[style][text];
     }
 
     // Draw multiple lines of text
@@ -639,7 +639,7 @@ export default class CanvasText {
         }
         size = (typeof size === 'string') ? size : String(size); // need a string for regex
 
-        let [, px_size, units] = size.match(CanvasText.font_size_re) || [];
+        let [, px_size, units] = size.match(TextCanvas.font_size_re) || [];
         units = units || 'px';
 
         if (units === 'em') {
@@ -656,25 +656,25 @@ export default class CanvasText {
     }
 
     static pruneTextCache () {
-        if (CanvasText.cache.text_count > CanvasText.cache.text_count_max) {
-            CanvasText.cache.text = {};
-            CanvasText.cache.text_count = 0;
-            log('debug', 'CanvasText: pruning text cache');
+        if (TextCanvas.cache.text_count > TextCanvas.cache.text_count_max) {
+            TextCanvas.cache.text = {};
+            TextCanvas.cache.text_count = 0;
+            log('debug', 'TextCanvas: pruning text cache');
         }
 
-        if (Object.keys(CanvasText.cache.segment).length > CanvasText.cache.segment_count_max) {
-            CanvasText.cache.segment = {};
-            log('debug', 'CanvasText: pruning segment cache');
+        if (Object.keys(TextCanvas.cache.segment).length > TextCanvas.cache.segment_count_max) {
+            TextCanvas.cache.segment = {};
+            log('debug', 'TextCanvas: pruning segment cache');
         }
     }
 
 }
 
 // Extract font size and units
-CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
+TextCanvas.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 
 // Cache sizes of rendered text
-CanvasText.cache = {
+TextCanvas.cache = {
     text: {},                   // size and line parsing, by text style, then text string
     text_count: 0,              // current size of cache (measured as # of entries)
     text_count_max: 2000,       // prune cache when it exceeds this size
@@ -750,9 +750,9 @@ function splitLabelText(text, rtl){
     }
 
     let key = text;
-    if (CanvasText.cache.segment[key]) {
-        CanvasText.cache.stats.segment_hits++;
-        return CanvasText.cache.segment[key];
+    if (TextCanvas.cache.segment[key]) {
+        TextCanvas.cache.stats.segment_hits++;
+        return TextCanvas.cache.segment[key];
     }
 
     let segments = [];
@@ -794,8 +794,8 @@ function splitLabelText(text, rtl){
         segments.reverse();
     }
 
-    CanvasText.cache.stats.segment_misses++;
-    CanvasText.cache.segment[key] = segments;
+    TextCanvas.cache.stats.segment_misses++;
+    TextCanvas.cache.segment[key] = segments;
     return segments;
 }
 

@@ -7,7 +7,7 @@ import Thread from '../../utils/thread';
 import WorkerBroker from '../../utils/worker_broker';
 import Collision from '../../labels/collision';
 import TextSettings from '../text/text_settings';
-import CanvasText from '../text/canvas_text';
+import TextCanvas from './text_canvas';
 
 // namespaces label textures (ensures new texture name when a tile is built multiple times)
 let text_texture_id = 0;
@@ -16,7 +16,7 @@ export const TextLabels = {
 
     resetText () {
         if (Thread.is_main) {
-            this.canvas = new CanvasText();
+            this.canvas = new TextCanvas();
         }
         else if (Thread.is_worker) {
             this.texts = {}; // unique texts, grouped by tile, by style
@@ -246,7 +246,7 @@ export const TextLabels = {
 
     // Called on main thread from worker, to create atlas of labels for a tile
     async rasterizeTexts (tile_id, tile_key, texts) {
-        let canvas = new CanvasText(); // one per style per tile (style may be rendering multiple tiles at once)
+        let canvas = new TextCanvas(); // one per style per tile (style may be rendering multiple tiles at once)
         let max_texture_size = Math.min(this.max_texture_size, 2048); // cap each label texture at 2048x2048
 
         let textures = canvas.setTextureTextPositions(texts, max_texture_size);
@@ -273,7 +273,7 @@ export const TextLabels = {
         }
 
         // Convert font and text stroke sizes
-        draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, CanvasText.fontPixelSize);
+        draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize);
         if (draw.font.stroke && draw.font.stroke.width != null) {
             draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
         }
