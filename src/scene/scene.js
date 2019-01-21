@@ -21,7 +21,7 @@ import DataSource from '../sources/data_source';
 import '../sources/sources';
 import FeatureSelection from '../selection/selection';
 import RenderStateManager from '../gl/render_state';
-import CanvasText from '../styles/text/canvas_text';
+import TextCanvas from '../styles/text/text_canvas';
 import FontManager from '../styles/text/font_manager';
 import MediaCapture from '../utils/media_capture';
 import setupSceneDebug from './scene_debug';
@@ -900,7 +900,7 @@ export default class Scene {
     // Tile manager finished building tiles
     // TODO move to tile manager
     tileManagerBuildDone() {
-        CanvasText.pruneTextCache();
+        TextCanvas.pruneTextCache();
 
         if (this.building) {
             log('info', 'Scene: build geometry finished');
