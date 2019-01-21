@@ -1,4 +1,4 @@
-import Scene from '../src/scene';
+import Scene from '../src/scene/scene';
 
 let container = document.createElement('div');
 container.style.width = '250px';

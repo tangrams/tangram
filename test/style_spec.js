@@ -5,8 +5,8 @@ import {StyleManager} from '../src/styles/style_manager';
 import {Style} from '../src/styles/style';
 import Context from '../src/gl/context';
 import ShaderProgram from '../src/gl/shader_program';
-import Camera from '../src/camera';
-import Light from '../src/light';
+import Camera from '../src/scene/camera';
+import Light from '../src/lights/light';
 
 import sampleScene from './fixtures/sample-scene.json';
 

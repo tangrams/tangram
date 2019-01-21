@@ -1,5 +1,5 @@
 import chai from 'chai';
-import Scene from '../src/scene';
+import Scene from '../src/scene/scene';
 import {leafletLayer, LeafletLayer} from '../src/leaflet_layer';
 import sampleScene from './fixtures/sample-scene.json';
 let assert = chai.assert;
