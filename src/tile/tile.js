@@ -588,27 +588,27 @@ export default class Tile {
         log('debug', `Tile ${progress.done ? '(done)' : ''}: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
     }
 
-    // Sum up layer feature/geometry stats from a set of tiles
-    static debugSumLayerStats (tiles) {
-        let list = {}, tree = {};
-
-        tiles.filter(tile => tile.debug.layers).forEach(tile => {
-            // layer list
-            Object.keys(tile.debug.layers.list).forEach(layer => {
-                let counts = tile.debug.layers.list[layer];
-                addLayerDebugEntry(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
-            });
-
-            // layer tree
-            addDebugLayers(tile.debug.layers.tree, tree);
-        });
-
-        return { list, tree };
-    }
-
 }
 
 Tile.coord_children = {}; // only allocate children coordinates once per coordinate
+
+// Sum up layer feature/geometry stats from a set of tiles
+export function debugSumLayerStats(tiles) {
+    let list = {}, tree = {};
+
+    tiles.filter(tile => tile.debug.layers).forEach(tile => {
+        // layer list
+        Object.keys(tile.debug.layers.list).forEach(layer => {
+            let counts = tile.debug.layers.list[layer];
+            addLayerDebugEntry(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
+        });
+
+        // layer tree
+        addDebugLayers(tile.debug.layers.tree, tree);
+    });
+
+    return { list, tree };
+}
 
 // build debug stats layer tree
 function addDebugLayers (node, tree) {
