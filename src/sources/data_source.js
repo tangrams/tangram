@@ -456,7 +456,8 @@ export class NetworkTileSource extends NetworkSource {
             .replace('{x}', coords.x)
             .replace('{y}', coords.y)
             .replace('{z}', coords.z)
-            .replace('{r}', this.getDensityModifier()); // modify URL by display density (e.g. @2x)
+            .replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
+            .replace('{q}', this.toQuadKey(coords)); // quadkey for tile coordinates
 
         if (this.url_subdomains != null) {
             url = url.replace('{s}', this.url_subdomains[this.next_url_subdomain]);
@@ -487,12 +488,24 @@ export class NetworkTileSource extends NetworkSource {
         return ''; // for 1x (or less) displays, no URL modifier is used (following @2x URL convention)
     }
 
+    toQuadKey ({ x, y, z }) {
+        let quadkey = '';
+        for (let i = z; i > 0; i--) {
+            let b = 0;
+            let mask = 1 << (i - 1);
+            if ((x & mask) !== 0) b++;
+            if ((y & mask) !== 0) b += 2;
+            quadkey += b.toString();
+        }
+        return quadkey;
+    }
+
     // Checks for the x/y/z tile pattern in URL template
     static urlHasTilePattern (url) {
-        return url &&
-            url.search('{x}') > -1 &&
-            url.search('{y}') > -1 &&
-            url.search('{z}') > -1;
+        return url && (
+            (url.search('{x}') > -1 && url.search('{y}') > -1 && url.search('{z}') > -1) ||
+            url.search('{q}') > -1
+        );
     }
 
 }
