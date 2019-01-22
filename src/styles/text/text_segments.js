@@ -2,23 +2,26 @@
 
 // Right-to-left / bi-directional text handling
 // Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-const rtlDirCheck = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
+const rtl_test = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
 export function isTextRTL(s){
-    return rtlDirCheck.test(s);
+    return rtl_test.test(s);
 }
 
 const neutral_chars = '\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF';
-const neutralDirCheck = new RegExp('['+neutral_chars+']+');
+const neutral_test = new RegExp('['+neutral_chars+']+');
 export function isTextNeutral(s){
-    return neutralDirCheck.test(s);
+    return neutral_test.test(s);
 }
 
-export const markRTL = '\u200F'; // explicit right-to-left marker
+export const RTL_MARKER = '\u200F'; // explicit right-to-left marker
 
+// Arabic script ranges
 // test http://localhost:8000/#16.72917/30.08541/31.28466
 const arabic_range = new RegExp('^['+neutral_chars+'\u0600-\u06FF]+'); // all characters are Arabic or neutral
 const arabic_splitters = new RegExp('['+neutral_chars+'\u0622-\u0625\u0627\u062F-\u0632\u0648\u0671-\u0677\u0688-\u0699\u06C4-\u06CB\u06CF\u06D2\u06D3\u06EE\u06EF]');
 const arabic_vowels = new RegExp('^[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+');
+
+// Complex script ranges (non-Arabic)
 const accents_and_vowels = '[\u0300-\u036F' + // Combining Diacritical Marks
 '\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7' + // Hebrew
 '\u07A6-\u07B0' + // Thaana
@@ -42,7 +45,9 @@ const accents_and_vowels = '[\u0300-\u036F' + // Combining Diacritical Marks
 '\u20D0-\u20FF' + // Combining Diacritical Marks for Symbols
 ']';
 const combo_characters = '[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0C4D\u0CCD\u0D4D\u0F84\u1039\u17D2\u1A60\u1A7F]';
-const graphemeRegex = new RegExp('^.(?:' + accents_and_vowels + '+)?' + '(' + combo_characters + '\\W(?:' + accents_and_vowels + '+)?)*');
+
+// Find the next grapheme cluster (non-Arabic)
+const grapheme_match = new RegExp('^.(?:' + accents_and_vowels + '+)?' + '(' + combo_characters + '\\W(?:' + accents_and_vowels + '+)?)*');
 
 // Scripts that cannot be curved due (due to contextual shaping and/or layout complexity)
 const curve_blacklist = {
@@ -62,10 +67,12 @@ export function splitLabelText(text, rtl, cache) {
     // (see https://github.com/tangrams/tangram/issues/541)
     const segment_length = rtl ? 1 : default_segment_length;
 
+    // Only one segment
     if (text.length < segment_length) {
         return [text];
     }
 
+    // Check segment cache first (skips processing for labels we've seen before)
     let key = text;
     if (cache.segment[key]) {
         cache.stats.segment_hits++;
@@ -74,43 +81,48 @@ export function splitLabelText(text, rtl, cache) {
 
     let segments = [];
 
+    // Arabic-specific text handling
+    // NB: works for strings that are *only* Arabic; mixed-script labels may need more work
     if (arabic_range.exec(text)) {
         segments = text.split(arabic_splitters);
         let offset = -1;
         for (var s = 0; s < segments.length - 1; s++) {
             if (s > 0) {
-                let carryoverVowels = arabic_vowels.exec(segments[s]);
-                if (carryoverVowels) {
-                    segments[s] = segments[s].substring(carryoverVowels[0].length);
-                    segments[s - 1] += carryoverVowels[0];
-                    offset += carryoverVowels[0].length;
+                let carryover_vowels = arabic_vowels.exec(segments[s]);
+                if (carryover_vowels) {
+                    segments[s] = segments[s].substring(carryover_vowels[0].length);
+                    segments[s - 1] += carryover_vowels[0];
+                    offset += carryover_vowels[0].length;
                 }
             }
             offset += 1 + segments[s].length;
             segments[s] += text.slice(offset, offset + 1);
         }
-        text = '';
+        text = ''; // will skip non-Arabic handling below
     }
 
+    // Non-Arabic text handling
     while (text.length) {
         let segment = '';
-        let testText = text;
-        let graphemeCount = 0;
+        let test_text = text;
+        let grapheme_count = 0;
 
-        for (graphemeCount; graphemeCount < segment_length && testText.length; graphemeCount++) {
-            let graphemeCluster = (graphemeRegex.exec(testText) || testText)[0];
-            segment += graphemeCluster;
-            testText = testText.substring(graphemeCluster.length);
+        for (grapheme_count; grapheme_count < segment_length && test_text.length; grapheme_count++) {
+            let grapheme_cluster = (grapheme_match.exec(test_text) || test_text)[0];
+            segment += grapheme_cluster;
+            test_text = test_text.substring(grapheme_cluster.length);
         }
 
         segments.push(segment);
         text = text.substring(segment.length);
     }
 
+    // Reverse segments if needed
     if (rtl) {
         segments.reverse();
     }
 
+    // Cache and return
     cache.stats.segment_misses++;
     cache.segment[key] = segments;
     return segments;

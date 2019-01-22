@@ -1,6 +1,6 @@
 // Word wrapping
 
-import { markRTL, isTextRTL, isTextNeutral } from './text_segments';
+import { isTextRTL, isTextNeutral, RTL_MARKER } from './text_segments';
 
 // Private class to arrange text labels into multiple lines based on
 // "text wrap" and "max line" values
@@ -107,7 +107,7 @@ export default class MultiLine {
 
                 // force punctuation (neutral chars) at the end of a RTL line, so they stay attached to original word
                 if (isTextRTL(word) && isTextNeutral(word[word.length - 1])) {
-                    word += markRTL;
+                    word += RTL_MARKER;
                 }
 
                 let spaced_word = (new_line) ? word : ' ' + word;
