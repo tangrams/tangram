@@ -158,27 +158,7 @@ Object.assign(Points, {
             return;
         }
 
-        // point size defined explicitly, or defaults to sprite size, or generic fallback
-        style.size = draw.size;
-        if (!style.size) {
-            // a 'size' property has not been set in the draw layer -
-            // use the sprite size if it exists and a generic fallback if it doesn't
-            style.size = (sprite_info && sprite_info.css_size) || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
-        }
-        else {
-            // check for a cached size, passing the texture and any sprite references
-            style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
-            if (style.size == null) {
-                // the StyleParser couldn't evaluate a sprite size
-                log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
-                    `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, features that match ` +
-                    'this layer group won\'t be drawn');
-                return;
-            }
-            else if (typeof style.size === 'number') {
-                style.size = [style.size, style.size]; // convert 1d size to 2d
-            }
-        }
+        this.calcSize(draw, style, sprite_info, context);
 
         // incorporate outline into size
         if (draw.outline) {
@@ -248,6 +228,31 @@ Object.assign(Points, {
 
         // Register with collision manager
         Collision.addStyle(this.collision_group_points, tile.id);
+    },
+
+    // Calcuate the size for the current point feature
+    calcSize (draw, style, sprite_info, context) {
+        // point size defined explicitly, or defaults to sprite size, or generic fallback
+        style.size = draw.size;
+        if (!style.size) {
+            // a 'size' property has not been set in the draw layer -
+            // use the sprite size if it exists and a generic fallback if it doesn't
+            style.size = (sprite_info && sprite_info.css_size) || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
+        }
+        else {
+            // check for a cached size, passing the texture and any sprite references
+            style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
+            if (style.size == null) {
+                // the StyleParser couldn't evaluate a sprite size
+                log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
+                    `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, features that match ` +
+                    'this layer group won\'t be drawn');
+                return;
+            }
+            else if (typeof style.size === 'number') {
+                style.size = [style.size, style.size]; // convert 1d size to 2d
+            }
+        }
     },
 
     hasSprites (style) {
