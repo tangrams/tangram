@@ -431,7 +431,12 @@ export class NetworkTileSource extends NetworkSource {
             coords.y = Math.pow(2, coords.z) - 1 - coords.y; // optionally flip tile coords for TMS
         }
 
-        let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
+        // tile URL template replacement
+        let url = url_template
+            .replace('{x}', coords.x)
+            .replace('{y}', coords.y)
+            .replace('{z}', coords.z)
+            .replace('{r}', Utils.device_pixel_ratio > 1 ? '@2x' : ''); // retina / high-dpi screens
 
         if (this.url_subdomains != null) {
             url = url.replace('{s}', this.url_subdomains[this.next_url_subdomain]);
