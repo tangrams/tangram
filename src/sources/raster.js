@@ -6,8 +6,6 @@ import Utils from '../utils/utils';
 import hashString from '../utils/hash';
 import log from '../utils/log';
 
-// TODO: support high-density `@2x`-style filenames for raster tiles and geo-referenced images
-
 export class RasterTileSource extends NetworkTileSource {
 
     constructor (source, sources) {
