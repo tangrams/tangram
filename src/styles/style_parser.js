@@ -224,24 +224,22 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_in
         return StyleParser.evalCachedProperty(val, context);
     }
 
-    val.image = sprite_info || texture_info; // operating on either a sprite, or a full texture
-
     if (sprite_info) {
         // per-sprite based evaluation, cache sizes per sprite
         if (!val.sprites[sprite_info.sprite]) {
-            val.sprites[sprite_info.sprite] = createPointSizeCacheEntry(val);
+            val.sprites[sprite_info.sprite] = createPointSizeCacheEntry(val, sprite_info);
         }
         return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
     }
     else {
         // texture-based evaluation
         // apply percentage or ratio sizing to a texture
-        val.texture = val.texture || createPointSizeCacheEntry(val);
+        val.texture = val.texture || createPointSizeCacheEntry(val, texture_info);
         return StyleParser.evalCachedProperty(val.texture, context);
     }
 };
 
-function createPointSizeCacheEntry (val) {
+function createPointSizeCacheEntry (val, image_info) {
     // the cache property transform function needs access to the image in `val`
     // so it's accessed via a closure here
     return StyleParser.createPropertyCache(val.value, (v, i) => {
@@ -249,20 +247,20 @@ function createPointSizeCacheEntry (val) {
             // either width or height or both could be a %
             v = v.
                 map((c, j) => val.has_ratio[i][j] ? c : parsePositiveNumber(c)). // convert non-ratio values to px
-                map((c, j) => val.has_pct[i][j] ? val.image.css_size[j] * c / 100 : c); // apply % scaling as needed
+                map((c, j) => val.has_pct[i][j] ? image_info.css_size[j] * c / 100 : c); // apply % scaling as needed
 
             // either width or height could be a ratio
             if (val.has_ratio[i][0]) {
-                v[0] = v[1] * val.image.aspect;
+                v[0] = v[1] * image_info.aspect;
             }
             else if (val.has_ratio[i][1]) {
-                v[1] = v[0] / val.image.aspect;
+                v[1] = v[0] / image_info.aspect;
             }
         }
         else { // 1D size
             v = parsePositiveNumber(v);
             if (val.has_pct[i]) {
-                v = val.image.css_size.map(c => c * v / 100); // set size as % of image
+                v = image_info.css_size.map(c => c * v / 100); // set size as % of image
             }
             else {
                 v = [v, v]; // expand 1D size to 2D
