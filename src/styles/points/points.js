@@ -399,7 +399,7 @@ Object.assign(Points, {
 
         // Size (1d value or 2d array)
         try {
-            draw.size = StyleParser.createPointSizePropertyCache(draw.size);
+            draw.size = StyleParser.createPointSizePropertyCache(draw.size, draw.texture);
         }
         catch(e) {
             log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
