@@ -590,7 +590,7 @@ layers:
                     draw: { points: { sprite: museum } }
                 station:
                     filter: { kind: [station] }
-                    draw: { points: { sprite: train, priority: 2, optional: true } }
+                    draw: { points: { sprite: train, priority: 2, text: { optional: true } } }
                 hospital:
                     filter: { kind: [hospital, pharmacy] }
                     draw: { points: { sprite: hospital } }
