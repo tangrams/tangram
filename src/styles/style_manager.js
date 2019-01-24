@@ -2,6 +2,7 @@
 import ShaderProgram from '../gl/shader_program';
 import mergeObjects from '../utils/merge';
 import Geo from '../utils/geo';
+import WorkerBroker from '../utils/worker_broker';
 import log from '../utils/log';
 
 import {Polygons} from './polygons/polygons';
@@ -294,6 +295,12 @@ export class StyleManager {
 
     // Called to create and initialize styles
     build (styles) {
+        // Un-register existing styles from cross-thread communication
+        if (this.styles) {
+            Object.values(this.styles)
+                .forEach(s => WorkerBroker.removeTarget(s.main_thread_target));
+        }
+
         // Sort styles by dependency, then build them
         let style_deps = Object.keys(styles).sort(
             (a, b) => this.inheritanceDepth(a, styles) - this.inheritanceDepth(b, styles)

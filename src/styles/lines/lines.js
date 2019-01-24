@@ -389,7 +389,12 @@ Object.assign(Lines, {
 
                     if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
                         Lines.dash_textures[variant.dash_key] = true;
-                        WorkerBroker.postMessage(this.main_thread_target+'.getDashTexture', variant.dash);
+                        try {
+                            await WorkerBroker.postMessage(this.main_thread_target+'.getDashTexture', variant.dash);
+                        }
+                        catch (e) {
+                            log('trace', `${this.name}: line dash texture create failed because style no longer on main thread`);
+                        }
                     }
 
                     if (Texture.textures[variant.texture] == null) {
