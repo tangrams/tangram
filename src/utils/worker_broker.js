@@ -97,13 +97,15 @@ var message_id = 0;
 var messages = {};
 
 // Register an object to receive calls from other thread
-var targets = {};
+WorkerBroker.targets = {};
 WorkerBroker.addTarget = function (name, target) {
-    targets[name] = target;
+    WorkerBroker.targets[name] = target;
 };
 
 WorkerBroker.removeTarget = function (name) {
-    delete targets[name];
+    if (name) {
+        delete WorkerBroker.targets[name];
+    }
 };
 
 // Given a dot-notation-style method name, e.g. 'Object.object.method',
@@ -115,7 +117,7 @@ function findTarget (method) {
         method = chain.pop();
     }
 
-    var target = targets;
+    var target = WorkerBroker.targets;
 
     for (let m=0; m < chain.length; m++) {
         if (target[chain[m]]) {
