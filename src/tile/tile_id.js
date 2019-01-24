@@ -15,7 +15,7 @@ export const TileID = {
         if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
             return; // cull tiles out of range (x will wrap)
         }
-        return [source.name, style_z, coords.x, coords.y, coords.z].join('/');
+        return [source.name, coords.x, coords.y, coords.z, style_z].join('/');
     },
 
     normalizedKey (coords, source, style_z) {
