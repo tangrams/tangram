@@ -498,6 +498,10 @@ export var Style = {
         if (this.shaders.blocks) {
             this.shaders.blocks[key] = null;
         }
+
+        if (this.shaders.block_scopes) {
+            this.shaders.block_scopes[key] = null;
+        }
     },
 
     replaceShaderBlock (key, block, scope = null) {
