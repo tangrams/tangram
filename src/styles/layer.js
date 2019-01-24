@@ -1,8 +1,9 @@
 import StyleParser from './style_parser';
-import {compileFunctionStrings} from '../utils/functions';
+import { compileFunctionStrings } from '../utils/functions';
 import log from '../utils/log';
 import mergeObjects from '../utils/merge';
-import {buildFilter} from './filter';
+import Geo from '../utils/geo';
+import { buildFilter } from './filter';
 
 // N.B.: 'visible' is legacy compatibility for 'enabled'
 const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
@@ -180,7 +181,7 @@ class Layer {
             }
             else if (ztype === 'object' && (zoom.min != null || zoom.max != null)) {
                 let zmin = zoom.min || 0;
-                let zmax = zoom.max || 25; // TODO: replace constant for max possible zoom
+                let zmax = zoom.max || Geo.max_style_zoom;
                 for (let z=zmin; z < zmax; z++) {
                     this.zooms[z] = true;
                 }
