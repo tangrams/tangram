@@ -356,6 +356,16 @@ export class NetworkTileSource extends NetworkSource {
                     'were specified in \'url_subdomains\' parameter');
             }
         }
+
+        // optional list of pixel density scale modifiers
+        if (this.url && this.url.search('{r}') > -1) {
+            if (Array.isArray(source.url_density_scales) && source.url_density_scales.length > 0) {
+                this.url_density_scales = source.url_density_scales;
+            }
+            else {
+                this.url_density_scales = [1, 2]; // default to supporting 1x and 2x display densities
+            }
+        }
     }
 
     // Get bounds from source config parameters
@@ -436,13 +446,31 @@ export class NetworkTileSource extends NetworkSource {
             .replace('{x}', coords.x)
             .replace('{y}', coords.y)
             .replace('{z}', coords.z)
-            .replace('{r}', Utils.device_pixel_ratio > 1 ? '@2x' : ''); // retina / high-dpi screens
+            .replace('{r}', this.getDensityModifier()); // modify URL by display density (e.g. @2x)
 
         if (this.url_subdomains != null) {
             url = url.replace('{s}', this.url_subdomains[this.next_url_subdomain]);
             this.next_url_subdomain = (this.next_url_subdomain + 1) % this.url_subdomains.length;
         }
         return url;
+    }
+
+    // Find the right tile URL modifier based on the display density, e.g. add `@2x` for sources supporting 2x tiles.
+    // Source `url_density_scales` param can specify an array of densities supported by the source,
+    // each entry serves as a threshold based on the current display density.
+    getDensityModifier () {
+        if (this.url_density_scales) {
+            const dpr = Utils.device_pixel_ratio;
+            const scale = this.url_density_scales
+                .filter(s => dpr >= s)
+                .reverse()[0]; // find the highest matching density
+
+            if (scale != null && scale > 1) {
+                return `@${scale}x`;
+            }
+        }
+        // For 1x (or less) displays, no URL modifier is used (following @2x URL convention)
+        return '';
     }
 
     // Checks for the x/y/z tile pattern in URL template
