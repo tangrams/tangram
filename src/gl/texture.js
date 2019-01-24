@@ -511,9 +511,11 @@ Texture.getInfo = function (name) {
 Texture.syncTexturesToWorker = function (names) {
     return WorkerBroker.postMessage('Texture.getInfo', names).
         then(textures => {
-            textures.forEach(tex => {
-                Texture.textures[tex.name] = tex;
-            });
+            if (textures) {
+                textures
+                    .filter(x => x) // remove nulls
+                    .forEach(t => Texture.textures[t.name] = t);
+            }
             return Texture.textures;
         });
 };
