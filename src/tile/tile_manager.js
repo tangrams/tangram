@@ -39,6 +39,7 @@ export default class TileManager {
         this.queued_coords = [];
         this.scene = null;
         this.view = null;
+        WorkerBroker.removeTarget(this.main_thread_target);
     }
 
     keepTile(tile) {
