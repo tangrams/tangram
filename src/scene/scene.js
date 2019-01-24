@@ -1052,13 +1052,9 @@ export default class Scene {
         }
 
         this.prev_textures.forEach(t => {
-            if (!this.config.textures[t]) {
-                if (!Texture.textures[t]) {
-                    // debugger;
-                }
-                else {
-                    Texture.textures[t].destroy();
-                }
+            // free textures that aren't in the new scene, but are still in the global texture set
+            if (!this.config.textures[t] && Texture.textures[t]) {
+                Texture.textures[t].destroy();
             }
         });
         this.prev_textures = null;
