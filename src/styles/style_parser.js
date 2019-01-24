@@ -92,7 +92,7 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
         feature,
         tile,
         global,
-        zoom: tile.style_zoom,
+        zoom: tile.style_z,
         geometry: Geo.geometryType(feature.geometry.type),
         meters_per_pixel: tile.meters_per_pixel,
         meters_per_pixel_sq: tile.meters_per_pixel_sq,

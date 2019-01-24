@@ -219,9 +219,9 @@ export default class DataSource {
     }
 
     // All data sources support a min zoom, tiled sources can subclass for more specific limits (e.g. bounding box)
-    includesTile (coords, style_zoom) {
+    includesTile (coords, style_z) {
         // Limit by this data source
-        if (coords.z < this.min_display_zoom || (this.max_display_zoom != null && style_zoom > this.max_display_zoom)) {
+        if (coords.z < this.min_display_zoom || (this.max_display_zoom != null && style_z > this.max_display_zoom)) {
             return false;
         }
 
@@ -412,8 +412,8 @@ export class NetworkTileSource extends NetworkSource {
         return true;
     }
 
-    includesTile (coords, style_zoom) {
-        if (!super.includesTile(coords, style_zoom)) {
+    includesTile (coords, style_z) {
+        if (!super.includesTile(coords, style_z)) {
             return false;
         }
 

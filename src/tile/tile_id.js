@@ -11,15 +11,15 @@ export const TileID = {
         return x + '/' + y + '/' + z;
     },
 
-    key (coords, source, style_zoom) {
+    key (coords, source, style_z) {
         if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
             return; // cull tiles out of range (x will wrap)
         }
-        return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
+        return [source.name, style_z, coords.x, coords.y, coords.z].join('/');
     },
 
-    normalizedKey (coords, source, style_zoom) {
-        return this.key(this.normalizedCoord(coords, source), source, style_zoom);
+    normalizedKey (coords, source, style_z) {
+        return this.key(this.normalizedCoord(coords, source), source, style_z);
     },
 
     normalizedCoord (coords, source) {
@@ -69,36 +69,36 @@ export const TileID = {
     },
 
     // Return identifying info for tile's parent tile
-    parent ({ coords, source, style_zoom }) {
-        if (style_zoom > source.max_coord_zoom || style_zoom <= source.min_coord_zoom) {
-            if (style_zoom > 0) { // no more tiles above style zoom 0
+    parent ({ coords, source, style_z }) {
+        if (style_z > source.max_coord_zoom || style_z <= source.min_coord_zoom) {
+            if (style_z > 0) { // no more tiles above style zoom 0
                 return {
-                    key: this.key(coords, source, style_zoom - 1),
+                    key: this.key(coords, source, style_z - 1),
                     coords,
-                    style_zoom: style_zoom - 1,
+                    style_z: style_z - 1,
                     source
                 };
             }
             return;
         }
-        else if (style_zoom > 0) { // no more tiles above style zoom 0
+        else if (style_z > 0) { // no more tiles above style zoom 0
             const c = this.coordAtZoom(coords, coords.z - 1);
             return {
-                key: this.key(c, source, style_zoom - 1),
+                key: this.key(c, source, style_z - 1),
                 coords: c,
-                style_zoom: style_zoom - 1,
+                style_z: style_z - 1,
                 source
             };
         }
     },
 
     // Return identifying info for tile's child tiles
-    children ({ coords, source, style_zoom }) {
-        if (style_zoom >= source.max_coord_zoom || style_zoom < source.min_coord_zoom) {
+    children ({ coords, source, style_z }) {
+        if (style_z >= source.max_coord_zoom || style_z < source.min_coord_zoom) {
             return [{
-                key: this.key(coords, source, style_zoom + 1),
+                key: this.key(coords, source, style_z + 1),
                 coords,
-                style_zoom: style_zoom + 1,
+                style_z: style_z + 1,
                 source
             }];
         }
@@ -106,9 +106,9 @@ export const TileID = {
         const children = this.childrenForCoord(coords);
         return children.map(c => {
             return {
-                key: this.key(c, source, style_zoom + 1),
+                key: this.key(c, source, style_z + 1),
                 coords: c,
-                style_zoom: style_zoom + 1,
+                style_z: style_z + 1,
                 source
             };
         });

@@ -14,7 +14,7 @@ export default class TilePyramid {
         this.tiles[tile.key].tile = tile;
 
         // Add to parents
-        while (tile.style_zoom >= 0) {
+        while (tile.style_z >= 0) {
             tile = TileID.parent(tile);
             if (!tile) {
                 return;
@@ -38,7 +38,7 @@ export default class TilePyramid {
         }
 
         // Decrement reference count up the tile pyramid
-        while (tile.style_zoom >= 0) {
+        while (tile.style_z >= 0) {
             tile = TileID.parent(tile);
             if (!tile) {
                 return;

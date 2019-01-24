@@ -255,9 +255,9 @@ export class RasterSource extends RasterTileSource {
     }
 
     // Checks if tile interects any rasters in this source
-    includesTile (coords, style_zoom) {
+    includesTile (coords, style_z) {
         // Checks zoom range and dependent rasters
-        if (!DataSource.prototype.includesTile.call(this, coords, style_zoom)) {
+        if (!DataSource.prototype.includesTile.call(this, coords, style_z)) {
             return false;
         }
 

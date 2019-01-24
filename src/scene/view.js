@@ -269,12 +269,12 @@ export default class View {
             }
 
             // Remove tiles outside given zoom that are still loading
-            if (tile.loading && tile.style_zoom !== this.tile_zoom) {
+            if (tile.loading && tile.style_z !== this.tile_zoom) {
                 return true;
             }
 
             // Discard if too far from current zoom
-            const zdiff = Math.abs(tile.style_zoom - this.tile_zoom);
+            const zdiff = Math.abs(tile.style_z - this.tile_zoom);
             const preserve_tiles_within_zoom = (tile.preserve_tiles_within_zoom != null ?
                 tile.preserve_tiles_within_zoom : this.preserve_tiles_within_zoom); // optionally tile source specific
             if (zdiff > preserve_tiles_within_zoom) {

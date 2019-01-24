@@ -219,7 +219,7 @@ export default class TileManager {
 
     updateVisibility(tile) {
         tile.visible = false;
-        if (tile.style_zoom === this.view.tile_zoom) {
+        if (tile.style_z === this.view.tile_zoom) {
             if (this.visible_coords[tile.coords.key]) {
                 tile.visible = true;
             }
@@ -353,7 +353,7 @@ export default class TileManager {
                     source,
                     coords,
                     worker: this.getWorkerForTile(coords, source),
-                    style_zoom: this.view.baseZoom(coords.z),
+                    style_z: this.view.baseZoom(coords.z),
                     view: this.view
                 });
 

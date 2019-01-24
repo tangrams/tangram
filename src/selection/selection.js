@@ -281,7 +281,7 @@ export default class FeatureSelection {
                 tile: {                             // subset of tile properties to pass back with feature
                     key: tile.key,
                     coords: tile.coords,
-                    style_zoom: tile.style_zoom,
+                    style_z: tile.style_z,
                     source: tile.source,
                     generation: tile.generation
                 }

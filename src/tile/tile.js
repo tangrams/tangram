@@ -24,7 +24,7 @@ export default class Tile {
         coords: object with {x, y, z} properties identifying tile coordinate location
         worker: web worker to handle tile construction
     */
-    constructor({ coords, style_zoom, source, worker, view }) {
+    constructor({ coords, style_z, source, worker, view }) {
         this.id = id++;
         this.worker = worker;
         this.view = view;
@@ -44,17 +44,17 @@ export default class Tile {
         this.error = null;
         this.debug = {};
 
-        this.style_zoom = style_zoom; // zoom level to be used for styling
+        this.style_z = style_z; // zoom level to be used for styling
         this.coords = TileID.normalizedCoord(coords, this.source);
-        this.key = TileID.key(this.coords, this.source, this.style_zoom);
-        this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
+        this.key = TileID.key(this.coords, this.source, this.style_z);
+        this.overzoom = Math.max(this.style_z - this.coords.z, 0); // number of levels of overzooming
         this.overzoom2 = Math.pow(2, this.overzoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
 
-        this.meters_per_pixel = Geo.metersPerPixel(this.style_zoom);
+        this.meters_per_pixel = Geo.metersPerPixel(this.style_z);
         this.meters_per_pixel_sq = this.meters_per_pixel * this.meters_per_pixel;
         this.units_per_pixel = Geo.units_per_pixel / this.overzoom2; // adjusted for overzoom
         this.units_per_meter_overzoom = Geo.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
@@ -100,7 +100,7 @@ export default class Tile {
             meters_per_pixel: this.meters_per_pixel,
             meters_per_pixel_sq: this.meters_per_pixel_sq,
             units_per_meter_overzoom: this.units_per_meter_overzoom,
-            style_zoom: this.style_zoom,
+            style_z: this.style_z,
             overzoom: this.overzoom,
             overzoom2: this.overzoom2,
             generation: this.generation,
@@ -501,7 +501,7 @@ export default class Tile {
             this.proxy_for = this.proxy_for || [];
             this.proxy_for.push(tile);
             this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
-            tile.proxied_as = (tile.style_zoom > this.style_zoom ? 'child' : 'parent');
+            tile.proxied_as = (tile.style_z > this.style_z ? 'child' : 'parent');
         }
         else {
             this.proxy_for = null;
@@ -523,7 +523,7 @@ export default class Tile {
     // Update model matrix and tile uniforms
     setupProgram ({ model, model32 }, program) {
         // Tile origin
-        program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_zoom, this.coords.z]);
+        program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_z, this.coords.z]);
         program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth);
 
         // Model - transform tile space into world space (meters, absolute mercator position)

@@ -6,7 +6,7 @@ import { TileID } from '../src/tile/tile_id';
 describe('TilePyramid', function() {
 
     let coords = { x: 38603, y: 49255, z: 17 };
-    let source, style_zoom;
+    let source, style_z;
     let tile;
     let pyramid;
 
@@ -15,7 +15,7 @@ describe('TilePyramid', function() {
         beforeEach(() => {
             pyramid = new TilePyramid();
 
-            style_zoom = coords.z;
+            style_z = coords.z;
             source = {
                 name: 'test',
                 max_coord_zoom: 18
@@ -23,11 +23,11 @@ describe('TilePyramid', function() {
 
             tile = {
                 coords: TileID.coord(coords),
-                style_zoom,
+                style_z,
                 source,
                 loaded: true
             };
-            tile.key = TileID.key(tile.coords, source, style_zoom);
+            tile.key = TileID.key(tile.coords, source, style_z);
         });
 
         it('creates one entry per zoom', () => {
@@ -45,10 +45,10 @@ describe('TilePyramid', function() {
         it('creates entries for overzoomed tiles', () => {
             tile = Object.assign({}, tile);
             tile.coords = TileID.coordAtZoom(coords, 18);
-            tile.style_zoom = 20;
+            tile.style_z = 20;
             pyramid.addTile(tile);
 
-            assert.isNotNull(pyramid.tiles[TileID.key(tile.coords, source, tile.style_zoom)]);
+            assert.isNotNull(pyramid.tiles[TileID.key(tile.coords, source, tile.style_z)]);
         });
 
         it('removes all entries for single tile', () => {
