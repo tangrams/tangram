@@ -93,7 +93,7 @@ export var Style = {
         this.generation = generation;
 
         // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = ['Style', this.name, this.generation].join('/');
+        this.main_thread_target = ['Style', this.name, this.generation].join('_');
         if (Thread.is_main) {
             WorkerBroker.addTarget(this.main_thread_target, this);
         }
