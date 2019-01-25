@@ -460,17 +460,21 @@ export class NetworkTileSource extends NetworkSource {
     // each entry serves as a threshold based on the current display density.
     getDensityModifier () {
         if (this.url_density_scales) {
+            // find the highest matching density
             const dpr = Utils.device_pixel_ratio;
-            const scale = this.url_density_scales
+            let scale = this.url_density_scales
                 .filter(s => dpr >= s)
-                .reverse()[0]; // find the highest matching density
+                .reverse()[0];
 
-            if (scale != null && scale > 1) {
+            // default to first scale if none matched
+            scale = (scale != null ? scale : this.url_density_scales[0]);
+
+            // scales higher than 1x use the `@` modifier (e.g. `@2x`)
+            if (scale > 1) {
                 return `@${scale}x`;
             }
         }
-        // For 1x (or less) displays, no URL modifier is used (following @2x URL convention)
-        return '';
+        return ''; // for 1x (or less) displays, no URL modifier is used (following @2x URL convention)
     }
 
     // Checks for the x/y/z tile pattern in URL template
