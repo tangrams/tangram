@@ -565,7 +565,9 @@ Object.assign(Points, {
             // Point at polygon centroid (of outer ring)
             if (options.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.centroid(geometry.coordinates);
-                labels.push(new LabelPoint(centroid, size, options));
+                if (centroid) { // skip degenerate polygons
+                    labels.push(new LabelPoint(centroid, size, options));
+                }
             }
             // Point at each polygon vertex (all rings)
             else {
@@ -581,7 +583,9 @@ Object.assign(Points, {
         else if (geometry.type === 'MultiPolygon') {
             if (options.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.multiCentroid(geometry.coordinates);
-                labels.push(new LabelPoint(centroid, size, options));
+                if (centroid) { // skip degenerate polygons
+                    labels.push(new LabelPoint(centroid, size, options));
+                }
             }
             else {
                 let polys = geometry.coordinates;

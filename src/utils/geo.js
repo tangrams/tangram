@@ -240,6 +240,10 @@ Geo.centroid = function (polygon, relative = true) {
         area += f * 3;
     }
 
+    if (!area) {
+        return; // skip degenerate polygons
+    }
+
     let c = [x / area, y / area];
     if (relative) {
         c[0] += origin[0];
@@ -249,19 +253,25 @@ Geo.centroid = function (polygon, relative = true) {
 };
 
 Geo.multiCentroid = function (polygons) {
-    let n = polygons.length;
-    let centroid = [0, 0];
+    let n = 0;
+    let centroid = null;
 
     for (let p=0; p < polygons.length; p++) {
         let c = Geo.centroid(polygons[p]);
-        centroid[0] += c[0];
-        centroid[1] += c[1];
+        if (c) { // skip degenerate polygons
+            centroid = centroid || [0, 0];
+            centroid[0] += c[0];
+            centroid[1] += c[1];
+            n++;
+        }
     }
 
-    centroid[0] /= n;
-    centroid[1] /= n;
+    if (n > 0) {
+        centroid[0] /= n;
+        centroid[1] /= n;
+    }
 
-    return centroid;
+    return centroid; // will return null if all polygons were degenerate
 };
 
 Geo.signedPolygonRingAreaSum = function (ring) {

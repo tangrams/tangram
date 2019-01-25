@@ -208,10 +208,14 @@ Object.assign(TextStyle, {
             }
         } else if (geometry.type === 'Polygon') {
             let centroid = Geo.centroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, layout));
+            if (centroid) { // skip degenerate polygons
+                labels.push(new LabelPoint(centroid, size, layout));
+            }
         } else if (geometry.type === 'MultiPolygon') {
             let centroid = Geo.multiCentroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, layout));
+            if (centroid) { // skip degenerate polygons
+                labels.push(new LabelPoint(centroid, size, layout));
+            }
         }
 
         return labels;
