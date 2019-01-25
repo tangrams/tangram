@@ -45,8 +45,8 @@ export default class DataSource {
         // NOTE: these are loaded alongside the library when the workers are instantiated
         this.scripts = config.scripts;
 
-        // overzoom will apply for zooms higher than this
-        this.max_zoom = (config.max_zoom != null) ? config.max_zoom : Geo.default_source_max_zoom;
+        // Configure zoom ranges at which new data will be loaded
+        this.setZooms(config);
 
         // set a custom extra overzoom adjustment factor to load consistently lower zoom levels
         // than the current map zoom level – eg a zoom_offset of 1 would load z3 data at z4
@@ -60,7 +60,7 @@ export default class DataSource {
         this.setTileSize(config.tile_size);
 
         // no tiles will be requested or displayed outside of these min/max values
-        this.min_display_zoom = (config.min_display_zoom != null) ? config.min_display_zoom : 0;
+        this.min_display_zoom = Math.max(config.min_display_zoom || 0, this.zooms[0]);
         this.max_display_zoom = (config.max_display_zoom != null) ? config.max_display_zoom : null;
     }
 
@@ -94,6 +94,7 @@ export default class DataSource {
         // subset of parameters that affect tile layout
         const rebuild_params = [
             'max_zoom',
+            'zooms',
             'min_display_zoom',
             'max_display_zoom',
             'bounds',
@@ -192,6 +193,23 @@ export default class DataSource {
         return dest;
     }
 
+    // Configure zoom ranges at which new data will be loaded
+    // e.g. can be used to skip fetching data for some zooms, reusing data from next lowest available zoom instead
+    setZooms ({ max_zoom, zooms }) {
+        // overzoom will apply for zooms higher than this
+        this.max_zoom = (max_zoom != null) ? max_zoom : Geo.default_source_max_zoom;
+        if (Array.isArray(zooms)) {
+            this.zooms = zooms; // TODO: support range parsing, e.g. [0-4, 6-7, 12]?
+            this.max_zoom = this.zooms[this.zooms.length-1]; // overrides `max_zoom` when both are present
+        }
+        else {
+            this.zooms = [];
+            for (let i = 0; i <= this.max_zoom; i++) {
+                this.zooms[i] = i;
+            }
+        }
+    }
+
     // Set the internal tile size in pixels, e.g. '256px' (default), '512px', etc.
     // Must be a power of 2, and greater than or equal to 256
     setTileSize (tile_size) {
@@ -207,12 +225,6 @@ export default class DataSource {
         // case of bigger tile sizes - eg 512px tiles are 1 zoom level bigger,
         // 1024px tiles are 2 levels bigger
         this.zoom_bias = Math.log2(this.tile_size) - 8 + this.zoom_offset;
-
-        // the max/min coordinate zoom level at which tiles will be loaded from server
-        // (but tiles can be styled at other zooms)
-        // zoom_bias adjusts for tile sizes > than 256px, and manual zoom_offset
-        this.max_coord_zoom = this.max_zoom + this.zoom_bias;
-        this.min_coord_zoom = this.zoom_bias;
     }
 
     // Infer winding for data source from first ring of provided geometry

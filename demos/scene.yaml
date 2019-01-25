@@ -98,6 +98,7 @@ sources:
         url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
         tile_size: 512
         max_zoom: 16
+        # zooms: [0, 2, 4, 6, 8, 10, 12, 14, 16] # only load tiles every 2 zooms (overrides max_zoom)
         url_params:
             api_key: global.api_key
         # request_headers: # send custom headers with tile requests
@@ -140,6 +141,7 @@ sources:
     # counties:
     #     type: TopoJSON
     #     url: https://gist.githubusercontent.com/mbostock/4090846/raw/c899e3d4f3353924e495667c842f54a07090cfab/us.json
+    #     zooms: [0, 4, 8, 10]
 
 layers:
 

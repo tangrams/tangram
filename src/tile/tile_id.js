@@ -1,6 +1,3 @@
-
-const COORD_CHILDREN = {}; // only allocate children coords once per coord
-
 export const TileID = {
 
     coord(c) {
@@ -24,9 +21,9 @@ export const TileID = {
 
     normalizedCoord (coords, source) {
         if (source.zoom_bias) {
-            coords = this.coordAtZoom(coords, coords.z - source.zoom_bias);
+            coords = this.coordAtZoom(coords, Math.max(coords.z - source.zoom_bias, source.zooms[0]));
         }
-        return this.coordWithMaxZoom(coords, source.max_zoom);
+        return this.coordForTileZooms(coords, source.zooms);
     },
 
     coordAtZoom({x, y, z}, zoom) {
@@ -40,24 +37,16 @@ export const TileID = {
         return this.coord({x, y, z});
     },
 
-    coordWithMaxZoom({x, y, z}, max_zoom) {
-        if (max_zoom != null && z > max_zoom) {
-            return this.coordAtZoom({x, y, z}, max_zoom);
+    coordForTileZooms({ x, y, z }, zooms) {
+        const nz = this.findZoomInRange(z, zooms);
+        if (nz !== z) {
+            return this.coordAtZoom({ x, y, z }, nz);
         }
-        return this.coord({x, y, z});
+        return this.coord({ x, y, z });
     },
 
-    childrenForCoord({x, y, z, key}) {
-        if (!COORD_CHILDREN[key]) {
-            z++;
-            x *= 2;
-            y *= 2;
-            COORD_CHILDREN[key] = [
-                this.coord({x, y,      z}), this.coord({x: x+1, y,      z}),
-                this.coord({x, y: y+1, z}), this.coord({x: x+1, y: y+1, z})
-            ];
-        }
-        return COORD_CHILDREN[key];
+    findZoomInRange(z, zooms) {
+        return zooms.filter(s => z >= s).reverse()[0] || zooms[0];
     },
 
     isDescendant(parent, descendant) {
@@ -70,48 +59,61 @@ export const TileID = {
 
     // Return identifying info for tile's parent tile
     parent ({ coords, source, style_z }) {
-        if (style_z > source.max_coord_zoom || style_z <= source.min_coord_zoom) {
-            if (style_z > 0) { // no more tiles above style zoom 0
-                return {
-                    key: this.key(coords, source, style_z - 1),
-                    coords,
-                    style_z: style_z - 1,
-                    source
-                };
+        if (style_z > 0) { // no more tiles above style zoom 0
+            style_z--;
+            const sz = Math.max(style_z - source.zoom_bias, source.zooms[0]); // z can't be lower than tile source
+            const c = this.coordForTileZooms(this.coordAtZoom(coords, sz), source.zooms);
+
+            if (c.z > style_z) {
+                return null;
             }
-            return;
-        }
-        else if (style_z > 0) { // no more tiles above style zoom 0
-            const c = this.coordAtZoom(coords, coords.z - 1);
+
             return {
-                key: this.key(c, source, style_z - 1),
+                key: this.key(c, source, style_z),
                 coords: c,
-                style_z: style_z - 1,
+                style_z,
                 source
             };
         }
     },
 
     // Return identifying info for tile's child tiles
-    children ({ coords, source, style_z }) {
-        if (style_z >= source.max_coord_zoom || style_z < source.min_coord_zoom) {
+    children ({ coords, source, style_z }, CACHE = {}) {
+        style_z++;
+        const c = this.coordForTileZooms(this.coordAtZoom(coords, style_z - source.zoom_bias), source.zooms);
+        if (c.z === coords.z) {
+            // same coord zoom for next level down
             return [{
-                key: this.key(coords, source, style_z + 1),
-                coords,
-                style_z: style_z + 1,
+                key: this.key(c, source, style_z),
+                coords: c,
+                style_z,
                 source
             }];
         }
-
-        const children = this.childrenForCoord(coords);
-        return children.map(c => {
-            return {
-                key: this.key(c, source, style_z + 1),
-                coords: c,
-                style_z: style_z + 1,
-                source
-            };
-        });
+        else {
+            // coord zoom advanced down
+            const key = this.key(c, source, style_z);
+            CACHE[source.id] = CACHE[source.id] || {};
+            if (CACHE[source.id][key] == null) {
+                const span = Math.pow(2, c.z - coords.z);
+                const x = coords.x * span;
+                const y = coords.y * span;
+                let children = [];
+                for (let nx = x; nx < x + span; nx++) {
+                    for (let ny = y; ny < y + span; ny++) {
+                        let nc = this.coord({ x: nx, y: ny, z: c.z });
+                        children.push({
+                            key: this.key(nc, source, style_z),
+                            coords: nc,
+                            style_z,
+                            source
+                        });
+                    }
+                }
+                CACHE[source.id][key] = children;
+            }
+            return CACHE[source.id][key];
+        }
     }
 
 };

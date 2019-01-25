@@ -81,7 +81,7 @@ export class RasterTileSource extends NetworkTileSource {
                 // do extra zoom adjustment and apply this raster source's max zoom
                 coords = TileID.normalizedCoord(tile.coords, {
                     zoom_bias: zdiff,
-                    max_zoom: this.max_zoom
+                    zooms: this.zooms
                 });
             }
             else {
@@ -95,7 +95,7 @@ export class RasterTileSource extends NetworkTileSource {
                 }
 
                 // no extra zoom adjustment needed, but still need to apply this raster source's max zoom
-                coords = TileID.coordWithMaxZoom(coords, this.max_zoom);
+                coords = TileID.coordForTileZooms(coords, this.zooms);
             }
         }
         return coords;

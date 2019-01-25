@@ -17,7 +17,6 @@ export class GeoJSONSource extends NetworkSource {
         super(source, sources);
         this.load_data = null;
         this.tile_indexes = {}; // geojson-vt tile indices, by layer name
-        this.max_zoom = Math.max(this.max_zoom || 0, 15); // TODO: max zoom < 15 causes artifacts/no-draw at 20, investigate
         this.setTileSize(512); // auto-tile to 512px tiles for fewer internal tiles
         this.pad_scale = 0; // we don't want padding on auto-tiled sources
     }
