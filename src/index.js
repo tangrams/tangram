@@ -21,6 +21,7 @@ import WorkerBroker from './utils/worker_broker';
 import Task from './utils/task';
 import {StyleManager} from './styles/style_manager';
 import StyleParser from './styles/style_parser';
+import {TileID} from './tile/tile_id';
 import Collision from './labels/collision';
 import FeatureSelection from './selection/selection';
 import TextCanvas from './styles/text/text_canvas';
@@ -47,6 +48,7 @@ const debug = {
     Task,
     StyleManager,
     StyleParser,
+    TileID,
     Collision,
     FeatureSelection,
     TextCanvas,

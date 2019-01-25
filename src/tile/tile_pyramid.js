@@ -6,6 +6,7 @@ export default class TilePyramid {
         this.tiles = {};
         this.max_proxy_descendant_depth = 6; // # of levels to search up/down for proxy tiles
         this.max_proxy_ancestor_depth = 7;
+        this.children_cache = {}; // cache for children of coordinates
     }
 
     addTile(tile) {
@@ -57,7 +58,6 @@ export default class TilePyramid {
     getAncestor (tile) {
         let level = 0;
         while (level < this.max_proxy_ancestor_depth) {
-            const last_z = tile.coords.z;
             tile = TileID.parent(tile);
             if (!tile) {
                 return;
@@ -69,9 +69,7 @@ export default class TilePyramid {
                 return this.tiles[tile.key].tile;
             }
 
-            if (tile.coords.z !== last_z) {
-                level++;
-            }
+            level++;
         }
     }
 
@@ -79,7 +77,7 @@ export default class TilePyramid {
     getDescendants (tile, level = 0) {
         let descendants = [];
         if (level < this.max_proxy_descendant_depth) {
-            let tiles = TileID.children(tile);
+            let tiles = TileID.children(tile, this.children_cache);
             if (!tiles) {
                 return;
             }
@@ -91,7 +89,7 @@ export default class TilePyramid {
                         descendants.push(this.tiles[t.key].tile);
                     }
                     else if (this.tiles[t.key].descendants > 0) { // didn't find any children, try next level
-                        descendants.push(...this.getDescendants(t, level + (t.coords.z !== tile.coords.z)));
+                        descendants.push(...this.getDescendants(t, level + 1));
                     }
                 }
             });
