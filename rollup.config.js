@@ -33,7 +33,6 @@ const config = [{
         indent: false,
         chunkFileNames: 'shared.js',
     },
-    experimentalCodeSplitting: true,
     plugins: [
         resolve({
             browser: true,
