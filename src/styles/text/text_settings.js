@@ -69,9 +69,6 @@ const TextSettings = {
 
         style.transform = draw.font.transform;
 
-        // original size (not currently used, but useful for debugging)
-        style.size = draw.font.size || this.defaults.size;
-
         // calculated pixel size
         style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
         style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample;
