@@ -1,7 +1,5 @@
 import chai from 'chai';
 let assert = chai.assert;
-import chaiAsPromised from 'chai-as-promised';
-chai.use(chaiAsPromised);
 
 import Geo from '../src/utils/geo';
 import sampleTile from './fixtures/sample-tile.json';
@@ -165,9 +163,9 @@ describe('DataSource', () => {
                     subject = undefined;
                 });
 
-                it('calls back with the tile object', () => {
+                it('calls back with the tile object', async () => {
                     assert(!mockTile.source_data.error);
-                    assert.isFulfilled(subject.load(mockTile));
+                    assert(await subject.load(mockTile));
                 });
             });
 

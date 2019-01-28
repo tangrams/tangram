@@ -1,9 +1,7 @@
 import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
 import {LayerLeaf, LayerTree, mergeTrees, parseLayers, groupProps, calculateDraw} from '../src/styles/layer';
 import sampleLayers from './fixtures/sample-layers.json';
 
-chai.use(chaiAsPromised);
 let assert = chai.assert;
 
 describe('LayerLeaf', () => {
