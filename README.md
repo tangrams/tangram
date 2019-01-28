@@ -96,4 +96,4 @@ Tangram is open-source, and we eagerly welcome feedback, feature requests, and c
 
 For instructions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Mapzen sponsored Tangram's develompent until its closure in February 2018.
+Tangram JS was created by [Mapzen](https://www.mapzen.com/) and is now a [Linux Foundation Project](https://www.linuxfoundation.org/press-release/2019/01/mapzen-open-source-data-and-software-for-real-time-mapping-applications-to-become-a-linux-foundation-project/).
