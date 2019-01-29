@@ -593,10 +593,16 @@ export var Style = {
         // Load textures on main thread and return when done
         // We want to block the building of a raster tile mesh until its texture is loaded,
         // to avoid flickering while loading (texture will render as black)
-        const textures = await WorkerBroker.postMessage(
-            `${this.main_thread_target}.loadTextures`,
-            { coords: tile.coords, source: tile.source, rasters: tile.rasters, min: tile.min, max: tile.max }
-        );
+        let textures;
+        try {
+            textures = await WorkerBroker.postMessage(
+                `${this.main_thread_target}.loadTextures`,
+                { coords: tile.coords, source: tile.source, rasters: tile.rasters, min: tile.min, max: tile.max }
+            );
+        }
+        catch (e) { // error thrown if style has been removed from main thread
+            return tile_data;
+        }
 
         if (!textures || textures.length < 1) { // no textures found (unexpected)
             // TODO: warning
