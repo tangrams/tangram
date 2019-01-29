@@ -49,7 +49,25 @@ try {
   self.document = self.window.document;
 }
 
-var version = "0.16.1";
+function _extends() {
+  _extends = Object.assign || function (target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i];
+
+      for (var key in source) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+          target[key] = source[key];
+        }
+      }
+    }
+
+    return target;
+  };
+
+  return _extends.apply(this, arguments);
+}
+
+var version = "0.17.0";
 
 var version$1 = 'v' + version;
 
@@ -61,14 +79,16 @@ var WorkerBroker$1 = WorkerBroker = {}; // Global list of all worker messages
 var message_id = 0;
 var messages = {}; // Register an object to receive calls from other thread
 
-var targets = {};
+WorkerBroker.targets = {};
 
 WorkerBroker.addTarget = function (name, target) {
-  targets[name] = target;
+  WorkerBroker.targets[name] = target;
 };
 
 WorkerBroker.removeTarget = function (name) {
-  delete targets[name];
+  if (name) {
+    delete WorkerBroker.targets[name];
+  }
 }; // Given a dot-notation-style method name, e.g. 'Object.object.method',
 // find the object to call the method on from the list of registered targets
 
@@ -81,7 +101,7 @@ function findTarget(method) {
     method = chain.pop();
   }
 
-  var target = targets;
+  var target = WorkerBroker.targets;
 
   for (let m = 0; m < chain.length; m++) {
     if (target[chain[m]]) {
@@ -106,7 +126,11 @@ function setupMainThread() {
   // Returns:
   //   - a promise that will be fulfilled if the worker method returns a value (could be immediately, or async)
   //
-  WorkerBroker.postMessage = function (worker, method, ...message) {
+  WorkerBroker.postMessage = function (worker, method) {
+    for (var _len = arguments.length, message = new Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
+      message[_key - 2] = arguments[_key];
+    }
+
     // If more than one worker specified, post to multiple
     if (Array.isArray(worker)) {
       return Promise.all(worker.map(w => WorkerBroker.postMessage(w, method, ...message)));
@@ -166,7 +190,7 @@ function setupMainThread() {
 
   WorkerBroker.addWorker = function (worker) {
     if (!(worker instanceof Worker)) {
-      throw Error(`Worker broker could not add non-Worker object`, worker);
+      throw Error('Worker broker could not add non-Worker object', worker);
     }
 
     worker.addEventListener('message', function WorkerBrokerMainThreadHandler(event) {
@@ -189,23 +213,24 @@ function setupMainThread() {
       // Unique id for this message & return call to main thread
       else if (data.type === 'worker_send' && id != null) {
           // Call the requested method and save the return value
-          var _findTarget = findTarget(data.method),
-              method_name = _findTarget[0],
-              target = _findTarget[1];
-
-          if (!target) {
-            throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
-          }
-
-          var method = typeof target[method_name] === 'function' && target[method_name];
-
-          if (!method) {
-            throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
-          }
-
-          var result, error;
+          let result, error, target, method_name, method;
 
           try {
+            var _findTarget = findTarget(data.method);
+
+            method_name = _findTarget[0];
+            target = _findTarget[1];
+
+            if (!target) {
+              throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+            }
+
+            method = typeof target[method_name] === 'function' && target[method_name];
+
+            if (!method) {
+              throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
+            }
+
             result = method.apply(target, data.message);
           } catch (e) {
             // Thrown errors will be passed back (in string form) to worker
@@ -286,7 +311,11 @@ function setupWorkerThread() {
   // Returns:
   //   - a promise that will be fulfilled if the main thread method returns a value (could be immediately, or async)
   //
-  WorkerBroker.postMessage = function (method, ...message) {
+  WorkerBroker.postMessage = function (method) {
+    for (var _len2 = arguments.length, message = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+      message[_key2 - 1] = arguments[_key2];
+    }
+
     // Parse options
     let options = {};
 
@@ -357,23 +386,24 @@ function setupWorkerThread() {
     // Unique id for this message & return call to main thread
     else if (data.type === 'main_send' && id != null) {
         // Call the requested worker method and save the return value
-        var _findTarget2 = findTarget(data.method),
-            method_name = _findTarget2[0],
-            target = _findTarget2[1];
-
-        if (!target) {
-          throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
-        }
-
-        var method = typeof target[method_name] === 'function' && target[method_name];
-
-        if (!method) {
-          throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
-        }
-
-        var result, error;
+        let result, error, target, method_name, method;
 
         try {
+          var _findTarget2 = findTarget(data.method);
+
+          method_name = _findTarget2[0];
+          target = _findTarget2[1];
+
+          if (!target) {
+            throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+          }
+
+          method = typeof target[method_name] === 'function' && target[method_name];
+
+          if (!method) {
+            throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
+          }
+
           result = method.apply(target, data.message);
         } catch (e) {
           // Thrown errors will be passed back (in string form) to main thread
@@ -434,7 +464,11 @@ function setupWorkerThread() {
 } // Special value wrapper, to indicate that we want to find and include transferable objects in the message
 
 
-WorkerBroker.withTransferables = function (...value) {
+WorkerBroker.withTransferables = function () {
+  for (var _len3 = arguments.length, value = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+    value[_key3] = arguments[_key3];
+  }
+
   if (!(this instanceof WorkerBroker.withTransferables)) {
     return new WorkerBroker.withTransferables(...value);
   }
@@ -449,7 +483,19 @@ WorkerBroker.withTransferables = function (...value) {
 // TODO: add option in case you DON'T want to transfer objects
 
 
-function findTransferables(source, parent = null, property = null, list = []) {
+function findTransferables(source, parent, property, list) {
+  if (parent === void 0) {
+    parent = null;
+  }
+
+  if (property === void 0) {
+    property = null;
+  }
+
+  if (list === void 0) {
+    list = [];
+  }
+
   if (!source) {
     return list;
   }
@@ -514,7 +560,8 @@ let logged_once = {};
 
 function methodForLevel(level) {
   if (Thread.is_main) {
-    methods[level] = methods[level] || (console[level] ? console[level] : console.log).bind(console);
+    methods[level] = methods[level] || (console[level] ? console[level] : console.log).bind(console); // eslint-disable-line no-console
+
     return methods[level];
   }
 } // Logs message, proxying any log requests from worker threads back to the main thread.
@@ -523,10 +570,14 @@ function methodForLevel(level) {
 // that would otherwise be repetitive or possibly logged thousands of times, such as per feature).
 
 
-function log(opts, ...msg) {
+function log(opts) {
   let level = typeof opts === 'object' ? opts.level : opts;
 
   if (LEVELS[level] <= LEVELS[log.level]) {
+    for (var _len = arguments.length, msg = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+      msg[_key - 1] = arguments[_key];
+    }
+
     if (Thread.is_worker) {
       // Proxy to main thread
       return WorkerBroker$1.postMessage({
@@ -589,6 +640,8 @@ var Geo$1 = Geo = {}; // Projection constants
 
 Geo.default_source_max_zoom = 18;
 Geo.default_view_max_zoom = 20;
+Geo.max_style_zoom = 25; // max zoom at which styles will be evaluated
+
 Geo.tile_size = 256;
 Geo.half_circumference_meters = 20037508.342789244;
 Geo.circumference_meters = Geo.half_circumference_meters * 2;
@@ -633,7 +686,9 @@ Geo.metersForTile = function (tile) {
 */
 
 
-Geo.tileForMeters = function ([x, y], zoom) {
+Geo.tileForMeters = function (_ref, zoom) {
+  let x = _ref[0],
+      y = _ref[1];
   return {
     x: Math.floor((x + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
     y: Math.floor((-y + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
@@ -643,14 +698,18 @@ Geo.tileForMeters = function ([x, y], zoom) {
 // Optionally specify the axes to wrap
 
 
-Geo.wrapTile = function ({
-  x,
-  y,
-  z
-}, mask = {
-  x: true,
-  y: false
-}) {
+Geo.wrapTile = function (_ref2, mask) {
+  let x = _ref2.x,
+      y = _ref2.y,
+      z = _ref2.z;
+
+  if (mask === void 0) {
+    mask = {
+      x: true,
+      y: false
+    };
+  }
+
   var m = (1 << z) - 1;
 
   if (mask.x) {
@@ -672,7 +731,9 @@ Geo.wrapTile = function ({
 */
 
 
-Geo.metersToLatLng = function ([x, y]) {
+Geo.metersToLatLng = function (_ref3) {
+  let x = _ref3[0],
+      y = _ref3[1];
   x /= Geo.half_circumference_meters;
   y /= Geo.half_circumference_meters;
   y = (2 * Math.atan(Math.exp(y * Math.PI)) - Math.PI / 2) / Math.PI;
@@ -685,7 +746,9 @@ Geo.metersToLatLng = function ([x, y]) {
 */
 
 
-Geo.latLngToMeters = function ([x, y]) {
+Geo.latLngToMeters = function (_ref4) {
+  let x = _ref4[0],
+      y = _ref4[1];
   // Latitude
   y = Math.log(Math.tan(y * Math.PI / 360 + Math.PI / 4)) / Math.PI;
   y *= Geo.half_circumference_meters; // Longitude
@@ -808,7 +871,11 @@ Geo.geometryType = function (type) {
 // Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
 
 
-Geo.centroid = function (polygon, relative = true) {
+Geo.centroid = function (polygon, relative) {
+  if (relative === void 0) {
+    relative = true;
+  }
+
   if (!polygon || polygon.length === 0) {
     return;
   }
@@ -836,6 +903,10 @@ Geo.centroid = function (polygon, relative = true) {
     area += f * 3;
   }
 
+  if (!area) {
+    return; // skip degenerate polygons
+  }
+
   let c = [x / area, y / area];
 
   if (relative) {
@@ -847,18 +918,27 @@ Geo.centroid = function (polygon, relative = true) {
 };
 
 Geo.multiCentroid = function (polygons) {
-  let n = polygons.length;
-  let centroid = [0, 0];
+  let n = 0;
+  let centroid = null;
 
   for (let p = 0; p < polygons.length; p++) {
     let c = Geo.centroid(polygons[p]);
-    centroid[0] += c[0];
-    centroid[1] += c[1];
+
+    if (c) {
+      // skip degenerate polygons
+      centroid = centroid || [0, 0];
+      centroid[0] += c[0];
+      centroid[1] += c[1];
+      n++;
+    }
   }
 
-  centroid[0] /= n;
-  centroid[1] /= n;
-  return centroid;
+  if (n > 0) {
+    centroid[0] /= n;
+    centroid[1] /= n;
+  }
+
+  return centroid; // will return null if all polygons were degenerate
 };
 
 Geo.signedPolygonRingAreaSum = function (ring) {
@@ -910,8 +990,7 @@ Geo.ringWinding = function (ring) {
 };
 
 // Miscellaneous utilities
-var Utils;
-var Utils$1 = Utils = {};
+const Utils = {};
 WorkerBroker$1.addTarget('Utils', Utils); // Basic Safari detection
 // http://stackoverflow.com/questions/7944460/detect-safari-browser
 
@@ -921,7 +1000,7 @@ Utils.isSafari = function () {
 
 
 Utils.isMicrosoft = function () {
-  return /(Trident\/7.0|Edge[ /](\d+[\.\d]+))/i.test(navigator.userAgent);
+  return /(Trident\/7.0|Edge[ /](\d+[.\d]+))/i.test(navigator.userAgent);
 };
 
 Utils._requests = {}; // XHR requests on current thread
@@ -929,7 +1008,31 @@ Utils._requests = {}; // XHR requests on current thread
 Utils._proxy_requests = {}; // XHR requests proxied to main thread
 // `request_key` is a user-provided key that can be later used to cancel the request
 
-Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}, request_key = null, proxy = false) {
+Utils.io = function (url, timeout, responseType, method, headers, request_key, proxy) {
+  if (timeout === void 0) {
+    timeout = 60000;
+  }
+
+  if (responseType === void 0) {
+    responseType = 'text';
+  }
+
+  if (method === void 0) {
+    method = 'GET';
+  }
+
+  if (headers === void 0) {
+    headers = {};
+  }
+
+  if (request_key === void 0) {
+    request_key = null;
+  }
+
+  if (proxy === void 0) {
+    proxy = false;
+  }
+
   if (Thread.is_worker && Utils.isMicrosoft()) {
     // Some versions of IE11 and Edge will hang web workers when performing XHR requests
     // These requests can be proxied through the main thread
@@ -1307,7 +1410,7 @@ function createObjectURL(url) {
 
     if (typeof _createObjectURL !== 'function') {
       _createObjectURL = null;
-      log('warn', `window.URL.createObjectURL (or vendor prefix) not found, unable to create local blob URLs`);
+      log('warn', 'window.URL.createObjectURL (or vendor prefix) not found, unable to create local blob URLs');
     }
   }
 
@@ -1319,7 +1422,7 @@ function createObjectURL(url) {
 }
 
 function getURLParameter(name, url) {
-  name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+  name = name.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
   var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
   var results = regex.exec(url);
   return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
@@ -1440,7 +1543,7 @@ const Task = {
       val = task.cancel(task); // optional cancel function
     }
 
-    task.resolve(val || {}); // resolve with result of cancel function, or empty object
+    task.resolve(val);
   },
 
   shouldContinue(task) {
@@ -1487,7 +1590,11 @@ function subscribeMixin(target) {
       listeners = [];
     },
 
-    trigger(event, ...data) {
+    trigger(event) {
+      for (var _len = arguments.length, data = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+        data[_key - 1] = arguments[_key];
+      }
+
       listeners.forEach(listener => {
         if (typeof listener[event] === 'function') {
           try {
@@ -1512,10 +1619,20 @@ function subscribeMixin(target) {
   });
 }
 
+function sliceObject(obj, keys) {
+  let sliced = {};
+  keys.forEach(k => sliced[k] = obj[k]);
+  return sliced;
+}
+
 // Texture management
 
 class Texture {
-  constructor(gl, name, options = {}) {
+  constructor(gl, name, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     options = Texture.sliceOptions(options); // exclude any non-texture-specific props
 
     this.gl = gl;
@@ -1571,9 +1688,10 @@ class Texture {
   } // Destroy a single texture instance
 
 
-  destroy({
-    force
-  } = {}) {
+  destroy(_temp) {
+    let _ref = _temp === void 0 ? {} : _temp,
+        force = _ref.force;
+
     if (this.retain_count > 0 && !force) {
       log('error', `Texture '${this.name}': destroying texture with retain count of '${this.retain_count}'`);
       return;
@@ -1585,10 +1703,12 @@ class Texture {
 
     this.gl.deleteTexture(this.texture);
     this.texture = null;
-    delete this.data;
-    this.data = null;
-    delete Texture.textures[this.name];
-    delete Texture.texture_configs[this.name];
+
+    if (Texture.textures[this.name] === this) {
+      delete Texture.textures[this.name];
+      delete Texture.texture_configs[this.name];
+    }
+
     this.valid = false;
     log('trace', `destroying Texture ${this.name}`);
   }
@@ -1609,7 +1729,11 @@ class Texture {
     }
   }
 
-  bind(unit = 0) {
+  bind(unit) {
+    if (unit === void 0) {
+      unit = 0;
+    }
+
     if (!this.valid) {
       return;
     }
@@ -1652,14 +1776,18 @@ class Texture {
   } // Sets texture from an url
 
 
-  setUrl(url, options = {}) {
+  setUrl(url, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     if (!this.valid) {
       return;
     }
 
     this.url = url; // save URL reference (will be overwritten when element is loaded below)
 
-    this.loading = new Promise((resolve, reject) => {
+    this.loading = new Promise(resolve => {
       let image = new Image();
 
       image.onload = () => {
@@ -1693,7 +1821,7 @@ class Texture {
       // https://bugs.webkit.org/show_bug.cgi?id=123978
 
 
-      if (!(Utils$1.isSafari() && this.url.slice(0, 5) === 'data:')) {
+      if (!(Utils.isSafari() && this.url.slice(0, 5) === 'data:')) {
         image.crossOrigin = 'anonymous';
       }
 
@@ -1703,7 +1831,11 @@ class Texture {
   } // Sets texture to a raw image buffer
 
 
-  setData(width, height, data, options = {}) {
+  setData(width, height, data, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     this.width = width;
     this.height = height; // Convert regular array to typed array
 
@@ -1732,7 +1864,7 @@ class Texture {
     } else {
       this.loaded = false;
       let msg = `the 'element' parameter (\`element: ${JSON.stringify(el)}\`) must be a CSS `;
-      msg += `selector string, or a <canvas>, <image> or <video> object`;
+      msg += 'selector string, or a <canvas>, <image> or <video> object';
       log('warn', `Texture '${this.name}': ${msg}`, options);
       Texture.trigger('warning', {
         message: `Failed to load texture because ${msg}`,
@@ -1746,7 +1878,11 @@ class Texture {
   } // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
 
 
-  update(source, options = {}) {
+  update(source, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     if (!this.valid) {
       return;
     }
@@ -1773,7 +1909,11 @@ class Texture {
   } // Determines appropriate filtering mode
 
 
-  setFiltering(options = {}) {
+  setFiltering(options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     if (!this.valid) {
       return;
     }
@@ -1785,7 +1925,7 @@ class Texture {
     // linear: linear blend from original image (no mips)
     // nearest: nearest pixel from original image (no mips, 'blocky' look)
 
-    if (Utils$1.isPowerOf2(this.width) && Utils$1.isPowerOf2(this.height)) {
+    if (Utils.isPowerOf2(this.width) && Utils.isPowerOf2(this.height)) {
       this.power_of_2 = true;
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || options.repeat && gl.REPEAT || gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || options.repeat && gl.REPEAT || gl.CLAMP_TO_EDGE);
@@ -1841,6 +1981,12 @@ class Texture {
         this.aspects[s] = sprite[2] / sprite[3];
       }
     }
+  } // Get the tetxure size in bytes
+
+
+  byteSize() {
+    // mipmaps use 33% additional memory
+    return Math.round(this.width * this.height * 4 * (this.filtering == 'mipmap' ? 1.33 : 1));
   }
 
 } // Static/class methods and state
@@ -1899,8 +2045,16 @@ Texture.createFromObject = function (gl, textures) {
 
   if (textures) {
     for (let texname in textures) {
-      let config = textures[texname]; // If texture already exists and definition hasn't changed, no need to re-create
+      let config = textures[texname];
+
+      if (config.skip_create) {
+        // explicitly skip (re-)creating this texture
+        // used for dynamic canvas textures that we *know* haven't changed
+        // (internal raster tiles, vs. user-supplied canvas where pixels may have changed)
+        continue;
+      } // If texture already exists and definition hasn't changed, no need to re-create
       // Note: to avoid flicker when other textures/scene items change
+
 
       if (!Texture.changed(texname, config)) {
         continue;
@@ -2017,9 +2171,11 @@ Texture.getInfo = function (name) {
 
 Texture.syncTexturesToWorker = function (names) {
   return WorkerBroker$1.postMessage('Texture.getInfo', names).then(textures => {
-    textures.forEach(tex => {
-      Texture.textures[tex.name] = tex;
-    });
+    if (textures) {
+      textures.filter(x => x) // remove nulls
+      .forEach(t => Texture.textures[t.name] = t);
+    }
+
     return Texture.textures;
   });
 }; // Report max texture size for a GL context
@@ -2232,7 +2388,11 @@ GLSL.defineUniform = function (name, value) {
 */
 
 
-GLSL.expandVec3 = function (v, z = 1) {
+GLSL.expandVec3 = function (v, z) {
+  if (z === void 0) {
+    z = 1;
+  }
+
   let x;
 
   if (Array.isArray(v)) {
@@ -2256,7 +2416,11 @@ GLSL.expandVec3 = function (v, z = 1) {
 */
 
 
-GLSL.expandVec4 = function (v, w = 1) {
+GLSL.expandVec4 = function (v, w) {
+  if (w === void 0) {
+    w = 1;
+  }
+
   let x;
 
   if (Array.isArray(v)) {
@@ -2606,7 +2770,11 @@ class ShaderProgram {
     } // Get GLSL definitions
 
 
-    const inject = Object.entries(uniforms).map(([name, uniform]) => GLSL.defineUniform(name, uniform)).filter(x => x); // Inject uniforms
+    const inject = Object.entries(uniforms).map((_ref) => {
+      let name = _ref[0],
+          uniform = _ref[1];
+      return GLSL.defineUniform(name, uniform);
+    }).filter(x => x); // Inject uniforms
     // NOTE: these are injected at the very top of the shaders, even before any #defines or #pragmas are added
     // this could cause some issues with certain #pragmas, or other functions that might expect #defines
 
@@ -2615,7 +2783,11 @@ class ShaderProgram {
   } // Set uniforms from a JS object, with inferred types
 
 
-  setUniforms(uniforms, reset_texture_unit = true) {
+  setUniforms(uniforms, reset_texture_unit) {
+    if (reset_texture_unit === void 0) {
+      reset_texture_unit = true;
+    }
+
     if (!this.compiled) {
       return;
     } // TODO: only update uniforms when changed
@@ -2936,20 +3108,20 @@ ShaderProgram.reset = function () {
 ShaderProgram.reset(); // Turn an object of key/value pairs into single string of #define statements
 
 ShaderProgram.buildDefineString = function (defines) {
-  var define_str = "";
+  var define_str = '';
 
   for (var d in defines) {
     if (defines[d] == null || defines[d] === false) {
       continue;
     } else if (typeof defines[d] === 'boolean' && defines[d] === true) {
       // booleans are simple defines with no value
-      define_str += "#define " + d + "\n";
+      define_str += '#define ' + d + '\n';
     } else if (typeof defines[d] === 'number' && Math.floor(defines[d]) === defines[d]) {
       // int to float conversion to satisfy GLSL floats
-      define_str += "#define " + d + " " + defines[d].toFixed(1) + "\n";
+      define_str += '#define ' + d + ' ' + defines[d].toFixed(1) + '\n';
     } else {
       // any other float or string value
-      define_str += "#define " + d + " " + defines[d] + "\n";
+      define_str += '#define ' + d + ' ' + defines[d] + '\n';
     }
   }
 
@@ -2959,15 +3131,20 @@ ShaderProgram.buildDefineString = function (defines) {
 
 ShaderProgram.buildExtensionString = function (extensions) {
   extensions = extensions || [];
-  let str = "";
+  let str = '';
   extensions.forEach(ext => {
     str += `#ifdef GL_${ext}\n#extension GL_${ext} : enable\n#endif\n`;
   });
   return str;
 };
 
-ShaderProgram.addBlock = function (key, ...blocks) {
+ShaderProgram.addBlock = function (key) {
   ShaderProgram.blocks[key] = ShaderProgram.blocks[key] || [];
+
+  for (var _len = arguments.length, blocks = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    blocks[_key - 1] = arguments[_key];
+  }
+
   ShaderProgram.blocks[key].push(...blocks);
 }; // Remove all global shader blocks for a given key
 
@@ -2976,8 +3153,13 @@ ShaderProgram.removeBlock = function (key) {
   ShaderProgram.blocks[key] = [];
 };
 
-ShaderProgram.replaceBlock = function (key, ...blocks) {
+ShaderProgram.replaceBlock = function (key) {
   ShaderProgram.removeBlock(key);
+
+  for (var _len2 = arguments.length, blocks = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+    blocks[_key2 - 1] = arguments[_key2];
+  }
+
   ShaderProgram.addBlock(key, ...blocks);
 }; // Compile & link a WebGL program from provided vertex and fragment shader sources
 // update a program if one is passed in. Create one if not. Alert and don't update anything if the shaders don't compile.
@@ -3095,7 +3277,7 @@ var VertexArrayObject = {
       ext.bindVertexArrayOES(vao._vao);
     }
 
-    vao.setup(true);
+    vao.setup();
     return vao;
   },
 
@@ -3123,7 +3305,7 @@ var VertexArrayObject = {
         ext.bindVertexArrayOES(vao._vao);
         this.setCurrentBinding(gl, vao);
       } else {
-        vao.setup(false);
+        vao.setup();
       }
     } else {
       let bound_vao = this.getCurrentBinding(gl);
@@ -3151,9 +3333,9 @@ var VertexArrayObject = {
 };
 
 // Deep/recursive merge of one or more source objects into a destination object
-function mergeObjects(dest, ...sources) {
-  for (let s = 0; s < sources.length; s++) {
-    let source = sources[s];
+function mergeObjects(dest) {
+  for (let s = 0; s < (arguments.length <= 1 ? 0 : arguments.length - 1); s++) {
+    let source = s + 1 < 1 || arguments.length <= s + 1 ? undefined : arguments[s + 1];
 
     if (!source) {
       continue;
@@ -3528,9 +3710,9 @@ StyleParser.defaults = {
 StyleParser.macros = {
   // pseudo-random color by geometry id
   'Style.color.pseudoRandomColor': function StyleColorPseudoRandomColor() {
-    return [0.7 * (parseInt(feature.id, 16) / 100 % 1), // jshint ignore:line
-    0.7 * (parseInt(feature.id, 16) / 10000 % 1), // jshint ignore:line
-    0.7 * (parseInt(feature.id, 16) / 1000000 % 1), // jshint ignore:line
+    return [0.7 * (parseInt(feature.id, 16) / 100 % 1), // eslint-disable-line no-undef
+    0.7 * (parseInt(feature.id, 16) / 10000 % 1), // eslint-disable-line no-undef
+    0.7 * (parseInt(feature.id, 16) / 1000000 % 1), // eslint-disable-line no-undef
     1];
   },
   // random color
@@ -3544,7 +3726,7 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
     feature,
     tile,
     global,
-    zoom: tile.style_zoom,
+    zoom: tile.style_z,
     geometry: Geo$1.geometryType(feature.geometry.type),
     meters_per_pixel: tile.meters_per_pixel,
     meters_per_pixel_sq: tile.meters_per_pixel_sq,
@@ -3562,7 +3744,11 @@ const CACHE_TYPE = {
 };
 StyleParser.CACHE_TYPE = CACHE_TYPE;
 
-StyleParser.createPropertyCache = function (obj, transform = null) {
+StyleParser.createPropertyCache = function (obj, transform) {
+  if (transform === void 0) {
+    transform = null;
+  }
+
   if (obj == null) {
     return;
   }
@@ -3626,9 +3812,9 @@ const isRatio = v => v === 'auto'; // size derived from aspect ratio of one dime
 
 const isComputed = v => isPercent(v) || isRatio(v);
 
-const dualRatioError = `'size' can specify either width or height as derived from aspect ratio, but not both`;
+const dualRatioError = '\'size\' can specify either width or height as derived from aspect ratio, but not both';
 
-StyleParser.createPointSizePropertyCache = function (obj) {
+StyleParser.createPointSizePropertyCache = function (obj, texture) {
   // obj is the value to be parsed eg "64px" "100%" "auto"
   // mimics the structure of the size value (at each zoom stop if applicable),
   // stores flags indicating if each element is a %-based size or not, or derived from aspect
@@ -3660,23 +3846,26 @@ StyleParser.createPointSizePropertyCache = function (obj) {
         throw dualRatioError; // invalid case where both dims are ratios
       }
     }
+  } else if (isRatio(obj)) {
+    throw 'this value only allowed as half of an array, eg [16px, auto]:'; // TODO: add this error check for zoom stop parsing above
   }
 
-  if (!has_pct) {
-    // no percentage-based calculation, one cache for all sprites
-    if (obj === "auto") {
-      throw `this value only allowed as half of an array, eg [16px, auto]:`;
-    }
+  if (has_pct || has_ratio) {
+    // texture is required when % or ratio sizes are used
+    if (!texture) {
+      throw '% or \'auto\' keywords can only be used to specify point size when a texture is defined';
+    } // per-sprite based evaluation
 
-    obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
-  } else {
-    // per-sprite based evaluation
+
     obj = {
       value: obj
     };
     obj.has_pct = has_pct;
     obj.has_ratio = has_ratio;
     obj.sprites = {}; // cache by sprite
+  } else {
+    // no % or aspect ratio sizing, one cache for texture or all sprites
+    obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
   }
 
   return obj;
@@ -3688,51 +3877,51 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_in
     return StyleParser.evalCachedProperty(val, context);
   }
 
-  let the_image = sprite_info ? sprite_info : texture_info; // this function is passed to createPropertyCache as the transform function -
-  // when val.value is an array, it is used inside a map(), which is where i is used
+  if (sprite_info) {
+    // per-sprite based evaluation, cache sizes per sprite
+    if (!val.sprites[sprite_info.sprite]) {
+      val.sprites[sprite_info.sprite] = createPointSizeCacheEntry(val, sprite_info);
+    }
 
-  function evalValue(v, i) {
+    return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
+  } else {
+    // texture-based evaluation
+    // apply percentage or ratio sizing to a texture
+    val.texture = val.texture || createPointSizeCacheEntry(val, texture_info);
+    return StyleParser.evalCachedProperty(val.texture, context);
+  }
+};
+
+function createPointSizeCacheEntry(val, image_info) {
+  // the cache property transform function needs access to the image in `val`
+  // so it's accessed via a closure here
+  return StyleParser.createPropertyCache(val.value, (v, i) => {
     if (Array.isArray(v)) {
       // 2D size
       // either width or height or both could be a %
       v = v.map((c, j) => val.has_ratio[i][j] ? c : parsePositiveNumber(c)). // convert non-ratio values to px
-      map((c, j) => val.has_pct[i][j] ? the_image.css_size[j] * c / 100 : c); // apply % scaling as needed
+      map((c, j) => val.has_pct[i][j] ? image_info.css_size[j] * c / 100 : c); // apply % scaling as needed
       // either width or height could be a ratio
 
       if (val.has_ratio[i][0]) {
-        v[0] = v[1] * the_image.aspect;
+        v[0] = v[1] * image_info.aspect;
       } else if (val.has_ratio[i][1]) {
-        v[1] = v[0] / the_image.aspect;
+        v[1] = v[0] / image_info.aspect;
       }
     } else {
       // 1D size
       v = parsePositiveNumber(v);
 
       if (val.has_pct[i]) {
-        v = the_image.css_size.map(c => c * v / 100); // set size as % of image
+        v = image_info.css_size.map(c => c * v / 100); // set size as % of image
       } else {
         v = [v, v]; // expand 1D size to 2D
       }
     }
 
     return v;
-  } // texture-based evaluation
-
-
-  if (!sprite_info) {
-    // apply percentage or ratio sizing to a texture
-    let textureSizeCache = StyleParser.createPropertyCache(val.value, evalValue);
-    return StyleParser.evalCachedProperty(textureSizeCache, context);
-  } else {
-    // per-sprite based evaluation
-    // cache sizes per sprite
-    if (!val.sprites[sprite_info.sprite]) {
-      val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, evalValue);
-    }
-
-    return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
-  }
-}; // Interpolation and caching for a generic property (not a color or distance)
+  });
+} // Interpolation and caching for a generic property (not a color or distance)
 // { value: original, static: val, zoom: { 1: val1, 2: val2, ... }, dynamic: function(){...} }
 
 
@@ -3758,7 +3947,7 @@ StyleParser.evalCachedProperty = function (val, context) {
     else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
         // Calculate value for current zoom
         val.zoom = val.zoom || {};
-        val.zoom[context.zoom] = Utils$1.interpolate(context.zoom, val.value);
+        val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
         return val.zoom[context.zoom];
       } // Single static value
       else {
@@ -3816,7 +4005,9 @@ StyleParser.parseUnits = function (val) {
 
 
 StyleParser.evalCachedDistanceProperty = function (val, context) {
-  if (val.dynamic) {
+  if (val == null) {
+    return;
+  } else if (val.dynamic) {
     return tryEval(val.dynamic, context);
   } else if (val.zoom && val.zoom[context.zoom]) {
     return val.zoom[context.zoom];
@@ -3829,7 +4020,7 @@ StyleParser.evalCachedDistanceProperty = function (val, context) {
     else if (val.zoom) {
         // Calculate value for current zoom
         // Do final unit conversion as late as possible, when interpolation values have been determined
-        val.zoom[context.zoom] = Utils$1.interpolate(context.zoom, val.value, v => StyleParser.convertUnits(v, context));
+        val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value, v => StyleParser.convertUnits(v, context));
         return val.zoom[context.zoom];
       } else {
         return StyleParser.convertUnits(val.value, context);
@@ -3864,7 +4055,11 @@ StyleParser.colorForString = function (string) {
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
 
 
-StyleParser.evalCachedColorProperty = function (val, context = {}) {
+StyleParser.evalCachedColorProperty = function (val, context) {
+  if (context === void 0) {
+    context = {};
+  }
+
   if (val.dynamic) {
     let v = tryEval(val.dynamic, context);
 
@@ -3916,7 +4111,7 @@ StyleParser.evalCachedColorProperty = function (val, context = {}) {
           } // Calculate color for current zoom
 
 
-          val.zoom[context.zoom] = Utils$1.interpolate(context.zoom, val.value);
+          val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
           val.zoom[context.zoom][3] = val.zoom[context.zoom][3] || 1; // default alpha
 
           return val.zoom[context.zoom];
@@ -3933,7 +4128,11 @@ StyleParser.evalCachedColorProperty = function (val, context = {}) {
   }
 };
 
-StyleParser.parseColor = function (val, context = {}) {
+StyleParser.parseColor = function (val, context) {
+  if (context === void 0) {
+    context = {};
+  }
+
   if (typeof val === 'function') {
     val = tryEval(val, context);
   } // Parse CSS-style colors
@@ -3953,7 +4152,7 @@ StyleParser.parseColor = function (val, context = {}) {
     }
 
     if (context.zoom) {
-      val = Utils$1.interpolate(context.zoom, val);
+      val = Utils.interpolate(context.zoom, val);
     }
   } // Defaults
 
@@ -4039,7 +4238,7 @@ class FeatureSelection {
     }; // TODO: make configurable / adaptive based on canvas size
     // Texture for the FBO color attachment
 
-    var fbo_texture = Texture.create(this.gl, 'selection_fbo', {
+    var fbo_texture = Texture.create(this.gl, '__selection_fbo', {
       filtering: 'nearest'
     });
     fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, {
@@ -4077,9 +4276,9 @@ class FeatureSelection {
   // Runs asynchronously, schedules selection buffer to be updated
 
 
-  getFeatureAt(point, {
-    radius
-  }) {
+  getFeatureAt(point, _ref) {
+    let radius = _ref.radius;
+
     // ensure requested point is in canvas bounds
     if (!point || point.x < 0 || point.y < 0 || point.x > 1 || point.y > 1) {
       return Promise.resolve({
@@ -4255,7 +4454,7 @@ class FeatureSelection {
     var request = this.requests[message.id];
 
     if (!request) {
-      log('error', "FeatureSelection.finishRead(): could not find message", message);
+      log('error', 'FeatureSelection.finishRead(): could not find message', message);
       return; // request was cleared before it returned
     }
 
@@ -4309,7 +4508,7 @@ class FeatureSelection {
           // subset of tile properties to pass back with feature
           key: tile.key,
           coords: tile.coords,
-          style_zoom: tile.style_zoom,
+          style_z: tile.style_z,
           source: tile.source,
           generation: tile.generation
         }
@@ -4438,7 +4637,11 @@ class VBOMesh {
   // Returns true if mesh requests a render on next frame (e.g. for fade animations)
 
 
-  render(options = {}) {
+  render(options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     if (!this.valid) {
       return false;
     }
@@ -4479,16 +4682,18 @@ class VBOMesh {
     if (vao) {
       VertexArrayObject.bind(this.gl, vao);
     } else {
-      this.vaos[program.id] = VertexArrayObject.create(this.gl, force => {
+      this.vaos[program.id] = VertexArrayObject.create(this.gl, () => {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertex_buffer);
 
         if (this.toggle_element_array) {
           this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
         }
 
-        this.vertex_layout.enable(this.gl, program, force);
+        this.vertex_layout.enableDynamicAttributes(this.gl, program);
       });
     }
+
+    this.vertex_layout.enableStaticAttributes(this.gl, program);
   } // Upload buffer data to GPU
 
 
@@ -4768,7 +4973,9 @@ Vector.rot = function (v, a) {
 // Angles in quadrant III and IV are mapped to [-PI, 0]
 
 
-Vector.angle = function ([x, y]) {
+Vector.angle = function (_ref) {
+  let x = _ref[0],
+      y = _ref[1];
   return Math.atan2(y, x);
 }; // Get angle between two vectors
 
@@ -4936,7 +5143,7 @@ class Light {
     } // Construct code to calculate each light instance
 
 
-    let calculateLights = "";
+    let calculateLights = '';
 
     if (lights && Object.keys(lights).length > 0) {
       // Collect uniques types of lights
@@ -5256,6 +5463,7 @@ class MethodNotImplemented extends Error {
 /*jshint worker: true */
 class DataSource {
   constructor(config, sources) {
+    this.validate(config);
     this.config = config; // save original config
 
     this.sources = sources; // full set of data sources TODO: centralize these like textures?
@@ -5297,34 +5505,58 @@ class DataSource {
 
     this.scripts = config.scripts; // overzoom will apply for zooms higher than this
 
-    this.max_zoom = config.max_zoom != null ? config.max_zoom : Geo$1.default_source_max_zoom;
-    this.setTileSize(config.tile_size);
-    this.max_coord_zoom = this.max_zoom + this.zoom_bias; // no tiles will be requested or displayed outside of these min/max values
+    this.max_zoom = config.max_zoom != null ? config.max_zoom : Geo$1.default_source_max_zoom; // set a custom extra overzoom adjustment factor to load consistently lower zoom levels
+    // than the current map zoom level – eg a zoom_offset of 1 would load z3 data at z4
+
+    this.zoom_offset = config.zoom_offset != null ? config.zoom_offset : 0;
+
+    if (this.zoom_offset < 0) {
+      let msg = `Data source '${this.name}' zoom_offset must not be negative – setting to 0.`;
+      log({
+        level: 'warn',
+        once: true
+      }, msg);
+      this.zoom_offset = 0;
+    }
+
+    this.setTileSize(config.tile_size); // no tiles will be requested or displayed outside of these min/max values
 
     this.min_display_zoom = config.min_display_zoom != null ? config.min_display_zoom : 0;
     this.max_display_zoom = config.max_display_zoom != null ? config.max_display_zoom : null;
-  } // Create a tile source by type, factory-style
+  } // Register a new data source type name, providing a function that returns the class name
+  // to instantiate based on the source definition in the scene
+
+
+  static register(type_name, type_func) {
+    if (!type_name || !type_func) {
+      return;
+    }
+
+    DataSource.types[type_name] = type_func;
+  } // Create a data source, factory-style
 
 
   static create(source, sources) {
-    if (DataSource.types[source.type]) {
-      return new DataSource.types[source.type](source, sources);
+    // Find the class to instantiate based on the source definition
+    if (typeof DataSource.types[source.type] === 'function') {
+      const source_class = DataSource.types[source.type](source);
+
+      if (source_class) {
+        return new source_class(source, sources);
+      }
     }
-  } // Check if a data source definition changed
+  } // Check if a data source definition changed in a way that could affect which tiles are in view
 
 
-  static changed(source, prev_source) {
+  static tileLayoutChanged(source, prev_source) {
     if (!source || !prev_source) {
       return true;
-    }
+    } // subset of parameters that affect tile layout
 
-    let cur = Object.assign({}, source.config, {
-      id: null
-    }); // null out ids since we don't want to compare them
 
-    let prev = Object.assign({}, prev_source.config, {
-      id: null
-    });
+    const rebuild_params = ['max_zoom', 'min_display_zoom', 'max_display_zoom', 'bounds', 'tile_size', 'zoom_offset'];
+    const cur = sliceObject(source.config, rebuild_params);
+    const prev = sliceObject(prev_source.config, rebuild_params);
     return JSON.stringify(cur) !== JSON.stringify(prev);
   } // Mercator projection
 
@@ -5357,13 +5589,9 @@ class DataSource {
   */
 
 
-  static scaleData(source, {
-    coords: {
-      z
-    },
-    min,
-    max
-  }) {
+  static scaleData(source, _ref) {
+    let z = _ref.coords.z,
+        min = _ref.min;
     let units_per_meter = Geo$1.unitsPerMeter(z);
 
     for (var t in source.layers) {
@@ -5413,7 +5641,9 @@ class DataSource {
   } // Sub-classes must implement
 
 
-  _load(dest) {
+  _load()
+  /*dest*/
+  {
     throw new MethodNotImplemented('_load');
   } // Set the internal tile size in pixels, e.g. '256px' (default), '512px', etc.
   // Must be a power of 2, and greater than or equal to 256
@@ -5422,16 +5652,24 @@ class DataSource {
   setTileSize(tile_size) {
     this.tile_size = tile_size || 256;
 
-    if (typeof this.tile_size !== 'number' || this.tile_size < 256 || !Utils$1.isPowerOf2(this.tile_size)) {
+    if (typeof this.tile_size !== 'number' || this.tile_size < 256 || !Utils.isPowerOf2(this.tile_size)) {
       log({
         level: 'warn',
         once: true
       }, `Data source '${this.name}': 'tile_size' parameter must be a number that is a power of 2 greater than or equal to 256, but was '${tile_size}'`);
       this.tile_size = 256;
     } // # of zoom levels bigger than 256px tiles - 8 in place of log2(256)
+    // Many Tangram functions assume 256px tiles, this factor adjusts for the
+    // case of bigger tile sizes - eg 512px tiles are 1 zoom level bigger,
+    // 1024px tiles are 2 levels bigger
 
 
-    this.zoom_bias = Math.log2(this.tile_size) - 8;
+    this.zoom_bias = Math.log2(this.tile_size) - 8 + this.zoom_offset; // the max/min coordinate zoom level at which tiles will be loaded from server
+    // (but tiles can be styled at other zooms)
+    // zoom_bias adjusts for tile sizes > than 256px, and manual zoom_offset
+
+    this.max_coord_zoom = this.max_zoom + this.zoom_bias;
+    this.min_coord_zoom = this.zoom_bias;
   } // Infer winding for data source from first ring of provided geometry
 
 
@@ -5448,9 +5686,9 @@ class DataSource {
   } // All data sources support a min zoom, tiled sources can subclass for more specific limits (e.g. bounding box)
 
 
-  includesTile(coords, style_zoom) {
+  includesTile(coords, style_z) {
     // Limit by this data source
-    if (coords.z < this.min_display_zoom || this.max_display_zoom != null && style_zoom > this.max_display_zoom) {
+    if (coords.z < this.min_display_zoom || this.max_display_zoom != null && style_z > this.max_display_zoom) {
       return false;
     } // Limit by any dependent raster sources
 
@@ -5464,16 +5702,11 @@ class DataSource {
     }
 
     return true;
-  } // Register a new data source type, under a type name
-
-
-  static register(type_class, type_name) {
-    if (!type_class || !type_name) {
-      return;
-    }
-
-    DataSource.types[type_name] = type_class;
   }
+
+  validate()
+  /*source*/
+  {}
 
 }
 DataSource.types = {}; // set of supported data source classes, referenced by type name
@@ -5485,19 +5718,17 @@ let network_request_id = 0; // used to namespace URL requests
 class NetworkSource extends DataSource {
   constructor(source, sources) {
     super(source, sources);
-    this.response_type = ""; // use to set explicit XHR type
-
-    if (typeof source.url !== 'string') {
-      throw Error('Network data source must provide a string `url` property');
-    } // Add extra URL params, and warn on duplicates
-
+    this.response_type = ''; // use to set explicit XHR type
+    // Add extra URL params, and warn on duplicates
 
     let _URLs$addParamsToURL = addParamsToURL(source.url, source.url_params),
         url = _URLs$addParamsToURL[0],
         dupes = _URLs$addParamsToURL[1];
 
     this.url = url;
-    dupes.forEach(([param, value]) => {
+    dupes.forEach((_ref2) => {
+      let param = _ref2[0],
+          value = _ref2[1];
       log({
         level: 'warn',
         once: true
@@ -5510,22 +5741,16 @@ class NetworkSource extends DataSource {
   }
 
   _load(dest) {
-    let url = this.formatUrl(this.url, dest);
+    let url = this.formatURL(this.url, dest);
     let source_data = dest.source_data;
     source_data.url = url;
     dest.debug = dest.debug || {};
     dest.debug.network = +new Date();
-    return new Promise((resolve, reject) => {
-      source_data.error = null; // For testing network errors
-      // var promise = Utils.io(url, 60 * 100, this.response_type);
-      // if (Math.random() < .7) {
-      //     promise = Promise.reject(Error('fake data source error'));
-      // }
-      // promise.then((body) => {
-
+    return new Promise(resolve => {
       let request_id = network_request_id++ + '-' + url;
-      let promise = Utils$1.io(url, 60 * 1000, this.response_type, 'GET', this.request_headers, request_id);
+      let promise = Utils.io(url, 60 * 1000, this.response_type, 'GET', this.request_headers, request_id);
       source_data.request_id = request_id;
+      source_data.error = null;
       promise.then(body => {
         dest.debug.response_size = body.length || body.byteLength;
         dest.debug.network = +new Date() - dest.debug.network;
@@ -5547,14 +5772,24 @@ class NetworkSource extends DataSource {
         resolve(dest); // resolve request but pass along error
       });
     });
+  }
+
+  validate(source) {
+    if (typeof source.url !== 'string') {
+      throw Error('Network data source must provide a string `url` property');
+    }
   } // Sub-classes must implement:
 
 
-  formatUrl(url_template, dest) {
-    throw new MethodNotImplemented('formatUrl');
+  formatURL()
+  /*url_template, dest*/
+  {
+    throw new MethodNotImplemented('formatURL');
   }
 
-  parseSourceData(dest, source, reponse) {
+  parseSourceData()
+  /*dest, source, reponse*/
+  {
     throw new MethodNotImplemented('parseSourceData');
   }
 
@@ -5565,14 +5800,14 @@ class NetworkTileSource extends NetworkSource {
   constructor(source, sources) {
     super(source, sources);
     this.tiled = true;
-    this.parseBounds(source); // indicates if source should build geometry tiles, enabled for sources referenced in the scene's layers,
+    this.bounds = this.parseBounds(source); // indicates if source should build geometry tiles, enabled for sources referenced in the scene's layers,
     // and left disabled for sources that are never referenced, or only used as raster textures
 
     this.builds_geometry_tiles = false;
     this.tms = source.tms === true; // optionally flip tile coords for TMS
     // optional list of subdomains to round-robin through
 
-    if (this.url.search('{s}') > -1) {
+    if (this.url && this.url.search('{s}') > -1) {
       if (Array.isArray(source.url_subdomains) && source.url_subdomains.length > 0) {
         this.url_subdomains = source.url_subdomains;
         this.next_url_subdomain = 0;
@@ -5580,7 +5815,16 @@ class NetworkTileSource extends NetworkSource {
         log({
           level: 'warn',
           once: true
-        }, `Data source '${this.name}': source URL includes '\{s\}' subdomain marker ('${this.url}'), but no subdomains ` + `were specified in 'url_subdomains' parameter`);
+        }, `Data source '${this.name}': source URL includes '{s}' subdomain marker ('${this.url}'), but no subdomains ` + 'were specified in \'url_subdomains\' parameter');
+      }
+    } // optional list of pixel density scale modifiers
+
+
+    if (this.url && this.url.search('{r}') > -1) {
+      if (Array.isArray(source.url_density_scales) && source.url_density_scales.length > 0) {
+        this.url_density_scales = source.url_density_scales;
+      } else {
+        this.url_density_scales = [1, 2]; // default to supporting 1x and 2x display densities
       }
     }
   } // Get bounds from source config parameters
@@ -5588,73 +5832,87 @@ class NetworkTileSource extends NetworkSource {
 
   parseBounds(source) {
     if (Array.isArray(source.bounds) && source.bounds.length === 4) {
-      this.bounds = source.bounds;
-      let _this$bounds = this.bounds,
-          w = _this$bounds[0],
-          s = _this$bounds[1],
-          e = _this$bounds[2],
-          n = _this$bounds[3];
-      this.bounds_meters = {
-        min: Geo$1.latLngToMeters([w, n]),
-        max: Geo$1.latLngToMeters([e, s])
+      const _source$bounds = source.bounds,
+            w = _source$bounds[0],
+            s = _source$bounds[1],
+            e = _source$bounds[2],
+            n = _source$bounds[3];
+      return {
+        latlng: [...source.bounds],
+        meters: {
+          min: Geo$1.latLngToMeters([w, n]),
+          max: Geo$1.latLngToMeters([e, s])
+        },
+        tiles: {
+          // max tile bounds per zoom (lazily evaluated)
+          min: {},
+          max: {}
+        }
       };
-      this.bounds_tiles = {
-        min: {},
-        max: {}
-      }; // max tile bounds per zoom (lazily evaluated)
     }
   } // Returns false if tile is outside data source's bounds, true if within
 
 
-  checkBounds(coords) {
+  checkBounds(coords, bounds) {
     // Check tile bounds
-    if (this.bounds) {
-      coords = Geo$1.wrapTile(coords, {
-        x: true
-      });
-      let min = this.bounds_tiles.min[coords.z];
+    if (bounds) {
+      // get tile and bounds coords at current zoom, wrapping to keep x coords in positive range
+      coords = Geo$1.wrapTile(coords);
+      let min = bounds.tiles.min[coords.z];
 
       if (!min) {
-        min = this.bounds_tiles.min[coords.z] = Geo$1.tileForMeters(this.bounds_meters.min, coords.z);
+        min = bounds.tiles.min[coords.z] = Geo$1.wrapTile(Geo$1.tileForMeters(bounds.meters.min, coords.z));
       }
 
-      let max = this.bounds_tiles.max[coords.z];
+      let max = bounds.tiles.max[coords.z];
 
       if (!max) {
-        max = this.bounds_tiles.max[coords.z] = Geo$1.tileForMeters(this.bounds_meters.max, coords.z);
-      }
+        max = bounds.tiles.max[coords.z] = Geo$1.wrapTile(Geo$1.tileForMeters(bounds.meters.max, coords.z));
+      } // check latitude
 
-      if (coords.x < min.x || coords.x > max.x || coords.y < min.y || coords.y > max.y) {
+
+      if (coords.y < min.y || coords.y > max.y) {
         return false;
-      }
+      } // longitude bounds are between meridians
+
+
+      if (min.x <= max.x) {
+        if (coords.x < min.x || coords.x > max.x) {
+          return false;
+        }
+      } // longitude bounds cross the antimeridian
+      else if (coords.x > max.x && coords.x < min.x) {
+          return false;
+        }
     }
 
     return true;
   }
 
-  includesTile(coords, style_zoom) {
-    if (!super.includesTile(coords, style_zoom)) {
+  includesTile(coords, style_z) {
+    if (!super.includesTile(coords, style_z)) {
       return false;
     } // Check tile bounds
 
 
-    if (!this.checkBounds(coords)) {
+    if (!this.checkBounds(coords, this.bounds)) {
       return false;
     }
 
     return true;
   }
 
-  formatUrl(url_template, tile) {
+  formatURL(url_template, tile) {
     let coords = Geo$1.wrapTile(tile.coords, {
       x: true
     });
 
     if (this.tms) {
       coords.y = Math.pow(2, coords.z) - 1 - coords.y; // optionally flip tile coords for TMS
-    }
+    } // tile URL template replacement
 
-    let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
+
+    let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{r}', this.getDensityModifier()); // modify URL by display density (e.g. @2x)
 
     if (this.url_subdomains != null) {
       url = url.replace('{s}', this.url_subdomains[this.next_url_subdomain]);
@@ -5662,1141 +5920,79 @@ class NetworkTileSource extends NetworkSource {
     }
 
     return url;
+  } // Find the right tile URL modifier based on the display density, e.g. add `@2x` for sources supporting 2x tiles.
+  // Source `url_density_scales` param can specify an array of densities supported by the source,
+  // each entry serves as a threshold based on the current display density.
+
+
+  getDensityModifier() {
+    if (this.url_density_scales) {
+      // find the highest matching density
+      const dpr = Utils.device_pixel_ratio;
+      let scale = this.url_density_scales.filter(s => dpr >= s).reverse()[0]; // default to first scale if none matched
+
+      scale = scale != null ? scale : this.url_density_scales[0]; // scales higher than 1x use the `@` modifier (e.g. `@2x`)
+
+      if (scale > 1) {
+        return `@${scale}x`;
+      }
+    }
+
+    return ''; // for 1x (or less) displays, no URL modifier is used (following @2x URL convention)
   } // Checks for the x/y/z tile pattern in URL template
 
 
-  urlHasTilePattern(url) {
+  static urlHasTilePattern(url) {
     return url && url.search('{x}') > -1 && url.search('{y}') > -1 && url.search('{z}') > -1;
   }
 
 }
 
-// Sets of values to match for directional and corner anchors
-const lefts = ['left', 'top-left', 'bottom-left'];
-const rights = ['right', 'top-right', 'bottom-right'];
-const tops = ['top', 'top-left', 'top-right'];
-const bottoms = ['bottom', 'bottom-left', 'bottom-right'];
-let PointAnchor;
-var PointAnchor$1 = PointAnchor = {
-  computeOffset(offset, size, anchor, buffer = null) {
-    if (!anchor || anchor === 'center') {
-      return offset;
-    }
+const COORD_CHILDREN = {}; // only allocate children coords once per coord
 
-    let offset2 = [offset[0], offset[1]];
-    buffer = buffer || this.default_buffer; // An optional left/right offset
-
-    if (this.isLeftAnchor(anchor)) {
-      offset2[0] -= size[0] / 2;
-
-      if (anchor === 'left') {
-        offset2[0] -= buffer[0];
-      }
-    } else if (this.isRightAnchor(anchor)) {
-      offset2[0] += size[0] / 2;
-
-      if (anchor === 'right') {
-        offset2[0] += buffer[1];
-      }
-    } // An optional top/bottom offset
-
-
-    if (this.isTopAnchor(anchor)) {
-      offset2[1] -= size[1] / 2;
-
-      if (anchor === 'top') {
-        offset2[1] -= buffer[2];
-      }
-    } else if (this.isBottomAnchor(anchor)) {
-      offset2[1] += size[1] / 2;
-
-      if (anchor === 'bottom') {
-        offset2[1] += buffer[3];
-      }
-    }
-
-    return offset2;
-  },
-
-  alignForAnchor(anchor) {
-    if (anchor && anchor !== 'center') {
-      if (this.isLeftAnchor(anchor)) {
-        return 'right';
-      } else if (this.isRightAnchor(anchor)) {
-        return 'left';
-      }
-    }
-
-    return 'center';
-  },
-
-  isLeftAnchor(anchor) {
-    return lefts.indexOf(anchor) > -1;
-  },
-
-  isRightAnchor(anchor) {
-    return rights.indexOf(anchor) > -1;
-  },
-
-  isTopAnchor(anchor) {
-    return tops.indexOf(anchor) > -1;
-  },
-
-  isBottomAnchor(anchor) {
-    return bottoms.indexOf(anchor) > -1;
-  },
-
-  // Buffers: [left, right, top, bottom]
-  default_buffer: [2.5, 2.5, 1.5, 0.75],
-  zero_buffer: [0, 0, 0, 0]
-};
-
-// Do AABB `a` and `b` intersect?
-function boxIntersectsBox(a, b) {
-  if (a[2] < b[0] || // a is left of b
-  a[0] > b[2] || // a is right of b
-  a[3] < b[1] || // a is above b
-  a[1] > b[3]) {
-    // a is below b
-    return false;
-  }
-
-  return true; // boxes overlap
-} // Does AABB `a` intersect any of the AABBs in array `boxes`?
-// Invokes `callback` with index of intersecting box
-// Stops intersecting if `callback` returns non-null value (continues otherwise)
-
-function boxIntersectsList(a, boxes, callback) {
-  for (let i = 0; i < boxes.length; i++) {
-    if (boxIntersectsBox(a, boxes[i])) {
-      if (callback(i) != null) {
-        break;
-      }
-    }
-  }
-}
-
-class OBB {
-  constructor(x, y, a, w, h) {
-    this.dimension = [w, h];
-    this.angle = a;
-    this.centroid = [x, y];
-    this.quad = [];
-    this.axes = [];
-    this.update();
-  }
-
-  toJSON() {
-    return {
-      x: this.centroid[0],
-      y: this.centroid[1],
-      a: this.angle,
-      w: this.dimension[0],
-      h: this.dimension[1]
-    };
-  }
-
-  getExtent() {
-    let aabb = [Infinity, Infinity, -Infinity, -Infinity];
-
-    for (let i = 0; i < 4; ++i) {
-      aabb[0] = Math.min(this.quad[i][0], aabb[0]);
-      aabb[1] = Math.min(this.quad[i][1], aabb[1]);
-      aabb[2] = Math.max(this.quad[i][0], aabb[2]);
-      aabb[3] = Math.max(this.quad[i][1], aabb[3]);
-    }
-
-    return aabb;
-  }
-
-  perpAxes() {
-    this.axes[0] = Vector$1.normalize(Vector$1.sub(this.quad[2], this.quad[3]));
-    this.axes[1] = Vector$1.normalize(Vector$1.sub(this.quad[2], this.quad[1]));
-  }
-
-  update() {
-    let x = [Math.cos(this.angle), Math.sin(this.angle)];
-    let y = [-Math.sin(this.angle), Math.cos(this.angle)];
-    x = Vector$1.mult(x, this.dimension[0] / 2.0);
-    y = Vector$1.mult(y, this.dimension[1] / 2.0);
-    this.quad[0] = Vector$1.sub(Vector$1.sub(this.centroid, x), y); // lower-left
-
-    this.quad[1] = Vector$1.sub(Vector$1.add(this.centroid, x), y); // lower-right
-
-    this.quad[2] = Vector$1.add(Vector$1.add(this.centroid, x), y); // uper-right
-
-    this.quad[3] = Vector$1.add(Vector$1.sub(this.centroid, x), y); // uper-left
-
-    this.perpAxes();
-  }
-
-  static projectToAxis(obb, axis) {
-    let min = Infinity;
-    let max = -Infinity;
-    let quad = obb.quad; // for each axis, project obb quad to it and find min and max values
-
-    for (let i = 0; i < 4; ++i) {
-      let d = Vector$1.dot(quad[i], axis);
-      min = Math.min(min, d);
-      max = Math.max(max, d);
-    }
-
-    return [min, max];
-  }
-
-  static axisCollide(obb_a, obb_b, axes) {
-    for (let i = 0; i < 2; ++i) {
-      let a_proj = OBB.projectToAxis(obb_a, axes[i]);
-      let b_proj = OBB.projectToAxis(obb_b, axes[i]);
-
-      if (b_proj[0] > a_proj[1] || b_proj[1] < a_proj[0]) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  static intersect(obb_a, obb_b) {
-    return OBB.axisCollide(obb_a, obb_b, obb_a.axes) && OBB.axisCollide(obb_a, obb_b, obb_b.axes);
-  }
-
-}
-
-class Label {
-  constructor(size, layout = {}) {
-    this.id = Label.nextLabelId();
-    this.type = ''; // set by subclass
-
-    this.size = size;
-    this.layout = layout;
-    this.position = null;
-    this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
-
-    this.placed = null;
-    this.offset = layout.offset;
-    this.unit_scale = this.layout.units_per_pixel;
-    this.aabb = null;
-    this.obb = null;
-    this.align = 'center';
-    this.throw_away = false; // if label does not fit (exceeds tile boundary, etc) this boolean will be true
-  } // Minimal representation of label
-
-
-  toJSON() {
-    return {
-      id: this.id,
-      type: this.type,
-      obb: this.obb.toJSON(),
-      position: this.position,
-      size: this.size,
-      offset: this.offset,
-      breach: this.breach,
-      layout: textLayoutToJSON(this.layout)
-    };
-  }
-
-  update() {
-    this.align = this.layout.align || PointAnchor$1.alignForAnchor(this.anchor);
-  } // check for overlaps with other labels in the tile
-
-
-  occluded(bboxes, exclude = null) {
-    let intersect = false;
-    let aabbs = bboxes.aabb;
-    let obbs = bboxes.obb; // Broad phase
-
-    if (aabbs.length > 0) {
-      boxIntersectsList(this.aabb, aabbs, j => {
-        // log('trace', 'collision: broad phase collide', this.layout.id, this, this.aabb, aabbs[j]);
-        // Skip if colliding with excluded label
-        if (exclude && aabbs[j] === exclude.aabb) {
-          // log('trace', 'collision: skipping due to explicit exclusion', this, exclude);
-          return;
-        } // Skip narrow phase collision if no rotation
-
-
-        if (this.obb.angle === 0 && obbs[j].angle === 0) {
-          // log('trace', 'collision: skip narrow phase collide because neither is rotated', this.layout.id, this, this.obb, obbs[j]);
-          intersect = true;
-          return true;
-        } // Narrow phase
-
-
-        if (OBB.intersect(this.obb, obbs[j])) {
-          // log('trace', 'collision: narrow phase collide', this.layout.id, this, this.obb, obbs[j]);
-          intersect = true;
-          return true;
-        }
-      });
-    }
-
-    return intersect;
-  } // checks whether the label is within the tile boundaries
-
-
-  inTileBounds() {
-    let min = [this.aabb[0], this.aabb[1]];
-    let max = [this.aabb[2], this.aabb[3]];
-
-    if (!Utils$1.pointInTile(min) || !Utils$1.pointInTile(max)) {
-      return false;
-    }
-
-    return true;
-  } // Whether the label should be discarded
-  // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
-
-
-  discard(bboxes, exclude = null) {
-    if (this.throw_away) {
-      return true;
-    }
-
-    return this.occluded(bboxes, exclude);
-  }
-
-} // Generic label placement function, adds a label's bounding boxes to the currently placed set
-//  Supports single or multiple collision boxes
-
-Label.add = function (label, bboxes) {
-  label.placed = true;
-
-  if (label.aabb) {
-    bboxes.aabb.push(label.aabb);
-    bboxes.obb.push(label.obb);
-  }
-
-  if (label.aabbs) {
-    for (let i = 0; i < label.aabbs.length; i++) {
-      bboxes.aabb.push(label.aabbs[i]);
-      bboxes.obb.push(label.obbs[i]);
-    }
-  }
-};
-
-Label.id = 0;
-Label.id_prefix = ''; // id prefix scoped to worker thread
-
-Label.nextLabelId = function () {
-  return Label.id_prefix + '/' + Label.id++;
-};
-
-Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
-// Minimal representation of text layout, sent to main thread for label collisions
-
-function textLayoutToJSON(layout) {
-  return {
-    priority: layout.priority,
-    collide: layout.collide,
-    repeat_distance: layout.repeat_distance,
-    repeat_group: layout.repeat_group,
-    buffer: layout.buffer,
-    italic: layout.italic // affects bounding box size
-
-  };
-}
-
-class RepeatGroup {
-  constructor(key, repeat_dist) {
-    this.key = key;
-    this.repeat_dist = repeat_dist;
-    this.repeat_dist_sq = this.repeat_dist * this.repeat_dist;
-    this.positions = [];
-  } // Check an object to see if it's a repeat in this group
-
-
-  check(obj) {
-    // Check distance from new object to objects already in group
-    let p1 = obj.position;
-
-    for (let i = 0; i < this.positions.length; i++) {
-      let p2 = this.positions[i];
-      let dx = p1[0] - p2[0];
-      let dy = p1[1] - p2[1];
-      let dist_sq = dx * dx + dy * dy; // Found an existing object within allowed distance
-
-      if (dist_sq < this.repeat_dist_sq) {
-        return {
-          dist_sq,
-          repeat_dist_sq: this.repeat_dist_sq
-        };
-      }
-    }
-  } // Add object to this group
-
-
-  add(obj) {
-    // only store object's position, to save space / prevent unnecessary references
-    if (obj && obj.position) {
-      this.positions.push(obj.position);
-    }
-  } // Static methods are used to manage repeat groups, within and across tiles
-  // Reset all groups for this tile
-
-
-  static clear(tile) {
-    this.groups[tile] = {};
-  } // Check an object to see if it's a repeat within its designated group
-
-
-  static check(obj, layout, tile) {
-    if (layout.repeat_distance && layout.repeat_group && this.groups[tile][layout.repeat_group]) {
-      return this.groups[tile][layout.repeat_group].check(obj);
-    }
-  } // Add an object to its designated group
-
-
-  static add(obj, layout, tile) {
-    if (layout.repeat_distance && layout.repeat_group) {
-      if (this.groups[tile][layout.repeat_group] == null) {
-        this.groups[tile][layout.repeat_group] = new RepeatGroup(layout.repeat_group, layout.repeat_distance * layout.repeat_scale);
-      }
-
-      this.groups[tile][layout.repeat_group].add(obj);
-    }
-  }
-
-} // Current set of repeat groups, grouped and keyed by tile
-
-RepeatGroup.groups = {};
-
-var Collision;
-var Collision$1 = Collision = {
-  tiles: {},
-
-  startTile(tile, {
-    apply_repeat_groups = true,
-    return_hidden = false
-  } = {}) {
-    let state = this.tiles[tile] = {
-      bboxes: {
-        // current set of placed bounding boxes
-        aabb: [],
-        obb: []
-      },
-      objects: {},
-      // objects to collide, grouped by priority, then by style
-      labels: {},
-      // objects post-collision, grouped by style, marked as show/hide
-      styles: {},
-      // styles contributing collision objects
-      repeat: apply_repeat_groups,
-      return_hidden
-    }; // Promise resolved when all registered styles have added objects
-
-    if (state.complete == null) {
-      state.complete = new Promise((resolve, reject) => {
-        state.resolve = resolve;
-        state.reject = reject;
-      });
-    }
-  },
-
-  resetTile(tile) {
-    delete this.tiles[tile];
-  },
-
-  abortTile(tile) {
-    if (this.tiles[tile] && this.tiles[tile].resolve) {
-      this.tiles[tile].resolve([]);
-    }
-
-    this.resetTile(tile);
-  },
-
-  // Add a style to the pending set, collision will block on all styles submitting to collision set
-  addStyle(style, tile) {
-    this.tiles[tile].styles[style] = true;
-  },
-
-  // Add collision objects for a style
-  collide(objects, style, tile) {
-    let state = this.tiles[tile];
-
-    if (!state) {
-      log('trace', 'Collision.collide() called with null tile', tile, this.tiles, style, objects);
-      return Promise.resolve([]);
-    } // Group by priority and style
-
-
-    let tile_objects = state.objects;
-
-    for (let i = 0; i < objects.length; i++) {
-      let obj = objects[i];
-      let priority = obj.label.layout.priority;
-      tile_objects[priority] = tile_objects[priority] || {};
-      tile_objects[priority][style] = tile_objects[priority][style] || [];
-      tile_objects[priority][style].push(obj);
-    } // Remove from pending style set, if no more styles, do collision & finish tile
-
-
-    delete state.styles[style];
-
-    if (Object.keys(state.styles).length === 0) {
-      this.endTile(tile);
-    } // Wait for objects to be added from all styles
-
-
-    return state.complete.then(() => {
-      state.resolve = null;
-      return state.labels[style] || [];
-    });
-  },
-
-  // Test labels for collisions, higher to lower priority
-  // When two collide, hide the lower-priority label
-  endTile(tile) {
-    let state = this.tiles[tile];
-    let labels = state.labels;
-
-    if (state.repeat) {
-      RepeatGroup.clear(tile);
-    } // Process labels by priority, then by style
-
-
-    let priorities = Object.keys(state.objects).sort((a, b) => a - b);
-
-    for (let p = 0; p < priorities.length; p++) {
-      let style_objects = state.objects[priorities[p]];
-
-      if (!style_objects) {
-        // no labels at this priority, skip to next
-        continue;
-      } // For each style
-
-
-      for (let style in style_objects) {
-        let objects = style_objects[style];
-        labels[style] = labels[style] || [];
-
-        for (let i = 0; i < objects.length; i++) {
-          let object = objects[i];
-
-          if (this.canBePlaced(object, tile, object.linked, state)) {
-            // show object if it isn't dependent on a parent object
-            if (!object.linked) {
-              object.show = true;
-              labels[style].push(object);
-              this.place(object, tile, state);
-            } // If object is dependent on a parent, only show if both can be placed
-            else if (this.canBePlaced(object.linked, tile, object, state)) {
-                object.show = true; // If a label is breach, its linked label should be considered breach as well
-                // (this keeps linked labels from staying (in)visible in tandem)
-
-                if (object.label.breach || object.linked.label.breach) {
-                  object.label.breach = true;
-                  object.linked.label.breach = true;
-                }
-
-                labels[style].push(object);
-                this.place(object, tile, state);
-                this.place(object.linked, tile, state);
-              } else if (state.return_hidden) {
-                object.show = false;
-                labels[style].push(object);
-              }
-          } else if (state.return_hidden) {
-            object.show = false;
-            labels[style].push(object);
-          }
-        }
-      }
-    }
-
-    delete this.tiles[tile];
-    state.resolve();
-  },
-
-  // Run collision and repeat check to see if label can currently be placed
-  canBePlaced(object, tile, exclude = null, {
-    repeat = true
-  } = {}) {
-    let label = object.label;
-    let layout = object.label.layout; // Skip if already processed (e.g. by parent object)
-
-    if (label.placed != null) {
-      return label.placed;
-    } // Test the label for intersections with other labels in the tile
-
-
-    let bboxes = this.tiles[tile].bboxes;
-
-    if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
-      // check for repeats
-      let is_repeat = repeat && RepeatGroup.check(label, layout, tile);
-
-      if (is_repeat) {
-        // log('trace', `hide label '${label.text}', dist ${Math.sqrt(is_repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(is_repeat.repeat_dist_sq)/layout.units_per_pixel}`);
-        label.placed = false;
-      } else {
-        return true;
-      }
-    } else if (layout.collide) {
-      // log('trace', `hide label '${label.text}' due to collision`);
-      label.placed = false;
-    }
-
-    return label.placed;
-  },
-
-  // Place label
-  place({
-    label
-  }, tile, {
-    repeat = true
-  }) {
-    // Skip if already processed (e.g. by parent object)
-    if (label.placed != null) {
-      return;
-    } // Register as placed for future collision and repeat culling
-
-
-    if (repeat) {
-      RepeatGroup.add(label, label.layout, tile);
-    }
-
-    Label.add(label, this.tiles[tile].bboxes);
-  }
-
-};
-
-var normalFromMat4_1 = normalFromMat4;
-
-/**
-* Calculates a 3x3 normal matrix (transpose inverse) from the 4x4 matrix
-*
-* @alias mat3.normalFromMat4
-* @param {mat3} out mat3 receiving operation result
-* @param {mat4} a Mat4 to derive the normal matrix from
-*
-* @returns {mat3} out
-*/
-function normalFromMat4(out, a) {
-  var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-  var a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-  var a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-  var a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
-
-  var b00 = a00 * a11 - a01 * a10;
-  var b01 = a00 * a12 - a02 * a10;
-  var b02 = a00 * a13 - a03 * a10;
-  var b03 = a01 * a12 - a02 * a11;
-  var b04 = a01 * a13 - a03 * a11;
-  var b05 = a02 * a13 - a03 * a12;
-  var b06 = a20 * a31 - a21 * a30;
-  var b07 = a20 * a32 - a22 * a30;
-  var b08 = a20 * a33 - a23 * a30;
-  var b09 = a21 * a32 - a22 * a31;
-  var b10 = a21 * a33 - a23 * a31;
-  var b11 = a22 * a33 - a23 * a32;
-
-  // Calculate the determinant
-  var det = b00 * b11
-          - b01 * b10
-          + b02 * b09
-          + b03 * b08
-          - b04 * b07
-          + b05 * b06;
-
-  if (!det) return null
-  det = 1.0 / det;
-
-  out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
-  out[1] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
-  out[2] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
-
-  out[3] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
-  out[4] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
-  out[5] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
-
-  out[6] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
-  out[7] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
-  out[8] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
-
-  return out
-}
-
-var invert_1 = invert;
-
-/**
- * Inverts a mat3
- *
- * @alias mat3.invert
- * @param {mat3} out the receiving matrix
- * @param {mat3} a the source matrix
- * @returns {mat3} out
- */
-function invert(out, a) {
-  var a00 = a[0], a01 = a[1], a02 = a[2];
-  var a10 = a[3], a11 = a[4], a12 = a[5];
-  var a20 = a[6], a21 = a[7], a22 = a[8];
-
-  var b01 = a22 * a11 - a12 * a21;
-  var b11 = -a22 * a10 + a12 * a20;
-  var b21 = a21 * a10 - a11 * a20;
-
-  // Calculate the determinant
-  var det = a00 * b01 + a01 * b11 + a02 * b21;
-
-  if (!det) return null
-  det = 1.0 / det;
-
-  out[0] = b01 * det;
-  out[1] = (-a22 * a01 + a02 * a21) * det;
-  out[2] = (a12 * a01 - a02 * a11) * det;
-  out[3] = b11 * det;
-  out[4] = (a22 * a00 - a02 * a20) * det;
-  out[5] = (-a12 * a00 + a02 * a10) * det;
-  out[6] = b21 * det;
-  out[7] = (-a21 * a00 + a01 * a20) * det;
-  out[8] = (a11 * a00 - a01 * a10) * det;
-
-  return out
-}
-
-var multiply_1 = multiply;
-
-/**
- * Multiplies two mat4's
- *
- * @param {mat4} out the receiving matrix
- * @param {mat4} a the first operand
- * @param {mat4} b the second operand
- * @returns {mat4} out
- */
-function multiply(out, a, b) {
-    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
-        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
-        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
-        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
-
-    // Cache only the current line of the second matrix
-    var b0  = b[0], b1 = b[1], b2 = b[2], b3 = b[3];  
-    out[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
-    out[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
-    out[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
-    out[3] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
-
-    b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
-    out[4] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
-    out[5] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
-    out[6] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
-    out[7] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
-
-    b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
-    out[8] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
-    out[9] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
-    out[10] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
-    out[11] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
-
-    b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
-    out[12] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
-    out[13] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
-    out[14] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
-    out[15] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
-    return out;
-}
-
-var translate_1 = translate;
-
-/**
- * Translate a mat4 by the given vector
- *
- * @param {mat4} out the receiving matrix
- * @param {mat4} a the matrix to translate
- * @param {vec3} v vector to translate by
- * @returns {mat4} out
- */
-function translate(out, a, v) {
-    var x = v[0], y = v[1], z = v[2],
-        a00, a01, a02, a03,
-        a10, a11, a12, a13,
-        a20, a21, a22, a23;
-
-    if (a === out) {
-        out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
-        out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
-        out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
-        out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
-    } else {
-        a00 = a[0]; a01 = a[1]; a02 = a[2]; a03 = a[3];
-        a10 = a[4]; a11 = a[5]; a12 = a[6]; a13 = a[7];
-        a20 = a[8]; a21 = a[9]; a22 = a[10]; a23 = a[11];
-
-        out[0] = a00; out[1] = a01; out[2] = a02; out[3] = a03;
-        out[4] = a10; out[5] = a11; out[6] = a12; out[7] = a13;
-        out[8] = a20; out[9] = a21; out[10] = a22; out[11] = a23;
-
-        out[12] = a00 * x + a10 * y + a20 * z + a[12];
-        out[13] = a01 * x + a11 * y + a21 * z + a[13];
-        out[14] = a02 * x + a12 * y + a22 * z + a[14];
-        out[15] = a03 * x + a13 * y + a23 * z + a[15];
-    }
-
-    return out;
-}
-
-var scale_1 = scale;
-
-/**
- * Scales the mat4 by the dimensions in the given vec3
- *
- * @param {mat4} out the receiving matrix
- * @param {mat4} a the matrix to scale
- * @param {vec3} v the vec3 to scale the matrix by
- * @returns {mat4} out
- **/
-function scale(out, a, v) {
-    var x = v[0], y = v[1], z = v[2];
-
-    out[0] = a[0] * x;
-    out[1] = a[1] * x;
-    out[2] = a[2] * x;
-    out[3] = a[3] * x;
-    out[4] = a[4] * y;
-    out[5] = a[5] * y;
-    out[6] = a[6] * y;
-    out[7] = a[7] * y;
-    out[8] = a[8] * z;
-    out[9] = a[9] * z;
-    out[10] = a[10] * z;
-    out[11] = a[11] * z;
-    out[12] = a[12];
-    out[13] = a[13];
-    out[14] = a[14];
-    out[15] = a[15];
-    return out;
-}
-
-var perspective_1 = perspective;
-
-/**
- * Generates a perspective projection matrix with the given bounds
- *
- * @param {mat4} out mat4 frustum matrix will be written into
- * @param {number} fovy Vertical field of view in radians
- * @param {number} aspect Aspect ratio. typically viewport width/height
- * @param {number} near Near bound of the frustum
- * @param {number} far Far bound of the frustum
- * @returns {mat4} out
- */
-function perspective(out, fovy, aspect, near, far) {
-    var f = 1.0 / Math.tan(fovy / 2),
-        nf = 1 / (near - far);
-    out[0] = f / aspect;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = f;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 0;
-    out[9] = 0;
-    out[10] = (far + near) * nf;
-    out[11] = -1;
-    out[12] = 0;
-    out[13] = 0;
-    out[14] = (2 * far * near) * nf;
-    out[15] = 0;
-    return out;
-}
-
-var identity_1 = identity;
-
-/**
- * Set a mat4 to the identity matrix
- *
- * @param {mat4} out the receiving matrix
- * @returns {mat4} out
- */
-function identity(out) {
-    out[0] = 1;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = 1;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 0;
-    out[9] = 0;
-    out[10] = 1;
-    out[11] = 0;
-    out[12] = 0;
-    out[13] = 0;
-    out[14] = 0;
-    out[15] = 1;
-    return out;
-}
-
-var lookAt_1 = lookAt;
-
-/**
- * Generates a look-at matrix with the given eye position, focal point, and up axis
- *
- * @param {mat4} out mat4 frustum matrix will be written into
- * @param {vec3} eye Position of the viewer
- * @param {vec3} center Point the viewer is looking at
- * @param {vec3} up vec3 pointing up
- * @returns {mat4} out
- */
-function lookAt(out, eye, center, up) {
-    var x0, x1, x2, y0, y1, y2, z0, z1, z2, len,
-        eyex = eye[0],
-        eyey = eye[1],
-        eyez = eye[2],
-        upx = up[0],
-        upy = up[1],
-        upz = up[2],
-        centerx = center[0],
-        centery = center[1],
-        centerz = center[2];
-
-    if (Math.abs(eyex - centerx) < 0.000001 &&
-        Math.abs(eyey - centery) < 0.000001 &&
-        Math.abs(eyez - centerz) < 0.000001) {
-        return identity_1(out);
-    }
-
-    z0 = eyex - centerx;
-    z1 = eyey - centery;
-    z2 = eyez - centerz;
-
-    len = 1 / Math.sqrt(z0 * z0 + z1 * z1 + z2 * z2);
-    z0 *= len;
-    z1 *= len;
-    z2 *= len;
-
-    x0 = upy * z2 - upz * z1;
-    x1 = upz * z0 - upx * z2;
-    x2 = upx * z1 - upy * z0;
-    len = Math.sqrt(x0 * x0 + x1 * x1 + x2 * x2);
-    if (!len) {
-        x0 = 0;
-        x1 = 0;
-        x2 = 0;
-    } else {
-        len = 1 / len;
-        x0 *= len;
-        x1 *= len;
-        x2 *= len;
-    }
-
-    y0 = z1 * x2 - z2 * x1;
-    y1 = z2 * x0 - z0 * x2;
-    y2 = z0 * x1 - z1 * x0;
-
-    len = Math.sqrt(y0 * y0 + y1 * y1 + y2 * y2);
-    if (!len) {
-        y0 = 0;
-        y1 = 0;
-        y2 = 0;
-    } else {
-        len = 1 / len;
-        y0 *= len;
-        y1 *= len;
-        y2 *= len;
-    }
-
-    out[0] = x0;
-    out[1] = y0;
-    out[2] = z0;
-    out[3] = 0;
-    out[4] = x1;
-    out[5] = y1;
-    out[6] = z1;
-    out[7] = 0;
-    out[8] = x2;
-    out[9] = y2;
-    out[10] = z2;
-    out[11] = 0;
-    out[12] = -(x0 * eyex + x1 * eyey + x2 * eyez);
-    out[13] = -(y0 * eyex + y1 * eyey + y2 * eyez);
-    out[14] = -(z0 * eyex + z1 * eyey + z2 * eyez);
-    out[15] = 1;
-
-    return out;
-}
-
-var copy_1 = copy;
-
-/**
- * Copy the values from one mat4 to another
- *
- * @param {mat4} out the receiving matrix
- * @param {mat4} a the source matrix
- * @returns {mat4} out
- */
-function copy(out, a) {
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[3];
-    out[4] = a[4];
-    out[5] = a[5];
-    out[6] = a[6];
-    out[7] = a[7];
-    out[8] = a[8];
-    out[9] = a[9];
-    out[10] = a[10];
-    out[11] = a[11];
-    out[12] = a[12];
-    out[13] = a[13];
-    out[14] = a[14];
-    out[15] = a[15];
-    return out;
-}
-
-// Partial import of gl-matrix via modularized stack-gl forks
-// https://github.com/toji/gl-matrix
-// https://github.com/stackgl
-// vec3
-// Substitute 64-bit version
-// We need the extra precision when multiplying matrices w/mercator projected values
-const vec3 = {
-  fromValues(x, y, z) {
-    var out = new Float64Array(3);
-    out[0] = x;
-    out[1] = y;
-    out[2] = z;
-    return out;
-  }
-
-}; // mat3
-const mat3 = {
-  normalFromMat4: normalFromMat4_1,
-  invert: invert_1
-}; // mat4
-const mat4 = {
-  multiply: multiply_1,
-  translate: translate_1,
-  scale: scale_1,
-  perspective: perspective_1,
-  lookAt: lookAt_1,
-  identity: identity_1,
-  copy: copy_1
-};
-
-let id = 0; // unique tile id
-
-let build_id = 0; // id tracking order in which tiles were build
-
-class Tile {
-  /**
-      Tile
-      @constructor
-      Required properties:
-      coords: object with {x, y, z} properties identifying tile coordinate location
-      worker: web worker to handle tile construction
-  */
-  constructor({
-    coords,
-    style_zoom,
-    source,
-    worker,
-    view
-  }) {
-    this.id = id++;
-    this.worker = worker;
-    this.view = view;
-    this.source = source;
-    this.generation = null;
-    this.valid = true;
-    this.visible = false;
-    this.proxy_for = null;
-    this.proxy_depth = 0;
-    this.proxied_as = null;
-    this.fade_in = true;
-    this.loading = false;
-    this.loaded = false;
-    this.built = false;
-    this.labeled = false;
-    this.error = null;
-    this.debug = {};
-    this.style_zoom = style_zoom; // zoom level to be used for styling
-
-    this.coords = Tile.normalizedCoordinate(coords, this.source, this.style_zoom);
-    this.key = Tile.key(this.coords, this.source, this.style_zoom);
-    this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
-
-    this.overzoom2 = Math.pow(2, this.overzoom);
-    this.min = Geo$1.metersForTile(this.coords);
-    this.max = Geo$1.metersForTile({
-      x: this.coords.x + 1,
-      y: this.coords.y + 1,
-      z: this.coords.z
-    }), this.span = {
-      x: this.max.x - this.min.x,
-      y: this.max.y - this.min.y
-    };
-    this.bounds = {
-      sw: {
-        x: this.min.x,
-        y: this.max.y
-      },
-      ne: {
-        x: this.max.x,
-        y: this.min.y
-      }
-    };
-    this.center_dist = 0;
-    this.meters_per_pixel = Geo$1.metersPerPixel(this.style_zoom);
-    this.meters_per_pixel_sq = this.meters_per_pixel * this.meters_per_pixel;
-    this.units_per_pixel = Geo$1.units_per_pixel / this.overzoom2; // adjusted for overzoom
-
-    this.units_per_meter_overzoom = Geo$1.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
-
-    this.meshes = {}; // renderable VBO meshes keyed by style
-
-    this.new_mesh_styles = []; // meshes that have been built so far in current build generation
-
-    this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
-  }
-
-  static coord(c) {
+const TileID = {
+  coord(c) {
     return {
       x: c.x,
       y: c.y,
       z: c.z,
-      key: Tile.coordKey(c)
+      key: this.coordKey(c)
     };
-  }
+  },
 
-  static coordKey({
-    x,
-    y,
-    z
-  }) {
+  coordKey(_ref) {
+    let x = _ref.x,
+        y = _ref.y,
+        z = _ref.z;
     return x + '/' + y + '/' + z;
-  }
+  },
 
-  static key(coords, source, style_zoom) {
+  key(coords, source, style_z) {
     if (coords.y < 0 || coords.y >= 1 << coords.z || coords.z < 0) {
       return; // cull tiles out of range (x will wrap)
     }
 
-    return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
-  }
+    return [source.name, coords.x, coords.y, coords.z, style_z].join('/');
+  },
 
-  static normalizedKey(coords, source, style_zoom) {
-    return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source, style_zoom);
-  }
+  normalizedKey(coords, source, style_z) {
+    return this.key(this.normalizedCoord(coords, source), source, style_z);
+  },
 
-  static normalizedCoordinate(coords, source, style_zoom) {
+  normalizedCoord(coords, source) {
     if (source.zoom_bias) {
-      coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
+      coords = this.coordAtZoom(coords, coords.z - source.zoom_bias);
     }
 
-    return Tile.coordinateWithMaxZoom(coords, source.max_zoom);
-  }
+    return this.coordWithMaxZoom(coords, source.max_zoom);
+  },
 
-  static coordinateAtZoom({
-    x,
-    y,
-    z
-  }, zoom) {
+  coordAtZoom(_ref2, zoom) {
+    let x = _ref2.x,
+        y = _ref2.y,
+        z = _ref2.z;
+    zoom = Math.max(0, zoom); // zoom can't go below zero
+
     if (z !== zoom) {
       let zscale = Math.pow(2, z - zoom);
       x = Math.floor(x / zscale);
@@ -6804,660 +6000,134 @@ class Tile {
       z = zoom;
     }
 
-    return Tile.coord({
+    return this.coord({
       x,
       y,
       z
     });
-  }
+  },
 
-  static coordinateWithMaxZoom({
-    x,
-    y,
-    z
-  }, max_zoom) {
-    if (max_zoom !== undefined && z > max_zoom) {
-      return Tile.coordinateAtZoom({
+  coordWithMaxZoom(_ref3, max_zoom) {
+    let x = _ref3.x,
+        y = _ref3.y,
+        z = _ref3.z;
+
+    if (max_zoom != null && z > max_zoom) {
+      return this.coordAtZoom({
         x,
         y,
         z
       }, max_zoom);
     }
 
-    return Tile.coord({
+    return this.coord({
       x,
       y,
       z
     });
-  }
+  },
 
-  static childrenForCoordinate({
-    x,
-    y,
-    z,
-    key
-  }) {
-    if (!Tile.coord_children[key]) {
+  childrenForCoord(_ref4) {
+    let x = _ref4.x,
+        y = _ref4.y,
+        z = _ref4.z,
+        key = _ref4.key;
+
+    if (!COORD_CHILDREN[key]) {
       z++;
       x *= 2;
       y *= 2;
-      Tile.coord_children[key] = [Tile.coord({
+      COORD_CHILDREN[key] = [this.coord({
         x,
         y,
         z
-      }), Tile.coord({
+      }), this.coord({
         x: x + 1,
         y,
         z
-      }), Tile.coord({
+      }), this.coord({
         x,
         y: y + 1,
         z
-      }), Tile.coord({
+      }), this.coord({
         x: x + 1,
         y: y + 1,
         z
       })];
     }
 
-    return Tile.coord_children[key];
-  }
+    return COORD_CHILDREN[key];
+  },
 
-  static isDescendant(parent, descendant) {
+  isDescendant(parent, descendant) {
     if (descendant.z > parent.z) {
-      let _Tile$coordinateAtZoo = Tile.coordinateAtZoom(descendant, parent.z),
-          x = _Tile$coordinateAtZoo.x,
-          y = _Tile$coordinateAtZoo.y;
+      let _this$coordAtZoom = this.coordAtZoom(descendant, parent.z),
+          x = _this$coordAtZoom.x,
+          y = _this$coordAtZoom.y;
 
       return parent.x === x && parent.y === y;
     }
 
     return false;
-  } // Free resources owned by tile
+  },
 
+  // Return identifying info for tile's parent tile
+  parent(_ref5) {
+    let coords = _ref5.coords,
+        source = _ref5.source,
+        style_z = _ref5.style_z;
 
-  freeResources() {
-    for (let m in this.meshes) {
-      this.meshes[m].forEach(m => m.destroy());
-    }
-
-    this.meshes = {};
-
-    if (this.pending_label_meshes) {
-      for (let m in this.pending_label_meshes) {
-        this.pending_label_meshes[m].forEach(m => m.destroy());
-      }
-    }
-
-    this.pending_label_meshes = null;
-  }
-
-  destroy() {
-    Task.removeForTile(this.id);
-    this.workerMessage('self.removeTile', this.key);
-    this.freeResources();
-    this.worker = null;
-    this.valid = false;
-  }
-
-  buildAsMessage() {
-    return {
-      id: this.id,
-      key: this.key,
-      source: this.source.name,
-      coords: this.coords,
-      min: this.min,
-      max: this.max,
-      units_per_pixel: this.units_per_pixel,
-      meters_per_pixel: this.meters_per_pixel,
-      meters_per_pixel_sq: this.meters_per_pixel_sq,
-      units_per_meter_overzoom: this.units_per_meter_overzoom,
-      style_zoom: this.style_zoom,
-      overzoom: this.overzoom,
-      overzoom2: this.overzoom2,
-      generation: this.generation,
-      debug: this.debug
-    };
-  }
-
-  workerMessage(...message) {
-    return WorkerBroker$1.postMessage(this.worker, ...message);
-  }
-
-  build(generation, {
-    fade_in = true
-  } = {}) {
-    this.generation = generation;
-    this.fade_in = fade_in;
-
-    if (!this.loaded) {
-      this.loading = true;
-      this.built = false;
-      this.labeled = false;
-    }
-
-    return this.workerMessage('self.buildTile', {
-      tile: this.buildAsMessage()
-    }).catch(e => {
-      throw e;
-    });
-  }
-  /**
-      Called on worker to cancel loading
-      Static method because the worker only has object representations of tile data, there is no
-      tile instance created yet.
-  */
-
-
-  static cancel(tile) {
-    if (tile) {
-      tile.canceled = true;
-
-      if (tile.source_data && tile.source_data.request_id) {
-        Utils$1.cancelRequest(tile.source_data.request_id); // cancel pending tile network request
-
-        tile.source_data.request_id = null;
+    if (style_z > source.max_coord_zoom || style_z <= source.min_coord_zoom) {
+      if (style_z > 0) {
+        // no more tiles above style zoom 0
+        return {
+          key: this.key(coords, source, style_z - 1),
+          coords,
+          style_z: style_z - 1,
+          source
+        };
       }
 
-      Tile.abortBuild(tile);
-    }
-  } // Process geometry for tile - called by web worker
-  // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-
-
-  static buildGeometry(tile, {
-    scene_id,
-    layers,
-    styles,
-    global
-  }) {
-    let data = tile.source_data;
-    tile.debug.rendering = +new Date();
-    tile.debug.feature_count = 0;
-    tile.debug.layers = null;
-    Collision$1.startTile(tile.id, {
-      apply_repeat_groups: true
-    }); // Process each top-level layer
-
-    for (let layer_name in layers) {
-      let layer = layers[layer_name]; // Skip layers with no data source defined
-
-      if (!layer || !layer.config_data) {
-        log('warn', `Layer ${layer_name} was defined without a geometry data source and will not be rendered.`);
-        continue;
-      } // Source names don't match
-
-
-      if (layer.config_data.source !== tile.source) {
-        continue;
-      } // Get data for one or more layers from source
-
-
-      let source_layers = Tile.getDataForSource(data, layer.config_data, layer_name); // Render features in layer
-
-      for (let s = 0; s < source_layers.length; s++) {
-        let source_layer = source_layers[s];
-        let geom = source_layer.geom;
-
-        if (!geom) {
-          continue;
-        }
-
-        for (let f = 0; f < geom.features.length; f++) {
-          let feature = geom.features[f];
-
-          if (feature.geometry == null) {
-            continue; // skip features w/o geometry (valid GeoJSON)
-          }
-
-          let context = StyleParser.getFeatureParseContext(feature, tile, global);
-          context.winding = tile.default_winding;
-          context.source = tile.source; // add data source name
-
-          context.layer = source_layer.layer; // add data source layer name
-          // Get draw groups for this feature
-
-          let draw_groups = layer.buildDrawGroups(context, true);
-
-          if (!draw_groups) {
-            continue;
-          } // Render draw groups
-
-
-          for (let group_name in draw_groups) {
-            let group = draw_groups[group_name]; // Add to style
-
-            let style_name = group.style || group_name;
-            let style = styles[style_name];
-
-            if (!style) {
-              log('warn', `Style '${style_name}' not found, skipping layer '${layer_name}':`, group, feature);
-              continue;
-            }
-
-            group = style.preprocess(group);
-
-            if (group == null || group.visible === false) {
-              continue;
-            }
-
-            context.layers = group.layers; // add matching draw layers
-
-            style.addFeature(feature, group, context);
-          }
-
-          tile.debug.feature_count++;
-        }
-      }
-    }
-
-    tile.debug.rendering = +new Date() - tile.debug.rendering; // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
-
-    let tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]);
-    Tile.sendStyleGroups(tile, tile_styles, {
-      scene_id
-    }, style => style.collision ? 'collision' : 'non-collision'); // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.name); // call for each style
-    // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => 'styles'); // all styles in single call (previous behavior)
-  }
-
-  static stylesForTile(tile, styles) {
-    let tile_styles = [];
-
-    for (let s in styles) {
-      if (styles[s].hasDataForTile(tile)) {
-        tile_styles.push(s);
-      }
-    }
-
-    return tile_styles;
-  } // Send groups of styles back to main thread, asynchronously (as they finish building),
-  // grouped by the provided function
-
-
-  static sendStyleGroups(tile, styles, {
-    scene_id
-  }, group_by) {
-    // Group styles
-    let groups = {};
-    styles.forEach(s => {
-      let group_name = group_by(s);
-      groups[group_name] = groups[group_name] || [];
-      groups[group_name].push(s);
-    });
-
-    if (Object.keys(groups).length > 0) {
-      let progress = {
-        start: true
-      };
-      tile.mesh_data = {};
-
-      for (let group_name in groups) {
-        let group = groups[group_name];
-        Promise.all(group.map(style => {
-          return style.endData(tile).then(style_data => {
-            if (style_data) {
-              tile.mesh_data[style.name] = style_data;
-            }
-          });
-        })).then(() => {
-          log('trace', `Finished style group '${group_name}' for tile ${tile.key}`); // Clear group and check if all groups finished
-
-          groups[group_name] = [];
-
-          if (Object.keys(groups).every(g => groups[g].length === 0)) {
-            progress.done = true;
-          } // Send meshes to main thread
-
-
-          WorkerBroker$1.postMessage(`TileManager_${scene_id}.buildTileStylesCompleted`, WorkerBroker$1.withTransferables({
-            tile: Tile.slice(tile, ['mesh_data']),
-            progress
-          }));
-          progress.start = null;
-          tile.mesh_data = {}; // reset so each group sends separate set of style meshes
-
-          if (progress.done) {
-            Collision$1.resetTile(tile.id); // clear collision if we're done with the tile
-          }
-        }).catch(e => {
-          log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e.stack);
-        });
-      }
-    } else {
-      // Nothing to build, return empty tile to main thread
-      WorkerBroker$1.postMessage(`TileManager_${scene_id}.buildTileStylesCompleted`, WorkerBroker$1.withTransferables({
-        tile: Tile.slice(tile),
-        progress: {
-          start: true,
-          done: true
-        }
-      }));
-      Collision$1.resetTile(tile.id); // clear collision if we're done with the tile
-    }
-  }
-  /**
-      Retrieves geometry from a tile according to a data source definition
-      Returns an array of objects with:
-          layer: source layer name
-          geom: GeoJSON FeatureCollection
-  */
-
-
-  static getDataForSource(source_data, source_config, scene_layer) {
-    var layers = [];
-
-    if (source_config != null && source_data != null && source_data.layers != null) {
-      // If no layer specified, and a default source layer exists
-      if (!source_config.layer && source_data.layers._default) {
-        layers.push({
-          geom: source_data.layers._default
-        });
-      } // If no layer specified, and a layer for the scene layer name exists
-      else if (!source_config.layer && scene_layer) {
-          layers.push({
-            layer: scene_layer,
-            geom: source_data.layers[scene_layer]
-          });
-        } // If a layer is specified by name, use it
-        else if (typeof source_config.layer === 'string') {
-            layers.push({
-              layer: source_config.layer,
-              geom: source_data.layers[source_config.layer]
-            });
-          } // If multiple layers are specified by name, combine them
-          else if (Array.isArray(source_config.layer)) {
-              source_config.layer.forEach(layer => {
-                if (source_data.layers[layer] && source_data.layers[layer].features) {
-                  layers.push({
-                    layer,
-                    geom: source_data.layers[layer]
-                  });
-                }
-              });
-            }
-    }
-
-    return layers;
-  }
-  /**
-     Called on main thread when a web worker completes processing
-     for a single tile.
-  */
-
-
-  buildMeshes(styles, progress) {
-    if (this.error) {
       return;
+    } else if (style_z > 0) {
+      // no more tiles above style zoom 0
+      const c = this.coordAtZoom(coords, coords.z - 1);
+      return {
+        key: this.key(c, source, style_z - 1),
+        coords: c,
+        style_z: style_z - 1,
+        source
+      };
+    }
+  },
+
+  // Return identifying info for tile's child tiles
+  children(_ref6) {
+    let coords = _ref6.coords,
+        source = _ref6.source,
+        style_z = _ref6.style_z;
+
+    if (style_z >= source.max_coord_zoom || style_z < source.min_coord_zoom) {
+      return [{
+        key: this.key(coords, source, style_z + 1),
+        coords,
+        style_z: style_z + 1,
+        source
+      }];
     }
 
-    this.build_id = build_id++; // record order in which tile was built
-    // Debug
-
-    if (progress.start) {
-      this.debug.geometry_count = 0;
-      this.debug.buffer_size = 0;
-    } // Create VBOs
-
-
-    let meshes = {}; // new data to be added to tile
-
-    let mesh_data = this.mesh_data;
-
-    if (mesh_data) {
-      for (let s in mesh_data) {
-        for (let variant in mesh_data[s].meshes) {
-          let mesh_variant = mesh_data[s].meshes[variant];
-
-          if (mesh_variant.vertex_data) {
-            if (!styles[s]) {
-              log('warn', `Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
-              break;
-            } // first add style-level uniforms, then add any mesh-specific ones
-
-
-            let mesh_options = Object.assign({}, mesh_data[s]);
-            mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
-            mesh_options.variant = mesh_variant.variant; // for labels, keep buffer data on CPU so they can be modified later
-
-            if (mesh_variant.labels) {
-              mesh_options.retain = true;
-            }
-
-            let mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
-            mesh.variant = mesh_options.variant;
-            mesh.labels = mesh_variant.labels;
-            meshes[s] = meshes[s] || [];
-            meshes[s].push(mesh);
-
-            if (mesh.variant.order == null) {
-              mesh.variant.order = meshes[s].length - 1; // assign default variant render order
-            }
-
-            this.debug.buffer_size += mesh.buffer_size;
-            this.debug.geometry_count += mesh.geometry_count;
-          }
-        } // Sort mesh variants by explicit render order (if present)
-
-
-        if (meshes[s]) {
-          meshes[s].sort((a, b) => {
-            // Sort variant order ascending if present, then all null values (where order is unspecified)
-            let ao = a.variant.order,
-                bo = b.variant.order;
-            return ao == null ? 1 : bo == null ? -1 : ao < bo ? -1 : 1;
-          });
-        }
-      }
-    }
-
-    delete this.mesh_data; // New meshes
-
-    for (let m in meshes) {
-      // swap in non-collision meshes right away
-      if (!styles[m].collision) {
-        if (this.meshes[m]) {
-          this.meshes[m].forEach(m => m.destroy()); // free old meshes
-        }
-
-        this.meshes[m] = meshes[m]; // set new mesh
-
-        this.new_mesh_styles.push(m);
-      } // keep label meshes out of view until collision is complete
-      else {
-          this.pending_label_meshes = this.pending_label_meshes || {};
-          this.pending_label_meshes[m] = meshes[m];
-        }
-    }
-
-    if (progress.done) {
-      // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
-      for (let m in this.meshes) {
-        if (this.new_mesh_styles.indexOf(m) === -1 && (!this.pending_label_meshes || this.pending_label_meshes[m] == null)) {
-          this.meshes[m].forEach(m => m.destroy());
-          delete this.meshes[m];
-        }
-      }
-
-      this.new_mesh_styles = [];
-      this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
-      this.printDebug();
-    }
-  } // How many styles are currently pending label collision
-
-
-  pendingLabelStyleCount() {
-    return this.pending_label_meshes ? Object.keys(this.pending_label_meshes).length : 0;
-  } // Swap label style meshes after collision is complete
-
-
-  swapPendingLabels() {
-    this.labeled = true; // mark as labeled
-
-    if (this.pending_label_meshes) {
-      for (let m in this.pending_label_meshes) {
-        if (this.meshes[m]) {
-          this.meshes[m].forEach(m => m.destroy()); // free old meshes
-        }
-
-        this.meshes[m] = this.pending_label_meshes[m]; // set new mesh
-      }
-
-      this.pending_label_meshes = null;
-    }
-  }
-  /**
-      Called on main thread when web worker completes processing, but tile has since been discarded
-      Frees resources that would have been transferred to the tile object.
-      Static method because the tile object no longer exists (the tile data returned by the worker is passed instead).
-  */
-
-
-  static abortBuild(tile) {
-    Task.removeForTile(tile.id);
-    Collision$1.abortTile(tile.id); // Releases meshes
-
-    if (tile.mesh_data) {
-      for (let s in tile.mesh_data) {
-        let textures = tile.mesh_data[s].textures;
-
-        if (textures) {
-          textures.forEach(t => {
-            let texture = Texture.textures[t];
-
-            if (texture) {
-              log('trace', `releasing texture ${t} for tile ${tile.key}`);
-              texture.release();
-            }
-          });
-        }
-      }
-    }
-  } // Set as a proxy tile for another tile
-
-
-  setProxyFor(tile) {
-    if (tile) {
-      this.visible = true;
-      this.proxy_for = this.proxy_for || [];
-      this.proxy_for.push(tile);
-      this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
-
-      tile.proxied_as = tile.style_zoom > this.style_zoom ? 'child' : 'parent';
-    } else {
-      this.proxy_for = null;
-      this.proxy_depth = 0;
-    }
-  }
-
-  isProxy() {
-    return this.proxy_for != null;
-  } // Proxy tiles only need to render a specific style if any of the tiles they are proxying *for*
-  // haven't finished loading that style yet. If all proxied tiles *have* data for that style, then it's
-  // safe to hide the proxy tile's version.
-
-
-  shouldProxyForStyle(style) {
-    return !this.proxy_for || this.proxy_for.some(t => t.meshes[style] == null);
-  } // Update model matrix and tile uniforms
-
-
-  setupProgram({
-    model,
-    model32
-  }, program) {
-    // Tile origin
-    program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_zoom, this.coords.z]);
-    program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth); // Model - transform tile space into world space (meters, absolute mercator position)
-
-    mat4.identity(model);
-    mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
-    mat4.scale(model, model, vec3.fromValues(this.span.x / Geo$1.tile_scale, -1 * this.span.y / Geo$1.tile_scale, 1)); // scale tile local coords to meters
-
-    mat4.copy(model32, model);
-    program.uniform('Matrix4fv', 'u_model', model32); // Fade in labels according to proxy status, avoiding "flickering" where
-    // labels quickly go from invisible back to visible
-
-    program.uniform('1i', 'u_tile_fade_in', this.fade_in && this.proxied_as !== 'child');
-  } // Slice a subset of keys out of a tile
-  // Includes a minimum set of pre-defined keys for load state, debug. etc.
-  // We use this to send a subset of the tile back to the main thread, to minimize unnecessary data transfer
-  // (e.g. very large items like feature geometry are not needed on the main thread)
-
-
-  static slice(tile, keys) {
-    let keep = ['id', 'key', 'loading', 'loaded', 'generation', 'error', 'debug'];
-
-    if (Array.isArray(keys)) {
-      keep.push(...keys);
-    } // Build the tile subset
-
-
-    var tile_subset = {};
-
-    for (let k = 0; k < keep.length; k++) {
-      const key = keep[k];
-      tile_subset[key] = tile[key];
-    }
-
-    return tile_subset;
-  }
-
-  merge(other) {
-    this.loading = other.loading;
-    this.loaded = other.loaded;
-    this.generation = other.generation;
-    this.error = other.error;
-    this.mesh_data = other.mesh_data;
-    this.debug = mergeObjects(this.debug, other.debug);
-    return this;
-  }
-
-  printDebug(exclude = ['layers']) {
-    let copy = {};
-
-    for (let key in this.debug) {
-      if (exclude.indexOf(key) === -1) {
-        copy[key] = this.debug[key];
-      }
-    }
-
-    log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
-  } // Sum up layer feature/geometry stats from a set of tiles
-
-
-  static debugSumLayerStats(tiles) {
-    let list = {},
-        tree = {};
-    tiles.filter(tile => tile.debug.layers).forEach(tile => {
-      // layer list
-      Object.keys(tile.debug.layers.list).forEach(layer => {
-        let counts = tile.debug.layers.list[layer];
-        addLayerDebugEntry(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
-      }); // layer tree
-
-      addDebugLayers(tile.debug.layers.tree, tree);
+    const children = this.childrenForCoord(coords);
+    return children.map(c => {
+      return {
+        key: this.key(c, source, style_z + 1),
+        coords: c,
+        style_z: style_z + 1,
+        source
+      };
     });
-    return {
-      list,
-      tree
-    };
   }
 
-}
-Tile.coord_children = {}; // only allocate children coordinates once per coordinate
-// build debug stats layer tree
-
-function addDebugLayers(node, tree) {
-  for (let layer in node) {
-    let counts = node[layer];
-    addLayerDebugEntry(tree, layer, counts.features, counts.geoms, counts.styles, counts.base);
-
-    if (counts.layers) {
-      tree[layer].layers = tree[layer].layers || {};
-      addDebugLayers(counts.layers, tree[layer].layers); // process child layers
-    }
-  }
-}
+};
 
 class RasterTileSource extends NetworkTileSource {
   constructor(source, sources) {
@@ -7474,7 +6144,7 @@ class RasterTileSource extends NetworkTileSource {
     this.textures = {};
   }
 
-  load(tile) {
+  async load(tile) {
     tile.source_data = {};
     tile.source_data.layers = {};
     tile.pad_scale = this.pad_scale;
@@ -7495,19 +6165,21 @@ class RasterTileSource extends NetworkTileSource {
       }
     };
     tile.default_winding = 'CW';
-    return Promise.resolve(tile);
+    return tile;
   } // Return texture info for a raster tile
 
 
-  tileTexture(tile) {
-    let key = tile.coords.key;
+  async tileTexture(tile) {
+    let coords = this.adjustRasterTileZoom(tile);
+    let key = coords.key; // texture definitions are cached to avoid loading the same raster tile multiple times,
+    // e.g. due to slightly different URLs when subdomain pattern is used (a.tile.com vs. b.tile.com)
 
     if (!this.textures[key]) {
-      let coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
-      let url = this.formatUrl(this.url, {
+      let url = this.formatURL(this.url, {
         coords
       });
       this.textures[key] = {
+        name: url,
         url,
         filtering: this.filtering,
         coords
@@ -7515,24 +6187,252 @@ class RasterTileSource extends NetworkTileSource {
     }
 
     return this.textures[key];
+  } // If the raster is attached to another source, we need to compare their levels of zoom detail
+  // to see if any adjustments are needed. Both the `tile_size` and `zoom_offset` data source params
+  // cause the zoom level to be downsampled relative to the "base" zoom level of the map view.
+  // The attaching source has already applied its own zoom downsampling. If this source has a lower
+  // level of detail, we apply the remaining differential here.
+
+
+  adjustRasterTileZoom(tile) {
+    let coords = tile.coords;
+    const tile_source = this.sources[tile.source];
+
+    if (tile_source !== this) {
+      // no-op if the raster source isn't being rendered as an attachment
+      let zdiff = this.zoom_bias - tile_source.zoom_bias; // difference in zoom detail between the sources
+
+      if (zdiff > 0) {
+        // raster source is less detailed
+        // do extra zoom adjustment and apply this raster source's max zoom
+        coords = TileID.normalizedCoord(tile.coords, {
+          zoom_bias: zdiff,
+          max_zoom: this.max_zoom
+        });
+      } else {
+        // raster source supports higher detail, but was downsampled to match (the downsampling already
+        // happened upstream, when the attaching source calculated its own tile coordinate)
+        if (zdiff < 0) {
+          log({
+            level: 'warn',
+            once: true
+          }, `Raster source '${this.name}' supports higher zoom detail than source '${tile_source.name}' ` + `it's attached to. Downsampling this source ${-zdiff} extra zoom levels to match.`);
+        } // no extra zoom adjustment needed, but still need to apply this raster source's max zoom
+
+
+        coords = TileID.coordWithMaxZoom(coords, this.max_zoom);
+      }
+    }
+
+    return coords;
   }
 
-}
-DataSource.register(RasterTileSource, 'Raster');
+} // Data source for loading standalone, geo-referenced raster images
+// The `bounds` parameter is used to position the raster image on the map
+// Currently, only axis-aligned, rectangular North-up images are supported
+// TODO: add support for arbitrarily rotated images and quadrangle control points
+
+class RasterSource extends RasterTileSource {
+  constructor(source, sources) {
+    super(source, sources);
+    this.load_image = {}; // resolves to image, cached for life of data source
+    // alpha factor applied at time raster images are loaded and tiled (*not* at shader render-time)
+
+    this.alpha = source.alpha != null ? Math.max(Math.min(source.alpha, 1), 0) : null; // non-full-alpha pixels should be discarded (for rendering rasters w/opaque blend)
+
+    this.mask_alpha = true; // don't retain tiles for this source from nearby zooms (to improve memory usage)
+
+    this.preserve_tiles_within_zoom = 0; // optionally set a max pixel density used for generated raster tiles (to improve memory usage)
+
+    this.max_display_density = source.max_display_density; // Optionally composite multiple images into one raster layer
+
+    if (Array.isArray(source.composite)) {
+      // TODO: calculate enclosing bounding box to speed tile intersection checks
+      this.images = source.composite.map(s => {
+        return {
+          url: s.url,
+          bounds: this.parseBounds(s),
+          alpha: s.alpha != null ? Math.max(Math.min(s.alpha, 1), 0) : null
+        };
+      });
+    } // Single image raster layer
+    else {
+        this.images = [{
+          url: this.url,
+          bounds: this.bounds,
+          alpha: this.alpha
+        }];
+      }
+  } // Render the sub-rectangle of the source raster image for the given tile, to a texture.
+  // Clipping the source image to individual raster tiles naturally partitions images
+  // (which may be large or only have a small portion in current view), and maintains
+  // consistency with the raster tile pipeline allowing for sampling within the fragment shader,
+  // and clipping the raster against vector source data.
+
+
+  async tileTexture(tile, _ref) {
+    let blend = _ref.blend,
+        generation = _ref.generation;
+    let coords = this.adjustRasterTileZoom(tile);
+    const use_alpha = blend !== 'opaque'; // ignore source alpha multiplier with opaque blending
+
+    const name = `raster-${this.name}-${coords.key}-${use_alpha ? 'alpha' : 'opaque'}-${generation}`; // unique texture name
+    // only render each raster tile once (per scene generation)
+
+    if (Texture.textures[name]) {
+      return {
+        name,
+        coords,
+        // tell style to skip re-creating this texture
+        // we have an explicit flag for this because element-based (e.g. canvas) textures
+        // are usually considered dynamic and always re-created when a new tile needs them
+        // (because the user could have updated the canvas pixel contents outside of Tangram)
+        skip_create: true
+      };
+    } // Display density, with extra 2x for better intra-zoom scaling, because raster tiles
+    // can be scaled up to 100% before next zoom level is loaded
+
+
+    let dpr = Utils.device_pixel_ratio;
+
+    if (this.max_display_density) {
+      dpr = Math.min(dpr, this.max_display_density); // optionally cap pixel density
+    }
+
+    dpr *= 2;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = this.tile_size * dpr; // adjusted for display density
+
+    canvas.height = this.tile_size * dpr; // Applies nearest neighbor filtering to the canvas image rendering when data source requests it
+    // NB: does not work on IE11 (image will be blurry when scaled)
+
+    ctx.imageSmoothingEnabled = this.filtering !== 'nearest'; // Draw one or more images
+
+    const images = this.images.filter(r => this.checkBounds(tile.coords, r.bounds));
+    await Promise.all(images.map(i => {
+      // TODO: log warning if alpha specified but will be ignored (in opaque mode)?
+      const alpha = use_alpha ? i.alpha != null ? i.alpha : this.alpha : 1;
+      return this.drawImage(i.url, i.bounds, alpha, tile, dpr, ctx);
+    })); // texture config
+
+    return {
+      name,
+      element: canvas,
+      filtering: this.filtering,
+      coords
+    };
+  } // Draw a single image to the tile canvas based on on its bounds
+
+
+  async drawImage(url, bounds, alpha, tile, dpr, ctx) {
+    // Get source raster image
+    const key = hashString(url); // use hash of URL for shorter keys
+
+    this.load_image[key] = this.load_image[key] || this.loadImage(url);
+    const image = await this.load_image[key]; // Meters per pixel for this zoom, adjusted for display density and source tile size (e.g. 512px tiles)
+
+    const mpp = Geo$1.metersPerPixel(tile.coords.z) / dpr / (this.tile_size / Geo$1.tile_size); // Raster origin relative to tile origin (get delta in meters, then convert to pixels)
+
+    const dx = (bounds.meters.min[0] - tile.min.x) / mpp;
+    const dy = -(bounds.meters.min[1] - tile.min.y) / mpp; // Raster size in pixels for current zoom
+
+    const sx = (bounds.meters.max[0] - bounds.meters.min[0]) / mpp;
+    const sy = -(bounds.meters.max[1] - bounds.meters.min[1]) / mpp; // Draw the raster, clipped to the current tile
+    // NB: this is drawing the *whole* raster, no matter how large, and relying on the native Canvas clipping.
+    // May want to benchmark with a pre-clipped draw area, though the native implementation is likely fast,
+    // and has to apply its own clipping check anyway.
+
+    ctx.globalAlpha = alpha != null ? alpha : 1;
+    ctx.drawImage(image, dx, dy, sx, sy);
+  } // Load source raster image
+
+
+  loadImage(url) {
+    return new Promise(resolve => {
+      let image = new Image();
+
+      image.onload = () => resolve(image);
+
+      image.onerror = e => {
+        // Warn and resolve on error
+        log('warn', `Raster source '${this.name}': failed to load url: '${url}'`, e);
+        resolve(null);
+      }; // Safari has a bug loading data-URL images with CORS enabled, so it must be disabled in that case
+      // https://bugs.webkit.org/show_bug.cgi?id=123978
+
+
+      if (!(Utils.isSafari() && url.slice(0, 5) === 'data:')) {
+        image.crossOrigin = 'anonymous';
+      }
+
+      image.src = url;
+    });
+  } // Checks if tile interects any rasters in this source
+
+
+  includesTile(coords, style_z) {
+    // Checks zoom range and dependent rasters
+    if (!DataSource.prototype.includesTile.call(this, coords, style_z)) {
+      return false;
+    }
+
+    return this.images.some(r => this.checkBounds(coords, r.bounds)); // check if any images intersect
+  }
+
+  validate(source) {
+    const is_composite = Array.isArray(source.composite);
+    let url_msg = 'Raster data source must provide a string `url` parameter, or an array of `composite` raster ';
+    url_msg += 'image objects that each have a `url` parameter';
+    let bounds_msg = 'Raster data source must provide a `bounds` parameter, or an array of `composite` raster ';
+    bounds_msg += 'image objects that each have a `bounds` parameter';
+    let mutex_msg = 'Raster data source must have *either* a single image specified as `url` and `bounds `';
+    mutex_msg += 'parameters, or an array of `composite` raster image objects, each with `url` and `bounds`.';
+
+    if (is_composite) {
+      if (source.composite.some(s => typeof s.url !== 'string')) {
+        throw Error(url_msg);
+      }
+
+      if (source.composite.some(s => !(Array.isArray(s.bounds) && s.bounds.length === 4))) {
+        throw Error(bounds_msg);
+      }
+
+      if (source.url != null || source.bounds != null) {
+        throw Error(mutex_msg);
+      }
+    } else {
+      if (typeof source.url !== 'string') {
+        throw Error(url_msg);
+      }
+
+      if (!(Array.isArray(source.bounds) && source.bounds.length === 4)) {
+        throw Error(bounds_msg);
+      }
+    }
+  }
+
+} // Check for URL tile pattern, if not found, treat as geo-referenced raster layer
+
+DataSource.register('Raster', source => {
+  return RasterTileSource.urlHasTilePattern(source.url) ? RasterTileSource : RasterSource;
+});
 
 var selection_fragment_source = "// Fragment shader for feature selection passes\n// Renders in silhouette according to selection (picking) color, or black if none defined\n\n#ifdef TANGRAM_FEATURE_SELECTION\n    varying vec4 v_selection_color;\n#endif\n\nvoid main (void) {\n    #ifdef TANGRAM_FEATURE_SELECTION\n        gl_FragColor = v_selection_color;\n    #else\n        gl_FragColor = vec4(0., 0., 0., 1.);\n    #endif\n}\n";
 
-var rasters_source = "// Uniforms defining raster textures and macros for accessing them\n\n#ifdef TANGRAM_FRAGMENT_SHADER\nuniform sampler2D u_rasters[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture samplers\nuniform vec2 u_raster_sizes[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture sizes (width/height in pixels)\nuniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile texture UV starting offset for tile\n\n// Note: the raster accessors below are #defines rather than functions to\n// avoid issues with constant integer expressions for array indices\n\n// Adjusts UVs in model space to account for raster tile texture overzooming\n// (applies scale and offset adjustments)\n#define adjustRasterUV(raster_index, uv) \\\n    ((uv) * u_raster_offsets[raster_index].z + u_raster_offsets[raster_index].xy)\n\n// Returns the UVs of the current model position for a raster sampler\n#define currentRasterUV(raster_index) \\\n    (adjustRasterUV(raster_index, v_modelpos_base_zoom.xy))\n\n// Returns pixel location in raster tile texture at current model position\n#define currentRasterPixel(raster_index) \\\n    (currentRasterUV(raster_index) * rasterPixelSize(raster_index))\n\n// Samples a raster tile texture for the current model position\n#define sampleRaster(raster_index) \\\n    (texture2D(u_rasters[raster_index], currentRasterUV(raster_index)))\n\n// Samples a raster tile texture for a given pixel\n#define sampleRasterAtPixel(raster_index, pixel) \\\n    (texture2D(u_rasters[raster_index], adjustRasterUV(raster_index, (pixel) / rasterPixelSize(raster_index))))\n\n// Returns size of raster sampler in pixels\n#define rasterPixelSize(raster_index) \\\n    (u_raster_sizes[raster_index])\n\n#endif\n";
+var rasters_source = "// Uniforms defining raster textures and macros for accessing them\n\n#ifdef TANGRAM_FRAGMENT_SHADER\nuniform sampler2D u_rasters[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture samplers\nuniform vec2 u_raster_sizes[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture sizes (width/height in pixels)\nuniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile texture UV starting offset for tile\n\n// Raster sources can optionally mask by the alpha channel (render with only full or no alpha, based on a threshold),\n// which is used for handling transparency outside the raster image when rendering with opaque blending\n#if defined(TANGRAM_HAS_MASKED_RASTERS) && !defined(TANGRAM_ALL_MASKED_RASTERS) // only add uniform if we need it\nuniform bool u_raster_mask_alpha;\n#endif\n\n// Note: the raster accessors below are #defines rather than functions to\n// avoid issues with constant integer expressions for array indices\n\n// Adjusts UVs in model space to account for raster tile texture overzooming\n// (applies scale and offset adjustments)\n#define adjustRasterUV(raster_index, uv) \\\n    ((uv) * u_raster_offsets[raster_index].z + u_raster_offsets[raster_index].xy)\n\n// Returns the UVs of the current model position for a raster sampler\n#define currentRasterUV(raster_index) \\\n    (adjustRasterUV(raster_index, v_modelpos_base_zoom.xy))\n\n// Returns pixel location in raster tile texture at current model position\n#define currentRasterPixel(raster_index) \\\n    (currentRasterUV(raster_index) * rasterPixelSize(raster_index))\n\n// Samples a raster tile texture for the current model position\n#define sampleRaster(raster_index) \\\n    (texture2D(u_rasters[raster_index], currentRasterUV(raster_index)))\n\n// Samples a raster tile texture for a given pixel\n#define sampleRasterAtPixel(raster_index, pixel) \\\n    (texture2D(u_rasters[raster_index], adjustRasterUV(raster_index, (pixel) / rasterPixelSize(raster_index))))\n\n// Returns size of raster sampler in pixels\n#define rasterPixelSize(raster_index) \\\n    (u_raster_sizes[raster_index])\n\n#endif\n";
 
 // Rendering styles
 
 var Style = {
-  init({
-    generation,
-    styles,
-    sources = {},
-    introspection
-  } = {}) {
+  init(_temp) {
+    let _ref = _temp === void 0 ? {} : _temp,
+        generation = _ref.generation,
+        styles = _ref.styles,
+        _ref$sources = _ref.sources,
+        sources = _ref$sources === void 0 ? {} : _ref$sources,
+        introspection = _ref.introspection;
+
     this.setGeneration(generation);
     this.styles = styles; // styles for scene
 
@@ -7613,17 +6513,16 @@ var Style = {
     // Scene generation id this style was created for
     this.generation = generation; // Provide a hook for this object to be called from worker threads
 
-    this.main_thread_target = ['Style', this.name, this.generation].join('/');
+    this.main_thread_target = ['Style', this.name, this.generation].join('_');
 
     if (Thread.is_main) {
       WorkerBroker$1.addTarget(this.main_thread_target, this);
     }
   },
 
-  fillVertexTemplate(vertex_layout, attribute, value, {
-    size,
-    offset
-  }) {
+  fillVertexTemplate(vertex_layout, attribute, value, _ref2) {
+    let size = _ref2.size,
+        offset = _ref2.offset;
     offset = offset === undefined ? 0 : offset;
     let index = vertex_layout.index[attribute];
 
@@ -7649,7 +6548,7 @@ var Style = {
   },
 
   // Finalizes an object holding feature data (for a tile or other object)
-  endData(tile) {
+  async endData(tile) {
     var tile_data = this.tile_data[tile.id];
     this.tile_data[tile.id] = null;
 
@@ -7670,9 +6569,9 @@ var Style = {
       // Blocks mesh completion to avoid flickering
 
 
-      return this.buildRasterTextures(tile, tile_data).then(tile_data => tile_data);
+      return this.buildRasterTextures(tile, tile_data);
     } else {
-      return Promise.resolve(null); // don't send tile data back if doesn't have geometry
+      return null; // don't send tile data back if doesn't have geometry
     }
   },
 
@@ -7695,17 +6594,14 @@ var Style = {
     return meshes[variant.key];
   },
 
-  vertexLayoutForMeshVariant(variant) {
-    return this.vertex_layout;
+  vertexLayoutForMeshVariant()
+  /*variant*/
+  {// styles must implement
   },
 
-  default_mesh_variant: {
-    key: 0,
-    order: 0
-  },
-
-  meshVariantTypeForDraw(draw) {
-    return this.default_mesh_variant;
+  meshVariantTypeForDraw()
+  /*draw*/
+  {// styles must implement
   },
 
   addFeature(feature, draw, context) {
@@ -7725,9 +6621,7 @@ var Style = {
       return; // skip feature
     }
 
-    if (this.buildGeometry(feature.geometry, style,
-    /*mesh,*/
-    context) > 0) {
+    if (this.buildGeometry(feature.geometry, style, context) > 0) {
       feature.generation = this.generation; // track scene generation that feature was rendered for
     }
   },
@@ -7810,11 +6704,11 @@ var Style = {
 
       if (style.order == null && this.blend !== 'overlay') {
         let msg = `Layer '${draw.layers.join(', ')}', draw group '${draw.group}': `;
-        msg += `'order' parameter is required unless blend mode is 'overlay'`;
+        msg += '\'order\' parameter is required unless blend mode is \'overlay\'';
 
         if (draw.order != null) {
-          msg += `; 'order' was set to a dynamic value (e.g. string tied to feature property, `;
-          msg += `or JS function), but evaluated to null for one or more features`;
+          msg += '; \'order\' was set to a dynamic value (e.g. string tied to feature property, ';
+          msg += 'or JS function), but evaluated to null for one or more features';
         }
 
         log({
@@ -7850,7 +6744,9 @@ var Style = {
     }
   },
 
-  _parseFeature(feature, draw, context) {
+  _parseFeature()
+  /*feature, draw, context*/
+  {
     return this.feature_style;
   },
 
@@ -7940,7 +6836,11 @@ var Style = {
     this.max_texture_size = Texture.getMaxTextureSize(this.gl);
   },
 
-  makeMesh(vertex_data, vertex_elements, options = {}) {
+  makeMesh(vertex_data, vertex_elements, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     let vertex_layout = this.vertexLayoutForMeshVariant(options.variant);
     return new VBOMesh(this.gl, vertex_data, vertex_elements, vertex_layout, options);
   },
@@ -7950,7 +6850,11 @@ var Style = {
   },
 
   // Get a specific program, compiling if necessary
-  getProgram(key = 'program') {
+  getProgram(key) {
+    if (key === void 0) {
+      key = 'program';
+    }
+
     this.compileSetup();
     const program = this[key];
 
@@ -8039,7 +6943,11 @@ var Style = {
   },
 
   // Add a shader block
-  addShaderBlock(key, block, scope = null) {
+  addShaderBlock(key, block, scope) {
+    if (scope === void 0) {
+      scope = null;
+    }
+
     this.shaders.blocks = this.shaders.blocks || {};
     this.shaders.blocks[key] = this.shaders.blocks[key] || [];
     this.shaders.blocks[key].push(block);
@@ -8053,9 +6961,17 @@ var Style = {
     if (this.shaders.blocks) {
       this.shaders.blocks[key] = null;
     }
+
+    if (this.shaders.block_scopes) {
+      this.shaders.block_scopes[key] = null;
+    }
   },
 
-  replaceShaderBlock(key, block, scope = null) {
+  replaceShaderBlock(key, block, scope) {
+    if (scope === void 0) {
+      scope = null;
+    }
+
     this.removeShaderBlock(key);
     this.addShaderBlock(key, block, scope);
   },
@@ -8112,7 +7028,11 @@ var Style = {
     this.defines.TANGRAM_NUM_RASTER_SOURCES = `${num_raster_sources}`; // force to string to avoid auto-float conversion
 
     if (num_raster_sources > 0) {
-      // Use model position of tile's coordinate zoom for raster tile texture UVs
+      // Track how many raster sources have alpha masking (used for handling transparency outside raster image)
+      const num_masked_rasters = Object.keys(this.sources).filter(s => this.sources[s].mask_alpha).length;
+      this.defines.TANGRAM_HAS_MASKED_RASTERS = num_masked_rasters > 0;
+      this.defines.TANGRAM_ALL_MASKED_RASTERS = num_masked_rasters === num_raster_sources; // Use model position of tile's coordinate zoom for raster tile texture UVs
+
       this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true; // Uniforms and samplers
 
       this.replaceShaderBlock('raster', rasters_source, 'Raster');
@@ -8120,89 +7040,100 @@ var Style = {
   },
 
   // Load raster tile textures and set uniforms
-  buildRasterTextures(tile, tile_data) {
+  async buildRasterTextures(tile, tile_data) {
+    // skip if style doesn't support rasters
     if (!this.hasRasters()) {
-      return Promise.resolve(tile_data);
-    }
+      return tile_data;
+    } // skip if source didn't attach any rasters to tile
 
-    let configs = {}; // texture configs to pass to texture builder, keyed by texture name
 
-    let index = {}; // index into raster sampler array, keyed by texture name
-    // TODO: data source could retrieve raster texture URLs
-
-    tile.rasters.map(r => this.sources[r]).filter(x => x).forEach((source, i) => {
-      if (source instanceof RasterTileSource) {
-        let config = source.tileTexture(tile);
-        configs[config.url] = config;
-        index[config.url] = i;
-      }
-    });
-
-    if (Object.keys(configs).length === 0) {
-      return Promise.resolve(tile_data);
+    if (tile.rasters.length === 0) {
+      return tile_data;
     } // Load textures on main thread and return when done
     // We want to block the building of a raster tile mesh until its texture is loaded,
     // to avoid flickering while loading (texture will render as black)
 
 
-    return WorkerBroker$1.postMessage(this.main_thread_target + '.loadTextures', configs).then(textures => {
-      if (!textures || textures.length < 1) {
-        // no textures found (unexpected)
-        // TODO: warning
-        return tile_data;
-      } else if (textures.some(t => !t.loaded)) {
-        // some textures failed, throw out style for this tile
-        return null;
-      } // Set texture uniforms (returned after loading from main thread)
-
-
-      tile_data.uniforms = tile_data.uniforms || {};
-      tile_data.textures = tile_data.textures || [];
-      let u_samplers = tile_data.uniforms['u_rasters'] = [];
-      let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
-      let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
-      textures.forEach(t => {
-        let i = index[t.name];
-        let raster_coords = configs[t.name].coords; // tile coords of raster tile
-
-        u_samplers[i] = t.name;
-        tile_data.textures.push(t.name);
-        u_sizes[i] = [t.width, t.height]; // Tile geometry may be at a higher zoom than the raster tile texture,
-        // (e.g. an overzoomed raster tile), in which case we need to adjust the
-        // raster texture UVs to offset to the appropriate starting point for
-        // this geometry tile.
-
-        if (tile.coords.z > raster_coords.z) {
-          let dz = tile.coords.z - raster_coords.z; // # of levels raster source is overzoomed
-
-          let dz2 = Math.pow(2, dz);
-          u_offsets[i] = [(tile.coords.x % dz2 + dz2) % dz2 / dz2, // double-modulo to handle negative (wrapped) tile coords
-          (dz2 - 1 - tile.coords.y % dz2) / dz2, // GL texture coords are +Y up
-          1 / dz2];
-        } else {
-          u_offsets[i] = [0, 0, 1];
-        }
-      });
-      return tile_data;
+    const textures = await WorkerBroker$1.postMessage(`${this.main_thread_target}.loadTextures`, {
+      coords: tile.coords,
+      source: tile.source,
+      rasters: tile.rasters,
+      min: tile.min,
+      max: tile.max
     });
+
+    if (!textures || textures.length < 1) {
+      // no textures found (unexpected)
+      // TODO: warning
+      return tile_data;
+    } else if (textures.some(t => !t.loaded)) {
+      // some textures failed, throw out style for this tile
+      return null;
+    } // Enable alpha masking if needed (for transparency outside raster image, on first raster only)
+
+
+    tile_data.uniforms['u_raster_mask_alpha'] = this.sources[tile.rasters[0]].mask_alpha === true; // Set texture uniforms (returned after loading from main thread)
+
+    const u_samplers = tile_data.uniforms['u_rasters'] = [];
+    const u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
+    const u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
+    textures.forEach(t => {
+      const i = t.index;
+      u_samplers[i] = t.name;
+      tile_data.textures.push(t.name);
+      u_sizes[i] = [t.width, t.height]; // Tile geometry may be at a higher zoom than the raster tile texture,
+      // (e.g. an overzoomed raster tile), in which case we need to adjust the
+      // raster texture UVs to offset to the appropriate starting point for
+      // this geometry tile.
+
+      if (tile.coords.z > t.coords.z) {
+        let dz = tile.coords.z - t.coords.z; // # of levels raster source is overzoomed
+
+        let dz2 = Math.pow(2, dz);
+        u_offsets[i] = [(tile.coords.x % dz2 + dz2) % dz2 / dz2, // double-modulo to handle negative (wrapped) tile coords
+        (dz2 - 1 - tile.coords.y % dz2) / dz2, // GL texture coords are +Y up
+        1 / dz2];
+      } else {
+        u_offsets[i] = [0, 0, 1];
+      }
+    });
+    return tile_data;
   },
 
+  // Determine which raster tile textures need to load for this tile, load them and return metadata to worker
   // Called on main thread
-  loadTextures(textures) {
-    // NB: only return name and size of textures loaded, because we can't send actual texture objects to worker
-    return Texture.createFromObject(this.gl, textures).then(() => {
-      return Promise.all(Object.keys(textures).map(t => {
-        return Texture.textures[t] && Texture.textures[t].load();
-      }).filter(x => x));
-    }).then(textures => {
-      textures.forEach(t => t.retain());
-      return textures.map(t => ({
-        name: t.name,
-        width: t.width,
-        height: t.height,
-        loaded: t.loaded
-      }));
+  async loadTextures(tile) {
+    let configs = {}; // texture configs to pass to texture builder, keyed by texture name
+
+    let index = {}; // index into raster sampler array, keyed by texture name
+
+    let queue = []; // Find raster textures that need to be loaded
+
+    tile.rasters.map(r => this.sources[r]).filter(x => x).forEach((source, i) => {
+      if (source instanceof RasterTileSource) {
+        queue.push(source.tileTexture(tile, this).then(config => {
+          configs[config.name] = config;
+          index[config.name] = i;
+        }));
+      }
     });
+    await Promise.all(queue); // Create and load raster textures
+
+    await Texture.createFromObject(this.gl, configs);
+    let textures = await Promise.all(Object.keys(configs).map(t => Texture.textures[t] && Texture.textures[t].load()).filter(x => x));
+    textures.forEach(t => t.retain()); // Take a subset of texture metadata, and decorate with raster-specific info
+    // NB: only return name and size of textures loaded, because we can't send actual texture objects to worker
+
+    return textures.map(t => ({
+      name: t.name,
+      width: t.width,
+      height: t.height,
+      loaded: t.loaded,
+      index: index[t.name],
+      // raster sampler index
+      coords: configs[t.name].coords // tile coords of raster tile
+
+    }));
   },
 
   // Setup any GL state for rendering
@@ -8389,9 +7320,11 @@ let array_types = {
 // Used to construct a mesh/VBO for rendering
 
 class VertexData {
-  constructor(vertex_layout, {
-    prealloc = 500
-  } = {}) {
+  constructor(vertex_layout, _temp) {
+    let _ref = _temp === void 0 ? {} : _temp,
+        _ref$prealloc = _ref.prealloc,
+        prealloc = _ref$prealloc === void 0 ? 500 : _ref$prealloc;
+
     this.vertex_layout = vertex_layout;
     this.vertex_elements = new VertexElements();
     this.stride = this.vertex_layout.stride;
@@ -8477,7 +7410,9 @@ class VertexLayout {
   constructor(attribs) {
     this.attribs = attribs; // array of attributes, specified as standard GL attrib options
 
-    this.dynamic_attribs = this.attribs.filter(x => !x.static); // attributes with per-vertex values, used to build VBOs
+    this.dynamic_attribs = this.attribs.filter(x => x.static == null); // attributes with per-vertex values, used to build VBOs
+
+    this.static_attribs = this.attribs.filter(x => x.static != null); // attributes with fixed values
 
     this.components = []; // list of type and offset info about each attribute component
 
@@ -8545,56 +7480,46 @@ class VertexLayout {
           attrib.method = `vertexAttrib${attrib.static.length}fv`;
         }
     }
-  } // Setup a vertex layout for a specific GL program
+  } // Enables dynamic (array-based) attributes for a given GL program
   // Assumes that the desired vertex buffer (VBO) is already bound
-  // If a given program doesn't include all attributes, it can still use the vertex layout
+  // If the program doesn't include all attributes, it can still use the vertex layout
   // to read those attribs that it does recognize, using the attrib offsets to skip others.
 
 
-  enable(gl, program, force) {
-    let attrib, location; // Enable all attributes for this layout
+  enableDynamicAttributes(gl, program) {
+    // Disable all attributes
+    for (const location in VertexLayout.enabled_attribs) {
+      gl.disableVertexAttribArray(location);
+    }
 
-    for (let a = 0; a < this.attribs.length; a++) {
-      attrib = this.attribs[a];
-      location = program.attribute(attrib.name).location;
+    VertexLayout.enabled_attribs = {}; // Enable dynamic attributes for this layout
+
+    this.dynamic_attribs.forEach(attrib => {
+      const location = program.attribute(attrib.name).location;
 
       if (location !== -1) {
-        // Dynamic attribute
-        if (attrib.static == null) {
-          if (!VertexLayout.enabled_attribs[location] || force) {
-            gl.enableVertexAttribArray(location);
-          }
-
-          gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
-          VertexLayout.enabled_attribs[location] = program;
-        } // Static attribute
-        else {
-            if (gl[attrib.method] instanceof Function) {
-              // N.B.: Safari appears to require an explicit array enable to set vertex attribute as "active"
-              // (the static attribute value method does not work without it). So the attribute is temporarily
-              // enabled as an array, then disabled.
-              gl.enableVertexAttribArray(location);
-              gl[attrib.method](location, attrib.static);
-              gl.disableVertexAttribArray(location);
-              delete VertexLayout.enabled_attribs[location];
-            }
-          }
+        gl.enableVertexAttribArray(location);
+        gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
+        VertexLayout.enabled_attribs[location] = program;
       }
-    } // Disable any previously bound attributes that aren't for this layout
+    });
+  } // Enable static attributes for this layout. Since these aren't captured as part of Vertex Array Object state,
+  // they are enabled separately.
 
 
-    for (location in VertexLayout.enabled_attribs) {
-      this.disableUnusedAttribute(gl, location, program);
-    }
-  } // Disable an attribute if it was not enabled for the specified program
-  // NOTE: this was moved out of the inner loop in enable() to assist w/VM optimization
+  enableStaticAttributes(gl, program) {
+    this.static_attribs.forEach(attrib => {
+      const location = program.attribute(attrib.name).location;
 
-
-  disableUnusedAttribute(gl, location, program) {
-    if (VertexLayout.enabled_attribs[location] !== program) {
-      gl.disableVertexAttribArray(location);
-      delete VertexLayout.enabled_attribs[location];
-    }
+      if (location !== -1 && gl[attrib.method] instanceof Function) {
+        // N.B.: Safari appears to require an explicit array enable to set vertex attribute as "active"
+        // (the static attribute value method does not work without it). So the attribute is temporarily
+        // enabled as an array, then disabled.
+        gl.enableVertexAttribArray(location);
+        gl[attrib.method](location, attrib.static);
+        gl.disableVertexAttribArray(location);
+      }
+    });
   }
 
   createVertexData() {
@@ -8620,7 +7545,7 @@ class VertexLayout {
       // `v` = plain JS array containing vertex data
       // `vs` = typed arrays (one per GL type needed for this vertex layout)
       // `off` = current offset into VBO, in bytes
-      let src = [`var t, o;`]; // Sort by array type to reduce redundant array look-up and offset calculation
+      let src = ['var t, o;']; // Sort by array type to reduce redundant array look-up and offset calculation
 
       let last_type;
       let components = [...this.components];
@@ -9338,11 +8263,10 @@ const up_vec3 = [0, 0, 1];
  * @return {number} the number of the resulting geometries (triangles)
  */
 
-function buildPolygons(polygons, vertex_data, vertex_template, {
-  texcoord_index,
-  texcoord_scale,
-  texcoord_normalize
-}) {
+function buildPolygons(polygons, vertex_data, vertex_template, _ref) {
+  let texcoord_index = _ref.texcoord_index,
+      texcoord_scale = _ref.texcoord_scale,
+      texcoord_normalize = _ref.texcoord_normalize;
   let vertex_elements = vertex_data.vertex_elements,
       num_polygons = polygons.length,
       geom_count = 0,
@@ -9362,12 +8286,12 @@ function buildPolygons(polygons, vertex_data, vertex_template, {
   if (texcoord_index) {
     texcoord_normalize = texcoord_normalize || 1;
 
-    var _ref = texcoord_scale || default_uvs;
+    var _ref2 = texcoord_scale || default_uvs;
 
-    min_u = _ref[0];
-    min_v = _ref[1];
-    max_u = _ref[2];
-    max_v = _ref[3];
+    min_u = _ref2[0];
+    min_v = _ref2[1];
+    max_u = _ref2[2];
+    max_v = _ref2[3];
   }
 
   for (let p = 0; p < num_polygons; p++) {
@@ -9414,14 +8338,13 @@ function buildPolygons(polygons, vertex_data, vertex_template, {
   return geom_count;
 } // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
 
-function buildExtrudedPolygons(polygons, z, height, min_height, vertex_data, vertex_template, normal_index, normal_normalize, {
-  remove_tile_edges,
-  tile_edge_tolerance,
-  texcoord_index,
-  texcoord_scale,
-  texcoord_normalize,
-  winding
-}) {
+function buildExtrudedPolygons(polygons, z, height, min_height, vertex_data, vertex_template, normal_index, normal_normalize, _ref3) {
+  let remove_tile_edges = _ref3.remove_tile_edges,
+      tile_edge_tolerance = _ref3.tile_edge_tolerance,
+      texcoord_index = _ref3.texcoord_index,
+      texcoord_scale = _ref3.texcoord_scale,
+      texcoord_normalize = _ref3.texcoord_normalize,
+      winding = _ref3.winding;
   // Top
   var min_z = z + (min_height || 0);
   var max_z = z + height;
@@ -9438,11 +8361,11 @@ function buildExtrudedPolygons(polygons, z, height, min_height, vertex_data, ver
   if (texcoord_index) {
     texcoord_normalize = texcoord_normalize || 1;
 
-    var _ref2 = texcoord_scale || default_uvs,
-        min_u = _ref2[0],
-        min_v = _ref2[1],
-        max_u = _ref2[2],
-        max_v = _ref2[3];
+    var _ref4 = texcoord_scale || default_uvs,
+        min_u = _ref4[0],
+        min_v = _ref4[1],
+        max_u = _ref4[2],
+        max_v = _ref4[3];
 
     var texcoords = [[min_u, max_v], [min_u, min_v], [max_u, min_v], [max_u, max_v]];
   }
@@ -9514,9 +8437,9 @@ function triangulatePolygon(data) {
   return earcut_1(data.vertices, data.holes, data.dimensions);
 }
 
-var polygons_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    // xy: extrusion direction in xy plane\n    // z:  half-width of line (amount to extrude)\n    // w:  scaling factor for interpolating width between zooms\n    attribute vec2 a_extrude;\n    // xy: direction of line, for getting perpendicular offset\n    attribute vec2 a_offset;\n    // x: zoom scaling factor for line width\n    // y: zoom scaling factor for line offset\n    attribute vec2 a_scaling;\n\n    uniform float u_v_scale_adjust;\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#define UNPACK_SCALING(x) (x / 1024.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= u_v_scale_adjust;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 extrude = a_extrude.xy;\n        vec2 offset = a_offset.xy;\n\n        // Adjust line width based on zoom level, to prevent proxied lines\n        // from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from\n        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines\n        // from becoming too small when far away).\n        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));\n\n        // Interpolate line width between zooms\n        float mdz = (dz - 0.5) * 2.; // zoom from mid-point\n        extrude -= extrude * UNPACK_SCALING(a_scaling.x) * mdz;\n\n        // Interpolate line offset between zooms\n        // Scales from the larger value to the smaller one\n        float dwdz = UNPACK_SCALING(a_scaling.y);\n        float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates \"direction\" of scaling\n        offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale \"up\" or \"down\"\n\n        // Scale line width and offset to be consistent in screen space\n        float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));\n        extrude *= ssz;\n        offset *= ssz;\n\n        // Modify line width before extrusion\n        #ifdef TANGRAM_BLOCK_WIDTH\n            float width = 1.;\n            #pragma tangram: width\n            extrude *= width;\n        #endif\n\n        position.xy += extrude + offset;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n\n    gl_Position = position;\n}\n";
+var polygons_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    attribute vec2 a_extrude; // extrusion direction in xy plane\n    attribute vec2 a_offset;  // offset direction in xy plane\n\n    // Polygon and line styles have slightly different VBO layouts, saving memory by optimizing vertex packing.\n    // All lines have a width scaling factor, but only some have a height (position.z) or offset.\n    // The vertex height is stored in different attributes to account for this.\n    attribute vec2 a_z_and_offset_scale; // stores vertex height in x, and offset scaling factor in y\n    #define TANGRAM_POSITION_Z a_z_and_offset_scale.x // vertex height is stored in separate line-specific attrib\n    #define TANGRAM_OFFSET_SCALING a_z_and_offset_scale.y // zoom scaling factor for line offset\n    #define TANGRAM_WIDTH_SCALING a_position.z // zoom scaling factor for line width (stored in position attrib)\n\n    uniform float u_v_scale_adjust; // scales texture UVs for line dash patterns w/fractional pixel width\n#else\n    #define TANGRAM_POSITION_Z a_position.z // vertex height\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#define TANGRAM_UNPACK_SCALING(x) (x / 1024.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= u_v_scale_adjust;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, TANGRAM_POSITION_Z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 extrude = a_extrude.xy;\n        vec2 offset = a_offset.xy;\n\n        // Adjust line width based on zoom level, to prevent proxied lines\n        // from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from\n        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines\n        // from becoming too small when far away).\n        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));\n\n        // Interpolate line width between zooms\n        float mdz = (dz - 0.5) * 2.; // zoom from mid-point\n        extrude -= extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * mdz;\n\n        // Interpolate line offset between zooms\n        // Scales from the larger value to the smaller one\n        float dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);\n        float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates \"direction\" of scaling\n        offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale \"up\" or \"down\"\n\n        // Scale line width and offset to be consistent in screen space\n        float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));\n        extrude *= ssz;\n        offset *= ssz;\n\n        // Modify line width before extrusion\n        #ifdef TANGRAM_BLOCK_WIDTH\n            float width = 1.;\n            #pragma tangram: width\n            extrude *= width;\n        #endif\n\n        position.xy += extrude + offset;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n\n    gl_Position = position;\n}\n";
 
-var polygons_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#ifdef TANGRAM_EXTRUDE_LINES\n    uniform bool u_has_line_texture;\n    uniform sampler2D u_texture;\n    uniform float u_texture_ratio;\n    uniform vec4 u_dash_background_color;\n#endif\n\n#define TANGRAM_NORMAL v_normal\n\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        color *= sampleRaster(0); // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_EXTRUDE_LINES\n        if (u_has_line_texture) {\n            vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n            vec4 _line_color = texture2D(u_texture, _line_st);\n\n            if (_line_color.a < TANGRAM_ALPHA_TEST) {\n                #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) // TODO: should be for opaque blend only?\n                    // use discard when alpha blending is unavailable\n                    if (u_dash_background_color.a == 0.) {\n                        discard;\n                    }\n                    color = u_dash_background_color;\n                #else\n                    // use alpha channel when blending is available\n                    color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));\n                #endif\n\n\n            }\n            else {\n                color *= _line_color;\n            }\n        }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
+var polygons_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#ifdef TANGRAM_EXTRUDE_LINES\n    uniform bool u_has_line_texture;\n    uniform sampler2D u_texture;\n    uniform float u_texture_ratio;\n    uniform vec4 u_dash_background_color;\n#endif\n\n#define TANGRAM_NORMAL v_normal\n\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n    { // enclose in scope to avoid leakage of internal variables\n        vec4 raster_color = sampleRaster(0);\n\n        #ifdef TANGRAM_BLEND_OPAQUE\n            // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.\n            // This is used for handling transparency outside the raster image when rendering with opaque blending,\n            // which doesn't support alpha (with expected results anyway).\n            #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources\n            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip conditional if *only* masked raster sources (always true)\n            if (u_raster_mask_alpha) {\n            #else\n            {\n            #endif\n                if (raster_color.a < 1. - TANGRAM_EPSILON) {\n                    discard;\n                }\n                // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)\n                raster_color.a = 1.;\n            }\n            #endif\n        #endif\n\n        color *= raster_color; // multiplied to tint texture color\n    }\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_EXTRUDE_LINES\n    { // enclose in scope to avoid leakage of internal variables\n        if (u_has_line_texture) {\n            vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n            vec4 _line_color = texture2D(u_texture, _line_st);\n\n            if (_line_color.a < TANGRAM_ALPHA_TEST) {\n                #if defined(TANGRAM_BLEND_OPAQUE)\n                    // use discard when alpha blending is unavailable\n                    if (u_dash_background_color.a < 1. - TANGRAM_EPSILON) {\n                        discard;\n                    }\n                    color = vec4(u_dash_background_color.rgb, 1.); // only allow full alpha in opaque blend mode\n                #else\n                    // use alpha channel when blending is available\n                    color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));\n                #endif\n            }\n            else {\n                color *= _line_color;\n            }\n        }\n    }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
 
 // Polygon rendering style
 const Polygons = Object.create(Style);
@@ -9549,7 +8472,7 @@ Object.assign(Polygons, {
 
     style.variant = draw.variant; // pre-calculated mesh variant
 
-    style.z = draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
+    style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
     style.z *= Geo$1.height_scale; // provide sub-meter precision of height values
 
     style.extrude = StyleParser.evalProperty(draw.extrude, context);
@@ -9588,10 +8511,14 @@ Object.assign(Polygons, {
 
   // Calculate and store mesh variant (unique by draw group but not feature)
   computeVariant(draw) {
-    let selection = this.selection && draw.interactive ? 1 : 0; // NB: if interactive is function, enable selection for whole draw group
+    // Factors that determine a unique mesh rendering variant
+    let selection = draw.interactive ? 1 : 0; // whether feature has interactivity
 
-    let texcoords = this.texcoords ? 1 : 0;
-    let key = selection + '/' + texcoords;
+    let normal = draw.extrude != null ? 1 : 0; // whether feature has extrusion (need per-vertex normals)
+
+    let texcoords = this.texcoords ? 1 : 0; // whether feature has texture UVs
+
+    let key = [selection, normal, texcoords].join('/');
     draw.variant = key;
 
     if (Polygons.variants[key] == null) {
@@ -9599,6 +8526,7 @@ Object.assign(Polygons, {
         key,
         order: 0,
         selection,
+        normal,
         texcoords
       };
     }
@@ -9608,6 +8536,8 @@ Object.assign(Polygons, {
   // Create or return desired vertex layout permutation based on flags
   vertexLayoutForMeshVariant(variant) {
     if (Polygons.vertex_layouts[variant.key] == null) {
+      // Attributes for this mesh variant
+      // Optional attributes have placeholder values assigned with `static` parameter
       const attribs = [{
         name: 'a_position',
         size: 4,
@@ -9617,7 +8547,8 @@ Object.assign(Polygons, {
         name: 'a_normal',
         size: 3,
         type: gl$1.BYTE,
-        normalized: true
+        normalized: true,
+        static: variant.normal ? null : [0, 0, 1]
       }, // gets padded to 4-bytes
       {
         name: 'a_color',
@@ -9653,29 +8584,33 @@ Object.assign(Polygons, {
    * A plain JS array matching the order of the vertex layout.
    */
   makeVertexTemplate(style, mesh) {
-    let i = 0; // position - x & y coords will be filled in per-vertex below
+    let i = 0; // a_position.xyz - vertex position
+    // a_position.w - layer order
 
     this.vertex_template[i++] = 0;
     this.vertex_template[i++] = 0;
-    this.vertex_template[i++] = style.z || 0; // layer order - w coord of 'position' attribute (for packing efficiency)
+    this.vertex_template[i++] = style.z || 0;
+    this.vertex_template[i++] = this.scaleOrder(style.order); // a_normal.xyz - surface normal
+    // only stored per-vertex for extruded features (hardcoded to 'up' for others)
 
-    this.vertex_template[i++] = this.scaleOrder(style.order); // normal
+    if (mesh.variant.normal) {
+      this.vertex_template[i++] = 0;
+      this.vertex_template[i++] = 0;
+      this.vertex_template[i++] = 1 * 127;
+    } // a_color.rgba - feature color
 
-    this.vertex_template[i++] = 0;
-    this.vertex_template[i++] = 0;
-    this.vertex_template[i++] = 1 * 127; // color
 
     this.vertex_template[i++] = style.color[0] * 255;
     this.vertex_template[i++] = style.color[1] * 255;
     this.vertex_template[i++] = style.color[2] * 255;
-    this.vertex_template[i++] = style.color[3] * 255; // selection color
+    this.vertex_template[i++] = style.color[3] * 255; // a_selection_color.rgba - selection color
 
     if (mesh.variant.selection) {
       this.vertex_template[i++] = style.selection_color[0] * 255;
       this.vertex_template[i++] = style.selection_color[1] * 255;
       this.vertex_template[i++] = style.selection_color[2] * 255;
       this.vertex_template[i++] = style.selection_color[3] * 255;
-    } // Add texture UVs to template only if needed
+    } // a_texcoord.uv - texture coordinates
 
 
     if (mesh.variant.texcoords) {
@@ -9737,22 +8672,20 @@ const zero_v = [0, 0],
       one_v = [1, 0],
       mid_v = [0.5, 0]; // reusable instances, updated with V coordinate
 
-function buildPolylines(lines, width, vertex_data, vertex_template, {
-  closed_polygon,
-  remove_tile_edges,
-  tile_edge_tolerance,
-  texcoord_index,
-  texcoord_scale,
-  texcoord_width,
-  texcoord_ratio,
-  texcoord_normalize,
-  extrude_index,
-  offset_index,
-  join,
-  cap,
-  miter_limit,
-  offset
-}) {
+function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
+  let closed_polygon = _ref.closed_polygon,
+      remove_tile_edges = _ref.remove_tile_edges,
+      tile_edge_tolerance = _ref.tile_edge_tolerance,
+      texcoord_index = _ref.texcoord_index,
+      texcoord_width = _ref.texcoord_width,
+      texcoord_ratio = _ref.texcoord_ratio,
+      texcoord_normalize = _ref.texcoord_normalize,
+      extrude_index = _ref.extrude_index,
+      offset_index = _ref.offset_index,
+      join = _ref.join,
+      cap = _ref.cap,
+      miter_limit = _ref.miter_limit,
+      offset = _ref.offset;
   var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
   var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter; // Configure miter limit
 
@@ -10363,7 +9296,11 @@ function permuteLine(line, startIndex) {
 // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash
 const default_dash_color = [255, 255, 255, 255];
 const default_background_color = [0, 0, 0, 0];
-function renderDashArray(pattern, options = {}) {
+function renderDashArray(pattern, options) {
+  if (options === void 0) {
+    options = {};
+  }
+
   const dash_pixel = options.dash_color || default_dash_color;
   const background_color = options.background_color || default_background_color;
   const dashes = pattern;
@@ -10404,7 +9341,7 @@ Lines.variants = {}; // mesh variants by variant key
 
 Lines.vertex_layouts = {}; // vertex layouts by variant key
 
-Lines.dash_textures = {}; // needs to be cleared on scene config update
+Lines.dash_textures = {}; // cache previously rendered line dash pattern textures
 
 const DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
 
@@ -10431,7 +9368,7 @@ Object.assign(Lines, {
 
   // Calculate width or offset at zoom given in `context`
   calcDistance(prop, context) {
-    return prop && StyleParser.evalCachedDistanceProperty(prop, context) || 0;
+    return StyleParser.evalCachedDistanceProperty(prop, context) || 0;
   },
 
   // Calculate width or offset at next zoom (used for zoom-based interpolation in shader)
@@ -10556,7 +9493,7 @@ Object.assign(Lines, {
     style.variant = draw.variant; // pre-calculated mesh variant
     // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
 
-    style.z = draw.z && StyleParser.evalCachedDistanceProperty(draw.z || 0, context) || StyleParser.defaults.z;
+    style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
     style.height = feature.properties.height || StyleParser.defaults.height;
     style.extrude = StyleParser.evalProperty(draw.extrude, context);
 
@@ -10575,7 +9512,6 @@ Object.assign(Lines, {
 
     style.z *= Geo$1.height_scale; // provide sub-meter precision of height values
 
-    style.height *= Geo$1.height_scale;
     style.cap = draw.cap;
     style.join = draw.join;
     style.miter_limit = draw.miter_limit;
@@ -10717,7 +9653,7 @@ Object.assign(Lines, {
         log({
           level: 'warn',
           once: true
-        }, `Layer group '${draw.layers.join(', ')}': ` + `line 'outline' specifies non-existent draw style '${draw.outline.style}' (or maybe the style is ` + `defined but is missing a 'base' or has another error), skipping outlines for features matching this layer group`);
+        }, `Layer group '${draw.layers.join(', ')}': ` + `line 'outline' specifies non-existent draw style '${draw.outline.style}' (or maybe the style is ` + 'defined but is missing a \'base\' or has another error), skipping outlines for features matching this layer group');
         draw.outline = null;
       }
     }
@@ -10750,60 +9686,75 @@ Object.assign(Lines, {
   },
 
   // Override
-  endData(tile) {
-    return Style.endData.call(this, tile).then(tile_data => {
-      if (tile_data) {
-        tile_data.uniforms.u_has_line_texture = false;
-        tile_data.uniforms.u_texture = Texture.default;
-        tile_data.uniforms.u_v_scale_adjust = Geo$1.tile_scale;
-        let pending = [];
+  async endData(tile) {
+    const tile_data = await Style.endData.call(this, tile);
 
-        for (let m in tile_data.meshes) {
-          let variant = tile_data.meshes[m].variant;
+    if (tile_data) {
+      tile_data.uniforms.u_has_line_texture = false;
+      tile_data.uniforms.u_texture = Texture.default;
+      tile_data.uniforms.u_v_scale_adjust = Geo$1.tile_scale;
+      let pending = [];
 
-          if (variant.texture) {
-            let uniforms = tile_data.meshes[m].uniforms = tile_data.meshes[m].uniforms || {};
-            uniforms.u_has_line_texture = true;
-            uniforms.u_texture = variant.texture;
-            uniforms.u_texture_ratio = 1;
+      for (let m in tile_data.meshes) {
+        let variant = tile_data.meshes[m].variant;
 
-            if (variant.dash) {
-              uniforms.u_v_scale_adjust = Geo$1.tile_scale * DASH_SCALE;
-              uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
-            }
+        if (variant.texture) {
+          let uniforms = tile_data.meshes[m].uniforms = tile_data.meshes[m].uniforms || {};
+          uniforms.u_has_line_texture = true;
+          uniforms.u_texture = variant.texture;
+          uniforms.u_texture_ratio = 1;
 
-            if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
-              Lines.dash_textures[variant.dash_key] = true;
-              WorkerBroker$1.postMessage(this.main_thread_target + '.getDashTexture', variant.dash);
-            }
+          if (variant.dash) {
+            uniforms.u_v_scale_adjust = Geo$1.tile_scale * DASH_SCALE;
+            uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
+          }
 
-            if (Texture.textures[variant.texture] == null) {
-              pending.push(Texture.syncTexturesToWorker([variant.texture]).then(textures => {
-                let texture = textures[variant.texture];
+          if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
+            Lines.dash_textures[variant.dash_key] = true;
 
-                if (texture) {
-                  uniforms.u_texture_ratio = texture.height / texture.width;
-                }
-              }));
-            } else {
-              let texture = Texture.textures[variant.texture];
-              uniforms.u_texture_ratio = texture.height / texture.width;
+            try {
+              await WorkerBroker$1.postMessage(this.main_thread_target + '.getDashTexture', variant.dash);
+            } catch (e) {
+              log('trace', `${this.name}: line dash texture create failed because style no longer on main thread`);
             }
           }
-        }
 
-        return Promise.all(pending).then(() => tile_data);
+          if (Texture.textures[variant.texture] == null) {
+            pending.push(Texture.syncTexturesToWorker([variant.texture]).then(textures => {
+              let texture = textures[variant.texture];
+
+              if (texture) {
+                uniforms.u_texture_ratio = texture.height / texture.width;
+              }
+            }));
+          } else {
+            let texture = Texture.textures[variant.texture];
+            uniforms.u_texture_ratio = texture.height / texture.width;
+          }
+        }
       }
 
-      return tile_data;
-    });
+      await Promise.all(pending);
+    }
+
+    return tile_data;
   },
 
   // Calculate and store mesh variant (unique by draw group but not feature)
   computeVariant(draw) {
-    let key = draw.offset ? 1 : 0;
+    // Factors that determine a unique mesh rendering variant
+    let key = draw.offset ? 1 : 0; // whether feature has a line offset
+
+    key += '/' + draw.texcoords; // whether feature has texture UVs
+
+    key += '/' + (draw.interactive ? 1 : 0); // whether feature has interactivity
+
+    key += '/' + (draw.extrude || draw.z ? 1 : 0); // whether feature has a z coordinate
+
+    key += '/' + draw.is_outline; // whether this is an outline of a line feature
 
     if (draw.dash_key) {
+      // whether feature has a line dash pattern
       key += draw.dash_key;
 
       if (draw.dash_background_color) {
@@ -10812,13 +9763,11 @@ Object.assign(Lines, {
     }
 
     if (draw.texture_merged) {
+      // whether feature has a line texture
       key += draw.texture_merged;
-    }
+    } // Create unique key
 
-    key += '/' + draw.texcoords;
-    key += '/' + (draw.interactive ? 1 : 0); // NB: if interactive is function, enable selection for whole draw group
 
-    key += '/' + draw.is_outline;
     key = hashString(key);
     draw.variant = key;
 
@@ -10829,6 +9778,7 @@ Object.assign(Lines, {
         // outlines should be drawn first, so inline is on top
         selection: draw.interactive ? 1 : 0,
         offset: draw.offset ? 1 : 0,
+        z_or_offset: draw.offset || draw.extrude || draw.z ? 1 : 0,
         texcoords: draw.texcoords,
         texture: draw.texture_merged,
         dash: draw.dash,
@@ -10842,7 +9792,8 @@ Object.assign(Lines, {
   // Create or return desired vertex layout permutation based on flags
   vertexLayoutForMeshVariant(variant) {
     if (Lines.vertex_layouts[variant.key] == null) {
-      // Basic attributes, others can be added (see texture UVs below)
+      // Attributes for this mesh variant
+      // Optional attributes have placeholder values assigned with `static` parameter
       const attribs = [{
         name: 'a_position',
         size: 4,
@@ -10860,10 +9811,11 @@ Object.assign(Lines, {
         normalized: false,
         static: variant.offset ? null : [0, 0]
       }, {
-        name: 'a_scaling',
+        name: 'a_z_and_offset_scale',
         size: 2,
         type: gl$1.SHORT,
-        normalized: false
+        normalized: false,
+        static: variant.z_or_offset ? null : [0, 0]
       }, {
         name: 'a_texcoord',
         size: 2,
@@ -10898,13 +9850,14 @@ Object.assign(Lines, {
    * A plain JS array matching the order of the vertex layout.
    */
   makeVertexTemplate(style, mesh) {
-    let i = 0; // a_position.xyz - vertex position
+    let i = 0; // a_position.xy - vertex position
+    // a_position.z - line width scaling factor
     // a_position.w - layer order
 
     this.vertex_template[i++] = 0;
     this.vertex_template[i++] = 0;
-    this.vertex_template[i++] = style.z || 0;
-    this.vertex_template[i++] = this.scaleOrder(style.order); // a_extrude.xy - extrusion vector
+    this.vertex_template[i++] = style.width_scale * 1024;
+    this.vertex_template[i++] = this.scaleOrder(style.order); // a_extrude.xy - extrusion vector (vertex extrusion away from center of line)
 
     this.vertex_template[i++] = 0;
     this.vertex_template[i++] = 0; // a_offset.xy - normal vector
@@ -10913,28 +9866,28 @@ Object.assign(Lines, {
     if (mesh.variant.offset) {
       this.vertex_template[i++] = 0;
       this.vertex_template[i++] = 0;
-    } // a_scaling.xy - scaling to previous and next zoom
+    } // a_z_and_offset_scale.xy
 
 
-    this.vertex_template[i++] = style.width_scale * 1024; // line width
+    if (mesh.variant.z_or_offset) {
+      this.vertex_template[i++] = style.z || 0; // feature z position
 
-    this.vertex_template[i++] = style.offset_scale * 1024; // line offset
-    // Add texture UVs to template only if needed
+      this.vertex_template[i++] = style.offset_scale * 1024; // line offset scaling factor
+    } // a_texcoord.uv - texture coordinates
+
 
     if (mesh.variant.texcoords) {
-      // a_texcoord.uv
       this.vertex_template[i++] = 0;
       this.vertex_template[i++] = 0;
-    } // a_color.rgba
+    } // a_color.rgba - feature color
 
 
     this.vertex_template[i++] = style.color[0] * 255;
     this.vertex_template[i++] = style.color[1] * 255;
     this.vertex_template[i++] = style.color[2] * 255;
-    this.vertex_template[i++] = style.color[3] * 255; // selection color
+    this.vertex_template[i++] = style.color[3] * 255; // a_selection_color.rgba - selection color
 
     if (mesh.variant.selection) {
-      // a_selection_color.rgba
       this.vertex_template[i++] = style.selection_color[0] * 255;
       this.vertex_template[i++] = style.selection_color[1] * 255;
       this.vertex_template[i++] = style.selection_color[2] * 255;
@@ -11000,29 +9953,27 @@ Object.assign(Lines, {
 // properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
 // of a sprite between two zoom levels.
 
-function buildQuadsForPoints(points, vertex_data, vertex_template, {
-  texcoord_index,
-  position_index,
-  shape_index,
-  offset_index,
-  offsets_index,
-  pre_angles_index,
-  angles_index
-}, {
-  quad,
-  quad_normalize,
-  offset,
-  offsets,
-  pre_angles,
-  angle,
-  angles,
-  curve,
-  texcoord_scale,
-  texcoord_normalize,
-  pre_angles_normalize,
-  angles_normalize,
-  offsets_normalize
-}) {
+function buildQuadsForPoints(points, vertex_data, vertex_template, _ref, _ref2) {
+  let texcoord_index = _ref.texcoord_index,
+      position_index = _ref.position_index,
+      shape_index = _ref.shape_index,
+      offset_index = _ref.offset_index,
+      offsets_index = _ref.offsets_index,
+      pre_angles_index = _ref.pre_angles_index,
+      angles_index = _ref.angles_index;
+  let quad = _ref2.quad,
+      quad_normalize = _ref2.quad_normalize,
+      offset = _ref2.offset,
+      offsets = _ref2.offsets,
+      pre_angles = _ref2.pre_angles,
+      angle = _ref2.angle,
+      angles = _ref2.angles,
+      curve = _ref2.curve,
+      texcoord_scale = _ref2.texcoord_scale,
+      texcoord_normalize = _ref2.texcoord_normalize,
+      pre_angles_normalize = _ref2.pre_angles_normalize,
+      angles_normalize = _ref2.angles_normalize,
+      offsets_normalize = _ref2.offsets_normalize;
   quad_normalize = quad_normalize || 1;
   let w2 = quad[0] / 2 * quad_normalize;
   let h2 = quad[1] / 2 * quad_normalize;
@@ -11034,11 +9985,11 @@ function buildQuadsForPoints(points, vertex_data, vertex_template, {
   if (texcoord_index) {
     texcoord_normalize = texcoord_normalize || 1;
 
-    var _ref = texcoord_scale || default_uvs,
-        min_u = _ref[0],
-        min_v = _ref[1],
-        max_u = _ref[2],
-        max_v = _ref[3];
+    var _ref3 = texcoord_scale || default_uvs,
+        min_u = _ref3[0],
+        min_v = _ref3[1],
+        max_u = _ref3[2],
+        max_v = _ref3[3];
 
     texcoords = [[min_u, min_v], [max_u, min_v], [max_u, max_v], [min_u, max_v]];
   }
@@ -11103,6 +10054,636 @@ function buildQuadsForPoints(points, vertex_data, vertex_template, {
   return geom_count;
 }
 
+// Sets of values to match for directional and corner anchors
+const lefts = ['left', 'top-left', 'bottom-left'];
+const rights = ['right', 'top-right', 'bottom-right'];
+const tops = ['top', 'top-left', 'top-right'];
+const bottoms = ['bottom', 'bottom-left', 'bottom-right'];
+const PointAnchor = {
+  computeOffset(offset, size, anchor, buffer) {
+    if (buffer === void 0) {
+      buffer = null;
+    }
+
+    if (!anchor || anchor === 'center') {
+      return offset;
+    }
+
+    let offset2 = [offset[0], offset[1]];
+    buffer = buffer || this.default_buffer; // An optional left/right offset
+
+    if (this.isLeftAnchor(anchor)) {
+      offset2[0] -= size[0] / 2;
+
+      if (anchor === 'left') {
+        offset2[0] -= buffer[0];
+      }
+    } else if (this.isRightAnchor(anchor)) {
+      offset2[0] += size[0] / 2;
+
+      if (anchor === 'right') {
+        offset2[0] += buffer[1];
+      }
+    } // An optional top/bottom offset
+
+
+    if (this.isTopAnchor(anchor)) {
+      offset2[1] -= size[1] / 2;
+
+      if (anchor === 'top') {
+        offset2[1] -= buffer[2];
+      }
+    } else if (this.isBottomAnchor(anchor)) {
+      offset2[1] += size[1] / 2;
+
+      if (anchor === 'bottom') {
+        offset2[1] += buffer[3];
+      }
+    }
+
+    return offset2;
+  },
+
+  alignForAnchor(anchor) {
+    if (anchor && anchor !== 'center') {
+      if (this.isLeftAnchor(anchor)) {
+        return 'right';
+      } else if (this.isRightAnchor(anchor)) {
+        return 'left';
+      }
+    }
+
+    return 'center';
+  },
+
+  isLeftAnchor(anchor) {
+    return lefts.indexOf(anchor) > -1;
+  },
+
+  isRightAnchor(anchor) {
+    return rights.indexOf(anchor) > -1;
+  },
+
+  isTopAnchor(anchor) {
+    return tops.indexOf(anchor) > -1;
+  },
+
+  isBottomAnchor(anchor) {
+    return bottoms.indexOf(anchor) > -1;
+  },
+
+  // Buffers: [left, right, top, bottom]
+  default_buffer: [2.5, 2.5, 1.5, 0.75],
+  zero_buffer: [0, 0, 0, 0]
+};
+
+// Do AABB `a` and `b` intersect?
+function boxIntersectsBox(a, b) {
+  if (a[2] < b[0] || // a is left of b
+  a[0] > b[2] || // a is right of b
+  a[3] < b[1] || // a is above b
+  a[1] > b[3]) {
+    // a is below b
+    return false;
+  }
+
+  return true; // boxes overlap
+} // Does AABB `a` intersect any of the AABBs in array `boxes`?
+// Invokes `callback` with index of intersecting box
+// Stops intersecting if `callback` returns non-null value (continues otherwise)
+
+function boxIntersectsList(a, boxes, callback) {
+  for (let i = 0; i < boxes.length; i++) {
+    if (boxIntersectsBox(a, boxes[i])) {
+      if (callback(i) != null) {
+        break;
+      }
+    }
+  }
+}
+
+class OBB {
+  constructor(x, y, a, w, h) {
+    this.dimension = [w, h];
+    this.angle = a;
+    this.centroid = [x, y];
+    this.quad = [];
+    this.axes = [];
+    this.update();
+  }
+
+  toJSON() {
+    return {
+      x: this.centroid[0],
+      y: this.centroid[1],
+      a: this.angle,
+      w: this.dimension[0],
+      h: this.dimension[1]
+    };
+  }
+
+  getExtent() {
+    let aabb = [Infinity, Infinity, -Infinity, -Infinity];
+
+    for (let i = 0; i < 4; ++i) {
+      aabb[0] = Math.min(this.quad[i][0], aabb[0]);
+      aabb[1] = Math.min(this.quad[i][1], aabb[1]);
+      aabb[2] = Math.max(this.quad[i][0], aabb[2]);
+      aabb[3] = Math.max(this.quad[i][1], aabb[3]);
+    }
+
+    return aabb;
+  }
+
+  perpAxes() {
+    this.axes[0] = Vector$1.normalize(Vector$1.sub(this.quad[2], this.quad[3]));
+    this.axes[1] = Vector$1.normalize(Vector$1.sub(this.quad[2], this.quad[1]));
+  }
+
+  update() {
+    let x = [Math.cos(this.angle), Math.sin(this.angle)];
+    let y = [-Math.sin(this.angle), Math.cos(this.angle)];
+    x = Vector$1.mult(x, this.dimension[0] / 2.0);
+    y = Vector$1.mult(y, this.dimension[1] / 2.0);
+    this.quad[0] = Vector$1.sub(Vector$1.sub(this.centroid, x), y); // lower-left
+
+    this.quad[1] = Vector$1.sub(Vector$1.add(this.centroid, x), y); // lower-right
+
+    this.quad[2] = Vector$1.add(Vector$1.add(this.centroid, x), y); // uper-right
+
+    this.quad[3] = Vector$1.add(Vector$1.sub(this.centroid, x), y); // uper-left
+
+    this.perpAxes();
+  }
+
+  static projectToAxis(obb, axis) {
+    let min = Infinity;
+    let max = -Infinity;
+    let quad = obb.quad; // for each axis, project obb quad to it and find min and max values
+
+    for (let i = 0; i < 4; ++i) {
+      let d = Vector$1.dot(quad[i], axis);
+      min = Math.min(min, d);
+      max = Math.max(max, d);
+    }
+
+    return [min, max];
+  }
+
+  static axisCollide(obb_a, obb_b, axes) {
+    for (let i = 0; i < 2; ++i) {
+      let a_proj = OBB.projectToAxis(obb_a, axes[i]);
+      let b_proj = OBB.projectToAxis(obb_b, axes[i]);
+
+      if (b_proj[0] > a_proj[1] || b_proj[1] < a_proj[0]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  static intersect(obb_a, obb_b) {
+    return OBB.axisCollide(obb_a, obb_b, obb_a.axes) && OBB.axisCollide(obb_a, obb_b, obb_b.axes);
+  }
+
+}
+
+class Label {
+  constructor(size, layout) {
+    if (layout === void 0) {
+      layout = {};
+    }
+
+    this.id = Label.nextLabelId();
+    this.type = ''; // set by subclass
+
+    this.size = size;
+    this.layout = layout;
+    this.position = null;
+    this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
+
+    this.placed = null;
+    this.offset = layout.offset;
+    this.unit_scale = this.layout.units_per_pixel;
+    this.aabb = null;
+    this.obb = null;
+    this.align = 'center';
+    this.throw_away = false; // if label does not fit (exceeds tile boundary, etc) this boolean will be true
+  } // Minimal representation of label
+
+
+  toJSON() {
+    return {
+      id: this.id,
+      type: this.type,
+      obb: this.obb.toJSON(),
+      position: this.position,
+      size: this.size,
+      offset: this.offset,
+      breach: this.breach,
+      may_repeat_across_tiles: this.may_repeat_across_tiles,
+      layout: textLayoutToJSON(this.layout)
+    };
+  }
+
+  update() {
+    this.align = this.layout.align || PointAnchor.alignForAnchor(this.anchor);
+  } // check for overlaps with other labels in the tile
+
+
+  occluded(bboxes, exclude) {
+    if (exclude === void 0) {
+      exclude = null;
+    }
+
+    let intersect = false;
+    let aabbs = bboxes.aabb;
+    let obbs = bboxes.obb; // Broad phase
+
+    if (aabbs.length > 0) {
+      boxIntersectsList(this.aabb, aabbs, j => {
+        // log('trace', 'collision: broad phase collide', this.layout.id, this, this.aabb, aabbs[j]);
+        // Skip if colliding with excluded label
+        if (exclude && aabbs[j] === exclude.aabb) {
+          // log('trace', 'collision: skipping due to explicit exclusion', this, exclude);
+          return;
+        } // Skip narrow phase collision if no rotation
+
+
+        if (this.obb.angle === 0 && obbs[j].angle === 0) {
+          // log('trace', 'collision: skip narrow phase collide because neither is rotated', this.layout.id, this, this.obb, obbs[j]);
+          intersect = true;
+          return true;
+        } // Narrow phase
+
+
+        if (OBB.intersect(this.obb, obbs[j])) {
+          // log('trace', 'collision: narrow phase collide', this.layout.id, this, this.obb, obbs[j]);
+          intersect = true;
+          return true;
+        }
+      });
+    }
+
+    return intersect;
+  } // checks whether the label is within the tile boundaries
+
+
+  inTileBounds() {
+    let min = [this.aabb[0], this.aabb[1]];
+    let max = [this.aabb[2], this.aabb[3]];
+
+    if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
+      return false;
+    }
+
+    return true;
+  } // some labels need further repeat culling checks on the main thread
+  // checks whether the label is within its repeat distance of the tile boundaries
+
+
+  mayRepeatAcrossTiles() {
+    if (this.layout.collide) {
+      return true; // additional collision pass will already apply, so skip further distance checks
+    }
+
+    const dist = this.layout.repeat_distance;
+
+    if (dist === 0) {
+      return false;
+    }
+
+    return Math.abs(this.position[0]) < dist || Math.abs(this.position[0] - Geo$1.tile_scale) < dist || Math.abs(this.position[1]) < dist || Math.abs(-(this.position[1] - Geo$1.tile_scale)) < dist;
+  } // Whether the label should be discarded
+  // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
+
+
+  discard(bboxes, exclude) {
+    if (exclude === void 0) {
+      exclude = null;
+    }
+
+    if (this.throw_away) {
+      return true;
+    }
+
+    return this.occluded(bboxes, exclude);
+  }
+
+} // Generic label placement function, adds a label's bounding boxes to the currently placed set
+//  Supports single or multiple collision boxes
+
+Label.add = function (label, bboxes) {
+  label.placed = true;
+
+  if (label.aabb) {
+    bboxes.aabb.push(label.aabb);
+    bboxes.obb.push(label.obb);
+  }
+
+  if (label.aabbs) {
+    for (let i = 0; i < label.aabbs.length; i++) {
+      bboxes.aabb.push(label.aabbs[i]);
+      bboxes.obb.push(label.obbs[i]);
+    }
+  }
+};
+
+Label.id = 0;
+Label.id_prefix = ''; // id prefix scoped to worker thread
+
+Label.nextLabelId = function () {
+  return Label.id_prefix + '/' + Label.id++;
+};
+
+Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
+// Minimal representation of text layout, sent to main thread for label collisions
+
+function textLayoutToJSON(layout) {
+  return {
+    priority: layout.priority,
+    collide: layout.collide,
+    repeat_distance: layout.repeat_distance,
+    repeat_group: layout.repeat_group,
+    buffer: layout.buffer,
+    italic: layout.italic // affects bounding box size
+
+  };
+}
+
+class RepeatGroup {
+  constructor(key, repeat_dist) {
+    this.key = key;
+    this.repeat_dist = repeat_dist;
+    this.repeat_dist_sq = this.repeat_dist * this.repeat_dist;
+    this.positions = [];
+  } // Check an object to see if it's a repeat in this group
+
+
+  check(obj) {
+    // Check distance from new object to objects already in group
+    let p1 = obj.position;
+
+    for (let i = 0; i < this.positions.length; i++) {
+      let p2 = this.positions[i];
+      let dx = p1[0] - p2[0];
+      let dy = p1[1] - p2[1];
+      let dist_sq = dx * dx + dy * dy; // Found an existing object within allowed distance
+
+      if (dist_sq < this.repeat_dist_sq) {
+        return true;
+      }
+    }
+  } // Add object to this group
+
+
+  add(obj) {
+    // only store object's position, to save space / prevent unnecessary references
+    if (obj && obj.position) {
+      this.positions.push(obj.position);
+    }
+  } // Static methods are used to manage repeat groups, within and across tiles
+  // Reset all groups for this tile
+
+
+  static clear(tile) {
+    this.groups[tile] = {};
+  } // Check an object to see if it's a repeat within its designated group
+
+
+  static check(obj, layout, tile) {
+    if (layout.repeat_distance && layout.repeat_group && this.groups[tile][layout.repeat_group]) {
+      return this.groups[tile][layout.repeat_group].check(obj);
+    }
+  } // Add an object to its designated group
+
+
+  static add(obj, layout, tile) {
+    if (layout.repeat_distance && layout.repeat_group) {
+      if (this.groups[tile][layout.repeat_group] == null) {
+        this.groups[tile][layout.repeat_group] = new RepeatGroup(layout.repeat_group, layout.repeat_distance * layout.repeat_scale);
+      }
+
+      this.groups[tile][layout.repeat_group].add(obj);
+    }
+  }
+
+} // Current set of repeat groups, grouped and keyed by tile
+
+RepeatGroup.groups = {};
+
+const Collision = {
+  tiles: {},
+
+  startTile(tile, _temp) {
+    let _ref = _temp === void 0 ? {} : _temp,
+        _ref$apply_repeat_gro = _ref.apply_repeat_groups,
+        apply_repeat_groups = _ref$apply_repeat_gro === void 0 ? true : _ref$apply_repeat_gro,
+        _ref$return_hidden = _ref.return_hidden,
+        return_hidden = _ref$return_hidden === void 0 ? false : _ref$return_hidden;
+
+    let state = this.tiles[tile] = {
+      bboxes: {
+        // current set of placed bounding boxes
+        aabb: [],
+        obb: []
+      },
+      objects: {},
+      // objects to collide, grouped by priority, then by style
+      labels: {},
+      // objects post-collision, grouped by style, marked as show/hide
+      styles: {},
+      // styles contributing collision objects
+      repeat: apply_repeat_groups,
+      return_hidden
+    }; // Promise resolved when all registered styles have added objects
+
+    if (state.complete == null) {
+      state.complete = new Promise((resolve, reject) => {
+        state.resolve = resolve;
+        state.reject = reject;
+      });
+    }
+  },
+
+  resetTile(tile) {
+    delete this.tiles[tile];
+  },
+
+  abortTile(tile) {
+    if (this.tiles[tile] && this.tiles[tile].resolve) {
+      this.tiles[tile].resolve([]);
+    }
+
+    this.resetTile(tile);
+  },
+
+  // Add a style to the pending set, collision will block on all styles submitting to collision set
+  addStyle(style, tile) {
+    this.tiles[tile].styles[style] = true;
+  },
+
+  // Add collision objects for a style
+  collide(objects, style, tile) {
+    let state = this.tiles[tile];
+
+    if (!state) {
+      log('trace', 'Collision.collide() called with null tile', tile, this.tiles, style, objects);
+      return Promise.resolve([]);
+    } // Group by priority and style
+
+
+    let tile_objects = state.objects;
+
+    for (let i = 0; i < objects.length; i++) {
+      let obj = objects[i];
+      let priority = obj.label.layout.priority;
+      tile_objects[priority] = tile_objects[priority] || {};
+      tile_objects[priority][style] = tile_objects[priority][style] || [];
+      tile_objects[priority][style].push(obj);
+    } // Remove from pending style set, if no more styles, do collision & finish tile
+
+
+    delete state.styles[style];
+
+    if (Object.keys(state.styles).length === 0) {
+      this.endTile(tile);
+    } // Wait for objects to be added from all styles
+
+
+    return state.complete.then(() => {
+      state.resolve = null;
+      return state.labels[style] || [];
+    });
+  },
+
+  // Test labels for collisions, higher to lower priority
+  // When two collide, hide the lower-priority label
+  endTile(tile) {
+    let state = this.tiles[tile];
+    let labels = state.labels;
+
+    if (state.repeat) {
+      RepeatGroup.clear(tile);
+    } // Process labels by priority, then by style
+
+
+    let priorities = Object.keys(state.objects).sort((a, b) => a - b);
+
+    for (let p = 0; p < priorities.length; p++) {
+      let style_objects = state.objects[priorities[p]];
+
+      if (!style_objects) {
+        // no labels at this priority, skip to next
+        continue;
+      } // For each style
+
+
+      for (let style in style_objects) {
+        let objects = style_objects[style];
+        labels[style] = labels[style] || [];
+
+        for (let i = 0; i < objects.length; i++) {
+          let object = objects[i];
+
+          if (this.canBePlaced(object, tile, object.linked, state)) {
+            // show object if it isn't dependent on a parent object
+            if (!object.linked) {
+              object.show = true;
+              labels[style].push(object);
+              this.place(object, tile, state);
+            } // If object is dependent on a parent, only show if both can be placed
+            else if (this.canBePlaced(object.linked, tile, object, state)) {
+                object.show = true; // If a label is breach, its linked label should be considered breach as well
+                // (this keeps linked labels from staying (in)visible in tandem)
+
+                if (object.label.breach || object.linked.label.breach) {
+                  object.label.breach = true;
+                  object.linked.label.breach = true;
+                } // Similarly for labels that need main thread repeat culling, keep linked labels in sync
+
+
+                if (object.label.may_repeat_across_tiles || object.linked.label.may_repeat_across_tiles) {
+                  object.label.may_repeat_across_tiles = true;
+                  object.linked.label.may_repeat_across_tiles = true;
+                }
+
+                labels[style].push(object);
+                this.place(object, tile, state);
+                this.place(object.linked, tile, state);
+              } else if (state.return_hidden) {
+                object.show = false;
+                labels[style].push(object);
+              }
+          } else if (state.return_hidden) {
+            object.show = false;
+            labels[style].push(object);
+          }
+        }
+      }
+    }
+
+    delete this.tiles[tile];
+    state.resolve();
+  },
+
+  // Run collision and repeat check to see if label can currently be placed
+  canBePlaced(object, tile, exclude, _temp2) {
+    if (exclude === void 0) {
+      exclude = null;
+    }
+
+    let _ref2 = _temp2 === void 0 ? {} : _temp2,
+        _ref2$repeat = _ref2.repeat,
+        repeat = _ref2$repeat === void 0 ? true : _ref2$repeat;
+
+    let label = object.label;
+    let layout = object.label.layout; // Skip if already processed (e.g. by parent object)
+
+    if (label.placed != null) {
+      return label.placed;
+    } // Test the label for intersections with other labels in the tile
+
+
+    let bboxes = this.tiles[tile].bboxes;
+
+    if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
+      // repeat culling with nearby labels
+      if (repeat && RepeatGroup.check(label, layout, tile)) {
+        label.placed = false;
+      } else {
+        return true;
+      }
+    } else if (layout.collide) {
+      // log('trace', `hide label '${label.text}' due to collision`);
+      label.placed = false;
+    }
+
+    return label.placed;
+  },
+
+  // Place label
+  place(_ref3, tile, _ref4) {
+    let label = _ref3.label;
+    let _ref4$repeat = _ref4.repeat,
+        repeat = _ref4$repeat === void 0 ? true : _ref4$repeat;
+
+    // Skip if already processed (e.g. by parent object)
+    if (label.placed != null) {
+      return;
+    } // Register as placed for future collision and repeat culling
+
+
+    if (repeat) {
+      RepeatGroup.add(label, label.layout, tile);
+    }
+
+    Label.add(label, this.tiles[tile].bboxes);
+  }
+
+};
+
 class LabelPoint extends Label {
   constructor(position, size, layout) {
     super(size, layout);
@@ -11127,8 +10708,8 @@ class LabelPoint extends Label {
     if (this.parent) {
       let parent = this.parent; // point's own anchor, text anchor applied to point, additional point offset
 
-      this.offset = PointAnchor$1.computeOffset(this.offset, parent.size, parent.anchor, PointAnchor$1.zero_buffer);
-      this.offset = PointAnchor$1.computeOffset(this.offset, parent.size, this.anchor, PointAnchor$1.zero_buffer);
+      this.offset = PointAnchor.computeOffset(this.offset, parent.size, parent.anchor, PointAnchor.zero_buffer);
+      this.offset = PointAnchor.computeOffset(this.offset, parent.size, this.anchor, PointAnchor.zero_buffer);
 
       if (parent.offset !== StyleParser.zeroPair) {
         // point has an offset
@@ -11143,7 +10724,7 @@ class LabelPoint extends Label {
       }
     }
 
-    this.offset = PointAnchor$1.computeOffset(this.offset, this.size, this.anchor);
+    this.offset = PointAnchor.computeOffset(this.offset, this.size, this.anchor);
   }
 
   updateBBoxes() {
@@ -11161,41 +10742,17 @@ class LabelPoint extends Label {
     if (this.inTileBounds) {
       this.breach = !this.inTileBounds();
     }
-  } // Try to move the label into the tile bounds
-  // Returns true if label was moved into tile, false if it couldn't be moved
 
-
-  moveIntoTile() {
-    let updated = false;
-
-    if (this.aabb[0] < 0) {
-      this.position[0] += -this.aabb[0];
-      updated = true;
+    if (this.mayRepeatAcrossTiles) {
+      this.may_repeat_across_tiles = this.mayRepeatAcrossTiles();
     }
-
-    if (this.aabb[2] >= Geo$1.tile_scale) {
-      this.position[0] -= this.aabb[2] - Geo$1.tile_scale + 1;
-      updated = true;
-    }
-
-    if (this.aabb[3] > 0) {
-      this.position[1] -= this.aabb[3];
-      updated = true;
-    }
-
-    if (this.aabb[1] <= -Geo$1.tile_scale) {
-      this.position[1] -= this.aabb[1] + Geo$1.tile_scale - 1;
-      updated = true;
-    }
-
-    if (updated) {
-      this.updateBBoxes();
-    }
-
-    return updated;
   }
 
-  discard(bboxes, exclude = null) {
+  discard(bboxes, exclude) {
+    if (exclude === void 0) {
+      exclude = null;
+    }
+
     if (this.degenerate) {
       return false;
     }
@@ -11242,66 +10799,58 @@ function placePointsOnLine(line, size, options) {
   let strategy = options.placement;
   let min_length = Math.max(size[0], size[1]) * options.placement_min_length_ratio * options.units_per_pixel;
 
-  switch (strategy) {
-    case PLACEMENT.SPACED:
-      let result = getPositionsAndAngles(line, min_length, options); // false will be returned if line have no length
+  if (strategy === PLACEMENT.SPACED) {
+    let result = getPositionsAndAngles(line, min_length, options); // false will be returned if line have no length
 
-      if (!result) {
-        return [];
+    if (!result) {
+      return [];
+    }
+
+    let positions = result.positions;
+    let angles = result.angles;
+
+    for (let i = 0; i < positions.length; i++) {
+      let position = positions[i];
+      let angle = angles[i];
+
+      if (options.tile_edges === true || !isCoordOutsideTile(position)) {
+        let label = new LabelPoint(position, size, options);
+        label.angle = angle;
+        labels.push(label);
       }
+    }
+  } else if (strategy === PLACEMENT.VERTEX) {
+    let p, q, label;
 
-      let positions = result.positions;
-      let angles = result.angles;
+    for (let i = 0; i < line.length - 1; i++) {
+      p = line[i];
+      q = line[i + 1];
 
-      for (let i = 0; i < positions.length; i++) {
-        let position = positions[i];
-        let angle = angles[i];
+      if (options.tile_edges === true || !isCoordOutsideTile(p)) {
+        label = new LabelPoint(p, size, options);
+        label.angle = getAngle(p, q, options.angle);
+        labels.push(label);
+      }
+    } // add last endpoint
 
-        if (options.tile_edges === true || !isCoordOutsideTile(position)) {
+
+    label = new LabelPoint(q, size, options);
+    label.angle = getAngle(p, q, options.angle);
+    labels.push(label);
+  } else if (strategy === PLACEMENT.MIDPOINT) {
+    for (let i = 0; i < line.length - 1; i++) {
+      let p = line[i];
+      let q = line[i + 1];
+      let position = [0.5 * (p[0] + q[0]), 0.5 * (p[1] + q[1])];
+
+      if (options.tile_edges === true || !isCoordOutsideTile(position)) {
+        if (!min_length || norm(p, q) > min_length) {
           let label = new LabelPoint(position, size, options);
-          label.angle = angle;
-          labels.push(label);
-        }
-      }
-
-      break;
-
-    case PLACEMENT.VERTEX:
-      let p, q, label;
-
-      for (let i = 0; i < line.length - 1; i++) {
-        p = line[i];
-        q = line[i + 1];
-
-        if (options.tile_edges === true || !isCoordOutsideTile(p)) {
-          label = new LabelPoint(p, size, options);
           label.angle = getAngle(p, q, options.angle);
           labels.push(label);
         }
-      } // add last endpoint
-
-
-      label = new LabelPoint(q, size, options);
-      label.angle = getAngle(p, q, options.angle);
-      labels.push(label);
-      break;
-
-    case PLACEMENT.MIDPOINT:
-      for (let i = 0; i < line.length - 1; i++) {
-        let p = line[i];
-        let q = line[i + 1];
-        let position = [0.5 * (p[0] + q[0]), 0.5 * (p[1] + q[1])];
-
-        if (options.tile_edges === true || !isCoordOutsideTile(position)) {
-          if (!min_length || norm(p, q) > min_length) {
-            let label = new LabelPoint(position, size, options);
-            label.angle = getAngle(p, q, options.angle);
-            labels.push(label);
-          }
-        }
       }
-
-      break;
+    }
   }
 
   return labels;
@@ -11341,7 +10890,11 @@ function getPositionsAndAngles(line, min_length, options) {
   };
 }
 
-function getAngle(p, q, angle = 0) {
+function getAngle(p, q, angle) {
+  if (angle === void 0) {
+    angle = 0;
+  }
+
   return angle === 'auto' ? Math.atan2(q[0] - p[0], q[1] - p[1]) : angle;
 }
 
@@ -11395,11 +10948,10 @@ function interpolateSegment(p, q, distance) {
   return [ratio * p[0] + (1 - ratio) * q[0], ratio * p[1] + (1 - ratio) * q[1]];
 }
 
-var TextSettings;
-var TextSettings$1 = TextSettings = {
+const TextSettings = {
   // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
   key(settings) {
-    return [settings.style, settings.weight, settings.family, settings.px_size, settings.fill, settings.stroke, settings.stroke_width, settings.transform, settings.text_wrap, settings.max_lines, settings.supersample, Utils$1.device_pixel_ratio].join('/');
+    return [settings.style, settings.weight, settings.family, settings.px_size, settings.fill, settings.stroke, settings.stroke_width, settings.transform, settings.text_wrap, settings.max_lines, settings.supersample, Utils.device_pixel_ratio].join('/');
   },
 
   defaults: {
@@ -11422,7 +10974,7 @@ var TextSettings$1 = TextSettings = {
 
     style.can_articulate = draw.can_articulate; // Use fill if specified, or default
 
-    style.fill = draw.font.fill && Utils$1.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.fill, context)) || this.defaults.fill; // Font properties are modeled after CSS names:
+    style.fill = draw.font.fill && Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.fill, context)) || this.defaults.fill; // Font properties are modeled after CSS names:
     // - family: Helvetica, Futura, etc.
     // - size: in pt, px, or em
     // - style: normal, italic, oblique
@@ -11442,16 +10994,14 @@ var TextSettings$1 = TextSettings = {
       style.family = this.defaults.family;
     }
 
-    style.transform = draw.font.transform; // original size (not currently used, but useful for debugging)
-
-    style.size = draw.font.size || this.defaults.size; // calculated pixel size
+    style.transform = draw.font.transform; // calculated pixel size
 
     style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
 
     style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample; // Use stroke if specified
 
     if (draw.font.stroke && draw.font.stroke.color) {
-      style.stroke = Utils$1.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.stroke.color, context) || this.defaults.stroke);
+      style.stroke = Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.stroke.color, context) || this.defaults.stroke);
       style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
     }
 
@@ -11478,12 +11028,11 @@ var TextSettings$1 = TextSettings = {
   },
 
   // Build CSS-style font string (to set Canvas draw state)
-  fontCSS({
-    style,
-    weight,
-    px_size,
-    family
-  }) {
+  fontCSS(_ref) {
+    let style = _ref.style,
+        weight = _ref.weight,
+        px_size = _ref.px_size,
+        family = _ref.family;
     return [style, weight, px_size + 'px', family].filter(x => x) // remove null props
     .join(' ');
   }
@@ -11513,12 +11062,12 @@ const FontManager = {
   // definitions. The value can be either a single object, or an array of such objects.
   // If the special string value 'external' is used, it indicates the the font will be loaded via external CSS.
   loadFonts(fonts) {
-    let same = JSON.stringify(fonts) === this.last_loaded;
+    const same = JSON.stringify(fonts) === this.last_loaded;
 
     if (fonts && !same) {
-      let queue = [];
+      const queue = [];
 
-      for (let family in fonts) {
+      for (const family in fonts) {
         if (Array.isArray(fonts[family])) {
           fonts[family].forEach(face => queue.push(this.loadFontFace(family, face)));
         } else {
@@ -11539,43 +11088,43 @@ const FontManager = {
   // If the object's value is the special string 'external', or if no `url` is defined, then the font face
   // is assumed is assumed to been loaded via external CSS. In either case, the function returns a promise
   // that resolves when the font face has loaded, or times out.
-  loadFontFace(family, face) {
+  async loadFontFace(family, face) {
     if (face == null || typeof face !== 'object' && face !== 'external') {
       return;
     }
 
-    let options = {
+    const options = {
       family
     };
-    let inject = Promise.resolve();
 
     if (typeof face === 'object') {
       Object.assign(options, face); // If URL is defined, inject font into document
 
       if (typeof face.url === 'string') {
-        inject = this.injectFontFace(options);
+        await this.injectFontFace(options);
       }
     } // Wait for font to load
 
 
-    let observer = new fontfaceobserver_standalone(family, options);
-    return inject.then(() => observer.load()).then(() => {
-      // Promise resolves, font is available
+    try {
+      const observer = new fontfaceobserver_standalone(family, options);
+      await observer.load(); // Promise resolves, font is available
+
       log('debug', `Font face '${family}' is available`, options);
-    }, () => {
+    } catch (e) {
       // Promise rejects, font is not available
       log('debug', `Font face '${family}' is NOT available`, options);
-    });
+    }
   },
 
   // Loads a font face via either the native FontFace API, or CSS injection
   // TODO: consider support for multiple format URLs per face, unicode ranges
-  injectFontFace({
-    family,
-    url,
-    weight,
-    style
-  }) {
+  async injectFontFace(_ref) {
+    let family = _ref.family,
+        url = _ref.url,
+        weight = _ref.weight,
+        style = _ref.style;
+
     if (this.supports_native_font_loading === undefined) {
       this.supports_native_font_loading = window.FontFace !== undefined;
     } // Convert blob URLs, depending on whether the native FontFace API will be used or not.
@@ -11591,69 +11140,365 @@ const FontManager = {
     // Also see https://github.com/bramstein/fontloader/blob/598e9399117bdc946ff786fa2c5007a6bd7d3b9e/src/fontface.js#L145-L153
 
 
-    let preprocess = Promise.resolve(url);
+    let data = url;
 
     if (url.slice(0, 5) === 'blob:') {
-      preprocess = Utils$1.io(url, 60000, 'arraybuffer').then(data => {
-        let bytes = new Uint8Array(data);
+      data = await Utils.io(url, 60000, 'arraybuffer');
+      let bytes = new Uint8Array(data);
 
-        if (this.supports_native_font_loading) {
-          return bytes; // use raw binary data
-        } else {
-          let str = '';
+      if (this.supports_native_font_loading) {
+        data = bytes; // use raw binary data
+      } else {
+        let str = '';
 
-          for (let i = 0; i < bytes.length; i++) {
-            str += String.fromCharCode(bytes[i]);
-          }
-
-          return 'data:font/opentype;base64,' + btoa(str); // base64 encode as data URL
+        for (let i = 0; i < bytes.length; i++) {
+          str += String.fromCharCode(bytes[i]);
         }
-      });
+
+        data = 'data:font/opentype;base64,' + btoa(str); // base64 encode as data URL
+      }
     }
 
-    return preprocess.then(data => {
-      if (this.supports_native_font_loading) {
-        // Use native FontFace API
-        let face;
+    if (this.supports_native_font_loading) {
+      // Use native FontFace API
+      let face;
 
-        if (typeof data === 'string') {
-          // add as URL
-          face = new FontFace(family, `url(${encodeURI(data)})`, {
-            weight,
-            style
-          });
-        } else if (data instanceof Uint8Array) {
-          // add as binary data
-          face = new FontFace(family, data, {
-            weight,
-            style
-          });
-        }
-
-        document.fonts.add(face);
-        log('trace', 'Adding FontFace to document.fonts:', face);
-      } else {
-        // Use CSS injection
-        let css = `
-                    @font-face {
-                        font-family: '${family}';
-                        font-weight: ${weight || 'normal'};
-                        font-style: ${style || 'normal'};
-                        src: url(${encodeURI(data)});
-                    }
-                `;
-        let style_el = document.createElement('style');
-        style_el.appendChild(document.createTextNode(""));
-        document.head.appendChild(style_el);
-        style_el.sheet.insertRule(css, 0);
-        log('trace', 'Injecting CSS font face:', css);
+      if (typeof data === 'string') {
+        // add as URL
+        face = new FontFace(family, `url(${encodeURI(data)})`, {
+          weight,
+          style
+        });
+      } else if (data instanceof Uint8Array) {
+        // add as binary data
+        face = new FontFace(family, data, {
+          weight,
+          style
+        });
       }
-    });
+
+      document.fonts.add(face);
+      log('trace', 'Adding FontFace to document.fonts:', face);
+    } else {
+      // Use CSS injection
+      let css = `
+                @font-face {
+                    font-family: '${family}';
+                    font-weight: ${weight || 'normal'};
+                    font-style: ${style || 'normal'};
+                    src: url(${encodeURI(data)});
+                }`;
+      let style_el = document.createElement('style');
+      style_el.appendChild(document.createTextNode(''));
+      document.head.appendChild(style_el);
+      style_el.sheet.insertRule(css, 0);
+      log('trace', 'Injecting CSS font face:', css);
+    }
   }
 
 };
 
-class CanvasText {
+// Text directionality (right-to-left, bi-directional) and segmentation (curved labels, Arabic handling)
+// Right-to-left / bi-directional text handling
+// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
+const rtl_test = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
+function isTextRTL(s) {
+  return rtl_test.test(s);
+}
+const neutral_chars = '\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF';
+const neutral_test = new RegExp('[' + neutral_chars + ']+');
+function isTextNeutral(s) {
+  return neutral_test.test(s);
+}
+const RTL_MARKER = '\u200F'; // explicit right-to-left marker
+// Arabic script ranges
+// test http://localhost:8000/#16.72917/30.08541/31.28466
+
+const arabic_range = new RegExp('^[' + neutral_chars + '\u0600-\u06FF]+'); // all characters are Arabic or neutral
+
+const arabic_splitters = new RegExp('[' + neutral_chars + '\u0622-\u0625\u0627\u062F-\u0632\u0648\u0671-\u0677\u0688-\u0699\u06C4-\u06CB\u06CF\u06D2\u06D3\u06EE\u06EF]');
+const arabic_vowels = new RegExp('^[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+'); // Complex script ranges (non-Arabic)
+
+const accents_and_vowels = '[\u0300-\u036F' + // Combining Diacritical Marks
+'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7' + // Hebrew
+'\u07A6-\u07B0' + // Thaana
+'\u0900-\u0903\u093A-\u094C\u094E\u094F\u0951-\u0957\u0962\u0963' + // Devanagari
+'\u0981-\u0983\u09BC\u09BE-\u09CC\u09D7\u09E2\u09E3' + // Bengali
+'\u0A01-\u0A03\u0A3C-\u0A4C\u0A51' + // Gurmukhi
+'\u0A81-\u0A83\u0ABC\u0ABE-\u0ACC\u0AE2\u0AE3' + // Gujarati
+'\u0B01-\u0B03\u0B3C\u0B3E-\u0B4C\u0B56\u0B57\u0B62\u0B63' + // Oriya
+'\u0B82\u0BBE-\u0BCD\u0BD7' + // Tamil
+'\u0C00-\u0C03\u0C3E-\u0C4C\u0C55\u0C56\u0C62\u0C63' + // Telugu
+'\u0C81-\u0C83\u0CBC\u0CBE-\u0CCC\u0CD5\u0CD6\u0CE2\u0CE3' + // Kannada
+'\u0D01-\u0D03\u0D3E-\u0D4C\u0D4E\u0D57\u0D62\u0D63' + // Malayalam
+'\u0D82\u0D83\u0DCA-\u0DDF\u0DF2\u0DF3' + // Sinhala
+'\u0E31\u0E34-\u0E3A\u0E47-\u0E4E' + // Thai
+'\u0EB1\u0EB4-\u0EBC\u0EC8-\u0ECD' + // Lao
+'\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F83\u0F86\u0F87\u0F8D-\u0FBC\u0FC6' + // Tibetan
+'\u102B-\u1038\u103A-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D' + // Burmese
+'\u17B4-\u17D1\u17D3' + // Khmer
+'\u1A55-\u1A5E\u1A61-\u1A7C' + // Tai Tham
+'\u1DC0-\u1DFF' + // Combining Diacritical Marks Supplement
+'\u20D0-\u20FF' + // Combining Diacritical Marks for Symbols
+']';
+const combo_characters = '[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0C4D\u0CCD\u0D4D\u0F84\u1039\u17D2\u1A60\u1A7F]'; // Find the next grapheme cluster (non-Arabic)
+
+const grapheme_match = new RegExp('^.(?:' + accents_and_vowels + '+)?' + '(' + combo_characters + '\\W(?:' + accents_and_vowels + '+)?)*'); // Scripts that cannot be curved due (due to contextual shaping and/or layout complexity)
+
+const curve_blacklist = {
+  Mongolian: '\u1800-\u18AF'
+};
+const curve_blacklist_range = Object.keys(curve_blacklist).map(r => curve_blacklist[r]).join('');
+const curve_blacklist_test = new RegExp('[' + curve_blacklist_range + ']');
+function isTextCurveBlacklisted(s) {
+  return curve_blacklist_test.test(s);
+} // Splitting strategy for chopping a label into segments
+
+const default_segment_length = 2; // character length of each segment when dividing up label text
+
+function splitLabelText(text, rtl, cache) {
+  // Use single-character segments for RTL, to avoid additional handling for neutral characters
+  // (see https://github.com/tangrams/tangram/issues/541)
+  const segment_length = rtl ? 1 : default_segment_length; // Only one segment
+
+  if (text.length < segment_length) {
+    return [text];
+  } // Check segment cache first (skips processing for labels we've seen before)
+
+
+  let key = text;
+
+  if (cache.segment[key]) {
+    cache.stats.segment_hits++;
+    return cache.segment[key];
+  }
+
+  let segments = []; // Arabic-specific text handling
+  // NB: works for strings that are *only* Arabic; mixed-script labels may need more work
+
+  if (arabic_range.exec(text)) {
+    segments = text.split(arabic_splitters);
+    let offset = -1;
+
+    for (var s = 0; s < segments.length - 1; s++) {
+      if (s > 0) {
+        let carryover_vowels = arabic_vowels.exec(segments[s]);
+
+        if (carryover_vowels) {
+          segments[s] = segments[s].substring(carryover_vowels[0].length);
+          segments[s - 1] += carryover_vowels[0];
+          offset += carryover_vowels[0].length;
+        }
+      }
+
+      offset += 1 + segments[s].length;
+      segments[s] += text.slice(offset, offset + 1);
+    }
+
+    text = ''; // will skip non-Arabic handling below
+  } // Non-Arabic text handling
+
+
+  while (text.length) {
+    let segment = '';
+    let test_text = text;
+    let grapheme_count = 0;
+
+    for (grapheme_count; grapheme_count < segment_length && test_text.length; grapheme_count++) {
+      let grapheme_cluster = (grapheme_match.exec(test_text) || test_text)[0];
+      segment += grapheme_cluster;
+      test_text = test_text.substring(grapheme_cluster.length);
+    }
+
+    segments.push(segment);
+    text = text.substring(segment.length);
+  } // Reverse segments if needed
+
+
+  if (rtl) {
+    segments.reverse();
+  } // Cache and return
+
+
+  cache.stats.segment_misses++;
+  cache.segment[key] = segments;
+  return segments;
+}
+
+// Word wrapping
+// "text wrap" and "max line" values
+
+class MultiLine {
+  constructor(context, max_lines, text_wrap) {
+    if (max_lines === void 0) {
+      max_lines = Infinity;
+    }
+
+    if (text_wrap === void 0) {
+      text_wrap = Infinity;
+    }
+
+    this.width = 0;
+    this.height = 0;
+    this.lines = [];
+    this.max_lines = max_lines;
+    this.text_wrap = text_wrap;
+    this.context = context;
+  }
+
+  createLine(line_height) {
+    if (this.lines.length < this.max_lines) {
+      return new Line(line_height, this.text_wrap);
+    } else {
+      return false;
+    }
+  }
+
+  push(line) {
+    if (this.lines.length < this.max_lines) {
+      // measure line width
+      let line_width = this.context.measureText(line.text).width;
+      line.width = line_width;
+
+      if (line_width > this.width) {
+        this.width = Math.ceil(line_width);
+      } // add to lines and increment height
+
+
+      this.lines.push(line);
+      this.height += line.height;
+      return true;
+    } else {
+      this.addEllipsis();
+      return false;
+    }
+  } // pushes to the lines array and returns a new line if possible (false otherwise)
+
+
+  advance(line, line_height) {
+    let can_push = this.push(line);
+
+    if (can_push) {
+      return this.createLine(line_height);
+    } else {
+      return false;
+    }
+  }
+
+  addEllipsis() {
+    let last_line = this.lines[this.lines.length - 1];
+    let ellipsis_width = Math.ceil(this.context.measureText(MultiLine.ellipsis).width);
+    last_line.append(MultiLine.ellipsis);
+    last_line.width += ellipsis_width;
+
+    if (last_line.width > this.width) {
+      this.width = last_line.width;
+    }
+  }
+
+  finish(line) {
+    if (line) {
+      this.push(line);
+    } else {
+      this.addEllipsis();
+    }
+  }
+
+  static parse(str, text_wrap, max_lines, line_height, ctx) {
+    // Word wrapping
+    // Line breaks can be caused by:
+    //  - implicit line break when a maximum character threshold is exceeded per line (text_wrap)
+    //  - explicit line break in the label text (\n)
+    let words;
+
+    if (typeof text_wrap === 'number') {
+      words = str.split(' '); // split words on spaces
+    } else {
+      words = [str]; // no max line word wrapping (but new lines will still be in effect)
+    }
+
+    let multiline = new MultiLine(ctx, max_lines, text_wrap);
+    let line = multiline.createLine(line_height); // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
+
+    for (let i = 0; i < words.length; i++) {
+      let breaks = words[i].split('\n'); // split on line breaks
+
+      let new_line = i === 0 ? true : false;
+
+      for (let n = 0; n < breaks.length; n++) {
+        if (!line) {
+          break;
+        }
+
+        let word = breaks[n]; // force punctuation (neutral chars) at the end of a RTL line, so they stay attached to original word
+
+        if (isTextRTL(word) && isTextNeutral(word[word.length - 1])) {
+          word += RTL_MARKER;
+        }
+
+        let spaced_word = new_line ? word : ' ' + word; // if adding current word would overflow, add a new line instead
+        // first word (i === 0) always appends
+
+        if (text_wrap && i > 0 && line.exceedsTextwrap(spaced_word)) {
+          line = multiline.advance(line, line_height);
+
+          if (!line) {
+            break;
+          }
+
+          line.append(word);
+          new_line = true;
+        } else {
+          line.append(spaced_word);
+        } // if line breaks present, add new line (unless on last line)
+
+
+        if (n < breaks.length - 1) {
+          line = multiline.advance(line, line_height);
+          new_line = true;
+        }
+      }
+
+      if (i === words.length - 1) {
+        multiline.finish(line);
+      }
+    }
+
+    return multiline;
+  }
+
+}
+MultiLine.ellipsis = '...'; // A Private class used by MultiLine to contain the logic for a single line
+// including character count, width, height and text
+
+class Line {
+  constructor(height, text_wrap) {
+    if (height === void 0) {
+      height = 0;
+    }
+
+    if (text_wrap === void 0) {
+      text_wrap = 0;
+    }
+
+    this.chars = 0;
+    this.text = '';
+    this.height = Math.ceil(height);
+    this.text_wrap = text_wrap;
+  }
+
+  append(text) {
+    this.chars += text.length;
+    this.text += text;
+  }
+
+  exceedsTextwrap(text) {
+    return text.length + this.chars > this.text_wrap;
+  }
+
+}
+
+class TextCanvas {
   constructor() {
     this.createCanvas(); // create initial canvas and context
 
@@ -11676,17 +11521,16 @@ class CanvasText {
   } // Set font style params for canvas drawing
 
 
-  setFont({
-    font_css,
-    fill,
-    stroke,
-    stroke_width,
-    px_size,
-    supersample
-  }) {
+  setFont(_ref) {
+    let font_css = _ref.font_css,
+        fill = _ref.fill,
+        stroke = _ref.stroke,
+        stroke_width = _ref.stroke_width,
+        px_size = _ref.px_size,
+        supersample = _ref.supersample;
     this.px_size = px_size;
     let ctx = this.context;
-    let dpr = Utils$1.device_pixel_ratio * supersample;
+    let dpr = Utils.device_pixel_ratio * supersample;
 
     if (stroke && stroke_width > 0) {
       ctx.strokeStyle = stroke;
@@ -11698,20 +11542,19 @@ class CanvasText {
     ctx.miterLimit = 2;
   }
 
-  textSizes(tile_id, texts) {
-    return FontManager.loadFonts().then(() => {
-      return Task.add({
-        type: 'textSizes',
-        run: this.processTextSizesTask.bind(this),
-        texts,
-        tile_id,
-        cursor: {
-          styles: Object.keys(texts),
-          texts: null,
-          style_idx: null,
-          text_idx: null
-        }
-      });
+  async textSizes(tile_id, texts) {
+    await FontManager.loadFonts();
+    return Task.add({
+      type: 'textSizes',
+      run: this.processTextSizesTask.bind(this),
+      texts,
+      tile_id,
+      cursor: {
+        styles: Object.keys(texts),
+        texts: null,
+        style_idx: null,
+        text_idx: null
+      }
     });
   }
 
@@ -11763,7 +11606,7 @@ class CanvasText {
           text_info.segment_sizes = [];
 
           if (!text_info.no_curving) {
-            let segments = splitLabelText(text, rtl);
+            let segments = splitLabelText(text, rtl, TextCanvas.cache);
             text_info.segments = segments;
 
             for (let i = 0; i < segments.length; i++) {
@@ -11783,33 +11626,31 @@ class CanvasText {
       cursor.style_idx++;
     }
 
-    Task.finish(task, {
-      texts
-    });
+    Task.finish(task, texts);
     return true;
   } // Computes width and height of text based on current font style
   // Includes word wrapping, returns size info for whole text block and individual lines
 
 
-  textSize(style, text, {
-    transform,
-    text_wrap,
-    max_lines,
-    stroke_width = 0,
-    supersample
-  }) {
+  textSize(style, text, _ref2) {
+    let transform = _ref2.transform,
+        text_wrap = _ref2.text_wrap,
+        max_lines = _ref2.max_lines,
+        _ref2$stroke_width = _ref2.stroke_width,
+        stroke_width = _ref2$stroke_width === void 0 ? 0 : _ref2$stroke_width,
+        supersample = _ref2.supersample;
     // Check cache first
-    CanvasText.cache.text[style] = CanvasText.cache.text[style] || {};
+    TextCanvas.cache.text[style] = TextCanvas.cache.text[style] || {};
 
-    if (CanvasText.cache.text[style][text]) {
-      CanvasText.cache.stats.text_hits++;
-      return CanvasText.cache.text[style][text];
+    if (TextCanvas.cache.text[style][text]) {
+      TextCanvas.cache.stats.text_hits++;
+      return TextCanvas.cache.text[style][text];
     }
 
-    CanvasText.cache.stats.text_misses++;
-    CanvasText.cache.text_count++; // Calc and store in cache
+    TextCanvas.cache.stats.text_misses++;
+    TextCanvas.cache.text_count++; // Calc and store in cache
 
-    let dpr = Utils$1.device_pixel_ratio * supersample;
+    let dpr = Utils.device_pixel_ratio * supersample;
     let str = this.applyTextTransform(text, transform);
     let ctx = this.context;
     let vertical_buffer = this.vertical_text_buffer * dpr;
@@ -11828,7 +11669,7 @@ class CanvasText {
     let texture_size = [width + 2 * horizontal_buffer, height + 2 * vertical_buffer];
     let logical_size = [texture_size[0] / dpr, texture_size[1] / dpr]; // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
 
-    CanvasText.cache.text[style][text] = {
+    TextCanvas.cache.text[style][text] = {
       lines,
       size: {
         collision_size,
@@ -11837,17 +11678,19 @@ class CanvasText {
         line_height
       }
     };
-    return CanvasText.cache.text[style][text];
+    return TextCanvas.cache.text[style][text];
   } // Draw multiple lines of text
 
 
-  drawTextMultiLine(lines, [x, y], size, {
-    stroke,
-    stroke_width = 0,
-    transform,
-    align,
-    supersample
-  }, type) {
+  drawTextMultiLine(lines, _ref3, size, _ref4, type) {
+    let x = _ref3[0],
+        y = _ref3[1];
+    let stroke = _ref4.stroke,
+        _ref4$stroke_width = _ref4.stroke_width,
+        stroke_width = _ref4$stroke_width === void 0 ? 0 : _ref4$stroke_width,
+        transform = _ref4.transform,
+        align = _ref4.align,
+        supersample = _ref4.supersample;
     let line_height = size.line_height;
     let height = y;
 
@@ -11866,7 +11709,7 @@ class CanvasText {
 
     if (debugSettings$1.draw_label_collision_boxes) {
       this.context.save();
-      let dpr = Utils$1.device_pixel_ratio * supersample;
+      let dpr = Utils.device_pixel_ratio * supersample;
       let horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
       let vertical_buffer = dpr * this.vertical_text_buffer;
       let collision_size = size.collision_size;
@@ -11900,14 +11743,16 @@ class CanvasText {
   } // Draw single line of text at specified location, adjusting for buffer and baseline
 
 
-  drawTextLine(line, [x, y], size, {
-    stroke,
-    stroke_width = 0,
-    transform,
-    align,
-    supersample
-  }, type) {
-    let dpr = Utils$1.device_pixel_ratio * supersample;
+  drawTextLine(line, _ref5, size, _ref6, type) {
+    let x = _ref5[0],
+        y = _ref5[1];
+    let stroke = _ref6.stroke,
+        _ref6$stroke_width = _ref6.stroke_width,
+        stroke_width = _ref6$stroke_width === void 0 ? 0 : _ref6$stroke_width,
+        transform = _ref6.transform,
+        align = _ref6.align,
+        supersample = _ref6.supersample;
+    let dpr = Utils.device_pixel_ratio * supersample;
     align = align || 'center';
     let vertical_buffer = this.vertical_text_buffer * dpr;
     let texture_size = size.texture_size;
@@ -12004,81 +11849,76 @@ class CanvasText {
             for (let t = 0; t < text_info.type.length; t++) {
               let type = text_info.type[t];
 
-              switch (type) {
-                case 'straight':
+              if (type === 'straight') {
+                // Only render for current texture
+                if (text_info.textures[t] !== cursor.texture_idx) {
+                  continue;
+                }
+
+                let word = text_info.isRTL ? text.split().reverse().join() : text;
+                let cache = texture.texcoord_cache[style][word];
+                let texcoord;
+
+                if (cache.texcoord) {
+                  texcoord = cache.texcoord;
+                } else {
+                  let texture_position = cache.texture_position;
+
+                  let _this$textSize = this.textSize(style, word, text_settings),
+                      size = _this$textSize.size,
+                      lines = _this$textSize.lines;
+
+                  this.drawTextMultiLine(lines, texture_position, size, text_settings, type);
+                  texcoord = Texture.getTexcoordsForSprite(texture_position, size.texture_size, texture.texture_size);
+                  cache.texcoord = texcoord;
+                }
+
+                text_info.texcoords[type] = {
+                  texcoord,
+                  texture_id: cache.texture_id
+                };
+              } else if (type === 'curved') {
+                let words = text_info.segments;
+                text_info.texcoords.curved = text_info.texcoords.curved || [];
+                text_info.texcoords_stroke = text_info.texcoords_stroke || [];
+
+                for (let w = 0; w < words.length; w++) {
                   // Only render for current texture
-                  if (text_info.textures[t] !== cursor.texture_idx) {
+                  if (text_info.textures[t][w] !== cursor.texture_idx) {
                     continue;
                   }
 
-                  let word = text_info.isRTL ? text.split().reverse().join() : text;
+                  let word = words[w];
                   let cache = texture.texcoord_cache[style][word];
                   let texcoord;
+                  let texcoord_stroke;
 
                   if (cache.texcoord) {
                     texcoord = cache.texcoord;
+                    texcoord_stroke = cache.texcoord_stroke;
+                    text_info.texcoords_stroke.push(texcoord_stroke);
                   } else {
                     let texture_position = cache.texture_position;
 
-                    let _this$textSize = this.textSize(style, word, text_settings),
-                        size = _this$textSize.size,
-                        lines = _this$textSize.lines;
+                    let _this$textSize2 = this.textSize(style, word, text_settings),
+                        size = _this$textSize2.size,
+                        lines = _this$textSize2.lines;
 
                     this.drawTextMultiLine(lines, texture_position, size, text_settings, type);
                     texcoord = Texture.getTexcoordsForSprite(texture_position, size.texture_size, texture.texture_size);
+                    let texture_position_stroke = [texture_position[0] + size.texture_size[0], texture_position[1]];
+                    texcoord_stroke = Texture.getTexcoordsForSprite(texture_position_stroke, size.texture_size, texture.texture_size);
                     cache.texcoord = texcoord;
+                    cache.texcoord_stroke = texcoord_stroke; // NB: texture_id is the same between stroke and fill, so it's not duplicated here
+
+                    text_info.texcoords_stroke.push(texcoord_stroke);
                   }
 
-                  text_info.texcoords[type] = {
+                  text_info.texcoords.curved.push({
                     texcoord,
                     texture_id: cache.texture_id
-                  };
-                  break;
-
-                case 'curved':
-                  let words = text_info.segments;
-                  text_info.texcoords.curved = text_info.texcoords.curved || [];
-                  text_info.texcoords_stroke = text_info.texcoords_stroke || [];
-
-                  for (let w = 0; w < words.length; w++) {
-                    // Only render for current texture
-                    if (text_info.textures[t][w] !== cursor.texture_idx) {
-                      continue;
-                    }
-
-                    let word = words[w];
-                    let cache = texture.texcoord_cache[style][word];
-                    let texcoord;
-                    let texcoord_stroke;
-
-                    if (cache.texcoord) {
-                      texcoord = cache.texcoord;
-                      texcoord_stroke = cache.texcoord_stroke;
-                      text_info.texcoords_stroke.push(texcoord_stroke);
-                    } else {
-                      let texture_position = cache.texture_position;
-
-                      let _this$textSize2 = this.textSize(style, word, text_settings),
-                          size = _this$textSize2.size,
-                          lines = _this$textSize2.lines;
-
-                      this.drawTextMultiLine(lines, texture_position, size, text_settings, type);
-                      texcoord = Texture.getTexcoordsForSprite(texture_position, size.texture_size, texture.texture_size);
-                      let texture_position_stroke = [texture_position[0] + size.texture_size[0], texture_position[1]];
-                      texcoord_stroke = Texture.getTexcoordsForSprite(texture_position_stroke, size.texture_size, texture.texture_size);
-                      cache.texcoord = texcoord;
-                      cache.texcoord_stroke = texcoord_stroke; // NB: texture_id is the same between stroke and fill, so it's not duplicated here
-
-                      text_info.texcoords_stroke.push(texcoord_stroke);
-                    }
-
-                    text_info.texcoords.curved.push({
-                      texcoord,
-                      texture_id: cache.texture_id
-                    });
-                  }
-
-                  break;
+                  });
+                }
               }
             }
           } else {
@@ -12126,9 +11966,7 @@ class CanvasText {
       cursor.style_idx = 0;
     }
 
-    Task.finish(task, {
-      textures: cursor.texture_names
-    });
+    Task.finish(task, cursor.texture_names);
     return true;
   } // Free any textures that have been allocated part-way through label rasterization for a tile
 
@@ -12165,43 +12003,38 @@ class CanvasText {
           for (let t = 0; t < text_info.type.length; t++) {
             let type = text_info.type[t];
 
-            switch (type) {
-              case 'straight':
-                let word = text_info.isRTL ? text.split().reverse().join() : text;
+            if (type === 'straight') {
+              let word = text_info.isRTL ? text.split().reverse().join() : text;
+
+              if (!texture.texcoord_cache[style][word]) {
+                let size = text_info.size.texture_size;
+                texture_position = this.placeText(size[0], size[1], style, texture, textures, max_texture_size);
+                texture.texcoord_cache[style][word] = {
+                  texture_id: texture.texture_id,
+                  texture_position
+                };
+              }
+
+              text_info.textures[t] = texture.texture_id;
+            } else if (type === 'curved') {
+              text_info.textures[t] = [];
+
+              for (let w = 0; w < text_info.segment_sizes.length; w++) {
+                let word = text_info.segments[w];
 
                 if (!texture.texcoord_cache[style][word]) {
-                  let size = text_info.size.texture_size;
-                  texture_position = this.placeText(size[0], size[1], style, texture, textures, max_texture_size);
+                  let size = text_info.segment_sizes[w].texture_size;
+                  let width = 2 * size[0]; // doubled to account for side-by-side rendering of fill and stroke
+
+                  texture_position = this.placeText(width, size[1], style, texture, textures, max_texture_size);
                   texture.texcoord_cache[style][word] = {
                     texture_id: texture.texture_id,
                     texture_position
                   };
                 }
 
-                text_info.textures[t] = texture.texture_id;
-                break;
-
-              case 'curved':
-                text_info.textures[t] = [];
-
-                for (let w = 0; w < text_info.segment_sizes.length; w++) {
-                  let word = text_info.segments[w];
-
-                  if (!texture.texcoord_cache[style][word]) {
-                    let size = text_info.segment_sizes[w].texture_size;
-                    let width = 2 * size[0]; // doubled to account for side-by-side rendering of fill and stroke
-
-                    texture_position = this.placeText(width, size[1], style, texture, textures, max_texture_size);
-                    texture.texcoord_cache[style][word] = {
-                      texture_id: texture.texture_id,
-                      texture_position
-                    };
-                  }
-
-                  text_info.textures[t].push(texture.texture_id);
-                }
-
-                break;
+                text_info.textures[t].push(texture.texture_id);
+              }
             }
           }
         } else {
@@ -12226,9 +12059,7 @@ class CanvasText {
     } // return computed texture sizes and UV cache
 
 
-    return Promise.resolve({
-      textures
-    });
+    return textures;
   } // Place text sprite in texture atlas, enlarging current texture, or starting new one if max texture size reached
 
 
@@ -12298,43 +12129,43 @@ class CanvasText {
 
     size = typeof size === 'string' ? size : String(size); // need a string for regex
 
-    let _ref = size.match(CanvasText.font_size_re) || [],
-        px_size = _ref[1],
-        units = _ref[2];
+    let _ref7 = size.match(TextCanvas.font_size_re) || [],
+        px_size = _ref7[1],
+        units = _ref7[2];
 
     units = units || 'px';
 
-    if (units === "em") {
+    if (units === 'em') {
       px_size *= 16;
-    } else if (units === "pt") {
+    } else if (units === 'pt') {
       px_size /= 0.75;
-    } else if (units === "%") {
+    } else if (units === '%') {
       px_size /= 6.25;
     }
 
     px_size = StyleParser.parsePositiveNumber(px_size);
-    px_size *= Utils$1.device_pixel_ratio;
+    px_size *= Utils.device_pixel_ratio;
     return px_size;
   }
 
   static pruneTextCache() {
-    if (CanvasText.cache.text_count > CanvasText.cache.text_count_max) {
-      CanvasText.cache.text = {};
-      CanvasText.cache.text_count = 0;
-      log('debug', 'CanvasText: pruning text cache');
+    if (TextCanvas.cache.text_count > TextCanvas.cache.text_count_max) {
+      TextCanvas.cache.text = {};
+      TextCanvas.cache.text_count = 0;
+      log('debug', 'TextCanvas: pruning text cache');
     }
 
-    if (Object.keys(CanvasText.cache.segment).length > CanvasText.cache.segment_count_max) {
-      CanvasText.cache.segment = {};
-      log('debug', 'CanvasText: pruning segment cache');
+    if (Object.keys(TextCanvas.cache.segment).length > TextCanvas.cache.segment_count_max) {
+      TextCanvas.cache.segment = {};
+      log('debug', 'TextCanvas: pruning segment cache');
     }
   }
 
 } // Extract font size and units
 
-CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/; // Cache sizes of rendered text
+TextCanvas.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/; // Cache sizes of rendered text
 
-CanvasText.cache = {
+TextCanvas.cache = {
   text: {},
   // size and line parsing, by text style, then text string
   text_count: 0,
@@ -12351,295 +12182,13 @@ CanvasText.cache = {
     segment_hits: 0,
     segment_misses: 0
   }
-}; // Right-to-left / bi-directional text handling
-// Taken from http://stackoverflow.com/questions/12006095/javascript-how-to-check-if-character-is-rtl
-
-const rtlDirCheck = new RegExp('[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
-
-function isTextRTL(s) {
-  return rtlDirCheck.test(s);
-}
-
-const neutral_chars = '\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF';
-const neutralDirCheck = new RegExp('[' + neutral_chars + ']+');
-
-function isTextNeutral(s) {
-  return neutralDirCheck.test(s);
-}
-
-const markRTL = '\u200F'; // explicit right-to-left marker
-// test http://localhost:8000/#16.72917/30.08541/31.28466
-
-const arabic_range = new RegExp('^[' + neutral_chars + '\u0600-\u06FF]+'); // all characters are Arabic or neutral
-
-const arabic_splitters = new RegExp('[' + neutral_chars + '\u0622-\u0625\u0627\u062F-\u0632\u0648\u0671-\u0677\u0688-\u0699\u06C4-\u06CB\u06CF\u06D2\u06D3\u06EE\u06EF]');
-const arabic_vowels = new RegExp('^[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+');
-const accents_and_vowels = "[\u0300-\u036F" + // Combining Diacritical Marks
-"\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7" + // Hebrew
-"\u07A6-\u07B0" + // Thaana
-"\u0900-\u0903\u093A-\u094C\u094E\u094F\u0951-\u0957\u0962\u0963" + // Devanagari
-"\u0981-\u0983\u09BC\u09BE-\u09CC\u09D7\u09E2\u09E3" + // Bengali
-"\u0A01-\u0A03\u0A3C-\u0A4C\u0A51" + // Gurmukhi
-"\u0A81-\u0A83\u0ABC\u0ABE-\u0ACC\u0AE2\u0AE3" + // Gujarati
-"\u0B01-\u0B03\u0B3C\u0B3E-\u0B4C\u0B56\u0B57\u0B62\u0B63" + // Oriya
-"\u0B82\u0BBE-\u0BCD\u0BD7" + // Tamil
-"\u0C00-\u0C03\u0C3E-\u0C4C\u0C55\u0C56\u0C62\u0C63" + // Telugu
-"\u0C81-\u0C83\u0CBC\u0CBE-\u0CCC\u0CD5\u0CD6\u0CE2\u0CE3" + // Kannada
-"\u0D01-\u0D03\u0D3E-\u0D4C\u0D4E\u0D57\u0D62\u0D63" + // Malayalam
-"\u0D82\u0D83\u0DCA-\u0DDF\u0DF2\u0DF3" + // Sinhala
-"\u0E31\u0E34-\u0E3A\u0E47-\u0E4E" + // Thai
-"\u0EB1\u0EB4-\u0EBC\u0EC8-\u0ECD" + // Lao
-"\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F83\u0F86\u0F87\u0F8D-\u0FBC\u0FC6" + // Tibetan
-"\u102B-\u1038\u103A-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D" + // Burmese
-"\u17B4-\u17D1\u17D3" + // Khmer
-"\u1A55-\u1A5E\u1A61-\u1A7C" + // Tai Tham
-"\u1DC0-\u1DFF" + // Combining Diacritical Marks Supplement
-"\u20D0-\u20FF" + // Combining Diacritical Marks for Symbols
-"]";
-const combo_characters = "[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0C4D\u0CCD\u0D4D\u0F84\u1039\u17D2\u1A60\u1A7F]";
-const graphemeRegex = new RegExp("^.(?:" + accents_and_vowels + "+)?" + "(" + combo_characters + "\\W(?:" + accents_and_vowels + "+)?)*"); // Scripts that cannot be curved due (due to contextual shaping and/or layout complexity)
-
-const curve_blacklist = {
-  Mongolian: "\u1800-\u18AF"
 };
-const curve_blacklist_range = Object.keys(curve_blacklist).map(r => curve_blacklist[r]).join('');
-const curve_blacklist_test = new RegExp('[' + curve_blacklist_range + ']');
-
-function isTextCurveBlacklisted(s) {
-  return curve_blacklist_test.test(s);
-} // Splitting strategy for chopping a label into segments
-
-
-const default_segment_length = 2; // character length of each segment when dividing up label text
-
-function splitLabelText(text, rtl) {
-  // Use single-character segments for RTL, to avoid additional handling for neutral characters
-  // (see https://github.com/tangrams/tangram/issues/541)
-  const segment_length = rtl ? 1 : default_segment_length;
-
-  if (text.length < segment_length) {
-    return [text];
-  }
-
-  let key = text;
-
-  if (CanvasText.cache.segment[key]) {
-    CanvasText.cache.stats.segment_hits++;
-    return CanvasText.cache.segment[key];
-  }
-
-  let segments = [];
-
-  if (arabic_range.exec(text)) {
-    segments = text.split(arabic_splitters);
-    let offset = -1;
-
-    for (var s = 0; s < segments.length - 1; s++) {
-      if (s > 0) {
-        let carryoverVowels = arabic_vowels.exec(segments[s]);
-
-        if (carryoverVowels) {
-          segments[s] = segments[s].substring(carryoverVowels[0].length);
-          segments[s - 1] += carryoverVowels[0];
-          offset += carryoverVowels[0].length;
-        }
-      }
-
-      offset += 1 + segments[s].length;
-      segments[s] += text.slice(offset, offset + 1);
-    }
-
-    text = "";
-  }
-
-  while (text.length) {
-    let segment = '';
-    let testText = text;
-    let graphemeCount = 0;
-
-    for (graphemeCount; graphemeCount < segment_length && testText.length; graphemeCount++) {
-      let graphemeCluster = (graphemeRegex.exec(testText) || testText)[0];
-      segment += graphemeCluster;
-      testText = testText.substring(graphemeCluster.length);
-    }
-
-    segments.push(segment);
-    text = text.substring(segment.length);
-  }
-
-  if (rtl) {
-    segments.reverse();
-  }
-
-  CanvasText.cache.stats.segment_misses++;
-  CanvasText.cache.segment[key] = segments;
-  return segments;
-} // Private class to arrange text labels into multiple lines based on
-// "text wrap" and "max line" values
-
-
-class MultiLine {
-  constructor(context, max_lines = Infinity, text_wrap = Infinity) {
-    this.width = 0;
-    this.height = 0;
-    this.lines = [];
-    this.max_lines = max_lines;
-    this.text_wrap = text_wrap;
-    this.context = context;
-  }
-
-  createLine(line_height) {
-    if (this.lines.length < this.max_lines) {
-      return new Line(line_height, this.text_wrap);
-    } else {
-      return false;
-    }
-  }
-
-  push(line) {
-    if (this.lines.length < this.max_lines) {
-      // measure line width
-      let line_width = this.context.measureText(line.text).width;
-      line.width = line_width;
-
-      if (line_width > this.width) {
-        this.width = Math.ceil(line_width);
-      } // add to lines and increment height
-
-
-      this.lines.push(line);
-      this.height += line.height;
-      return true;
-    } else {
-      this.addEllipsis();
-      return false;
-    }
-  } // pushes to the lines array and returns a new line if possible (false otherwise)
-
-
-  advance(line, line_height) {
-    let can_push = this.push(line);
-
-    if (can_push) {
-      return this.createLine(line_height);
-    } else {
-      return false;
-    }
-  }
-
-  addEllipsis() {
-    let last_line = this.lines[this.lines.length - 1];
-    let ellipsis_width = Math.ceil(this.context.measureText(MultiLine.ellipsis).width);
-    last_line.append(MultiLine.ellipsis);
-    last_line.width += ellipsis_width;
-
-    if (last_line.width > this.width) {
-      this.width = last_line.width;
-    }
-  }
-
-  finish(line) {
-    if (line) {
-      this.push(line);
-    } else {
-      this.addEllipsis();
-    }
-  }
-
-  static parse(str, text_wrap, max_lines, line_height, ctx) {
-    // Word wrapping
-    // Line breaks can be caused by:
-    //  - implicit line break when a maximum character threshold is exceeded per line (text_wrap)
-    //  - explicit line break in the label text (\n)
-    let words;
-
-    if (typeof text_wrap === 'number') {
-      words = str.split(' '); // split words on spaces
-    } else {
-      words = [str]; // no max line word wrapping (but new lines will still be in effect)
-    }
-
-    let multiline = new MultiLine(ctx, max_lines, text_wrap);
-    let line = multiline.createLine(line_height); // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
-
-    for (let i = 0; i < words.length; i++) {
-      let breaks = words[i].split('\n'); // split on line breaks
-
-      let new_line = i === 0 ? true : false;
-
-      for (let n = 0; n < breaks.length; n++) {
-        if (!line) {
-          break;
-        }
-
-        let word = breaks[n]; // force punctuation (neutral chars) at the end of a RTL line, so they stay attached to original word
-
-        if (isTextRTL(word) && isTextNeutral(word[word.length - 1])) {
-          word += markRTL;
-        }
-
-        let spaced_word = new_line ? word : ' ' + word; // if adding current word would overflow, add a new line instead
-        // first word (i === 0) always appends
-
-        if (text_wrap && i > 0 && line.exceedsTextwrap(spaced_word)) {
-          line = multiline.advance(line, line_height);
-
-          if (!line) {
-            break;
-          }
-
-          line.append(word);
-          new_line = true;
-        } else {
-          line.append(spaced_word);
-        } // if line breaks present, add new line (unless on last line)
-
-
-        if (n < breaks.length - 1) {
-          line = multiline.advance(line, line_height);
-          new_line = true;
-        }
-      }
-
-      if (i === words.length - 1) {
-        multiline.finish(line);
-      }
-    }
-
-    return multiline;
-  }
-
-}
-
-MultiLine.ellipsis = '...'; // A Private class used by MultiLine to contain the logic for a single line
-// including character count, width, height and text
-
-class Line {
-  constructor(height = 0, text_wrap = 0) {
-    this.chars = 0;
-    this.text = '';
-    this.height = Math.ceil(height);
-    this.text_wrap = text_wrap;
-  }
-
-  append(text) {
-    this.chars += text.length;
-    this.text += text;
-  }
-
-  exceedsTextwrap(text) {
-    return text.length + this.chars > this.text_wrap;
-  }
-
-}
-
-// Text label rendering methods, can be mixed into a rendering style
 
 let text_texture_id = 0;
 const TextLabels = {
   resetText() {
     if (Thread.is_main) {
-      this.canvas = new CanvasText();
+      this.canvas = new TextCanvas();
     } else if (Thread.is_worker) {
       this.texts = {}; // unique texts, grouped by tile, by style
     }
@@ -12658,8 +12207,8 @@ const TextLabels = {
     } // Compute text style and layout settings for this feature label
 
 
-    let text_settings = TextSettings$1.compute(feature, draw, context);
-    let text_settings_key = TextSettings$1.key(text_settings); // first label in tile, or with this style?
+    let text_settings = TextSettings.compute(feature, draw, context);
+    let text_settings_key = TextSettings.key(text_settings); // first label in tile, or with this style?
 
     this.texts[tile.id] = this.texts[tile.id] || {};
     let sizes = this.texts[tile.id][text_settings_key] = this.texts[tile.id][text_settings_key] || {};
@@ -12769,15 +12318,15 @@ const TextLabels = {
     return text;
   },
 
-  prepareTextLabels(tile, collision_group, queue) {
+  async prepareTextLabels(tile, queue) {
     if (Object.keys(this.texts[tile.id] || {}).length === 0) {
-      return Promise.resolve([]);
+      return [];
     } // first call to main thread, ask for text pixel sizes
 
 
-    return WorkerBroker$1.postMessage(this.main_thread_target + '.calcTextSizes', tile.id, this.texts[tile.id]).then(({
-      texts
-    }) => {
+    try {
+      const texts = await WorkerBroker$1.postMessage(this.main_thread_target + '.calcTextSizes', tile.id, this.texts[tile.id]);
+
       if (tile.canceled) {
         log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
         return [];
@@ -12786,71 +12335,75 @@ const TextLabels = {
       this.texts[tile.id] = texts || [];
 
       if (!texts) {
-        Collision$1.abortTile(tile.id);
+        Collision.abortTile(tile.id);
         return [];
       }
 
       return this.buildTextLabels(tile, queue);
-    });
+    } catch (e) {
+      // error thrown if style has been removed from main thread
+      Collision.abortTile(tile.id);
+      return [];
+    }
   },
 
-  collideAndRenderTextLabels(tile, collision_group, queue) {
-    return this.prepareTextLabels(tile, collision_group, queue).then(labels => {
-      if (labels.length === 0) {
-        Collision$1.collide([], collision_group, tile.id);
-        return Promise.resolve({});
+  async collideAndRenderTextLabels(tile, collision_group, queue) {
+    let labels = await this.prepareTextLabels(tile, queue);
+
+    if (labels.length === 0) {
+      Collision.collide([], collision_group, tile.id);
+      return {};
+    }
+
+    labels = await Collision.collide(labels, collision_group, tile.id);
+
+    if (tile.canceled) {
+      log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
+      return {};
+    }
+
+    let texts = this.texts[tile.id];
+
+    if (texts == null || labels.length === 0) {
+      return {};
+    }
+
+    this.cullTextStyles(texts, labels); // set alignments
+
+    labels.forEach(q => {
+      let text_settings_key = q.text_settings_key;
+      let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+
+      if (!text_info.text_settings.can_articulate) {
+        text_info.align = text_info.align || {};
+        text_info.align[q.label.align] = {};
+      } else {
+        // consider making it a set
+        if (!text_info.type) {
+          text_info.type = [];
+        }
+
+        if (text_info.type.indexOf(q.label.type) === -1) {
+          text_info.type.push(q.label.type);
+        }
+      }
+    }); // second call to main thread, for rasterizing the set of texts
+
+    try {
+      const rasterized = await WorkerBroker$1.postMessage(this.main_thread_target + '.rasterizeTexts', tile.id, tile.key, texts);
+
+      if (tile.canceled) {
+        log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
+        return {};
       }
 
-      return Collision$1.collide(labels, collision_group, tile.id).then(labels => {
-        if (tile.canceled) {
-          log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
-          return {};
-        }
-
-        let texts = this.texts[tile.id];
-
-        if (texts == null || labels.length === 0) {
-          return {};
-        }
-
-        this.cullTextStyles(texts, labels); // set alignments
-
-        labels.forEach(q => {
-          let text_settings_key = q.text_settings_key;
-          let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-
-          if (!text_info.text_settings.can_articulate) {
-            text_info.align = text_info.align || {};
-            text_info.align[q.label.align] = {};
-          } else {
-            // consider making it a set
-            if (!text_info.type) {
-              text_info.type = [];
-            }
-
-            if (text_info.type.indexOf(q.label.type) === -1) {
-              text_info.type.push(q.label.type);
-            }
-          }
-        }); // second call to main thread, for rasterizing the set of texts
-
-        return WorkerBroker$1.postMessage(this.main_thread_target + '.rasterizeTexts', tile.id, tile.key, texts).then(({
-          texts,
-          textures
-        }) => {
-          if (tile.canceled) {
-            log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
-            return {};
-          }
-
-          return {
-            labels,
-            texts,
-            textures
-          };
-        });
-      });
-    });
+      return _extends({
+        labels
+      }, rasterized);
+    } catch (e) {
+      // error thrown if style has been removed from main thread
+      return {};
+    }
   },
 
   // Remove unused text/style combinations to avoid unnecessary rasterization
@@ -12887,33 +12440,24 @@ const TextLabels = {
   },
 
   // Called on main thread from worker, to create atlas of labels for a tile
-  rasterizeTexts(tile_id, tile_key, texts) {
-    let canvas = new CanvasText(); // one per style per tile (style may be rendering multiple tiles at once)
+  async rasterizeTexts(tile_id, tile_key, texts) {
+    let canvas = new TextCanvas(); // one per style per tile (style may be rendering multiple tiles at once)
 
     let max_texture_size = Math.min(this.max_texture_size, 2048); // cap each label texture at 2048x2048
 
-    return canvas.setTextureTextPositions(texts, max_texture_size).then(({
+    let textures = canvas.setTextureTextPositions(texts, max_texture_size);
+    let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
+    text_texture_id++;
+    textures = await canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl);
+
+    if (!textures) {
+      return {};
+    }
+
+    return {
+      texts,
       textures
-    }) => {
-      if (!textures) {
-        return {};
-      }
-
-      let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
-      text_texture_id++;
-      return canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl).then(({
-        textures
-      }) => {
-        if (!textures) {
-          return {};
-        }
-
-        return {
-          texts,
-          textures
-        };
-      });
-    });
+    };
   },
 
   preprocessText(draw) {
@@ -12930,7 +12474,7 @@ const TextLabels = {
     } // Convert font and text stroke sizes
 
 
-    draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings$1.defaults.size, CanvasText.fontPixelSize);
+    draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize);
 
     if (draw.font.stroke && draw.font.stroke.width != null) {
       draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
@@ -12977,8 +12521,430 @@ const TextLabels = {
 
 };
 
+var normalFromMat4_1 = normalFromMat4;
+
+/**
+* Calculates a 3x3 normal matrix (transpose inverse) from the 4x4 matrix
+*
+* @alias mat3.normalFromMat4
+* @param {mat3} out mat3 receiving operation result
+* @param {mat4} a Mat4 to derive the normal matrix from
+*
+* @returns {mat3} out
+*/
+function normalFromMat4(out, a) {
+  var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+  var a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+  var a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+  var a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+  var b00 = a00 * a11 - a01 * a10;
+  var b01 = a00 * a12 - a02 * a10;
+  var b02 = a00 * a13 - a03 * a10;
+  var b03 = a01 * a12 - a02 * a11;
+  var b04 = a01 * a13 - a03 * a11;
+  var b05 = a02 * a13 - a03 * a12;
+  var b06 = a20 * a31 - a21 * a30;
+  var b07 = a20 * a32 - a22 * a30;
+  var b08 = a20 * a33 - a23 * a30;
+  var b09 = a21 * a32 - a22 * a31;
+  var b10 = a21 * a33 - a23 * a31;
+  var b11 = a22 * a33 - a23 * a32;
+
+  // Calculate the determinant
+  var det = b00 * b11
+          - b01 * b10
+          + b02 * b09
+          + b03 * b08
+          - b04 * b07
+          + b05 * b06;
+
+  if (!det) return null
+  det = 1.0 / det;
+
+  out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+  out[1] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+  out[2] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+
+  out[3] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+  out[4] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+  out[5] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+
+  out[6] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+  out[7] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+  out[8] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+
+  return out
+}
+
+var invert_1 = invert;
+
+/**
+ * Inverts a mat3
+ *
+ * @alias mat3.invert
+ * @param {mat3} out the receiving matrix
+ * @param {mat3} a the source matrix
+ * @returns {mat3} out
+ */
+function invert(out, a) {
+  var a00 = a[0], a01 = a[1], a02 = a[2];
+  var a10 = a[3], a11 = a[4], a12 = a[5];
+  var a20 = a[6], a21 = a[7], a22 = a[8];
+
+  var b01 = a22 * a11 - a12 * a21;
+  var b11 = -a22 * a10 + a12 * a20;
+  var b21 = a21 * a10 - a11 * a20;
+
+  // Calculate the determinant
+  var det = a00 * b01 + a01 * b11 + a02 * b21;
+
+  if (!det) return null
+  det = 1.0 / det;
+
+  out[0] = b01 * det;
+  out[1] = (-a22 * a01 + a02 * a21) * det;
+  out[2] = (a12 * a01 - a02 * a11) * det;
+  out[3] = b11 * det;
+  out[4] = (a22 * a00 - a02 * a20) * det;
+  out[5] = (-a12 * a00 + a02 * a10) * det;
+  out[6] = b21 * det;
+  out[7] = (-a21 * a00 + a01 * a20) * det;
+  out[8] = (a11 * a00 - a01 * a10) * det;
+
+  return out
+}
+
+var multiply_1 = multiply;
+
+/**
+ * Multiplies two mat4's
+ *
+ * @param {mat4} out the receiving matrix
+ * @param {mat4} a the first operand
+ * @param {mat4} b the second operand
+ * @returns {mat4} out
+ */
+function multiply(out, a, b) {
+    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+    // Cache only the current line of the second matrix
+    var b0  = b[0], b1 = b[1], b2 = b[2], b3 = b[3];  
+    out[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+    out[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+    out[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+    out[3] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+    b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
+    out[4] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+    out[5] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+    out[6] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+    out[7] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+    b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
+    out[8] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+    out[9] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+    out[10] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+    out[11] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+    b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
+    out[12] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+    out[13] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+    out[14] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+    out[15] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+    return out;
+}
+
+var translate_1 = translate;
+
+/**
+ * Translate a mat4 by the given vector
+ *
+ * @param {mat4} out the receiving matrix
+ * @param {mat4} a the matrix to translate
+ * @param {vec3} v vector to translate by
+ * @returns {mat4} out
+ */
+function translate(out, a, v) {
+    var x = v[0], y = v[1], z = v[2],
+        a00, a01, a02, a03,
+        a10, a11, a12, a13,
+        a20, a21, a22, a23;
+
+    if (a === out) {
+        out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
+        out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
+        out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
+        out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
+    } else {
+        a00 = a[0]; a01 = a[1]; a02 = a[2]; a03 = a[3];
+        a10 = a[4]; a11 = a[5]; a12 = a[6]; a13 = a[7];
+        a20 = a[8]; a21 = a[9]; a22 = a[10]; a23 = a[11];
+
+        out[0] = a00; out[1] = a01; out[2] = a02; out[3] = a03;
+        out[4] = a10; out[5] = a11; out[6] = a12; out[7] = a13;
+        out[8] = a20; out[9] = a21; out[10] = a22; out[11] = a23;
+
+        out[12] = a00 * x + a10 * y + a20 * z + a[12];
+        out[13] = a01 * x + a11 * y + a21 * z + a[13];
+        out[14] = a02 * x + a12 * y + a22 * z + a[14];
+        out[15] = a03 * x + a13 * y + a23 * z + a[15];
+    }
+
+    return out;
+}
+
+var scale_1 = scale;
+
+/**
+ * Scales the mat4 by the dimensions in the given vec3
+ *
+ * @param {mat4} out the receiving matrix
+ * @param {mat4} a the matrix to scale
+ * @param {vec3} v the vec3 to scale the matrix by
+ * @returns {mat4} out
+ **/
+function scale(out, a, v) {
+    var x = v[0], y = v[1], z = v[2];
+
+    out[0] = a[0] * x;
+    out[1] = a[1] * x;
+    out[2] = a[2] * x;
+    out[3] = a[3] * x;
+    out[4] = a[4] * y;
+    out[5] = a[5] * y;
+    out[6] = a[6] * y;
+    out[7] = a[7] * y;
+    out[8] = a[8] * z;
+    out[9] = a[9] * z;
+    out[10] = a[10] * z;
+    out[11] = a[11] * z;
+    out[12] = a[12];
+    out[13] = a[13];
+    out[14] = a[14];
+    out[15] = a[15];
+    return out;
+}
+
+var perspective_1 = perspective;
+
+/**
+ * Generates a perspective projection matrix with the given bounds
+ *
+ * @param {mat4} out mat4 frustum matrix will be written into
+ * @param {number} fovy Vertical field of view in radians
+ * @param {number} aspect Aspect ratio. typically viewport width/height
+ * @param {number} near Near bound of the frustum
+ * @param {number} far Far bound of the frustum
+ * @returns {mat4} out
+ */
+function perspective(out, fovy, aspect, near, far) {
+    var f = 1.0 / Math.tan(fovy / 2),
+        nf = 1 / (near - far);
+    out[0] = f / aspect;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = f;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = 0;
+    out[10] = (far + near) * nf;
+    out[11] = -1;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = (2 * far * near) * nf;
+    out[15] = 0;
+    return out;
+}
+
+var identity_1 = identity;
+
+/**
+ * Set a mat4 to the identity matrix
+ *
+ * @param {mat4} out the receiving matrix
+ * @returns {mat4} out
+ */
+function identity(out) {
+    out[0] = 1;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = 1;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = 0;
+    out[10] = 1;
+    out[11] = 0;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = 0;
+    out[15] = 1;
+    return out;
+}
+
+var lookAt_1 = lookAt;
+
+/**
+ * Generates a look-at matrix with the given eye position, focal point, and up axis
+ *
+ * @param {mat4} out mat4 frustum matrix will be written into
+ * @param {vec3} eye Position of the viewer
+ * @param {vec3} center Point the viewer is looking at
+ * @param {vec3} up vec3 pointing up
+ * @returns {mat4} out
+ */
+function lookAt(out, eye, center, up) {
+    var x0, x1, x2, y0, y1, y2, z0, z1, z2, len,
+        eyex = eye[0],
+        eyey = eye[1],
+        eyez = eye[2],
+        upx = up[0],
+        upy = up[1],
+        upz = up[2],
+        centerx = center[0],
+        centery = center[1],
+        centerz = center[2];
+
+    if (Math.abs(eyex - centerx) < 0.000001 &&
+        Math.abs(eyey - centery) < 0.000001 &&
+        Math.abs(eyez - centerz) < 0.000001) {
+        return identity_1(out);
+    }
+
+    z0 = eyex - centerx;
+    z1 = eyey - centery;
+    z2 = eyez - centerz;
+
+    len = 1 / Math.sqrt(z0 * z0 + z1 * z1 + z2 * z2);
+    z0 *= len;
+    z1 *= len;
+    z2 *= len;
+
+    x0 = upy * z2 - upz * z1;
+    x1 = upz * z0 - upx * z2;
+    x2 = upx * z1 - upy * z0;
+    len = Math.sqrt(x0 * x0 + x1 * x1 + x2 * x2);
+    if (!len) {
+        x0 = 0;
+        x1 = 0;
+        x2 = 0;
+    } else {
+        len = 1 / len;
+        x0 *= len;
+        x1 *= len;
+        x2 *= len;
+    }
+
+    y0 = z1 * x2 - z2 * x1;
+    y1 = z2 * x0 - z0 * x2;
+    y2 = z0 * x1 - z1 * x0;
+
+    len = Math.sqrt(y0 * y0 + y1 * y1 + y2 * y2);
+    if (!len) {
+        y0 = 0;
+        y1 = 0;
+        y2 = 0;
+    } else {
+        len = 1 / len;
+        y0 *= len;
+        y1 *= len;
+        y2 *= len;
+    }
+
+    out[0] = x0;
+    out[1] = y0;
+    out[2] = z0;
+    out[3] = 0;
+    out[4] = x1;
+    out[5] = y1;
+    out[6] = z1;
+    out[7] = 0;
+    out[8] = x2;
+    out[9] = y2;
+    out[10] = z2;
+    out[11] = 0;
+    out[12] = -(x0 * eyex + x1 * eyey + x2 * eyez);
+    out[13] = -(y0 * eyex + y1 * eyey + y2 * eyez);
+    out[14] = -(z0 * eyex + z1 * eyey + z2 * eyez);
+    out[15] = 1;
+
+    return out;
+}
+
+var copy_1 = copy;
+
+/**
+ * Copy the values from one mat4 to another
+ *
+ * @param {mat4} out the receiving matrix
+ * @param {mat4} a the source matrix
+ * @returns {mat4} out
+ */
+function copy(out, a) {
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = a[2];
+    out[3] = a[3];
+    out[4] = a[4];
+    out[5] = a[5];
+    out[6] = a[6];
+    out[7] = a[7];
+    out[8] = a[8];
+    out[9] = a[9];
+    out[10] = a[10];
+    out[11] = a[11];
+    out[12] = a[12];
+    out[13] = a[13];
+    out[14] = a[14];
+    out[15] = a[15];
+    return out;
+}
+
+// Partial import of gl-matrix via modularized stack-gl forks
+// https://github.com/toji/gl-matrix
+// https://github.com/stackgl
+// vec3
+// Substitute 64-bit version
+// We need the extra precision when multiplying matrices w/mercator projected values
+const vec3 = {
+  fromValues(x, y, z) {
+    var out = new Float64Array(3);
+    out[0] = x;
+    out[1] = y;
+    out[2] = z;
+    return out;
+  }
+
+}; // mat3
+const mat3 = {
+  normalFromMat4: normalFromMat4_1,
+  invert: invert_1
+}; // mat4
+const mat4 = {
+  multiply: multiply_1,
+  translate: translate_1,
+  scale: scale_1,
+  perspective: perspective_1,
+  lookAt: lookAt_1,
+  identity: identity_1,
+  copy: copy_1
+};
+
 class Camera {
-  constructor(name, view, options = {}) {
+  constructor(name, view, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     this.view = view;
     this.position = options.position;
     this.zoom = options.zoom;
@@ -13005,7 +12971,9 @@ class Camera {
   update() {} // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
 
 
-  setupProgram(program) {} // Sync camera position/zoom to scene view
+  setupProgram()
+  /*program*/
+  {} // Sync camera position/zoom to scene view
 
 
   updateView() {
@@ -13058,7 +13026,11 @@ class Camera {
 */
 
 class PerspectiveCamera extends Camera {
-  constructor(name, view, options = {}) {
+  constructor(name, view, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     super(name, view, options);
     this.type = 'perspective'; // a single scalar, or pairs of stops mapping zoom levels, e.g. [zoom, focal length]
 
@@ -13092,12 +13064,12 @@ class PerspectiveCamera extends Camera {
   // (focal length is used if both are passed).
 
 
-  constrainCamera({
-    view_height,
-    height,
-    focal_length,
-    fov
-  }) {
+  constrainCamera(_ref) {
+    let view_height = _ref.view_height,
+        height = _ref.height,
+        focal_length = _ref.focal_length,
+        fov = _ref.fov;
+
     // Solve for camera height
     if (!height) {
       // We have focal length, calculate FOV
@@ -13134,8 +13106,8 @@ class PerspectiveCamera extends Camera {
 
     var _this$constrainCamera = this.constrainCamera({
       view_height: viewport_height,
-      focal_length: Utils$1.interpolate(this.view.zoom, this.focal_length),
-      fov: Utils$1.interpolate(this.view.zoom, this.fov)
+      focal_length: Utils.interpolate(this.view.zoom, this.focal_length),
+      fov: Utils.interpolate(this.view.zoom, this.fov)
     }),
         height = _this$constrainCamera.height,
         fov = _this$constrainCamera.fov; // View matrix
@@ -13186,7 +13158,11 @@ class PerspectiveCamera extends Camera {
 
 
 class IsometricCamera extends Camera {
-  constructor(name, view, options = {}) {
+  constructor(name, view, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     super(name, view, options);
     this.type = 'isometric';
     this.axis = options.axis || {
@@ -13252,7 +13228,11 @@ class IsometricCamera extends Camera {
 
 
 class FlatCamera extends IsometricCamera {
-  constructor(name, view, options = {}) {
+  constructor(name, view, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     super(name, view, options);
     this.type = 'flat';
   }
@@ -13367,19 +13347,20 @@ class View {
       height
     };
     this.size.device = {
-      width: Math.round(this.size.css.width * Utils$1.device_pixel_ratio),
-      height: Math.round(this.size.css.height * Utils$1.device_pixel_ratio)
+      width: Math.round(this.size.css.width * Utils.device_pixel_ratio),
+      height: Math.round(this.size.css.height * Utils.device_pixel_ratio)
     };
     this.aspect = this.size.css.width / this.size.css.height;
     this.updateBounds();
   } // Set the map view, can be passed an object with lat/lng and/or zoom
 
 
-  setView({
-    lng,
-    lat,
-    zoom
-  } = {}) {
+  setView(_temp) {
+    let _ref = _temp === void 0 ? {} : _temp,
+        lng = _ref.lng,
+        lat = _ref.lat,
+        zoom = _ref.zoom;
+
     var changed = false; // Set center
 
     if (typeof lng === 'number' && typeof lat === 'number') {
@@ -13510,7 +13491,7 @@ class View {
 
     for (let x = range[0]; x <= range[1]; x++) {
       for (let y = range[2]; y <= range[3]; y++) {
-        coords.push(Tile.coord({
+        coords.push(TileID.coord({
           x,
           y,
           z
@@ -13537,19 +13518,20 @@ class View {
       } // Remove tiles outside given zoom that are still loading
 
 
-      if (tile.loading && tile.style_zoom !== this.tile_zoom) {
+      if (tile.loading && tile.style_z !== this.tile_zoom) {
         return true;
       } // Discard if too far from current zoom
 
 
-      let zdiff = Math.abs(tile.style_zoom - this.tile_zoom);
+      const zdiff = Math.abs(tile.style_z - this.tile_zoom);
+      const preserve_tiles_within_zoom = tile.preserve_tiles_within_zoom != null ? tile.preserve_tiles_within_zoom : this.preserve_tiles_within_zoom; // optionally tile source specific
 
-      if (zdiff > this.preserve_tiles_within_zoom) {
+      if (zdiff > preserve_tiles_within_zoom) {
         return true;
       } // Handle tiles at different zooms
 
 
-      let coords = Tile.coordinateAtZoom(tile.coords, this.tile_zoom); // Discard tiles outside an area surrounding the viewport
+      let coords = TileID.coordAtZoom(tile.coords, this.tile_zoom); // Discard tiles outside an area surrounding the viewport
 
       if (Math.abs(coords.x - this.center.tile.x) - border_tiles[0] > this.buffer) {
         log('trace', `View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
@@ -13591,7 +13573,7 @@ class View {
     program.uniform('2fv', 'u_resolution', [this.size.device.width, this.size.device.height]);
     program.uniform('3fv', 'u_map_position', [this.center.meters.x, this.center.meters.y, this.zoom]);
     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-    program.uniform('1f', 'u_device_pixel_ratio', Utils$1.device_pixel_ratio);
+    program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
     program.uniform('1f', 'u_view_pan_snap_timer', this.pan_snap_timer);
     program.uniform('1i', 'u_view_panning', this.panning);
     this.camera.setupProgram(program);
@@ -13604,9 +13586,9 @@ class View {
 
 }
 
-var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 angles_scaled = (PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 angles_scaled = (TANGRAM_PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
 
-var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n            // Distance to this fragment from the center.\n            float l = length(v_texcoord);\n            // Mask of outermost circle, either outline or point boundary.\n            float outer_alpha  = _tangram_antialias(l, 1.);\n            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n            // Distance to this fragment from the center.\n            float l = length(v_texcoord);\n            // Mask of outermost circle, either outline or point boundary.\n            float outer_alpha  = _tangram_antialias(l, 1.);\n            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // If blending is off, use alpha discard as a lower-quality substitute\n    #ifdef TANGRAM_BLEND_OPAQUE\n        if (color.a < 1. - TANGRAM_EPSILON) {\n            discard;\n        }\n        color.a = 1.; // only allow full alpha in opaque blend mode\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 // Point + text label rendering style
 const PLACEMENT$1 = LabelPoint.PLACEMENT;
@@ -13616,7 +13598,10 @@ const offsets_normalize = 64;
 const texcoord_normalize = 65535;
 const Points = Object.create(Style);
 Points.variants = {}; // mesh variants by variant key
-// texture types
+
+Points.vertex_layouts = {}; // vertex layouts by variant key
+
+const SHADER_POINT_VARIANT_KEY = 'shader_point'; // texture types
 
 const TANGRAM_POINT_TYPE_TEXTURE = 1; // style texture/sprites (assigned by user)
 
@@ -13640,63 +13625,12 @@ Object.assign(Points, {
   blend: 'overlay',
 
   // overlays drawn on top of all other styles, with blending
-  init(options = {}) {
-    Style.init.call(this, options); // Vertex layout
+  init(options) {
+    if (options === void 0) {
+      options = {};
+    }
 
-    let attribs = [{
-      name: 'a_position',
-      size: 4,
-      type: gl$1.SHORT,
-      normalized: false
-    }, {
-      name: 'a_shape',
-      size: 4,
-      type: gl$1.SHORT,
-      normalized: false
-    }, {
-      name: 'a_texcoord',
-      size: 2,
-      type: gl$1.UNSIGNED_SHORT,
-      normalized: true
-    }, {
-      name: 'a_offset',
-      size: 2,
-      type: gl$1.SHORT,
-      normalized: false
-    }, {
-      name: 'a_color',
-      size: 4,
-      type: gl$1.UNSIGNED_BYTE,
-      normalized: true
-    }, {
-      name: 'a_outline_color',
-      size: 4,
-      type: gl$1.UNSIGNED_BYTE,
-      normalized: true,
-      static: [0, 0, 0, 0]
-    }, {
-      name: 'a_outline_edge',
-      size: 1,
-      type: gl$1.FLOAT,
-      normalized: false,
-      static: 0
-    }, {
-      name: 'a_selection_color',
-      size: 4,
-      type: gl$1.UNSIGNED_BYTE,
-      normalized: true
-    }];
-    this.vertex_layout = new VertexLayout(attribs); // Modified vertex layout for shader-drawn points
-
-    attribs = attribs.map(x => Object.assign({}, x)); // copy attribs
-
-    attribs.forEach(attrib => {
-      // clear the static attribute value for shader points
-      if (attrib.name === 'a_outline_color' || attrib.name === 'a_outline_edge') {
-        attrib.static = null;
-      }
-    });
-    this.vertex_layout_shader_point = new VertexLayout(attribs); // Shader defines
+    Style.init.call(this, options); // Shader defines
 
     this.setupDefines(); // Include code for SDF-drawn shader points
 
@@ -13782,7 +13716,7 @@ Object.assign(Points, {
         log({
           level: 'debug',
           once: true
-        }, `Layer group '${draw.layers.join(', ')}' ` + `uses a texture '${style.texture}', but doesn't specify which sprite to draw. ` + `Features that match this layer group won't be drawn without specifying the sprite with the ` + `'sprite' or 'sprite_default' properties. The merged draw parameters for this layer group are:`, draw).then(logged => {
+        }, `Layer group '${draw.layers.join(', ')}' ` + `uses a texture '${style.texture}', but doesn't specify which sprite to draw. ` + 'Features that match this layer group won\'t be drawn without specifying the sprite with the ' + '\'sprite\' or \'sprite_default\' properties. The merged draw parameters for this layer group are:', draw).then(logged => {
           if (logged) {
             log('debug', `Example feature for layer group '${draw.layers.join(', ')}'`, feature);
           }
@@ -13794,33 +13728,11 @@ Object.assign(Points, {
       log({
         level: 'warn',
         once: true
-      }, `Layer group '${draw.layers.join(', ')}' ` + `specifies sprite '${draw.sprite}', but the texture '${draw.texture}' doesn't define any sprites. ` + `Features that match this layer group won't be drawn. The merged draw parameters for this layer group are:`, draw);
+      }, `Layer group '${draw.layers.join(', ')}' ` + `specifies sprite '${draw.sprite}', but the texture '${draw.texture}' doesn't define any sprites. ` + 'Features that match this layer group won\'t be drawn. The merged draw parameters for this layer group are:', draw);
       return;
-    } // point size defined explicitly, or defaults to sprite size, or generic fallback
+    }
 
-
-    style.size = draw.size;
-
-    if (!style.size) {
-      // a 'size' property has not been set in the draw layer -
-      // use the sprite size if it exists and a generic fallback if it doesn't
-      style.size = sprite_info && sprite_info.css_size || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
-    } else {
-      // check for a cached size, passing the texture and any sprite references
-      style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
-
-      if (style.size == null) {
-        // the StyleParser couldn't evaluate a sprite size
-        log({
-          level: 'warn',
-          once: true
-        }, `Layer group '${draw.layers.join(', ')}': ` + `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, features that match ` + `this layer group won't be drawn`);
-        return;
-      } else if (typeof style.size === 'number') {
-        style.size = [style.size, style.size]; // convert 1d size to 2d
-      }
-    } // incorporate outline into size
-
+    this.calcSize(draw, style, sprite_info, context); // incorporate outline into size
 
     if (draw.outline) {
       style.outline_width = StyleParser.evalCachedProperty(draw.outline.width, context) || StyleParser.defaults.outline.width;
@@ -13850,7 +13762,7 @@ Object.assign(Points, {
 
     style.angle = StyleParser.evalProperty(draw.angle, context) || 0; // points can be placed off the ground
 
-    style.z = draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
+    style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
     style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
     this.computeLayout(style, feature, draw, context, tile); // Text styling
@@ -13864,7 +13776,7 @@ Object.assign(Points, {
       log({
         level: 'warn',
         once: true
-      }, `Layer group '${draw.layers.join(', ')}': ` + `cannot use boundary labels (e.g. 'text_source: { left: ..., right: ... }') for 'text' labels attached to 'points'; ` + `provided 'text_source' value was ${JSON.stringify(draw.text.text_source)}`);
+      }, `Layer group '${draw.layers.join(', ')}': ` + 'cannot use boundary labels (e.g. \'text_source: { left: ..., right: ... }\') for \'text\' labels attached to \'points\'; ' + `provided 'text_source' value was ${JSON.stringify(draw.text.text_source)}`);
     }
 
     if (tf) {
@@ -13876,7 +13788,7 @@ Object.assign(Points, {
       // (they should stay fixed relative to the point)
 
       tf.layout.move_into_tile = false;
-      Collision$1.addStyle(this.collision_group_text, tile.id);
+      Collision.addStyle(this.collision_group_text, tile.id);
     }
 
     this.queueFeature({
@@ -13888,7 +13800,33 @@ Object.assign(Points, {
     }, tile); // queue the feature for later processing
     // Register with collision manager
 
-    Collision$1.addStyle(this.collision_group_points, tile.id);
+    Collision.addStyle(this.collision_group_points, tile.id);
+  },
+
+  // Calcuate the size for the current point feature
+  calcSize(draw, style, sprite_info, context) {
+    // point size defined explicitly, or defaults to sprite size, or generic fallback
+    style.size = draw.size;
+
+    if (!style.size) {
+      // a 'size' property has not been set in the draw layer -
+      // use the sprite size if it exists and a generic fallback if it doesn't
+      style.size = sprite_info && sprite_info.css_size || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
+    } else {
+      // check for a cached size, passing the texture and any sprite references
+      style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
+
+      if (style.size == null) {
+        // the StyleParser couldn't evaluate a sprite size
+        log({
+          level: 'warn',
+          once: true
+        }, `Layer group '${draw.layers.join(', ')}': ` + `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, features that match ` + 'this layer group won\'t be drawn');
+        return;
+      } else if (typeof style.size === 'number') {
+        style.size = [style.size, style.size]; // convert 1d size to 2d
+      }
+    }
   },
 
   hasSprites(style) {
@@ -13934,10 +13872,10 @@ Object.assign(Points, {
   },
 
   // Override
-  endData(tile) {
+  async endData(tile) {
     if (tile.canceled) {
       log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}`);
-      return Promise.resolve();
+      return null;
     }
 
     let queue = this.queues[tile.id];
@@ -13984,8 +13922,8 @@ Object.assign(Points, {
       }
     }); // Collide both points and text, then build features
 
-    return Promise.all([// Points
-    Collision$1.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
+    const _ref = await Promise.all([// Points
+    Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
       point_objs.forEach(q => {
         this.feature_style = q.style;
         this.feature_style.label = q.label;
@@ -13994,43 +13932,42 @@ Object.assign(Points, {
         Style.addFeature.call(this, q.feature, q.draw, q.context);
       });
     }), // Labels
-    this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)]).then(([, {
-      labels,
-      texts,
-      textures
-    }]) => {
-      // Process labels
-      if (labels && texts) {
-        // Build queued features
-        labels.forEach(q => {
-          let text_settings_key = q.text_settings_key;
-          let text_info = texts[text_settings_key] && texts[text_settings_key][q.text]; // setup styling object expected by Style class
+    this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)]),
+          _ref$ = _ref[1],
+          labels = _ref$.labels,
+          texts = _ref$.texts,
+          textures = _ref$.textures; // Process labels
 
-          let style = this.feature_style;
-          style.label = q.label;
-          style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
 
-          style.size = text_info.size.logical_size;
-          style.angle = 0; // text attached to point is always upright
+    if (labels && texts) {
+      // Build queued features
+      labels.forEach(q => {
+        let text_settings_key = q.text_settings_key;
+        let text_info = texts[text_settings_key] && texts[text_settings_key][q.text]; // setup styling object expected by Style class
 
-          style.texcoords = text_info.align[q.label.align].texcoords;
-          style.label_texture = textures[text_info.align[q.label.align].texture_id];
-          Style.addFeature.call(this, q.feature, q.draw, q.context);
-        });
-      }
+        let style = this.feature_style;
+        style.label = q.label;
+        style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
 
-      this.freeText(tile); // Finish tile mesh
+        style.size = text_info.size.logical_size;
+        style.angle = 0; // text attached to point is always upright
 
-      return Style.endData.call(this, tile).then(tile_data => {
-        // Attach tile-specific label atlas to mesh as a texture uniform
-        if (tile_data && textures && textures.length) {
-          tile_data.textures = tile_data.textures || [];
-          tile_data.textures.push(...textures); // assign texture ownership to tile
-        }
-
-        return tile_data;
+        style.texcoords = text_info.align[q.label.align].texcoords;
+        style.label_texture = textures[text_info.align[q.label.align].texture_id];
+        Style.addFeature.call(this, q.feature, q.draw, q.context);
       });
-    });
+    }
+
+    this.freeText(tile); // Finish tile mesh
+
+    const tile_data = await Style.endData.call(this, tile); // Attach tile-specific label atlas to mesh as a texture uniform
+
+    if (tile_data && textures && textures.length) {
+      tile_data.textures = tile_data.textures || [];
+      tile_data.textures.push(...textures); // assign texture ownership to tile
+    }
+
+    return tile_data;
   },
 
   _preprocess(draw) {
@@ -14045,7 +13982,7 @@ Object.assign(Points, {
     draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits); // Size (1d value or 2d array)
 
     try {
-      draw.size = StyleParser.createPointSizePropertyCache(draw.size);
+      draw.size = StyleParser.createPointSizePropertyCache(draw.size, draw.texture);
     } catch (e) {
       log({
         level: 'warn',
@@ -14059,12 +13996,7 @@ Object.assign(Points, {
 
     draw.buffer = StyleParser.createPropertyCache(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(StyleParser.parsePositiveNumber)); // Repeat rules - no repeat limitation for points by default
 
-    draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, StyleParser.parseNumber);
-
-    if (draw.repeat_group == null) {
-      draw.repeat_group = draw.layers.join('-');
-    } // Placement strategies
-
+    draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, StyleParser.parseNumber); // Placement strategies
 
     draw.placement = PLACEMENT$1[draw.placement && draw.placement.toUpperCase()];
 
@@ -14135,7 +14067,9 @@ Object.assign(Points, {
       if (typeof draw.repeat_group === 'function') {
         layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
       } else {
-        layout.repeat_group = draw.repeat_group; // pre-computed repeat group
+        // default to top-level layer name
+        // (e.g. all labels under `roads` layer, including sub-layers, are in one repeat group)
+        layout.repeat_group = draw.repeat_group || context.layer;
       }
     } // label priority (lower is higher)
 
@@ -14173,23 +14107,23 @@ Object.assign(Points, {
   buildLabels(size, geometry, options) {
     let labels = [];
 
-    if (geometry.type === "Point") {
+    if (geometry.type === 'Point') {
       labels.push(new LabelPoint(geometry.coordinates, size, options));
-    } else if (geometry.type === "MultiPoint") {
+    } else if (geometry.type === 'MultiPoint') {
       let points = geometry.coordinates;
 
       for (let i = 0; i < points.length; ++i) {
         let point = points[i];
         labels.push(new LabelPoint(point, size, options));
       }
-    } else if (geometry.type === "LineString") {
+    } else if (geometry.type === 'LineString') {
       let line = geometry.coordinates;
       let point_labels = placePointsOnLine(line, size, options);
 
       for (let i = 0; i < point_labels.length; ++i) {
         labels.push(point_labels[i]);
       }
-    } else if (geometry.type === "MultiLineString") {
+    } else if (geometry.type === 'MultiLineString') {
       let lines = geometry.coordinates;
 
       for (let ln = 0; ln < lines.length; ln++) {
@@ -14200,11 +14134,15 @@ Object.assign(Points, {
           labels.push(point_labels[i]);
         }
       }
-    } else if (geometry.type === "Polygon") {
+    } else if (geometry.type === 'Polygon') {
       // Point at polygon centroid (of outer ring)
       if (options.placement === PLACEMENT$1.CENTROID) {
         let centroid = Geo$1.centroid(geometry.coordinates);
-        labels.push(new LabelPoint(centroid, size, options));
+
+        if (centroid) {
+          // skip degenerate polygons
+          labels.push(new LabelPoint(centroid, size, options));
+        }
       } // Point at each polygon vertex (all rings)
       else {
           let rings = geometry.coordinates;
@@ -14217,10 +14155,14 @@ Object.assign(Points, {
             }
           }
         }
-    } else if (geometry.type === "MultiPolygon") {
+    } else if (geometry.type === 'MultiPolygon') {
       if (options.placement === PLACEMENT$1.CENTROID) {
         let centroid = Geo$1.multiCentroid(geometry.coordinates);
-        labels.push(new LabelPoint(centroid, size, options));
+
+        if (centroid) {
+          // skip degenerate polygons
+          labels.push(new LabelPoint(centroid, size, options));
+        }
       } else {
         let polys = geometry.coordinates;
 
@@ -14294,12 +14236,9 @@ Object.assign(Points, {
     } // selection color
 
 
-    if (this.selection) {
-      this.fillVertexTemplate(vertex_layout, 'a_selection_color', Vector$1.mult(style.selection_color, 255), {
-        size: 4
-      });
-    }
-
+    this.fillVertexTemplate(vertex_layout, 'a_selection_color', Vector$1.mult(style.selection_color, 255), {
+      size: 4
+    });
     return this.vertex_template;
   },
 
@@ -14477,9 +14416,13 @@ Object.assign(Points, {
     return geom_count;
   },
 
-  // track mesh data for label (byte ranges occupied by label in VBO)
-  trackLabel(label, linked, mesh, geom_count, context) {
-    if (label.layout.collide) {
+  // track mesh data for label on main thread, for additional cross-tile collision/repeat passes
+  trackLabel(label, linked, mesh, geom_count
+  /*, context*/
+  ) {
+    // track if collision is enabled, or if the label is near enough to the tile edge to
+    // necessitate further repeat checking
+    if (label.layout.collide || label.may_repeat_across_tiles) {
       mesh.labels = mesh.labels || {};
       mesh.labels[label.id] = mesh.labels[label.id] || {
         container: {
@@ -14493,7 +14436,8 @@ Object.assign(Points, {
         //     point_type: mesh.uniforms.u_point_type
         // }
 
-      };
+      }; // store byte ranges occupied by label in VBO, so they can be updated on main thread
+
       const vertex_count = geom_count * 2; // geom count is triangles: 2 triangles = 1 quad = 4 vertices
 
       const start = mesh.vertex_data.offset - mesh.vertex_data.stride * vertex_count; // start offset of byte range
@@ -14516,22 +14460,71 @@ Object.assign(Points, {
   },
 
   // Override
+  // Create or return desired vertex layout permutation based on flags
   vertexLayoutForMeshVariant(variant) {
-    if (variant.shader_point) {
-      return this.vertex_layout_shader_point;
+    // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
+    if (Points.vertex_layouts[variant.shader_point] == null) {
+      // Attributes for this mesh variant
+      // Optional attributes have placeholder values assigned with `static` parameter
+      // TODO: could support optional attributes for selection and offset, but may not be worth it
+      // since points generally don't consume much memory anyway
+      const attribs = [{
+        name: 'a_position',
+        size: 4,
+        type: gl$1.SHORT,
+        normalized: false
+      }, {
+        name: 'a_shape',
+        size: 4,
+        type: gl$1.SHORT,
+        normalized: false
+      }, {
+        name: 'a_texcoord',
+        size: 2,
+        type: gl$1.UNSIGNED_SHORT,
+        normalized: true
+      }, {
+        name: 'a_offset',
+        size: 2,
+        type: gl$1.SHORT,
+        normalized: false
+      }, {
+        name: 'a_color',
+        size: 4,
+        type: gl$1.UNSIGNED_BYTE,
+        normalized: true
+      }, {
+        name: 'a_outline_color',
+        size: 4,
+        type: gl$1.UNSIGNED_BYTE,
+        normalized: true,
+        static: variant.shader_point ? null : [0, 0, 0, 0]
+      }, {
+        name: 'a_outline_edge',
+        size: 1,
+        type: gl$1.FLOAT,
+        normalized: false,
+        static: variant.shader_point ? null : 0
+      }, {
+        name: 'a_selection_color',
+        size: 4,
+        type: gl$1.UNSIGNED_BYTE,
+        normalized: true
+      }];
+      Points.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
     }
 
-    return this.vertex_layout;
+    return Points.vertex_layouts[variant.shader_point];
   },
 
   // Override
   meshVariantTypeForDraw(draw) {
-    let key = draw.label_texture || draw.texture || Style.default_mesh_variant.key; // unique key by texture name
+    let key = draw.label_texture || draw.texture || SHADER_POINT_VARIANT_KEY; // unique key by texture name
 
     if (Points.variants[key] == null) {
       Points.variants[key] = {
         key,
-        shader_point: key === Style.default_mesh_variant.key,
+        shader_point: key === SHADER_POINT_VARIANT_KEY,
         // is shader point
         order: draw.label_texture ? 1 : 0 // put text on top of points (e.g. for highway shields, etc.)
 
@@ -14541,7 +14534,12 @@ Object.assign(Points, {
     return Points.variants[key]; // return pre-calculated mesh variant
   },
 
-  makeMesh(vertex_data, vertex_elements, options = {}) {
+  // Override
+  makeMesh(vertex_data, vertex_elements, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     // Add label fade time
     options = Object.assign({}, options, {
       fade_in_time: this.fade_in_time
@@ -14631,6 +14629,7 @@ class LabelLineBase {
       offset: this.offset,
       angle: this.angle,
       breach: this.breach,
+      may_repeat_across_tiles: this.may_repeat_across_tiles,
       layout: textLayoutToJSON(this.layout)
     };
   } // Given a line, find the longest series of segments that maintains a constant orientation in the x-direction.
@@ -14721,7 +14720,11 @@ class LabelLineBase {
   } // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
 
 
-  discard(bboxes, exclude = null) {
+  discard(bboxes, exclude) {
+    if (exclude === void 0) {
+      exclude = null;
+    }
+
     if (this.throw_away) {
       return true;
     }
@@ -14844,19 +14847,7 @@ class LabelLineStraight extends LabelLineBase {
           let curr_midpt = Vector$1.mult(Vector$1.add(curr, ahead_next), 0.5); // TODO: modify angle if line chosen within curve_angle_tolerance
           // Currently line angle is the same as the starting angle, perhaps it should average across segments?
 
-          this.angle = -next_angle;
-          let angle_offset = this.angle; // if line is flipped, or the orientation is "left" (-1), rotate the angle of the offset 180 deg
-
-          if (typeof layout.orientation === 'number') {
-            if (flipped) {
-              angle_offset += Math.PI;
-            }
-
-            if (layout.orientation === -1) {
-              angle_offset += Math.PI;
-            }
-          } // ensure that all vertical labels point up (not down) by snapping angles close to pi/2 to -pi/2
-
+          this.angle = -next_angle; // ensure that all vertical labels point up (not down) by snapping angles close to pi/2 to -pi/2
 
           if (Math.abs(this.angle - Math.PI / 2) < VERTICAL_ANGLE_TOLERANCE) {
             // flip angle and offset
@@ -14896,6 +14887,10 @@ class LabelLineStraight extends LabelLineBase {
     if (this.inTileBounds) {
       this.breach = !this.inTileBounds();
     }
+
+    if (this.mayRepeatAcrossTiles) {
+      this.may_repeat_across_tiles = this.mayRepeatAcrossTiles();
+    }
   }
 
 } // Class for curved labels
@@ -14922,6 +14917,7 @@ class LabelLineCurved extends LabelLineBase {
       obbs: this.obbs.map(o => o.toJSON()),
       position: this.position,
       breach: this.breach,
+      may_repeat_across_tiles: this.may_repeat_across_tiles,
       layout: textLayoutToJSON(this.layout)
     };
   } // Determine if the curved label can fit the geometry.
@@ -15310,55 +15306,12 @@ Object.assign(TextStyle, {
   super: Points,
   built_in: true,
 
-  init(options = {}) {
-    Style.init.call(this, options);
-    var attribs = [{
-      name: 'a_position',
-      size: 4,
-      type: gl$1.SHORT,
-      normalized: false
-    }, {
-      name: 'a_shape',
-      size: 4,
-      type: gl$1.SHORT,
-      normalized: false
-    }, {
-      name: 'a_texcoord',
-      size: 2,
-      type: gl$1.UNSIGNED_SHORT,
-      normalized: true
-    }, {
-      name: 'a_offset',
-      size: 2,
-      type: gl$1.SHORT,
-      normalized: false
-    }, {
-      name: 'a_color',
-      size: 4,
-      type: gl$1.UNSIGNED_BYTE,
-      normalized: true
-    }, {
-      name: 'a_angles',
-      size: 4,
-      type: gl$1.SHORT,
-      normalized: false
-    }, {
-      name: 'a_offsets',
-      size: 4,
-      type: gl$1.UNSIGNED_SHORT,
-      normalized: false
-    }, {
-      name: 'a_pre_angles',
-      size: 4,
-      type: gl$1.BYTE,
-      normalized: false
-    }, {
-      name: 'a_selection_color',
-      size: 4,
-      type: gl$1.UNSIGNED_BYTE,
-      normalized: true
-    }];
-    this.vertex_layout = new VertexLayout(attribs); // Shader defines
+  init(options) {
+    if (options === void 0) {
+      options = {};
+    }
+
+    Style.init.call(this, options); // Shader defines
 
     this.setupDefines(); // Omit some code for SDF-drawn shader points
 
@@ -15401,9 +15354,9 @@ Object.assign(TextStyle, {
     }
 
     let type = feature.geometry.type;
-    draw.can_articulate = type === "LineString" || type === "MultiLineString"; // supersample text rendering for angled labels, to improve clarity
+    draw.can_articulate = type === 'LineString' || type === 'MultiLineString'; // supersample text rendering for angled labels, to improve clarity
 
-    draw.supersample_text = type === "LineString" || type === "MultiLineString";
+    draw.supersample_text = type === 'LineString' || type === 'MultiLineString';
     let q = this.parseTextFeature(feature, draw, context, tile);
 
     if (!q) {
@@ -15429,73 +15382,73 @@ Object.assign(TextStyle, {
     } // Register with collision manager
 
 
-    Collision$1.addStyle(this.name, tile.id);
+    Collision.addStyle(this.name, tile.id);
   },
 
   // Override
-  endData(tile) {
+  async endData(tile) {
     let queue = this.queues[tile.id];
     delete this.queues[tile.id];
-    return this.collideAndRenderTextLabels(tile, this.name, queue).then(({
-      labels,
-      texts,
-      textures
-    }) => {
-      if (labels && texts) {
-        this.texts[tile.id] = texts; // Build queued features
 
-        labels.forEach(q => {
-          let text_settings_key = q.text_settings_key;
-          let text_info = this.texts[tile.id][text_settings_key] && this.texts[tile.id][text_settings_key][q.text]; // setup styling object expected by Style class
+    const _ref = await this.collideAndRenderTextLabels(tile, this.name, queue),
+          labels = _ref.labels,
+          texts = _ref.texts,
+          textures = _ref.textures;
 
-          let style = this.feature_style;
-          style.label = q.label;
+    if (labels && texts) {
+      this.texts[tile.id] = texts; // Build queued features
 
-          if (text_info.text_settings.can_articulate) {
-            // unpack logical sizes of each segment into an array for the style
-            style.size = {};
-            style.texcoords = {};
+      labels.forEach(q => {
+        let text_settings_key = q.text_settings_key;
+        let text_info = this.texts[tile.id][text_settings_key] && this.texts[tile.id][text_settings_key][q.text]; // setup styling object expected by Style class
 
-            if (q.label.type === 'straight') {
-              style.size.straight = text_info.size.logical_size;
-              style.texcoords.straight = text_info.texcoords.straight;
-              style.label_texture = textures[text_info.texcoords.straight.texture_id];
-            } else {
-              style.size.curved = text_info.segment_sizes.map(function (size) {
-                return size.logical_size;
-              });
-              style.texcoords_stroke = text_info.texcoords_stroke;
-              style.texcoords.curved = text_info.texcoords.curved;
-              style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
-            }
+        let style = this.feature_style;
+        style.label = q.label;
+
+        if (text_info.text_settings.can_articulate) {
+          // unpack logical sizes of each segment into an array for the style
+          style.size = {};
+          style.texcoords = {};
+
+          if (q.label.type === 'straight') {
+            style.size.straight = text_info.size.logical_size;
+            style.texcoords.straight = text_info.texcoords.straight;
+            style.label_texture = textures[text_info.texcoords.straight.texture_id];
           } else {
-            style.size = text_info.size.logical_size;
-            style.texcoords = text_info.align[q.label.align].texcoords;
-            style.label_texture = textures[text_info.align[q.label.align].texture_id];
+            style.size.curved = text_info.segment_sizes.map(function (size) {
+              return size.logical_size;
+            });
+            style.texcoords_stroke = text_info.texcoords_stroke;
+            style.texcoords.curved = text_info.texcoords.curved;
+            style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
           }
-
-          Style.addFeature.call(this, q.feature, q.draw, q.context);
-        });
-      }
-
-      this.freeText(tile); // Finish tile mesh
-
-      return Style.endData.call(this, tile).then(tile_data => {
-        if (tile_data) {
-          // Attach tile-specific label atlas to mesh as a texture uniform
-          if (textures && textures.length) {
-            tile_data.textures.push(...textures); // assign texture ownership to tile
-          } // Always apply shader blocks to standalone text
-
-
-          for (let m in tile_data.meshes) {
-            tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
-          }
+        } else {
+          style.size = text_info.size.logical_size;
+          style.texcoords = text_info.align[q.label.align].texcoords;
+          style.label_texture = textures[text_info.align[q.label.align].texture_id];
         }
 
-        return tile_data;
+        Style.addFeature.call(this, q.feature, q.draw, q.context);
       });
-    });
+    }
+
+    this.freeText(tile); // Finish tile mesh
+
+    const tile_data = await Style.endData.call(this, tile);
+
+    if (tile_data) {
+      // Attach tile-specific label atlas to mesh as a texture uniform
+      if (textures && textures.length) {
+        tile_data.textures.push(...textures); // assign texture ownership to tile
+      } // Always apply shader blocks to standalone text
+
+
+      for (let m in tile_data.meshes) {
+        tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
+      }
+    }
+
+    return tile_data;
   },
 
   // Sets up caching for draw properties
@@ -15535,28 +15488,36 @@ Object.assign(TextStyle, {
   buildLabels(size, geometry, layout, total_size) {
     let labels = [];
 
-    if (geometry.type === "LineString") {
+    if (geometry.type === 'LineString') {
       Array.prototype.push.apply(labels, this.buildLineLabels(geometry.coordinates, size, layout, total_size));
-    } else if (geometry.type === "MultiLineString") {
+    } else if (geometry.type === 'MultiLineString') {
       let lines = geometry.coordinates;
 
       for (let i = 0; i < lines.length; ++i) {
         Array.prototype.push.apply(labels, this.buildLineLabels(lines[i], size, layout, total_size));
       }
-    } else if (geometry.type === "Point") {
+    } else if (geometry.type === 'Point') {
       labels.push(new LabelPoint(geometry.coordinates, size, layout));
-    } else if (geometry.type === "MultiPoint") {
+    } else if (geometry.type === 'MultiPoint') {
       let points = geometry.coordinates;
 
       for (let i = 0; i < points.length; ++i) {
         labels.push(new LabelPoint(points[i], size, layout));
       }
-    } else if (geometry.type === "Polygon") {
+    } else if (geometry.type === 'Polygon') {
       let centroid = Geo$1.centroid(geometry.coordinates);
-      labels.push(new LabelPoint(centroid, size, layout));
-    } else if (geometry.type === "MultiPolygon") {
+
+      if (centroid) {
+        // skip degenerate polygons
+        labels.push(new LabelPoint(centroid, size, layout));
+      }
+    } else if (geometry.type === 'MultiPolygon') {
       let centroid = Geo$1.multiCentroid(geometry.coordinates);
-      labels.push(new LabelPoint(centroid, size, layout));
+
+      if (centroid) {
+        // skip degenerate polygons
+        labels.push(new LabelPoint(centroid, size, layout));
+      }
     }
 
     return labels;
@@ -15596,6 +15557,64 @@ Object.assign(TextStyle, {
     }
 
     return labels;
+  },
+
+  // Override
+  // Create or return vertex layout
+  vertexLayoutForMeshVariant() {
+    if (this.vertex_layout == null) {
+      // TODO: could make selection, offset, and curved label attribs optional, but may not be worth it
+      // since text points generally don't consume much memory anyway
+      const attribs = [{
+        name: 'a_position',
+        size: 4,
+        type: gl$1.SHORT,
+        normalized: false
+      }, {
+        name: 'a_shape',
+        size: 4,
+        type: gl$1.SHORT,
+        normalized: false
+      }, {
+        name: 'a_texcoord',
+        size: 2,
+        type: gl$1.UNSIGNED_SHORT,
+        normalized: true
+      }, {
+        name: 'a_offset',
+        size: 2,
+        type: gl$1.SHORT,
+        normalized: false
+      }, {
+        name: 'a_color',
+        size: 4,
+        type: gl$1.UNSIGNED_BYTE,
+        normalized: true
+      }, {
+        name: 'a_angles',
+        size: 4,
+        type: gl$1.SHORT,
+        normalized: false
+      }, {
+        name: 'a_offsets',
+        size: 4,
+        type: gl$1.UNSIGNED_SHORT,
+        normalized: false
+      }, {
+        name: 'a_pre_angles',
+        size: 4,
+        type: gl$1.BYTE,
+        normalized: false
+      }, {
+        name: 'a_selection_color',
+        size: 4,
+        type: gl$1.UNSIGNED_BYTE,
+        normalized: true
+      }];
+      this.vertex_layout = new VertexLayout(attribs);
+    }
+
+    return this.vertex_layout;
   }
 
 });
@@ -15623,9 +15642,7 @@ Object.assign(RasterStyle, {
 
 });
 
-var accessors_source = "#ifdef TANGRAM_VERTEX_SHADER\n\n// Vertex position in model space: [0, 1] range over the local tile\n// Note positions can be outside that range due to unclipped geometry, geometry higher than a unit cube, etc.\nvec4 modelPosition() {\n    return\n        vec4(\n            a_position.xyz / TANGRAM_TILE_SCALE         // scale coords to ~0-1 range\n            * exp2(u_tile_origin.z - u_tile_origin.w),  // adjust for tile overzooming\n        1.)\n        + vec4(0., 1., 0., 0.);\n        // NB: additional offset to account for unusual Tangram JS y coords,\n        // should be refactored to remove\n}\n\n// Position in model space as above, but according to tile coordinate (as opposed to style) zoom\n// e.g. unadjusted for tile overzooming\nvec4 modelPositionBaseZoom() {\n    return\n        vec4(\n            a_position.xyz / TANGRAM_TILE_SCALE,    // scale coords to ~0-1 range\n        1.)\n        + vec4(0., 1., 0., 0.); // see note on offset above\n}\n\n#endif\n\n// Vertex position in world coordinates, useful for 3d procedural textures, etc.\nvec4 worldPosition() {\n    return v_world_position;\n}\n\n// Optionally wrap world coordinates (allows more precision at higher zooms)\n// e.g. at wrap 1000, the world space will wrap every 1000 meters\n#ifdef TANGRAM_VERTEX_SHADER\n\nvec4 wrapWorldPosition(vec4 world_position) {\n    #if defined(TANGRAM_WORLD_POSITION_WRAP)\n    vec2 anchor = u_tile_origin.xy - mod(u_tile_origin.xy, TANGRAM_WORLD_POSITION_WRAP);\n        world_position.xy -= anchor;\n    #endif\n    return world_position;\n}\n\n#endif\n\n// Normal in world space\n#if defined(TANGRAM_VERTEX_SHADER)\n\nvec3 worldNormal() {\n    return TANGRAM_NORMAL;\n}\n\n#elif defined(TANGRAM_FRAGMENT_SHADER)\n\nvec3 worldNormal() {\n    return u_inverseNormalMatrix * TANGRAM_NORMAL;\n}\n\n#endif\n";
-
-var layer_order_source = "// Apply layer ordering to avoid z-fighting\nvoid applyLayerOrder (float layer, inout vec4 position) {\n    position.z -= layer * TANGRAM_LAYER_DELTA * position.w;\n}\n";
+var style_globals_source = "#ifdef TANGRAM_VERTEX_SHADER\n\n// Apply layer ordering to avoid z-fighting\nvoid applyLayerOrder (float layer, inout vec4 position) {\n    position.z -= layer * TANGRAM_LAYER_DELTA * position.w;\n}\n\n// Vertex position in model space: [0, 1] range over the local tile\n// Note positions can be outside that range due to unclipped geometry, geometry higher than a unit cube, etc.\nvec4 modelPosition() {\n    return\n        vec4(\n            a_position.xyz / TANGRAM_TILE_SCALE         // scale coords to ~0-1 range\n            * exp2(u_tile_origin.z - u_tile_origin.w),  // adjust for tile overzooming\n        1.)\n        + vec4(0., 1., 0., 0.);\n        // NB: additional offset to account for unusual Tangram JS y coords,\n        // should be refactored to remove\n}\n\n// Position in model space as above, but according to tile coordinate (as opposed to style) zoom\n// e.g. unadjusted for tile overzooming\nvec4 modelPositionBaseZoom() {\n    return\n        vec4(\n            a_position.xyz / TANGRAM_TILE_SCALE,    // scale coords to ~0-1 range\n        1.)\n        + vec4(0., 1., 0., 0.); // see note on offset above\n}\n\n#endif\n\n// Vertex position in world coordinates, useful for 3d procedural textures, etc.\nvec4 worldPosition() {\n    return v_world_position;\n}\n\n// Optionally wrap world coordinates (allows more precision at higher zooms)\n// e.g. at wrap 1000, the world space will wrap every 1000 meters\n#ifdef TANGRAM_VERTEX_SHADER\n\nvec4 wrapWorldPosition(vec4 world_position) {\n    #if defined(TANGRAM_WORLD_POSITION_WRAP)\n    vec2 anchor = u_tile_origin.xy - mod(u_tile_origin.xy, TANGRAM_WORLD_POSITION_WRAP);\n        world_position.xy -= anchor;\n    #endif\n    return world_position;\n}\n\n#endif\n\n// Normal in world space\n#if defined(TANGRAM_VERTEX_SHADER)\n\nvec3 worldNormal() {\n    return TANGRAM_NORMAL;\n}\n\n#elif defined(TANGRAM_FRAGMENT_SHADER)\n\nvec3 worldNormal() {\n    return u_inverseNormalMatrix * TANGRAM_NORMAL;\n}\n\n#endif\n";
 
 var selection_globals_source = "// Vertex attribute + varying for feature selection\n#if defined(TANGRAM_FEATURE_SELECTION) && defined(TANGRAM_VERTEX_SHADER)\n    attribute vec4 a_selection_color;\n    varying vec4 v_selection_color;\n#endif\n";
 
@@ -15647,11 +15664,9 @@ class StyleManager {
 
   init() {
     ShaderProgram.removeBlock('global');
-    ShaderProgram.removeBlock('setup'); // Model and world position accessors
+    ShaderProgram.removeBlock('setup'); // Model and world position accessors, layer re-ordering function
 
-    ShaderProgram.addBlock('global', accessors_source); // Layer re-ordering function
-
-    ShaderProgram.addBlock('global', layer_order_source); // Feature selection global
+    ShaderProgram.addBlock('global', style_globals_source); // Feature selection global
 
     ShaderProgram.addBlock('global', selection_globals_source); // Feature selection vertex shader support
 
@@ -15788,11 +15803,13 @@ class StyleManager {
             if (shaders._uniforms[u] !== undefined) {
               return shaders._uniforms[u];
             } // Uniform was mixed from another style, forward request there
-            // Identify check is needed to prevent infinite recursion if a previously defined uniform
+            // Identity check is needed to prevent infinite recursion if a previously defined uniform
             // is set to undefined
             else if (styles[shaders._uniform_scopes[u]].shaders.uniforms !== shaders.uniforms) {
                 return styles[shaders._uniform_scopes[u]].shaders.uniforms[u];
               }
+
+            return undefined;
           },
           set: function set(v) {
             shaders._uniforms[u] = v;
@@ -15878,7 +15895,11 @@ class StyleManager {
   // styles: working set of styles being built (used for mixing in existing styles)
 
 
-  create(name, config, styles = {}) {
+  create(name, config, styles) {
+    if (styles === void 0) {
+      styles = {};
+    }
+
     let style = mergeObjects({}, config); // deep copy
 
     style.name = name; // Style mixins
@@ -15898,7 +15919,12 @@ class StyleManager {
 
 
   build(styles) {
-    // Sort styles by dependency, then build them
+    // Un-register existing styles from cross-thread communication
+    if (this.styles) {
+      Object.values(this.styles).forEach(s => WorkerBroker$1.removeTarget(s.main_thread_target));
+    } // Sort styles by dependency, then build them
+
+
     let style_deps = Object.keys(styles).sort((a, b) => this.inheritanceDepth(a, styles) - this.inheritanceDepth(b, styles)); // Only keep built-in base styles
 
     for (let sname in this.styles) {
@@ -15918,7 +15944,11 @@ class StyleManager {
   } // Initialize all styles
 
 
-  initStyles(scene = {}) {
+  initStyles(scene) {
+    if (scene === void 0) {
+      scene = {};
+    }
+
     // Initialize all
     for (let sname in this.styles) {
       this.styles[sname].init(scene);
@@ -15929,7 +15959,7 @@ class StyleManager {
   inheritanceDepth(key, styles) {
     let parents = 0;
 
-    while (true) {
+    for (;;) {
       let style = styles[key];
 
       if (!style) {
@@ -15996,7 +16026,9 @@ function lookUp(key) {
   return 'context.feature.properties[\'' + key + '\']';
 }
 
-function nullValue(key, value) {
+function nullValue()
+/*key, value*/
+{
   return ' true ';
 }
 
@@ -16196,16 +16228,15 @@ function mergeTrees(matchingTrees, group) {
 const blacklist = ['any', 'all', 'not', 'none'];
 
 class Layer {
-  constructor({
-    layer,
-    name,
-    parent,
-    draw,
-    visible,
-    enabled,
-    filter,
-    styles
-  }) {
+  constructor(_ref) {
+    let layer = _ref.layer,
+        name = _ref.name,
+        parent = _ref.parent,
+        draw = _ref.draw,
+        visible = _ref.visible,
+        enabled = _ref.enabled,
+        filter = _ref.filter,
+        styles = _ref.styles;
     this.id = Layer.id++;
     this.config_data = layer.data;
     this.parent = parent;
@@ -16302,7 +16333,7 @@ class Layer {
         }
       } else if (ztype === 'object' && (zoom.min != null || zoom.max != null)) {
         let zmin = zoom.min || 0;
-        let zmax = zoom.max || 25; // TODO: replace constant for max possible zoom
+        let zmax = zoom.max || Geo$1.max_style_zoom;
 
         for (let z = zmin; z < zmax; z++) {
           this.zooms[z] = true;
@@ -16589,7 +16620,7 @@ function parseLayerChildren(parent, children, styles) {
           msg += ` under '${parent.parent.name}'`;
         }
 
-        msg += ` instead?`;
+        msg += ' instead?';
       }
 
       log('warn', msg); // TODO: fire external event that clients to subscribe to
@@ -16643,6 +16674,670 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
   }
 
   return matched;
+}
+
+let id$1 = 0; // unique tile id
+
+let build_id = 0; // id tracking order in which tiles were build
+
+class Tile {
+  /**
+      Tile
+      @constructor
+      Required properties:
+      coords: object with {x, y, z} properties identifying tile coordinate location
+      worker: web worker to handle tile construction
+  */
+  constructor(_ref) {
+    let coords = _ref.coords,
+        style_z = _ref.style_z,
+        source = _ref.source,
+        worker = _ref.worker,
+        view = _ref.view;
+    this.id = id$1++;
+    this.worker = worker;
+    this.view = view;
+    this.source = source;
+    this.generation = null;
+    this.valid = true;
+    this.visible = false;
+    this.proxy_for = null;
+    this.proxy_depth = 0;
+    this.proxied_as = null;
+    this.fade_in = true;
+    this.loading = false;
+    this.loaded = false;
+    this.built = false;
+    this.labeled = false;
+    this.error = null;
+    this.debug = {};
+    this.style_z = style_z; // zoom level to be used for styling
+
+    this.coords = TileID.normalizedCoord(coords, this.source);
+    this.key = TileID.key(this.coords, this.source, this.style_z);
+    this.overzoom = Math.max(this.style_z - this.coords.z, 0); // number of levels of overzooming
+
+    this.overzoom2 = Math.pow(2, this.overzoom);
+    this.min = Geo$1.metersForTile(this.coords);
+    this.max = Geo$1.metersForTile({
+      x: this.coords.x + 1,
+      y: this.coords.y + 1,
+      z: this.coords.z
+    }), this.span = {
+      x: this.max.x - this.min.x,
+      y: this.max.y - this.min.y
+    };
+    this.bounds = {
+      sw: {
+        x: this.min.x,
+        y: this.max.y
+      },
+      ne: {
+        x: this.max.x,
+        y: this.min.y
+      }
+    };
+    this.meters_per_pixel = Geo$1.metersPerPixel(this.style_z);
+    this.meters_per_pixel_sq = this.meters_per_pixel * this.meters_per_pixel;
+    this.units_per_pixel = Geo$1.units_per_pixel / this.overzoom2; // adjusted for overzoom
+
+    this.units_per_meter_overzoom = Geo$1.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
+
+    this.preserve_tiles_within_zoom = this.source.preserve_tiles_within_zoom; // source-specific tile retention policy
+
+    this.meshes = {}; // renderable VBO meshes keyed by style
+
+    this.new_mesh_styles = []; // meshes that have been built so far in current build generation
+
+    this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
+  } // Free resources owned by tile
+
+
+  freeResources() {
+    for (let m in this.meshes) {
+      this.meshes[m].forEach(m => m.destroy());
+    }
+
+    this.meshes = {};
+
+    if (this.pending_label_meshes) {
+      for (let m in this.pending_label_meshes) {
+        this.pending_label_meshes[m].forEach(m => m.destroy());
+      }
+    }
+
+    this.pending_label_meshes = null;
+  }
+
+  destroy() {
+    Task.removeForTile(this.id);
+    this.workerMessage('self.removeTile', this.key);
+    this.freeResources();
+    this.worker = null;
+    this.valid = false;
+  }
+
+  buildAsMessage() {
+    return {
+      id: this.id,
+      key: this.key,
+      source: this.source.name,
+      coords: this.coords,
+      min: this.min,
+      max: this.max,
+      units_per_pixel: this.units_per_pixel,
+      meters_per_pixel: this.meters_per_pixel,
+      meters_per_pixel_sq: this.meters_per_pixel_sq,
+      units_per_meter_overzoom: this.units_per_meter_overzoom,
+      style_z: this.style_z,
+      overzoom: this.overzoom,
+      overzoom2: this.overzoom2,
+      generation: this.generation,
+      debug: this.debug
+    };
+  }
+
+  workerMessage() {
+    for (var _len = arguments.length, message = new Array(_len), _key = 0; _key < _len; _key++) {
+      message[_key] = arguments[_key];
+    }
+
+    return WorkerBroker$1.postMessage(this.worker, ...message);
+  }
+
+  build(generation, _temp) {
+    let _ref2 = _temp === void 0 ? {} : _temp,
+        _ref2$fade_in = _ref2.fade_in,
+        fade_in = _ref2$fade_in === void 0 ? true : _ref2$fade_in;
+
+    this.generation = generation;
+    this.fade_in = fade_in;
+
+    if (!this.loaded) {
+      this.loading = true;
+      this.built = false;
+      this.labeled = false;
+    }
+
+    return this.workerMessage('self.buildTile', {
+      tile: this.buildAsMessage()
+    }).catch(e => {
+      throw e;
+    });
+  }
+  /**
+      Called on worker to cancel loading
+      Static method because the worker only has object representations of tile data, there is no
+      tile instance created yet.
+  */
+
+
+  static cancel(tile) {
+    if (tile) {
+      tile.canceled = true;
+
+      if (tile.source_data && tile.source_data.request_id) {
+        Utils.cancelRequest(tile.source_data.request_id); // cancel pending tile network request
+
+        tile.source_data.request_id = null;
+      }
+
+      Tile.abortBuild(tile);
+    }
+  } // Process geometry for tile - called by web worker
+  // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
+
+
+  static buildGeometry(tile, _ref3) {
+    let scene_id = _ref3.scene_id,
+        layers = _ref3.layers,
+        styles = _ref3.styles,
+        global = _ref3.global;
+    let data = tile.source_data;
+    tile.debug.rendering = +new Date();
+    tile.debug.feature_count = 0;
+    tile.debug.layers = null;
+    Collision.startTile(tile.id, {
+      apply_repeat_groups: true
+    }); // Process each top-level layer
+
+    for (let layer_name in layers) {
+      let layer = layers[layer_name]; // Skip layers with no data source defined
+
+      if (!layer || !layer.config_data) {
+        log('warn', `Layer ${layer_name} was defined without a geometry data source and will not be rendered.`);
+        continue;
+      } // Source names don't match
+
+
+      if (layer.config_data.source !== tile.source) {
+        continue;
+      } // Get data for one or more layers from source
+
+
+      let source_layers = Tile.getDataForSource(data, layer.config_data, layer_name); // Render features in layer
+
+      for (let s = 0; s < source_layers.length; s++) {
+        let source_layer = source_layers[s];
+        let geom = source_layer.geom;
+
+        if (!geom) {
+          continue;
+        }
+
+        for (let f = 0; f < geom.features.length; f++) {
+          let feature = geom.features[f];
+
+          if (feature.geometry == null) {
+            continue; // skip features w/o geometry (valid GeoJSON)
+          }
+
+          let context = StyleParser.getFeatureParseContext(feature, tile, global);
+          context.winding = tile.default_winding;
+          context.source = tile.source; // add data source name
+
+          context.layer = source_layer.layer; // add data source layer name
+          // Get draw groups for this feature
+
+          let draw_groups = layer.buildDrawGroups(context, true);
+
+          if (!draw_groups) {
+            continue;
+          } // Render draw groups
+
+
+          for (let group_name in draw_groups) {
+            let group = draw_groups[group_name]; // Add to style
+
+            let style_name = group.style || group_name;
+            let style = styles[style_name];
+
+            if (!style) {
+              log('warn', `Style '${style_name}' not found, skipping layer '${layer_name}':`, group, feature);
+              continue;
+            }
+
+            group = style.preprocess(group);
+
+            if (group == null || group.visible === false) {
+              continue;
+            }
+
+            context.layers = group.layers; // add matching draw layers
+
+            style.addFeature(feature, group, context);
+          }
+
+          tile.debug.feature_count++;
+        }
+      }
+    }
+
+    tile.debug.rendering = +new Date() - tile.debug.rendering; // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
+
+    let tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]);
+    Tile.sendStyleGroups(tile, tile_styles, {
+      scene_id
+    }, style => style.collision ? 'collision' : 'non-collision'); // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.name); // call for each style
+    // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => 'styles'); // all styles in single call (previous behavior)
+  }
+
+  static stylesForTile(tile, styles) {
+    let tile_styles = [];
+
+    for (let s in styles) {
+      if (styles[s].hasDataForTile(tile)) {
+        tile_styles.push(s);
+      }
+    }
+
+    return tile_styles;
+  } // Send groups of styles back to main thread, asynchronously (as they finish building),
+  // grouped by the provided function
+
+
+  static sendStyleGroups(tile, styles, _ref4, group_by) {
+    let scene_id = _ref4.scene_id;
+    // Group styles
+    let groups = {};
+    styles.forEach(s => {
+      let group_name = group_by(s);
+      groups[group_name] = groups[group_name] || [];
+      groups[group_name].push(s);
+    });
+
+    if (Object.keys(groups).length > 0) {
+      let progress = {
+        start: true
+      };
+      tile.mesh_data = {};
+
+      for (let group_name in groups) {
+        let group = groups[group_name];
+        Promise.all(group.map(style => {
+          return style.endData(tile).then(style_data => {
+            if (style_data) {
+              tile.mesh_data[style.name] = style_data;
+            }
+          });
+        })).then(() => {
+          log('trace', `Finished style group '${group_name}' for tile ${tile.key}`); // Clear group and check if all groups finished
+
+          groups[group_name] = [];
+
+          if (Object.keys(groups).every(g => groups[g].length === 0)) {
+            progress.done = true;
+          } // Send meshes to main thread
+
+
+          WorkerBroker$1.postMessage(`TileManager_${scene_id}.buildTileStylesCompleted`, WorkerBroker$1.withTransferables({
+            tile: Tile.slice(tile, ['mesh_data']),
+            progress
+          }));
+          progress.start = null;
+          tile.mesh_data = {}; // reset so each group sends separate set of style meshes
+
+          if (progress.done) {
+            Collision.resetTile(tile.id); // clear collision if we're done with the tile
+          }
+        }).catch(e => {
+          log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e.stack);
+        });
+      }
+    } else {
+      // Nothing to build, return empty tile to main thread
+      WorkerBroker$1.postMessage(`TileManager_${scene_id}.buildTileStylesCompleted`, WorkerBroker$1.withTransferables({
+        tile: Tile.slice(tile),
+        progress: {
+          start: true,
+          done: true
+        }
+      }));
+      Collision.resetTile(tile.id); // clear collision if we're done with the tile
+    }
+  }
+  /**
+      Retrieves geometry from a tile according to a data source definition
+      Returns an array of objects with:
+          layer: source layer name
+          geom: GeoJSON FeatureCollection
+  */
+
+
+  static getDataForSource(source_data, source_config, scene_layer) {
+    var layers = [];
+
+    if (source_config != null && source_data != null && source_data.layers != null) {
+      // If no layer specified, and a default source layer exists
+      if (!source_config.layer && source_data.layers._default) {
+        layers.push({
+          geom: source_data.layers._default
+        });
+      } // If no layer specified, and a layer for the scene layer name exists
+      else if (!source_config.layer && scene_layer) {
+          layers.push({
+            layer: scene_layer,
+            geom: source_data.layers[scene_layer]
+          });
+        } // If a layer is specified by name, use it
+        else if (typeof source_config.layer === 'string') {
+            layers.push({
+              layer: source_config.layer,
+              geom: source_data.layers[source_config.layer]
+            });
+          } // If multiple layers are specified by name, combine them
+          else if (Array.isArray(source_config.layer)) {
+              source_config.layer.forEach(layer => {
+                if (source_data.layers[layer] && source_data.layers[layer].features) {
+                  layers.push({
+                    layer,
+                    geom: source_data.layers[layer]
+                  });
+                }
+              });
+            }
+    }
+
+    return layers;
+  }
+  /**
+     Called on main thread when a web worker completes processing
+     for a single tile.
+  */
+
+
+  buildMeshes(styles, progress) {
+    if (this.error) {
+      return;
+    }
+
+    this.build_id = build_id++; // record order in which tile was built
+    // Debug
+
+    if (progress.start) {
+      this.debug.geometry_count = 0;
+      this.debug.buffer_size = 0;
+    } // Create VBOs
+
+
+    let meshes = {}; // new data to be added to tile
+
+    let mesh_data = this.mesh_data;
+
+    if (mesh_data) {
+      for (let s in mesh_data) {
+        for (let variant in mesh_data[s].meshes) {
+          let mesh_variant = mesh_data[s].meshes[variant];
+
+          if (mesh_variant.vertex_data) {
+            if (!styles[s]) {
+              log('warn', `Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
+              break;
+            } // first add style-level uniforms, then add any mesh-specific ones
+
+
+            let mesh_options = Object.assign({}, mesh_data[s]);
+            mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
+            mesh_options.variant = mesh_variant.variant; // for labels, keep buffer data on CPU so they can be modified later
+
+            if (mesh_variant.labels) {
+              mesh_options.retain = true;
+            }
+
+            let mesh = styles[s].makeMesh(mesh_variant.vertex_data, mesh_variant.vertex_elements, mesh_options);
+            mesh.variant = mesh_options.variant;
+            mesh.labels = mesh_variant.labels;
+            meshes[s] = meshes[s] || [];
+            meshes[s].push(mesh);
+
+            if (mesh.variant.order == null) {
+              mesh.variant.order = meshes[s].length - 1; // assign default variant render order
+            }
+
+            this.debug.buffer_size += mesh.buffer_size;
+            this.debug.geometry_count += mesh.geometry_count;
+          }
+        } // Sort mesh variants by explicit render order (if present)
+
+
+        if (meshes[s]) {
+          meshes[s].sort((a, b) => {
+            // Sort variant order ascending if present, then all null values (where order is unspecified)
+            let ao = a.variant.order,
+                bo = b.variant.order;
+            return ao == null ? 1 : bo == null ? -1 : ao < bo ? -1 : 1;
+          });
+        }
+      }
+    }
+
+    delete this.mesh_data; // New meshes
+
+    for (let m in meshes) {
+      // swap in non-collision meshes right away
+      if (!styles[m].collision) {
+        if (this.meshes[m]) {
+          this.meshes[m].forEach(m => m.destroy()); // free old meshes
+        }
+
+        this.meshes[m] = meshes[m]; // set new mesh
+
+        this.new_mesh_styles.push(m);
+      } // keep label meshes out of view until collision is complete
+      else {
+          this.pending_label_meshes = this.pending_label_meshes || {};
+          this.pending_label_meshes[m] = meshes[m];
+        }
+    }
+
+    if (progress.done) {
+      // Release un-replaced meshes (existing in previous generation, but weren't built for this one)
+      for (let m in this.meshes) {
+        if (this.new_mesh_styles.indexOf(m) === -1 && (!this.pending_label_meshes || this.pending_label_meshes[m] == null)) {
+          this.meshes[m].forEach(m => m.destroy());
+          delete this.meshes[m];
+        }
+      }
+
+      this.new_mesh_styles = [];
+      this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
+    }
+
+    this.printDebug(progress);
+  } // How many styles are currently pending label collision
+
+
+  pendingLabelStyleCount() {
+    return this.pending_label_meshes ? Object.keys(this.pending_label_meshes).length : 0;
+  } // Swap label style meshes after collision is complete
+
+
+  swapPendingLabels() {
+    this.labeled = true; // mark as labeled
+
+    if (this.pending_label_meshes) {
+      for (let m in this.pending_label_meshes) {
+        if (this.meshes[m]) {
+          this.meshes[m].forEach(m => m.destroy()); // free old meshes
+        }
+
+        this.meshes[m] = this.pending_label_meshes[m]; // set new mesh
+      }
+
+      this.pending_label_meshes = null;
+    }
+  }
+  /**
+      Called on main thread when web worker completes processing, but tile has since been discarded
+      Frees resources that would have been transferred to the tile object.
+      Static method because the tile object no longer exists (the tile data returned by the worker is passed instead).
+  */
+
+
+  static abortBuild(tile) {
+    Task.removeForTile(tile.id);
+    Collision.abortTile(tile.id); // Releases meshes
+
+    if (tile.mesh_data) {
+      for (let s in tile.mesh_data) {
+        let textures = tile.mesh_data[s].textures;
+
+        if (textures) {
+          textures.forEach(t => {
+            let texture = Texture.textures[t];
+
+            if (texture) {
+              log('trace', `releasing texture ${t} for tile ${tile.key}`);
+              texture.release();
+            }
+          });
+        }
+      }
+    }
+  } // Set as a proxy tile for another tile
+
+
+  setProxyFor(tile) {
+    if (tile) {
+      this.visible = true;
+      this.proxy_for = this.proxy_for || [];
+      this.proxy_for.push(tile);
+      this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
+
+      tile.proxied_as = tile.style_z > this.style_z ? 'child' : 'parent';
+    } else {
+      this.proxy_for = null;
+      this.proxy_depth = 0;
+    }
+  }
+
+  isProxy() {
+    return this.proxy_for != null;
+  } // Proxy tiles only need to render a specific style if any of the tiles they are proxying *for*
+  // haven't finished loading that style yet. If all proxied tiles *have* data for that style, then it's
+  // safe to hide the proxy tile's version.
+
+
+  shouldProxyForStyle(style) {
+    return !this.proxy_for || this.proxy_for.some(t => t.meshes[style] == null);
+  } // Update model matrix and tile uniforms
+
+
+  setupProgram(_ref5, program) {
+    let model = _ref5.model,
+        model32 = _ref5.model32;
+    // Tile origin
+    program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_z, this.coords.z]);
+    program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth); // Model - transform tile space into world space (meters, absolute mercator position)
+
+    mat4.identity(model);
+    mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
+    mat4.scale(model, model, vec3.fromValues(this.span.x / Geo$1.tile_scale, -1 * this.span.y / Geo$1.tile_scale, 1)); // scale tile local coords to meters
+
+    mat4.copy(model32, model);
+    program.uniform('Matrix4fv', 'u_model', model32); // Fade in labels according to proxy status, avoiding "flickering" where
+    // labels quickly go from invisible back to visible
+
+    program.uniform('1i', 'u_tile_fade_in', this.fade_in && this.proxied_as !== 'child');
+  } // Slice a subset of keys out of a tile
+  // Includes a minimum set of pre-defined keys for load state, debug. etc.
+  // We use this to send a subset of the tile back to the main thread, to minimize unnecessary data transfer
+  // (e.g. very large items like feature geometry are not needed on the main thread)
+
+
+  static slice(tile, keys) {
+    let keep = ['id', 'key', 'loading', 'loaded', 'generation', 'error', 'debug'];
+
+    if (Array.isArray(keys)) {
+      keep.push(...keys);
+    } // Build the tile subset
+
+
+    var tile_subset = {};
+
+    for (let k = 0; k < keep.length; k++) {
+      const key = keep[k];
+      tile_subset[key] = tile[key];
+    }
+
+    return tile_subset;
+  }
+
+  merge(other) {
+    this.loading = other.loading;
+    this.loaded = other.loaded;
+    this.generation = other.generation;
+    this.error = other.error;
+    this.mesh_data = other.mesh_data;
+    this.debug = mergeObjects(this.debug, other.debug);
+    return this;
+  }
+
+  printDebug(progress) {
+    const exclude = ['layers'];
+    let copy = {};
+
+    for (let key in this.debug) {
+      if (exclude.indexOf(key) === -1) {
+        copy[key] = this.debug[key];
+      }
+    }
+
+    log('debug', `Tile ${progress.done ? '(done)' : ''}: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
+  }
+
+}
+Tile.coord_children = {}; // only allocate children coordinates once per coordinate
+// Sum up layer feature/geometry stats from a set of tiles
+
+function debugSumLayerStats(tiles) {
+  let list = {},
+      tree = {};
+  tiles.filter(tile => tile.debug.layers).forEach(tile => {
+    // layer list
+    Object.keys(tile.debug.layers.list).forEach(layer => {
+      let counts = tile.debug.layers.list[layer];
+      addLayerDebugEntry(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
+    }); // layer tree
+
+    addDebugLayers(tile.debug.layers.tree, tree);
+  });
+  return {
+    list,
+    tree
+  };
+} // build debug stats layer tree
+
+function addDebugLayers(node, tree) {
+  for (let layer in node) {
+    let counts = node[layer];
+    addLayerDebugEntry(tree, layer, counts.features, counts.geoms, counts.styles, counts.base);
+
+    if (counts.layers) {
+      tree[layer].layers = tree[layer].layers || {};
+      addDebugLayers(counts.layers, tree[layer].layers); // process child layers
+    }
+  }
 }
 
 var read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -17975,7 +18670,7 @@ var VectorTileFeature$1 = vectortilefeature;
 class MVTSource extends NetworkTileSource {
   constructor(source, sources) {
     super(source, sources);
-    this.response_type = "arraybuffer"; // binary data
+    this.response_type = 'arraybuffer'; // binary data
   }
 
   parseSourceData(tile, source, response) {
@@ -18097,7 +18792,7 @@ function decodeMultiPolygon(geom) {
 
   return geom;
 }
-DataSource.register(MVTSource, 'MVT');
+DataSource.register('MVT', () => MVTSource);
 
 var simplify_1 = simplify;
 
@@ -18934,7 +19629,7 @@ class GeoJSONSource extends NetworkSource {
 
     this.max_zoom = Math.max(this.max_zoom || 0, 15); // TODO: max zoom < 15 causes artifacts/no-draw at 20, investigate
 
-    this.setTileSize(512); // auto-tile to 512px tiles for better labelling
+    this.setTileSize(512); // auto-tile to 512px tiles for fewer internal tiles
 
     this.pad_scale = 0; // we don't want padding on auto-tiled sources
   }
@@ -19031,7 +19726,7 @@ class GeoJSONSource extends NetworkSource {
     return collection;
   }
 
-  formatUrl(dest) {
+  formatURL() {
     return this.url;
   }
 
@@ -19074,36 +19769,32 @@ class GeoJSONSource extends NetworkSource {
     if (this.config.generate_label_centroids) {
       let features_centroid = [];
       let centroid_properties = {
-        "label_placement": true
+        'label_placement': true
       };
       features.forEach(feature => {
         let coordinates, centroid_feature;
 
-        switch (feature.geometry.type) {
-          case 'Polygon':
-            coordinates = feature.geometry.coordinates;
-            centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
-            features_centroid.push(centroid_feature);
-            break;
+        if (feature.geometry.type === 'Polygon') {
+          coordinates = feature.geometry.coordinates;
+          centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
+          features_centroid.push(centroid_feature);
+        } else if (feature.geometry.type === 'MultiPolygon') {
+          // Add centroid feature for largest polygon
+          coordinates = feature.geometry.coordinates;
+          let max_area = -Infinity;
+          let max_area_index = 0;
 
-          case 'MultiPolygon':
-            // Add centroid feature for largest polygon
-            coordinates = feature.geometry.coordinates;
-            let max_area = -Infinity;
-            let max_area_index = 0;
+          for (let index = 0; index < coordinates.length; index++) {
+            let area = Geo$1.polygonArea(coordinates[index]);
 
-            for (let index = 0; index < coordinates.length; index++) {
-              let area = Geo$1.polygonArea(coordinates[index]);
-
-              if (area > max_area) {
-                max_area = area;
-                max_area_index = index;
-              }
+            if (area > max_area) {
+              max_area = area;
+              max_area_index = index;
             }
+          }
 
-            centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
-            features_centroid.push(centroid_feature);
-            break;
+          centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
+          features_centroid.push(centroid_feature);
         }
       }); // append centroid features to features array
 
@@ -19141,20 +19832,7 @@ class GeoJSONSource extends NetworkSource {
 
 class GeoJSONTileSource extends NetworkTileSource {
   constructor(source, sources) {
-    super(source, sources); // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
-
-    if (!this.urlHasTilePattern(this.url)) {
-      // Check instance type from parent class
-      if (source.type === 'GeoJSON') {
-        // Replace instance type
-        return new GeoJSONSource(source, sources);
-      } else {
-        // Pass back to parent class to instantiate
-        return undefined;
-      }
-    }
-
-    return this;
+    super(source, sources);
   }
 
   parseSourceData(tile, source, response) {
@@ -19186,9 +19864,11 @@ class GeoJSONTileSource extends NetworkTileSource {
     DataSource.scaleData(source, anchor); // re-scale from meters to local tile coords
   }
 
-}
-DataSource.register(GeoJSONTileSource, 'GeoJSON'); // prefered shorter name
-// Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
+} // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
+
+DataSource.register('GeoJSON', source => {
+  return GeoJSONTileSource.urlHasTilePattern(source.url) ? GeoJSONTileSource : GeoJSONSource;
+}); // Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
 
 function getCentroidFeatureForPolygon(coordinates, properties, newProperties) {
   let centroid = Geo$1.centroid(coordinates);
@@ -19201,10 +19881,10 @@ function getCentroidFeatureForPolygon(coordinates, properties, newProperties) {
   let centroid_properties = {};
   Object.assign(centroid_properties, properties, newProperties);
   return {
-    type: "Feature",
+    type: 'Feature',
     properties: centroid_properties,
     geometry: {
-      type: "Point",
+      type: 'Point',
       coordinates: centroid
     }
   };
@@ -19366,13 +20046,7 @@ function getTopoJSONFeature(topology, object) {
 
 class TopoJSONTileSource extends GeoJSONTileSource {
   constructor(source, sources) {
-    super(source, sources); // Replace with non-tiled source if tiled source failed to instantiate
-
-    if (!this.urlHasTilePattern(this.url)) {
-      return new TopoJSONSource(source, sources);
-    }
-
-    return this;
+    super(source, sources);
   }
 
   parseSourceData(tile, source, response) {
@@ -19381,64 +20055,70 @@ class TopoJSONTileSource extends GeoJSONTileSource {
     this.prepareGeoJSON(data, tile, source);
   }
 
-}
-DataSource.register(TopoJSONTileSource, 'TopoJSON'); // prefered shorter name
+} // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
+
+DataSource.register('TopoJSON', source => {
+  return TopoJSONTileSource.urlHasTilePattern(source.url) ? TopoJSONTileSource : TopoJSONSource;
+});
 
 // add all data source types
 
+exports.createCommonjsModule = createCommonjsModule;
 exports.commonjsGlobal = commonjsGlobal;
 exports.commonjsRequire = commonjsRequire;
-exports.createCommonjsModule = createCommonjsModule;
-exports.Utils = Utils$1;
-exports.addBaseURL = addBaseURL;
-exports.pathForURL = pathForURL;
-exports.extensionForURL = extensionForURL;
 exports.isLocalURL = isLocalURL;
+exports.extensionForURL = extensionForURL;
 exports.isRelativeURL = isRelativeURL;
+exports.pathForURL = pathForURL;
+exports.Utils = Utils;
+exports.addBaseURL = addBaseURL;
 exports.flattenRelativeURL = flattenRelativeURL;
-exports.addParamsToURL = addParamsToURL;
 exports.createObjectURL = createObjectURL;
-exports.log = log;
-exports.GLSL = GLSL;
-exports.mergeObjects = mergeObjects;
 exports.subscribeMixin = subscribeMixin;
+exports.log = log;
+exports.mergeObjects = mergeObjects;
 exports.isReserved = isReserved;
+exports.GLSL = GLSL;
+exports.TileID = TileID;
 exports.Geo = Geo$1;
-exports.Tile = Tile;
-exports.Label = Label;
 exports.LabelPoint = LabelPoint;
 exports.LabelLineStraight = LabelLineStraight;
-exports.Collision = Collision$1;
 exports.OBB = OBB;
+exports.Collision = Collision;
+exports.Label = Label;
 exports.WorkerBroker = WorkerBroker$1;
 exports.Task = Task;
+exports.Tile = Tile;
 exports.StyleParser = StyleParser;
-exports.debugSettings = debugSettings$1;
 exports.Texture = Texture;
+exports.debugSettings = debugSettings$1;
+exports.debugSumLayerStats = debugSumLayerStats;
+exports.View = View;
+exports.StyleManager = StyleManager;
 exports.ShaderProgram = ShaderProgram;
 exports.VertexArrayObject = VertexArrayObject;
-exports.StyleManager = StyleManager;
 exports.Style = Style;
-exports.View = View;
-exports.Light = Light;
+exports.TextCanvas = TextCanvas;
+exports._extends = _extends;
 exports.DataSource = DataSource;
-exports.FeatureSelection = FeatureSelection;
-exports.CanvasText = CanvasText;
+exports.Light = Light;
 exports.FontManager = FontManager;
+exports.FeatureSelection = FeatureSelection;
+exports.sliceObject = sliceObject;
 exports.Thread = Thread;
 exports.mergeDebugSettings = mergeDebugSettings;
 exports.version = version$1;
 exports.Vector = Vector$1;
 exports.VertexData = VertexData;
 exports.Material = Material;
+exports.VertexElements = VertexElements;
 exports.compileFunctionStrings = compileFunctionStrings;
-exports.cache = cache;
-exports.clearFunctionStringCache = clearFunctionStringCache;
 exports.parseLayers = parseLayers;
+exports.buildFilter = buildFilter;
 exports.FilterOptions = FilterOptions;
 exports.layerCache = layerCache;
-exports.buildFilter = buildFilter;
-exports.VertexElements = VertexElements;
+exports.cache = cache;
+exports.clearFunctionStringCache = clearFunctionStringCache;
 
 });
 
@@ -19487,11 +20167,10 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Starts a config refresh
-  updateConfig({
-    config,
-    generation,
-    introspection
-  }, debug) {
+  updateConfig(_ref, debug) {
+    let config = _ref.config,
+        generation = _ref.generation,
+        introspection = _ref.introspection;
     config = JSON.parse(config);
     __chunk_1.mergeDebugSettings(debug);
     this.generation = generation;
@@ -19515,7 +20194,7 @@ const SceneWorker = Object.assign(self, {
     this.syncing_textures = this.syncTextures(config.textures); // Return promise for when config refresh finishes
 
     this.configuring = this.syncing_textures.then(() => {
-      __chunk_1.log('debug', `updated config`);
+      __chunk_1.log('debug', 'updated config');
     });
     return this.configuring;
   },
@@ -19528,15 +20207,16 @@ const SceneWorker = Object.assign(self, {
     let last_sources = this.sources;
     let changed = []; // Parse new sources
 
-    config.sources = __chunk_1.compileFunctionStrings(config.sources);
     this.sources = {}; // clear previous sources
 
     for (let name in config.sources) {
       if (JSON.stringify(this.last_config_sources[name]) === JSON.stringify(config.sources[name])) {
         this.sources[name] = last_sources[name];
         continue;
-      }
+      } // compile any user-defined JS functions
 
+
+      config.sources[name] = __chunk_1.compileFunctionStrings(config.sources[name]);
       let source;
 
       try {
@@ -19571,9 +20251,9 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
-  buildTile({
-    tile
-  }) {
+  buildTile(_ref2) {
+    let tile = _ref2.tile;
+
     // Tile cached?
     if (this.getTile(tile.key) != null) {
       // Already loading?
@@ -19662,12 +20342,11 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Query features within visible tiles, with optional filter conditions
-  queryFeatures({
-    filter,
-    visible,
-    geometry,
-    tile_keys
-  }) {
+  queryFeatures(_ref3) {
+    let filter = _ref3.filter,
+        visible = _ref3.visible,
+        geometry = _ref3.geometry,
+        tile_keys = _ref3.tile_keys;
     let features = [];
     let tiles = tile_keys.map(t => this.tiles[t]).filter(t => t); // Compile feature filter
 
@@ -19724,10 +20403,11 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Get a feature from the selection map
-  getFeatureSelection({
-    id,
-    key
-  } = {}) {
+  getFeatureSelection(_temp) {
+    let _ref4 = _temp === void 0 ? {} : _temp,
+        id = _ref4.id,
+        key = _ref4.key;
+
     var selection = __chunk_1.FeatureSelection.map[key];
     return {
       id: id,
@@ -19736,7 +20416,11 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Resets the feature selection state
-  resetFeatureSelection(sources = null) {
+  resetFeatureSelection(sources) {
+    if (sources === void 0) {
+      sources = null;
+    }
+
     __chunk_1.FeatureSelection.reset(sources);
   },
 
@@ -19773,11 +20457,11 @@ const SceneWorker = Object.assign(self, {
 
   // Profiling helpers
   profile(name) {
-    console.profile(`worker ${this._worker_id}: ${name}`);
+    console.profile(`worker ${this._worker_id}: ${name}`); // eslint-disable-line no-console
   },
 
   profileEnd(name) {
-    console.profileEnd(`worker ${this._worker_id}: ${name}`);
+    console.profileEnd(`worker ${this._worker_id}: ${name}`); // eslint-disable-line no-console
   },
 
   debug: {
@@ -19791,12 +20475,6 @@ __chunk_1.WorkerBroker.addTarget('self', SceneWorker);
 });
 
 define(['./shared.js'], function (__chunk_1) { 'use strict';
-
-function sliceObject(obj, keys) {
-  let sliced = {};
-  keys.forEach(k => sliced[k] = obj[k]);
-  return sliced;
-}
 
 // WebGL context wrapper
 var Context;
@@ -19820,7 +20498,7 @@ Context.getContext = function getContext(canvas, options) {
   var gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
 
   if (!gl) {
-    throw new Error("Couldn't create WebGL context.");
+    throw new Error('Couldn\'t create WebGL context.');
   }
 
   gl._tangram_id = context_id++;
@@ -39525,7 +40203,11 @@ var jsYaml = {
 var jsYaml$1 = jsYaml;
 
 class SceneBundle {
-  constructor(url, path, parent = null) {
+  constructor(url, path, parent) {
+    if (parent === void 0) {
+      parent = null;
+    }
+
     this.url = url; // If a base path was provided, use it for resolving local bundle resources only if
     // the base path is absolute, or this bundle's path is relative
 
@@ -39606,13 +40288,16 @@ class ZipSceneBundle extends SceneBundle {
     return true;
   }
 
-  load() {
+  async load() {
     this.zip = new lib();
 
     if (typeof this.url === 'string') {
-      return __chunk_1.Utils.io(this.url, 60000, 'arraybuffer').then(body => this.zip.loadAsync(body)).then(() => this.parseZipFiles()).then(() => this.loadRoot()).catch(e => Promise.reject(e));
+      const data = await __chunk_1.Utils.io(this.url, 60000, 'arraybuffer');
+      await this.zip.loadAsync(data);
+      await this.parseZipFiles();
+      return this.loadRoot();
     } else {
-      return Promise.resolve(this);
+      return this;
     }
   }
 
@@ -39637,7 +40322,8 @@ class ZipSceneBundle extends SceneBundle {
   }
 
   loadRoot() {
-    return this.findRoot().then(() => loadResource(this.urlForZipFile(this.root)));
+    this.findRoot();
+    return loadResource(this.urlForZipFile(this.root));
   }
 
   findRoot() {
@@ -39651,21 +40337,19 @@ class ZipSceneBundle extends SceneBundle {
 
     if (!this.root) {
       let msg = `Could not find root scene for bundle '${this.url}': `;
-      msg += `The zip archive's root level must contain a single scene file with the '.yaml' extension. `;
+      msg += 'The zip archive\'s root level must contain a single scene file with the \'.yaml\' extension. ';
 
       if (yamls.length > 0) {
         msg += `Found multiple YAML files at the root level: ${yamls.map(r => '\'' + r + '\'').join(', ')}.`;
       } else {
-        msg += `Found NO YAML files at the root level.`;
+        msg += 'Found NO YAML files at the root level.';
       }
 
-      return Promise.reject(Error(msg));
+      throw Error(msg);
     }
-
-    return Promise.resolve();
   }
 
-  parseZipFiles() {
+  async parseZipFiles() {
     let paths = [];
     let queue = [];
     this.zip.forEach((path, file) => {
@@ -39674,17 +40358,17 @@ class ZipSceneBundle extends SceneBundle {
         queue.push(file.async('arraybuffer'));
       }
     });
-    return Promise.all(queue).then(data => {
-      for (let i = 0; i < data.length; i++) {
-        let path = paths[i];
-        let depth = path.split('/').length - 1;
-        this.files[path] = {
-          data: data[i],
-          type: __chunk_1.extensionForURL(path),
-          depth
-        };
-      }
-    });
+    const data = await Promise.all(queue);
+
+    for (let i = 0; i < data.length; i++) {
+      let path = paths[i];
+      let depth = path.split('/').length - 1;
+      this.files[path] = {
+        data: data[i],
+        type: __chunk_1.extensionForURL(path),
+        depth
+      };
+    }
   }
 
   urlForZipFile(file) {
@@ -39702,7 +40386,11 @@ class ZipSceneBundle extends SceneBundle {
   }
 
 }
-function createSceneBundle(url, path, parent, type = null) {
+function createSceneBundle(url, path, parent, type) {
+  if (type === void 0) {
+    type = null;
+  }
+
   if (type != null && type === 'zip' || typeof url === 'string' && !__chunk_1.isLocalURL(url) && __chunk_1.extensionForURL(url) === 'zip') {
     return new ZipSceneBundle(url, path, parent);
   }
@@ -39759,58 +40447,67 @@ function loadResource(source) {
 var SceneLoader;
 var SceneLoader$1 = SceneLoader = {
   // Load scenes definitions from URL & proprocess
-  loadScene(url, {
-    path,
-    type
-  } = {}) {
+  async loadScene(url, _temp) {
+    let _ref = _temp === void 0 ? {} : _temp,
+        path = _ref.path,
+        type = _ref.type;
+
     let errors = [];
-    return this.loadSceneRecursive({
+    const scene = await this.loadSceneRecursive({
       url,
       path,
       type
-    }, null, errors).then(result => this.finalize(result)).then(({
+    }, null, errors);
+
+    const _this$finalize = this.finalize(scene),
+          config = _this$finalize.config,
+          bundle = _this$finalize.bundle;
+
+    if (!config) {
+      // root scene failed to load, reject with first error
+      throw errors[0];
+    } else if (errors.length > 0) {
+      // scene loaded, but some imports had errors
+      errors.forEach(error => {
+        let message = `Failed to import scene: ${error.url}`;
+        __chunk_1.log('error', message, error);
+        this.trigger('error', {
+          type: 'scene_import',
+          message,
+          error,
+          url: error.url
+        });
+      });
+    }
+
+    return {
       config,
       bundle
-    }) => {
-      if (!config) {
-        // root scene failed to load, reject with first error
-        return Promise.reject(errors[0]);
-      } else if (errors.length > 0) {
-        // scene loaded, but some imports had errors
-        errors.forEach(error => {
-          let message = `Failed to import scene: ${error.url}`;
-          __chunk_1.log('error', message, error);
-          this.trigger('error', {
-            type: 'scene_import',
-            message,
-            error,
-            url: error.url
-          });
-        });
-      }
-
-      return {
-        config,
-        bundle
-      };
-    });
+    };
   },
 
   // Loads scene files from URL, recursively loading 'import' scenes
   // Optional *initial* path only (won't be passed to recursive 'import' calls)
   // Useful for loading resources in base scene file from a separate location
   // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
-  loadSceneRecursive({
-    url,
-    path,
-    type
-  }, parent, errors = []) {
+  async loadSceneRecursive(_ref2, parent, errors) {
+    let url = _ref2.url,
+        path = _ref2.path,
+        type = _ref2.type;
+
+    if (errors === void 0) {
+      errors = [];
+    }
+
     if (!url) {
-      return Promise.resolve({});
+      return {};
     }
 
     let bundle = createSceneBundle(url, path, parent, type);
-    return bundle.load().then(config => {
+
+    try {
+      let config = await bundle.load(); // debugger
+
       if (config.import == null) {
         this.normalize(config, bundle);
         return {
@@ -39835,25 +40532,23 @@ var SceneLoader$1 = SceneLoader = {
         imports.push(bundle.resourceFor(url));
       });
       delete config.import; // don't want to merge this property
+      // load and normalize imports
 
-      return Promise.all(imports.map(resource => this.loadSceneRecursive(resource, bundle, errors))).then(results => {
-        results.forEach(r => this.normalize(r.config, r.bundle)); // first normalize imports
+      const queue = imports.map(resource => this.loadSceneRecursive(resource, bundle, errors));
+      const configs = (await Promise.all(queue)).map(r => this.normalize(r.config, r.bundle)).map(r => r.config);
+      config = __chunk_1.mergeObjects(...configs, config);
+      this.normalize(config, bundle); // last normalize parent, after merge
 
-        let configs = results.map(r => r.config);
-        config = __chunk_1.mergeObjects(...configs, config);
-        this.normalize(config, bundle); // last normalize parent, after merge
-
-        return {
-          config,
-          bundle
-        };
-      });
-    }).catch(error => {
+      return {
+        config,
+        bundle
+      };
+    } catch (error) {
       // Collect scene load errors as we go
       error.url = url;
       errors.push(error);
       return {};
-    });
+    }
   },
 
   // Normalize properties that should be adjust within each local scene file (usually by path)
@@ -39880,7 +40575,12 @@ var SceneLoader$1 = SceneLoader = {
   },
 
   normalizeDataSource(source, bundle) {
-    source.url = bundle.urlFor(source.url);
+    source.url = bundle.urlFor(source.url); // composite untiled raster sources
+
+    if (Array.isArray(source.composite)) {
+      source.composite.forEach(c => c.url = bundle.urlFor(c.url));
+    } // custom scripts
+
 
     if (source.scripts) {
       // convert legacy array-style scripts to object format (script URL is used as both key and value)
@@ -40016,21 +40716,21 @@ var SceneLoader$1 = SceneLoader = {
     }
   },
 
-  hoistStyleShaderUniformTextures(config, bundle, {
-    include_globals
-  }) {
+  hoistStyleShaderUniformTextures(config, bundle, _ref3) {
+    let include_globals = _ref3.include_globals;
+
     // Resolve URLs for inline textures
     if (config.styles) {
       for (let sn in config.styles) {
         let style = config.styles[sn]; // Shader uniforms
 
         if (style.shaders && style.shaders.uniforms) {
-          __chunk_1.GLSL.parseUniforms(style.shaders.uniforms).forEach(({
-            type,
-            value,
-            key,
-            uniforms
-          }) => {
+          __chunk_1.GLSL.parseUniforms(style.shaders.uniforms).forEach((_ref4) => {
+            let type = _ref4.type,
+                value = _ref4.value,
+                key = _ref4.key,
+                uniforms = _ref4.uniforms;
+
             // Texture by URL (string-named texture not referencing existing texture definition)
             if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] && (include_globals || !isGlobal(value))) {
               uniforms[key] = this.hoistTexture(value, config, bundle);
@@ -40095,7 +40795,7 @@ var SceneLoader$1 = SceneLoader = {
             __chunk_1.log({
               level: 'warn',
               once: true
-            }, `Global properties: cyclical reference detected`, stack);
+            }, 'Global properties: cyclical reference detected', stack);
             val = null;
             break;
           }
@@ -40135,10 +40835,10 @@ var SceneLoader$1 = SceneLoader = {
   },
 
   // Normalize some scene-wide settings that apply to the final, merged scene
-  finalize({
-    config,
-    bundle
-  }) {
+  finalize(_ref5) {
+    let config = _ref5.config,
+        bundle = _ref5.bundle;
+
     if (!config) {
       return {};
     } // Ensure top-level properties
@@ -40175,7 +40875,15 @@ var SceneLoader$1 = SceneLoader = {
 
 }; // Flatten nested properties for simpler string look-ups
 
-function flattenProperties(obj, prefix = null, globals = {}) {
+function flattenProperties(obj, prefix, globals) {
+  if (prefix === void 0) {
+    prefix = null;
+  }
+
+  if (globals === void 0) {
+    globals = {};
+  }
+
   prefix = prefix ? prefix + '.' : 'global.';
 
   for (const p in obj) {
@@ -40195,174 +40903,111 @@ __chunk_1.subscribeMixin(SceneLoader);
 
 class TilePyramid {
   constructor() {
-    this.coords = {};
-    this.max_proxy_descendant_depth = 3; // # of levels to search up/down for proxy tiles
+    this.tiles = {};
+    this.max_proxy_descendant_depth = 6; // # of levels to search up/down for proxy tiles
 
-    this.max_proxy_ancestor_depth = 5;
-  }
-
-  sourceTiles(coord, source) {
-    return this.coords[coord.key] && this.coords[coord.key].sources && this.coords[coord.key].sources[source.name];
+    this.max_proxy_ancestor_depth = 7;
   }
 
   addTile(tile) {
     // Add target tile
-    let key = tile.coords.key;
-    let coord = this.coords[key];
+    this.tiles[tile.key] = this.tiles[tile.key] || {
+      descendants: 0
+    };
+    this.tiles[tile.key].tile = tile; // Add to parents
 
-    if (!coord) {
-      coord = this.coords[key] = {
-        descendants: 0
-      };
-    }
+    while (tile.style_z >= 0) {
+      tile = __chunk_1.TileID.parent(tile);
 
-    if (!coord.sources) {
-      coord.sources = {};
-    }
+      if (!tile) {
+        return;
+      }
 
-    if (!coord.sources[tile.source.name]) {
-      coord.sources[tile.source.name] = {};
-    }
-
-    coord.sources[tile.source.name][tile.style_zoom] = tile; // Increment reference count up the tile pyramid
-
-    for (let z = tile.coords.z - 1; z >= 0; z--) {
-      let up = __chunk_1.Tile.coordinateAtZoom(tile.coords, z);
-
-      if (!this.coords[up.key]) {
-        this.coords[up.key] = {
+      if (!this.tiles[tile.key]) {
+        this.tiles[tile.key] = {
           descendants: 0
         };
       }
 
-      this.coords[up.key].descendants++;
+      this.tiles[tile.key].descendants++;
     }
   }
 
   removeTile(tile) {
     // Remove target tile
-    let source_tiles = this.sourceTiles(tile.coords, tile.source);
-    let key = tile.coords.key;
+    if (this.tiles[tile.key]) {
+      delete this.tiles[tile.key].tile;
 
-    if (source_tiles) {
-      delete source_tiles[tile.style_zoom];
-
-      if (Object.keys(source_tiles).length === 0) {
-        // remove source
-        delete this.coords[key].sources[tile.source.name];
-
-        if (Object.keys(this.coords[key].sources).length === 0) {
-          delete this.coords[key].sources;
-
-          if (this.coords[key].descendants === 0) {
-            // remove whole coord
-            delete this.coords[key];
-          }
-        }
+      if (this.tiles[tile.key].descendants === 0) {
+        delete this.tiles[tile.key]; // remove whole tile in tree
       }
     } // Decrement reference count up the tile pyramid
 
 
-    for (let z = tile.coords.z - 1; z >= 0; z--) {
-      let down = __chunk_1.Tile.coordinateAtZoom(tile.coords, z);
+    while (tile.style_z >= 0) {
+      tile = __chunk_1.TileID.parent(tile);
 
-      if (this.coords[down.key] && this.coords[down.key].descendants > 0) {
-        this.coords[down.key].descendants--;
+      if (!tile) {
+        return;
+      }
 
-        if (this.coords[down.key].descendants === 0 && !this.coords[down.key].sources) {
-          delete this.coords[down.key];
+      if (this.tiles[tile.key] && this.tiles[tile.key].descendants > 0) {
+        this.tiles[tile.key].descendants--;
+
+        if (this.tiles[tile.key].descendants === 0 && !this.tiles[tile.key].tile) {
+          delete this.tiles[tile.key]; // remove whole tile in tree
         }
       }
     }
-  }
-
-  getAncestor({
-    coords,
-    style_zoom,
-    source
-  }, level = 1) {
-    if (level > this.max_proxy_ancestor_depth) {
-      return;
-    } // First check overzoomed tiles at same coordinate zoom
+  } // Find the parent tile for a given tile and style zoom level
 
 
-    if (style_zoom > source.max_coord_zoom) {
-      let source_tiles = this.sourceTiles(coords, source);
+  getAncestor(tile) {
+    let level = 0;
 
-      if (source_tiles) {
-        for (let z = style_zoom - 1; z >= source.max_coord_zoom; z--) {
-          if (source_tiles[z] && source_tiles[z].loaded) {
-            return source_tiles[z];
-          }
-        }
+    while (level < this.max_proxy_ancestor_depth) {
+      const last_z = tile.coords.z;
+      tile = __chunk_1.TileID.parent(tile);
+
+      if (!tile) {
+        return;
       }
 
-      style_zoom = source.max_coord_zoom;
-    } // Check tiles at next zoom up
+      if (this.tiles[tile.key] && this.tiles[tile.key].tile && this.tiles[tile.key].tile.loaded) {
+        return this.tiles[tile.key].tile;
+      }
 
-
-    style_zoom--;
-    let parent = __chunk_1.Tile.coordinateAtZoom(coords, coords.z - 1);
-    let parent_tiles = this.sourceTiles(parent, source);
-
-    if (parent_tiles && parent_tiles[style_zoom] && parent_tiles[style_zoom].loaded) {
-      return parent_tiles[style_zoom];
-    } // didn't find ancestor, try next level
-
-
-    if (parent.z > 0) {
-      return this.getAncestor({
-        coords: parent,
-        style_zoom,
-        source
-      }, level + 1);
+      if (tile.coords.z !== last_z) {
+        level++;
+      }
     }
-  }
+  } // Find the descendant tiles for a given tile and style zoom level
 
-  getDescendants({
-    coords,
-    style_zoom,
-    source
-  }, level = 1) {
-    let descendants = []; // First check overzoomed tiles at same coordinate zoom
 
-    if (style_zoom >= source.max_coord_zoom) {
-      let source_tiles = this.sourceTiles(coords, source);
+  getDescendants(tile, level) {
+    if (level === void 0) {
+      level = 0;
+    }
 
-      if (source_tiles) {
-        let search_max_zoom = Math.max(__chunk_1.Geo.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
+    let descendants = [];
 
-        for (let z = style_zoom + 1; z <= search_max_zoom; z++) {
-          if (source_tiles[z] && source_tiles[z].loaded) {
-            descendants.push(source_tiles[z]);
-            return descendants;
+    if (level < this.max_proxy_descendant_depth) {
+      let tiles = __chunk_1.TileID.children(tile);
+
+      if (!tiles) {
+        return;
+      }
+
+      tiles.forEach(t => {
+        if (this.tiles[t.key]) {
+          if (this.tiles[t.key].tile && this.tiles[t.key].tile.loaded) {
+            descendants.push(this.tiles[t.key].tile);
+          } else if (this.tiles[t.key].descendants > 0) {
+            // didn't find any children, try next level
+            descendants.push(...this.getDescendants(t, level + (t.coords.z !== tile.coords.z)));
           }
         }
-      }
-
-      return descendants;
-    } // Check tiles at next zoom down
-
-
-    if (this.coords[coords.key] && this.coords[coords.key].descendants > 0) {
-      style_zoom++;
-      const children = __chunk_1.Tile.childrenForCoordinate(coords);
-
-      for (let c = 0; c < children.length; c++) {
-        const child = children[c];
-        let child_tiles = this.sourceTiles(child, source);
-
-        if (child_tiles && child_tiles[style_zoom] && child_tiles[style_zoom].loaded) {
-          descendants.push(child_tiles[style_zoom]);
-        } // didn't find child, try next level
-        else if (level <= this.max_proxy_descendant_depth && child.z <= source.max_coord_zoom) {
-            descendants.push(...this.getDescendants({
-              coords: child,
-              source,
-              style_zoom
-            }, level + 1));
-          }
-      }
+      });
     }
 
     return descendants;
@@ -40374,7 +41019,11 @@ let visible = {}; // currently visible labels
 
 let prev_visible = {}; // previously visible labels (in last collision run)
 
-function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach = false) {
+function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
+  if (hide_breach === void 0) {
+    hide_breach = false;
+  }
+
   prev_visible = visible; // save last visible label set
 
   visible = {}; // initialize new visible label set
@@ -40385,7 +41034,7 @@ function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach = false) {
   tiles.forEach(tile => {
     const units_per_meter = __chunk_1.Geo.unitsPerMeter(tile.coords.z); // scale from tile units to mercator meters
 
-    const zoom_scale = Math.pow(2, view_zoom - tile.style_zoom); // adjust label size by view zoom
+    const zoom_scale = Math.pow(2, view_zoom - tile.style_z); // adjust label size by view zoom
 
     const size_scale = units_per_meter * zoom_scale; // scale from tile units to zoom-adjusted meters
 
@@ -40532,9 +41181,13 @@ function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach = false) {
     }; // currently returned for debugging
   });
 } // Generic discard function for labels, does simple occlusion with one or more bounding boxes
-// (no additional logic to try alternate anchors or other layour options, etc.)
+// (no additional logic to try alternate anchors or other layout options, etc.)
 
-function discard(bboxes, exclude = null) {
+function discard(bboxes, exclude) {
+  if (exclude === void 0) {
+    exclude = null;
+  }
+
   if (this.obb) {
     // single collision box
     return __chunk_1.Label.prototype.occluded.call(this, bboxes, exclude);
@@ -40559,10 +41212,9 @@ function discard(bboxes, exclude = null) {
 }
 
 class TileManager {
-  constructor({
-    scene,
-    view
-  }) {
+  constructor(_ref) {
+    let scene = _ref.scene,
+        view = _ref.view;
     this.scene = scene;
     this.view = view;
     this.tiles = {};
@@ -40592,6 +41244,7 @@ class TileManager {
     this.queued_coords = [];
     this.scene = null;
     this.view = null;
+    __chunk_1.WorkerBroker.removeTarget(this.main_thread_target);
   }
 
   keepTile(tile) {
@@ -40770,13 +41423,13 @@ class TileManager {
   updateVisibility(tile) {
     tile.visible = false;
 
-    if (tile.style_zoom === this.view.tile_zoom) {
+    if (tile.style_z === this.view.tile_zoom) {
       if (this.visible_coords[tile.coords.key]) {
         tile.visible = true;
       } else {
         // brute force
         for (let key in this.visible_coords) {
-          if (__chunk_1.Tile.isDescendant(tile.coords, this.visible_coords[key])) {
+          if (__chunk_1.TileID.isDescendant(tile.coords, this.visible_coords[key])) {
             tile.visible = true;
             break;
           }
@@ -40895,7 +41548,7 @@ class TileManager {
         continue;
       }
 
-      let key = __chunk_1.Tile.normalizedKey(coords, source, this.view.tile_zoom);
+      let key = __chunk_1.TileID.normalizedKey(coords, source, this.view.tile_zoom);
 
       if (key && !this.hasTile(key)) {
         __chunk_1.log('trace', `load tile ${key}, distance from view center: ${coords.center_dist}`);
@@ -40903,7 +41556,7 @@ class TileManager {
           source,
           coords,
           worker: this.getWorkerForTile(coords, source),
-          style_zoom: this.view.baseZoom(coords.z),
+          style_z: this.view.baseZoom(coords.z),
           view: this.view
         });
         this.keepTile(tile);
@@ -40920,10 +41573,10 @@ class TileManager {
   } // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
 
 
-  buildTileStylesCompleted({
-    tile,
-    progress
-  }) {
+  buildTileStylesCompleted(_ref2) {
+    let tile = _ref2.tile,
+        progress = _ref2.progress;
+
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
       __chunk_1.log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because previously removed`);
@@ -41026,15 +41679,21 @@ class TileManager {
 } // Round a number to given number of decimal divisions
 // e.g. roundPrecision(x, 4) rounds a number to increments of 0.25
 
-function roundPrecision(x, d, places = 2) {
+function roundPrecision(x, d, places) {
+  if (places === void 0) {
+    places = 2;
+  }
+
   return (Math.floor(x * d) / d).toFixed(places);
 } // Create a string representing the current set of meshes for a given set of tiles,
 // based on their created timestamp. Used to determine when tiles should be re-collided.
 
 
 function meshSetString(tiles) {
-  return JSON.stringify(Object.entries(tiles).map(([, t]) => {
-    return Object.entries(t.meshes).map(([, s]) => {
+  return JSON.stringify(Object.entries(tiles).map((_ref3) => {
+    let t = _ref3[1];
+    return Object.entries(t.meshes).map((_ref4) => {
+      let s = _ref4[1];
       return s.map(m => m.created_at);
     });
   }));
@@ -41143,9 +41802,10 @@ class MediaCapture {
   // `background`: optional background color to blend screenshot with
 
 
-  screenshot({
-    background
-  } = {}) {
+  screenshot(_temp) {
+    let _ref = _temp === void 0 ? {} : _temp,
+        background = _ref.background;
+
     if (this.queue_screenshot != null) {
       return this.queue_screenshot.promise; // only capture one screenshot at a time
     } // Will resolve once rendering is complete and render buffer is captured
@@ -41322,6 +41982,139 @@ class MediaCapture {
 
 }
 
+function setupSceneDebug(scene) {
+  scene.debug = {
+    // Profile helpers, issues a profile on main thread & all workers
+    profile(name) {
+      console.profile(`main thread: ${name}`); // eslint-disable-line no-console
+
+      __chunk_1.WorkerBroker.postMessage(scene.workers, 'self.profile', name);
+    },
+
+    profileEnd(name) {
+      console.profileEnd(`main thread: ${name}`); // eslint-disable-line no-console
+
+      __chunk_1.WorkerBroker.postMessage(scene.workers, 'self.profileEnd', name);
+    },
+
+    // Rebuild geometry a given # of times and print average, min, max timings
+    timeRebuild(num, options) {
+      if (num === void 0) {
+        num = 1;
+      }
+
+      if (options === void 0) {
+        options = {};
+      }
+
+      let times = [];
+
+      let cycle = () => {
+        let start = +new Date();
+        scene.rebuild(options).then(() => {
+          times.push(+new Date() - start);
+
+          if (times.length < num) {
+            cycle();
+          } else {
+            let avg = ~~(times.reduce((a, b) => a + b) / times.length);
+            __chunk_1.log('info', `Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
+          }
+        });
+      };
+
+      cycle();
+    },
+
+    // Return geometry counts of visible tiles, grouped by style name
+    geometryCountByStyle() {
+      let counts = {};
+      scene.tile_manager.getRenderableTiles().forEach(tile => {
+        for (let style in tile.meshes) {
+          counts[style] = counts[style] || 0;
+          tile.meshes[style].forEach(mesh => {
+            counts[style] += mesh.geometry_count;
+          });
+        }
+      });
+      return counts;
+    },
+
+    // Return geometry counts of visible tiles, grouped by base style name
+    geometryCountByBaseStyle() {
+      let style_counts = scene.debug.geometryCountByStyle();
+      let counts = {};
+
+      for (let style in style_counts) {
+        let base = scene.styles[style].baseStyle();
+        counts[base] = counts[base] || 0;
+        counts[base] += style_counts[style];
+      }
+
+      return counts;
+    },
+
+    // Return sum of all geometry counts for visible tiles
+    geometryCountTotal() {
+      const styles = scene.debug.geometryCountByStyle();
+      return Object.keys(styles).reduce((p, c) => styles[c] + p, 0);
+    },
+
+    // Return geometry GL buffer sizes for visible tiles, grouped by style name
+    geometrySizeByStyle() {
+      let sizes = {};
+      scene.tile_manager.getRenderableTiles().forEach(tile => {
+        for (let style in tile.meshes) {
+          sizes[style] = sizes[style] || 0;
+          tile.meshes[style].forEach(mesh => {
+            sizes[style] += mesh.buffer_size;
+          });
+        }
+      });
+      return sizes;
+    },
+
+    // Return geometry GL buffer sizes for visible tiles, grouped by base style name
+    geometrySizeByBaseStyle() {
+      let style_sizes = scene.debug.geometrySizeByStyle();
+      let sizes = {};
+
+      for (let style in style_sizes) {
+        let base = scene.styles[style].baseStyle();
+        sizes[base] = sizes[base] || 0;
+        sizes[base] += style_sizes[style];
+      }
+
+      return sizes;
+    },
+
+    // Return sum of all geometry GL buffer sizes for visible tiles
+    geometrySizeTotal() {
+      const styles = scene.debug.geometrySizeByStyle();
+      return Object.keys(styles).reduce((p, c) => styles[c] + p, 0);
+    },
+
+    // Return sum of all texture memory usage
+    textureSizeTotal() {
+      return Object.values(__chunk_1.Texture.textures).map(t => t.byteSize()).reduce((p, c) => p + c);
+    },
+
+    layerStats() {
+      if (__chunk_1.debugSettings.layer_stats) {
+        return __chunk_1.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
+      } else {
+        __chunk_1.log('warn', 'Enable the \'layer_stats\' debug setting to collect layer stats');
+        return {};
+      }
+    },
+
+    renderableTilesCount() {
+      return scene.tile_manager.getRenderableTiles().length;
+    }
+
+  };
+}
+
 class Scene {
   constructor(config_source, options) {
     options = options || {};
@@ -41384,6 +42177,8 @@ class Scene {
     this.selection = null;
     this.selection_feature_count = 0;
     this.fetching_selection_map = null;
+    this.prev_textures = null; // textures from previously loaded scene (used for cleanup)
+
     this.introspection = options.introspection === true ? true : false;
     this.times = {}; // internal time logs (mostly for dev/profiling)
 
@@ -41399,13 +42194,17 @@ class Scene {
 
     this.last_complete_generation = Scene.generation; // last generation id with a complete view
 
-    this.setupDebug();
+    setupSceneDebug(this);
     this.log_level = options.logLevel || 'warn';
     __chunk_1.log.setLevel(this.log_level);
     __chunk_1.log.reset();
   }
 
-  static create(config, options = {}) {
+  static create(config, options) {
+    if (options === void 0) {
+      options = {};
+    }
+
     return new Scene(config, options);
   } // Load scene (or reload existing scene if no new source specified)
   // Options:
@@ -41413,7 +42212,15 @@ class Scene {
   //   `blocking`: should rendering block on scene load completion (default true)
 
 
-  load(config_source = null, options = {}) {
+  load(config_source, options) {
+    if (config_source === void 0) {
+      config_source = null;
+    }
+
+    if (options === void 0) {
+      options = {};
+    }
+
     if (this.initializing) {
       return this.initializing;
     }
@@ -41439,6 +42246,8 @@ class Scene {
 
 
     this.createCanvas();
+    this.prev_textures = this.config && Object.keys(this.config.textures); // save textures from last scene
+
     this.initializing = this.loadScene(config_source, options).then(() => this.createWorkers()).then(() => {
       // Clean up resources from prior scene
       this.destroyFeatureSelection();
@@ -41449,7 +42258,7 @@ class Scene {
       const updating = this.updateConfig({
         serialize_funcs,
         normalize: false,
-        load_event: true,
+        loading: true,
         fade_in: true
       });
 
@@ -41457,6 +42266,7 @@ class Scene {
         return updating;
       }
     }).then(() => {
+      this.freePreviousTextures();
       this.updating--;
       this.initializing = null;
       this.initialized = true;
@@ -41486,11 +42296,11 @@ class Scene {
         error,
         url: this.config_source
       });
-      message = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
+      message = `Scene.load() failed to load ${JSON.stringify(this.config_source)}: ${error.message}`;
 
       if (this.last_valid_config_source) {
         __chunk_1.log('warn', message, error);
-        __chunk_1.log('info', `Scene.load() reverting to last valid configuration`);
+        __chunk_1.log('info', 'Scene.load() reverting to last valid configuration');
         return this.load(this.last_valid_config_source, this.last_valid_base_path);
       }
 
@@ -41558,7 +42368,7 @@ class Scene {
         device_pixel_ratio: __chunk_1.Utils.device_pixel_ratio
       }, this.contextOptions));
     } catch (e) {
-      throw new Error("Couldn't create WebGL context. " + "Your browser may not support WebGL, or it's turned off? " + "Visit http://webglreport.com/ for more info.");
+      throw new Error('Couldn\'t create WebGL context. ' + 'Your browser may not support WebGL, or it\'s turned off? ' + 'Visit http://webglreport.com/ for more info.');
     }
 
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
@@ -41616,12 +42426,12 @@ class Scene {
 
   makeWorkers() {
     // Let VertexElements know if 32 bit indices for element arrays are available
-    let has_element_index_uint = this.gl.getExtension("OES_element_index_uint") ? true : false;
+    let has_element_index_uint = this.gl.getExtension('OES_element_index_uint') ? true : false;
     let queue = [];
     this.workers = [];
 
     for (let id = 0; id < this.num_workers; id++) {
-      let worker = new Worker(Tangram.workerURL); // jshint ignore:line
+      let worker = new Worker(Tangram.workerURL); // eslint-disable-line no-undef
 
       this.workers[id] = worker;
       __chunk_1.WorkerBroker.addWorker(worker);
@@ -41698,12 +42508,9 @@ class Scene {
 
   renderLoop() {
     this.render_loop_active = true; // only let the render loop instantiate once
+    // Update and render the scene
 
-    if (this.initialized) {
-      // Render the scene
-      this.update();
-    } // Pending background tasks
-
+    this.update(); // Pending background tasks
 
     __chunk_1.Task.setState({
       user_moving_view: this.view.user_input_active
@@ -41766,10 +42573,9 @@ class Scene {
   } // Accepts flags indicating which render passes should be made
 
 
-  render({
-    main,
-    selection
-  }) {
+  render(_ref) {
+    let main = _ref.main,
+        selection = _ref.selection;
     var gl = this.gl;
     this.updateBackground();
     Object.keys(this.lights).forEach(i => this.lights[i].update()); // Render main pass
@@ -41782,9 +42588,7 @@ class Scene {
 
       if (this.render_count !== this.last_render_count) {
         this.render_count_changed = true;
-
-        this._logFirstFrame();
-
+        this.logFirstFrame();
         this.getFeatureSelectionMapSize().then(size => {
           this.selection_feature_count = size;
           __chunk_1.log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
@@ -41826,9 +42630,14 @@ class Scene {
   // Called both for main render pass, and for secondary passes like selection buffer
 
 
-  renderPass(program_key = 'program', {
-    allow_blend
-  } = {}) {
+  renderPass(program_key, _temp) {
+    if (program_key === void 0) {
+      program_key = 'program';
+    }
+
+    let _ref2 = _temp === void 0 ? {} : _temp,
+        allow_blend = _ref2.allow_blend;
+
     // optionally force alpha off (e.g. for selection pass)
     allow_blend = allow_blend == null ? true : allow_blend;
     this.clearFrame(); // Sort styles by blend order
@@ -41994,12 +42803,13 @@ class Scene {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
   }
 
-  setRenderState({
-    depth_test,
-    depth_write,
-    cull_face,
-    blend
-  } = {}) {
+  setRenderState(_temp2) {
+    let _ref3 = _temp2 === void 0 ? {} : _temp2,
+        depth_test = _ref3.depth_test,
+        depth_write = _ref3.depth_write,
+        cull_face = _ref3.cull_face,
+        blend = _ref3.blend;
+
     if (!this.initialized) {
       return;
     } // Defaults
@@ -42068,11 +42878,12 @@ class Scene {
   } // Request feature selection at given pixel. Runs async and returns results via a promise.
 
 
-  getFeatureAt(pixel, {
-    radius
-  } = {}) {
+  getFeatureAt(pixel, _temp3) {
+    let _ref4 = _temp3 === void 0 ? {} : _temp3,
+        radius = _ref4.radius;
+
     if (!this.initialized) {
-      __chunk_1.log('debug', "Scene.getFeatureAt() called before scene was initialized");
+      __chunk_1.log('debug', 'Scene.getFeatureAt() called before scene was initialized');
       return Promise.resolve();
     } // skip selection if no interactive features
 
@@ -42111,20 +42922,25 @@ class Scene {
   } // Query features within visible tiles, with optional filter conditions
 
 
-  queryFeatures({
-    filter,
-    unique = true,
-    group_by = null,
-    visible = null,
-    geometry = false
-  } = {}) {
+  queryFeatures(_temp4) {
+    let _ref5 = _temp4 === void 0 ? {} : _temp4,
+        filter = _ref5.filter,
+        _ref5$unique = _ref5.unique,
+        unique = _ref5$unique === void 0 ? true : _ref5$unique,
+        _ref5$group_by = _ref5.group_by,
+        group_by = _ref5$group_by === void 0 ? null : _ref5$group_by,
+        _ref5$visible = _ref5.visible,
+        visible = _ref5$visible === void 0 ? null : _ref5$visible,
+        _ref5$geometry = _ref5.geometry,
+        geometry = _ref5$geometry === void 0 ? false : _ref5$geometry;
+
     filter = __chunk_1.Utils.serializeWithFunctions(filter); // Optional uniqueify criteria
     // Valid values: true, false/null, single property name, or array of property names
 
     unique = typeof unique === 'string' ? [unique] : unique;
 
     const uniqueify = unique && (obj => {
-      const props = Array.isArray(unique) ? sliceObject(obj.properties, unique) : obj.properties;
+      const props = Array.isArray(unique) ? __chunk_1.sliceObject(obj.properties, unique) : obj.properties;
 
       if (geometry) {
         // when `geometry` flag is set, we need to uniqueify based on *both* feature properties and geometry
@@ -42142,7 +42958,7 @@ class Scene {
     group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
 
     const group = group_by && (obj => {
-      return Array.isArray(group_by) ? JSON.stringify(sliceObject(obj, group_by)) : obj[group_by];
+      return Array.isArray(group_by) ? JSON.stringify(__chunk_1.sliceObject(obj, group_by)) : obj[group_by];
     });
 
     let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
@@ -42181,14 +42997,20 @@ class Scene {
   // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
 
 
-  rebuild({
-    initial = false,
-    new_generation = true,
-    sources = null,
-    serialize_funcs,
-    profile = false,
-    fade_in = false
-  } = {}) {
+  rebuild(_temp5) {
+    let _ref6 = _temp5 === void 0 ? {} : _temp5,
+        _ref6$initial = _ref6.initial,
+        initial = _ref6$initial === void 0 ? false : _ref6$initial,
+        _ref6$new_generation = _ref6.new_generation,
+        new_generation = _ref6$new_generation === void 0 ? true : _ref6$new_generation,
+        _ref6$sources = _ref6.sources,
+        sources = _ref6$sources === void 0 ? null : _ref6$sources,
+        serialize_funcs = _ref6.serialize_funcs,
+        _ref6$profile = _ref6.profile,
+        profile = _ref6$profile === void 0 ? false : _ref6$profile,
+        _ref6$fade_in = _ref6.fade_in,
+        fade_in = _ref6$fade_in === void 0 ? false : _ref6$fade_in;
+
     return new Promise((resolve, reject) => {
       // Skip rebuild if already in progress
       if (this.building) {
@@ -42213,7 +43035,7 @@ class Scene {
           reject,
           options
         };
-        __chunk_1.log('trace', `Scene.rebuild(): queuing request`);
+        __chunk_1.log('trace', 'Scene.rebuild(): queuing request');
         return;
       } // Track tile build state
 
@@ -42225,7 +43047,7 @@ class Scene {
       }; // Profiling
 
       if (profile) {
-        this._profile('Scene.rebuild');
+        this.debug.profile('Scene.rebuild');
       } // Increment generation to ensure style/tile building stay in sync
       // (skipped if calling function already incremented)
 
@@ -42259,7 +43081,7 @@ class Scene {
     }).then(() => {
       // Profiling
       if (profile) {
-        this._profileEnd('Scene.rebuild');
+        this.debug.profileEnd('Scene.rebuild');
       }
     });
   } // Tile manager finished building tiles
@@ -42267,14 +43089,13 @@ class Scene {
 
 
   tileManagerBuildDone() {
-    __chunk_1.CanvasText.pruneTextCache();
+    __chunk_1.TextCanvas.pruneTextCache();
 
     if (this.building) {
-      __chunk_1.log('info', `Scene: build geometry finished`);
+      __chunk_1.log('info', 'Scene: build geometry finished');
 
       if (this.building.resolve) {
-        this._logFirstBuild();
-
+        this.logFirstBuild();
         this.building.resolve(true);
       } // Another rebuild queued?
 
@@ -42283,7 +43104,7 @@ class Scene {
       this.building = null;
 
       if (queued) {
-        __chunk_1.log('debug', `Scene: starting queued rebuild() request`);
+        __chunk_1.log('debug', 'Scene: starting queued rebuild() request');
         this.rebuild(queued.options).then(queued.resolve, queued.reject);
       } else {
         this.tile_manager.updateLabels(); // refresh label if nothing to rebuild
@@ -42296,10 +43117,15 @@ class Scene {
   */
 
 
-  loadScene(config_source = null, {
-    base_path,
-    file_type
-  } = {}) {
+  loadScene(config_source, _temp6) {
+    if (config_source === void 0) {
+      config_source = null;
+    }
+
+    let _ref7 = _temp6 === void 0 ? {} : _temp6,
+        base_path = _ref7.base_path,
+        file_type = _ref7.file_type;
+
     this.config_source = config_source || this.config_source;
 
     if (typeof this.config_source === 'string') {
@@ -42314,10 +43140,9 @@ class Scene {
     return SceneLoader$1.loadScene(this.config_source, {
       path: this.base_path,
       type: file_type
-    }).then(({
-      config,
-      bundle
-    }) => {
+    }).then((_ref8) => {
+      let config = _ref8.config,
+          bundle = _ref8.bundle;
       this.config = config;
       this.config_bundle = bundle;
       return this.config;
@@ -42339,7 +43164,7 @@ class Scene {
 
   setDataSource(name, config) {
     if (!name || !config || !config.type || !config.url && !config.data) {
-      __chunk_1.log('error', "No name provided or not a valid config:", name, config);
+      __chunk_1.log('error', 'No name provided or not a valid config:', name, config);
       return;
     }
 
@@ -42362,23 +43187,31 @@ class Scene {
         sources: [name]
       });
     }
-  }
+  } // (Re-)create all data sources. Re-layout view and rebuild tiles when either:
+  // 1) all tiles if `rebuild_all` parameter is specified (used when loading a new scene)
+  // 2) the data source has changed in a way that affects tile layout (e.g. tile size, max_zoom, etc.)
 
-  createDataSources() {
-    let reset = []; // sources to reset
 
-    let prev_source_names = Object.keys(this.sources);
+  createDataSources(rebuild_all) {
+    if (rebuild_all === void 0) {
+      rebuild_all = false;
+    }
+
+    const reset = []; // sources to reset
+
+    const prev_source_names = Object.keys(this.sources);
     let source_id = 0;
 
     for (var name in this.config.sources) {
-      let source = this.config.sources[name];
-      let prev_source = this.sources[name];
+      const source = this.config.sources[name];
+      const prev_source = this.sources[name];
 
       try {
-        let config = Object.assign({}, source, {
+        const config = __chunk_1._extends({}, source, {
           name,
           id: source_id++
         });
+
         this.sources[name] = __chunk_1.DataSource.create(config, this.sources);
 
         if (!this.sources[name]) {
@@ -42386,17 +43219,18 @@ class Scene {
         }
       } catch (e) {
         delete this.sources[name];
-        let message = `Could not create data source: ${e.message}`;
+        const message = `Could not create data source: ${e.message}`;
         __chunk_1.log('warn', `Scene: ${message}`, source);
         this.trigger('warning', {
           type: 'sources',
           source,
           message
         });
-      } // Data source changed?
+      } // Data source changed in a way that affects tile layout?
+      // If so, we'll re-calculate the tiles in view for this source and rebuild them
 
 
-      if (__chunk_1.DataSource.changed(this.sources[name], prev_source)) {
+      if (rebuild_all || __chunk_1.DataSource.tileLayoutChanged(this.sources[name], prev_source)) {
         reset.push(name);
       }
     } // Sources that were removed
@@ -42414,8 +43248,7 @@ class Scene {
       this.tile_manager.removeTiles(tile => {
         return reset.indexOf(tile.source.name) > -1;
       });
-    } // Mark sources that will generate geometry tiles
-    // (all except those that are only raster sources attached to other sources)
+    } // Mark sources that will generate geometry tiles (any that are referenced in scene layers)
 
 
     for (let ln in this.config.layers) {
@@ -42430,6 +43263,21 @@ class Scene {
 
   loadTextures() {
     return __chunk_1.Texture.createFromObject(this.gl, this.config.textures).then(() => __chunk_1.Texture.createDefault(this.gl)); // create a 'default' texture for placeholders
+  } // Free textures from previously loaded scene
+
+
+  freePreviousTextures() {
+    if (!this.prev_textures) {
+      return;
+    }
+
+    this.prev_textures.forEach(t => {
+      // free textures that aren't in the new scene, but are still in the global texture set
+      if (!this.config.textures[t] && __chunk_1.Texture.textures[t]) {
+        __chunk_1.Texture.textures[t].destroy();
+      }
+    });
+    this.prev_textures = null;
   } // Called (currently manually) after styles are updated in stylesheet
 
 
@@ -42535,13 +43383,18 @@ class Scene {
   // rebuild can be boolean, or an object containing rebuild options to passthrough
 
 
-  updateConfig({
-    load_event = false,
-    rebuild = true,
-    serialize_funcs,
-    normalize = true,
-    fade_in = false
-  } = {}) {
+  updateConfig(_temp7) {
+    let _ref9 = _temp7 === void 0 ? {} : _temp7,
+        _ref9$loading = _ref9.loading,
+        loading = _ref9$loading === void 0 ? false : _ref9$loading,
+        _ref9$rebuild = _ref9.rebuild,
+        rebuild = _ref9$rebuild === void 0 ? true : _ref9$rebuild,
+        serialize_funcs = _ref9.serialize_funcs,
+        _ref9$normalize = _ref9.normalize,
+        normalize = _ref9$normalize === void 0 ? true : _ref9$normalize,
+        _ref9$fade_in = _ref9.fade_in,
+        fade_in = _ref9$fade_in === void 0 ? false : _ref9$fade_in;
+
     this.generation = ++Scene.generation;
     this.updating++;
     this.config = SceneLoader$1.applyGlobalProperties(this.config);
@@ -42558,13 +43411,13 @@ class Scene {
       SceneLoader$1.normalizeTextures(this.config, this.config_bundle);
     }
 
-    this.trigger(load_event ? 'load' : 'update', {
+    this.trigger(loading ? 'load' : 'update', {
       config: this.config
     });
     this.style_manager.init();
     this.view.reset();
     this.createLights();
-    this.createDataSources();
+    this.createDataSources(loading);
     this.loadTextures();
     this.setBackground();
     __chunk_1.FontManager.loadFonts(this.config.fonts); // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
@@ -42572,7 +43425,7 @@ class Scene {
     this.updateStyles(); // Optionally rebuild geometry
 
     let done = rebuild ? this.rebuild(Object.assign({
-      initial: load_event,
+      initial: loading,
       new_generation: false,
       serialize_funcs,
       fade_in
@@ -42592,9 +43445,11 @@ class Scene {
   } // Serialize config and send to worker
 
 
-  syncConfigToWorker({
-    serialize_funcs = true
-  } = {}) {
+  syncConfigToWorker(_temp8) {
+    let _ref10 = _temp8 === void 0 ? {} : _temp8,
+        _ref10$serialize_func = _ref10.serialize_funcs,
+        serialize_funcs = _ref10$serialize_func === void 0 ? true : _ref10$serialize_func;
+
     // Tell workers we're about to rebuild (so they can update styles, etc.)
     let config_serialized = serialize_funcs ? __chunk_1.Utils.serializeWithFunctions(this.config) : JSON.stringify(this.config);
     return __chunk_1.WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
@@ -42646,7 +43501,11 @@ class Scene {
     this.last_render_count = 0; // force re-evaluation of selection map
   }
 
-  resetWorkerFeatureSelection(sources = null) {
+  resetWorkerFeatureSelection(sources) {
+    if (sources === void 0) {
+      sources = null;
+    }
+
     if (this.workers) {
       __chunk_1.WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection', sources);
     }
@@ -42686,9 +43545,11 @@ class Scene {
   // Returns a promise
 
 
-  screenshot({
-    background = 'white'
-  } = {}) {
+  screenshot(_temp9) {
+    let _ref11 = _temp9 === void 0 ? {} : _temp9,
+        _ref11$background = _ref11.background,
+        background = _ref11$background === void 0 ? 'white' : _ref11$background;
+
     this.requestRedraw();
     return this.media_capture.screenshot({
       background
@@ -42702,22 +43563,10 @@ class Scene {
 
   stopVideoCapture() {
     return this.media_capture.stopVideoCapture();
-  } // Stats/debug/profiling methods
-  // Profile helpers, issues a profile on main thread & all workers
-
-
-  _profile(name) {
-    console.profile(`main thread: ${name}`);
-    __chunk_1.WorkerBroker.postMessage(this.workers, 'self.profile', name);
-  }
-
-  _profileEnd(name) {
-    console.profileEnd(`main thread: ${name}`);
-    __chunk_1.WorkerBroker.postMessage(this.workers, 'self.profileEnd', name);
   } // Log first frame rendered (with any geometry)
 
 
-  _logFirstFrame() {
+  logFirstFrame() {
     if (this.last_render_count === 0 && !this.times.first_frame) {
       this.times.first_frame = +new Date() - this.start_time;
       __chunk_1.log('debug', `Scene: initial frame time: ${this.times.first_frame}`);
@@ -42725,120 +43574,11 @@ class Scene {
   } // Log completion of first scene build
 
 
-  _logFirstBuild() {
+  logFirstBuild() {
     if (this.times.first_build == null) {
       this.times.first_build = +new Date() - this.start_time;
       __chunk_1.log('debug', `Scene: initial build time: ${this.times.first_build}`);
     }
-  } // Debug config and functions
-
-
-  setupDebug() {
-    let scene = this;
-    this.debug = {
-      // Rebuild geometry a given # of times and print average, min, max timings
-      timeRebuild(num = 1, options = {}) {
-        let times = [];
-
-        let cycle = () => {
-          let start = +new Date();
-          scene.rebuild(options).then(() => {
-            times.push(+new Date() - start);
-
-            if (times.length < num) {
-              cycle();
-            } else {
-              let avg = ~~(times.reduce((a, b) => a + b) / times.length);
-              __chunk_1.log('info', `Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
-            }
-          });
-        };
-
-        cycle();
-      },
-
-      // Return geometry counts of visible tiles, grouped by style name
-      geometryCountByStyle() {
-        let counts = {};
-        scene.tile_manager.getRenderableTiles().forEach(tile => {
-          for (let style in tile.meshes) {
-            counts[style] = counts[style] || 0;
-            tile.meshes[style].forEach(mesh => {
-              counts[style] += mesh.geometry_count;
-            });
-          }
-        });
-        return counts;
-      },
-
-      // Return geometry counts of visible tiles, grouped by base style name
-      geometryCountByBaseStyle() {
-        let style_counts = scene.debug.geometryCountByStyle();
-        let counts = {};
-
-        for (let style in style_counts) {
-          let base = scene.styles[style].baseStyle();
-          counts[base] = counts[base] || 0;
-          counts[base] += style_counts[style];
-        }
-
-        return counts;
-      },
-
-      // Return sum of all geometry counts for visible tiles
-      geometryCountTotal() {
-        const styles = scene.debug.geometryCountByStyle();
-        return Object.keys(styles).reduce((p, c) => styles[c] + p, 0);
-      },
-
-      // Return geometry GL buffer sizes for visible tiles, grouped by style name
-      geometrySizeByStyle() {
-        let sizes = {};
-        scene.tile_manager.getRenderableTiles().forEach(tile => {
-          for (let style in tile.meshes) {
-            sizes[style] = sizes[style] || 0;
-            tile.meshes[style].forEach(mesh => {
-              sizes[style] += mesh.buffer_size;
-            });
-          }
-        });
-        return sizes;
-      },
-
-      // Return geometry GL buffer sizes for visible tiles, grouped by base style name
-      geometrySizeByBaseStyle() {
-        let style_sizes = scene.debug.geometrySizeByStyle();
-        let sizes = {};
-
-        for (let style in style_sizes) {
-          let base = scene.styles[style].baseStyle();
-          sizes[base] = sizes[base] || 0;
-          sizes[base] += style_sizes[style];
-        }
-
-        return sizes;
-      },
-
-      // Return sum of all geometry GL buffer sizes for visible tiles
-      geometrySizeTotal() {
-        const styles = scene.debug.geometrySizeByStyle();
-        return Object.keys(styles).reduce((p, c) => styles[c] + p, 0);
-      },
-
-      layerStats() {
-        if (__chunk_1.debugSettings.layer_stats) {
-          return __chunk_1.Tile.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
-        } else {
-          __chunk_1.log('warn', `Enable the 'layer_stats' debug setting to collect layer stats`);
-          return {};
-        }
-      },
-
-      renderableTilesCount() {
-        return scene.tile_manager.getRenderableTiles().length;
-      }
-
-    };
   }
 
 }
@@ -42990,7 +43730,7 @@ function extendLeaflet(options) {
         map.on('drag', this.hooks.drag); // keep Tangram layer in sync with view via mutation observer
 
         this._map_pane_observer = new MutationObserver(mutations => {
-          mutations.forEach(mutation => this.reverseTransform());
+          mutations.forEach(() => this.reverseTransform());
         });
 
         this._map_pane_observer.observe(map.getPanes().mapPane, {
@@ -43171,8 +43911,6 @@ function extendLeaflet(options) {
             targetZoom = targetZoom === undefined ? startZoom : targetZoom;
             targetZoom = Math.min(targetZoom, map.getMaxZoom()); // don't go past max zoom
 
-            var from = map.project(map.getCenter(), startZoom),
-                to = map.project(targetCenter, startZoom);
             var start = Date.now(),
                 duration = 75;
 
@@ -43182,9 +43920,6 @@ function extendLeaflet(options) {
               if (t <= 1) {
                 // reuse internal flyTo frame to ensure these animations are canceled like others
                 map._flyToFrame = L.Util.requestAnimFrame(frame, map);
-                var center = from.add(to.subtract(from).multiplyBy(t));
-                center = [center.x, center.y];
-                center = __chunk_1.Geo.metersToLatLng(center);
                 setZoomAroundNoMoveEnd(layer, targetCenter, startZoom + (targetZoom - startZoom) * t);
               } else {
                 setZoomAroundNoMoveEnd(layer, targetCenter, targetZoom)._moveEnd(true);
@@ -43388,9 +44123,10 @@ function extendLeaflet(options) {
       // Set user-defined handlers for feature selection events
       // Currently only one handler can be defined for each event type
       // Event types are: `click`, `hover` (leaflet `mousemove`)
-      setSelectionEvents(events, {
-        radius
-      } = {}) {
+      setSelectionEvents(events, _temp) {
+        let _ref = _temp === void 0 ? {} : _temp,
+            radius = _ref.radius;
+
         this._selection_events = Object.assign(this._selection_events, events);
         this._selection_radius = radius !== undefined ? radius : this._selection_radius;
       },
@@ -43477,7 +44213,7 @@ const debug$1 = {
   StyleParser: __chunk_1.StyleParser,
   Collision: __chunk_1.Collision,
   FeatureSelection: __chunk_1.FeatureSelection,
-  CanvasText: __chunk_1.CanvasText,
+  TextCanvas: __chunk_1.TextCanvas,
   debugSettings: __chunk_1.debugSettings
 };
 var index = {
@@ -43496,6 +44232,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
+	Tangram.debug.SHA = '0221e256908f5456f45c55b458a28df4a09cfc90';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
