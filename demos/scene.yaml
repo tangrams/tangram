@@ -418,6 +418,7 @@ layers:
             filter:
                 network: 'US:I' # US interstates only in this demo
                 shield_text: true
+                $zoom: { min: 6 }
             draw:
                 points:
                     texture: icons
@@ -427,10 +428,13 @@ layers:
                     color: white
                     size: 24px
                     placement: midpoint
+                    placement_min_length_ratio:
+                        - [9, 0.1]
+                        - [10, 0.25]
+                        - [12, 1]
+                        - [14, 2.0]
                     repeat_group: shields
-                    cull_from_tile: true
                     text:
-                        repeat_distance: 150px
                         anchor: center
                         text_source: shield_text
                         font:
@@ -442,7 +446,7 @@ layers:
                 filter: { $zoom: { max: 11 } }
                 draw:
                     points:
-                        repeat_distance: 75px
+                        repeat_distance: 100px
 
     buildings:
         data: { source: tilezen }
@@ -712,8 +716,7 @@ layers:
                         visible: true
                         buffer: 2px
                         font:
-                            # weight: bold
-                            size: [[6, 12px], [8, 16px]]
+                            size: [[6, 14px], [8, 16px]]
 
                 # use short name when available at low-zooms
                 short:
