@@ -67,7 +67,7 @@ function _extends() {
   return _extends.apply(this, arguments);
 }
 
-var version = "0.17.0";
+var version = "0.17.1";
 
 var version$1 = 'v' + version;
 
@@ -7054,13 +7054,20 @@ var Style = {
     // to avoid flickering while loading (texture will render as black)
 
 
-    const textures = await WorkerBroker$1.postMessage(`${this.main_thread_target}.loadTextures`, {
-      coords: tile.coords,
-      source: tile.source,
-      rasters: tile.rasters,
-      min: tile.min,
-      max: tile.max
-    });
+    let textures;
+
+    try {
+      textures = await WorkerBroker$1.postMessage(`${this.main_thread_target}.loadTextures`, {
+        coords: tile.coords,
+        source: tile.source,
+        rasters: tile.rasters,
+        min: tile.min,
+        max: tile.max
+      });
+    } catch (e) {
+      // error thrown if style has been removed from main thread
+      return tile_data;
+    }
 
     if (!textures || textures.length < 1) {
       // no textures found (unexpected)
@@ -15682,9 +15689,7 @@ class StyleManager {
 
     ShaderProgram.defines.TANGRAM_HEIGHT_SCALE = Geo$1.height_scale; // Alpha discard threshold (substitute for alpha blending)
 
-    ShaderProgram.defines.TANGRAM_ALPHA_TEST = 0.5; // Reset dash texture cache
-
-    Lines.dash_textures = {};
+    ShaderProgram.defines.TANGRAM_ALPHA_TEST = 0.5;
   } // Destroy all styles for a given GL context
 
 
@@ -15701,7 +15706,9 @@ class StyleManager {
 
         style.destroy();
       }
-    });
+    }); // Reset dash texture cache
+
+    Lines.dash_textures = {};
   } // Register a style
 
 
@@ -44232,7 +44239,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = '0221e256908f5456f45c55b458a28df4a09cfc90';
+	Tangram.debug.SHA = '9a36003fff0cfce3add85f5861a9cb6379adc183';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}

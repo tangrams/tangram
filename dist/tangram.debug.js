@@ -1820,7 +1820,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.17.0";
+var version = "0.17.1";
 
 var version$1 = 'v' + version;
 
@@ -10382,16 +10382,8 @@ var Style = {
       // to avoid flickering while loading (texture will render as black)
 
 
-      return Promise.resolve(WorkerBroker$1.postMessage(this.main_thread_target + ".loadTextures", {
-        coords: tile.coords,
-        source: tile.source,
-        rasters: tile.rasters,
-        min: tile.min,
-        max: tile.max
-      })).then(function ($await_3) {
+      var $Try_3_Post = function () {
         try {
-          textures = $await_3;
-
           if (!textures || textures.length < 1) {
             // no textures found (unexpected)
             // TODO: warning
@@ -10433,7 +10425,35 @@ var Style = {
         } catch ($boundEx) {
           return $error($boundEx);
         }
-      }.bind(this), $error);
+      }.bind(this);
+
+      var $Try_3_Catch = function (e) {
+        try {
+          // error thrown if style has been removed from main thread
+          return $return(tile_data);
+        } catch ($boundEx) {
+          return $error($boundEx);
+        }
+      };
+
+      try {
+        return Promise.resolve(WorkerBroker$1.postMessage(this.main_thread_target + ".loadTextures", {
+          coords: tile.coords,
+          source: tile.source,
+          rasters: tile.rasters,
+          min: tile.min,
+          max: tile.max
+        })).then(function ($await_4) {
+          try {
+            textures = $await_4;
+            return $Try_3_Post();
+          } catch ($boundEx) {
+            return $Try_3_Catch($boundEx);
+          }
+        }, $Try_3_Catch);
+      } catch (e) {
+        $Try_3_Catch(e);
+      }
     }.bind(this));
   },
   // Determine which raster tile textures need to load for this tile, load them and return metadata to worker
@@ -10459,17 +10479,17 @@ var Style = {
           }));
         }
       });
-      return Promise.resolve(Promise.all(queue)).then(function ($await_4) {
+      return Promise.resolve(Promise.all(queue)).then(function ($await_5) {
         try {
-          return Promise.resolve(Texture.createFromObject(this.gl, configs)).then(function ($await_5) {
+          return Promise.resolve(Texture.createFromObject(this.gl, configs)).then(function ($await_6) {
             try {
               return Promise.resolve(Promise.all(Object.keys(configs).map(function (t) {
                 return Texture.textures[t] && Texture.textures[t].load();
               }).filter(function (x) {
                 return x;
-              }))).then(function ($await_6) {
+              }))).then(function ($await_7) {
                 try {
-                  textures = $await_6;
+                  textures = $await_7;
                   textures.forEach(function (t) {
                     return t.retain();
                   }); // Take a subset of texture metadata, and decorate with raster-specific info
@@ -19434,9 +19454,7 @@ function () {
 
     ShaderProgram.defines.TANGRAM_HEIGHT_SCALE = Geo$1.height_scale; // Alpha discard threshold (substitute for alpha blending)
 
-    ShaderProgram.defines.TANGRAM_ALPHA_TEST = 0.5; // Reset dash texture cache
-
-    Lines.dash_textures = {};
+    ShaderProgram.defines.TANGRAM_ALPHA_TEST = 0.5;
   } // Destroy all styles for a given GL context
   ;
 
@@ -19455,7 +19473,9 @@ function () {
 
         style.destroy();
       }
-    });
+    }); // Reset dash texture cache
+
+    Lines.dash_textures = {};
   } // Register a style
   ;
 
@@ -48528,7 +48548,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '0221e256908f5456f45c55b458a28df4a09cfc90';
+	Tangram.debug.SHA = '9a36003fff0cfce3add85f5861a9cb6379adc183';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
