@@ -33,7 +33,7 @@ uniform bool u_raster_mask_alpha;
 
 // Samples a raster tile texture for a given pixel
 #define sampleRasterAtPixel(raster_index, pixel) \
-    (texture2D(u_rasters[raster_index], adjustRasterUV(raster_index, (pixel) / rasterPixelSize(raster_index))))
+    (texture2D(u_rasters[raster_index], (pixel) / rasterPixelSize(raster_index)))
 
 // Returns size of raster sampler in pixels
 #define rasterPixelSize(raster_index) \
