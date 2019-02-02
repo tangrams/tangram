@@ -85,7 +85,7 @@ GLSL.parseUniforms = function (uniforms) {
                     for (u=0; u < uniform.length; u++) {
                         parsed.push({
                             type: 'vec' + uniform[0].length,
-                            method: uniform[u].length + 'fv',
+                            method: uniform[0].length + 'fv',
                             name: name + '[' + u + ']',
                             value: uniform[u],
                             key: u,
@@ -157,7 +157,7 @@ GLSL.defineVariable = function (name, value) {
         else if (Array.isArray(value[0]) && typeof value[0][0] === 'number') {
             // float vectors (vec2, vec3, vec4)
             if (value[0].length >= 2 && value[0].length <= 4) {
-                type = 'vec' + value.length;
+                type = 'vec' + value[0].length;
                 array = value.length;
             }
         }
