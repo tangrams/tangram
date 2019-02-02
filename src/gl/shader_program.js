@@ -188,12 +188,17 @@ export default class ShaderProgram {
             this.error = error;
 
             // shader error info
+            this.error.vertex_shader_source = this.computed_vertex_source;
+            this.error.fragment_shader_source = this.computed_fragment_source;
+
             if (error.type === 'vertex' || error.type === 'fragment') {
                 this.shader_errors = error.errors;
                 this.shader_errors.forEach(e => {
                     e.type = error.type;
                     e.block = this.block(error.type, e.line);
+                    e.line = this.block(error.type, e.line);
                 });
+                this.error.shader_errors = this.shader_errors;
             }
             throw error;
         }

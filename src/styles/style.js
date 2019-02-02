@@ -404,7 +404,8 @@ export var Style = {
                 program.compile();
             }
             catch (e) {
-                log('error', `Style: error compiling program for style '${this.name}' (program key '${key}')`, this, e.stack);
+                log('error', `Style: error compiling program for style '${this.name}' (program key '${key}')`,
+                    this, e.stack, e.type, e.shader_errors);
             }
         }
         return program;
