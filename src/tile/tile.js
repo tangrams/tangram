@@ -51,7 +51,7 @@ export default class Tile {
         this.overzoom2 = Math.pow(2, this.overzoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
-        this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
+        this.span = { x: (this.max.x - this.min.x), y: -(this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
 
         this.meters_per_pixel = Geo.metersPerPixel(this.style_z);
@@ -529,7 +529,7 @@ export default class Tile {
         // Model - transform tile space into world space (meters, absolute mercator position)
         mat4.identity(model);
         mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
-        mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
+        mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
         mat4.copy(model32, model);
         program.uniform('Matrix4fv', 'u_model', model32);
 
