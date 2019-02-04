@@ -255,23 +255,6 @@ export default class TileManager {
         return this.renderable_tiles;
     }
 
-    // Assign tile to worker thread based on coordinates and data source
-    getWorkerForTile(coords, source) {
-        let worker;
-
-        if (source.tiled) {
-            // Pin tile to a worker thread based on its coordinates
-            worker = this.scene.workers[Math.abs(coords.x + coords.y + coords.z) % this.scene.workers.length];
-        }
-        else {
-            // Pin all tiles from each non-tiled source to a single worker
-            // Prevents data for these sources from being loaded more than once
-            worker = this.scene.workers[source.id % this.scene.workers.length];
-        }
-
-        return worker;
-    }
-
     getActiveStyles () {
         return this.active_styles;
     }
@@ -352,7 +335,7 @@ export default class TileManager {
                 let tile = new Tile({
                     source,
                     coords,
-                    worker: this.getWorkerForTile(coords, source),
+                    workers: this.scene.workers,
                     style_z: this.view.baseZoom(coords.z),
                     view: this.view
                 });

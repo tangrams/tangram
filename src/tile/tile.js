@@ -24,9 +24,8 @@ export default class Tile {
         coords: object with {x, y, z} properties identifying tile coordinate location
         worker: web worker to handle tile construction
     */
-    constructor({ coords, style_z, source, worker, view }) {
+    constructor({ coords, style_z, source, workers, view }) {
         this.id = id++;
-        this.worker = worker;
         this.view = view;
         this.source = source;
         this.generation = null;
@@ -63,6 +62,8 @@ export default class Tile {
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
         this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
+
+        this.setWorker(workers);
     }
 
     // Free resources owned by tile
@@ -106,6 +107,21 @@ export default class Tile {
             generation: this.generation,
             debug: this.debug
         };
+    }
+
+    // Find the appropriate worker thread for this tile
+    setWorker (workers) {
+        if (this.source.tiled) {
+            // Pin tile to a worker thread based on its coordinates
+            this.worker_id = Math.abs(this.coords.x + this.coords.y + this.coords.z) % workers.length;
+        }
+        else {
+            // Pin all tiles from each non-tiled source to a single worker
+            // Prevents data for these sources from being loaded more than once
+            this.worker_id = this.source.id % workers.length;
+        }
+
+        this.worker = workers[this.worker_id];
     }
 
     workerMessage (...message) {
