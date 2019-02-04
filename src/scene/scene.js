@@ -121,6 +121,7 @@ export default class Scene {
 
         this.updating++;
         this.initialized = false;
+        this.view_complete = false; // track if a view complete event has been triggered yet
         this.times.frame = null; // clear first frame time
         this.times.build = null; // clear first scene build time
 
@@ -1287,7 +1288,8 @@ export default class Scene {
             this.tile_manager.allVisibleTilesLabeled()) {
             this.tile_manager.updateLabels();
             this.last_complete_generation = this.generation;
-            this.trigger('view_complete');
+            this.trigger('view_complete', { first: (this.view_complete !== true) });
+            this.view_complete = true;
         }
     }
 
