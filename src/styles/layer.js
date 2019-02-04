@@ -95,12 +95,7 @@ class Layer {
         this.is_built = false;
 
         enabled = (enabled === undefined) ? visible : enabled; // `visible` property is backwards compatible for `enabled`
-        if (this.parent && this.parent.visible === false) {
-            this.enabled = false; // all descendants of disabled layer are also disabled
-        }
-        else {
-            this.enabled = (enabled !== false); // layer is enabled unless explicitly set to disabled
-        }
+        this.enabled = (enabled !== false); // layer is enabled unless explicitly set to disabled
 
         // Denormalize layer name to draw groups
         if (this.draw) {
