@@ -182,6 +182,16 @@ export default class DataSource {
         throw new MethodNotImplemented('_load');
     }
 
+    // Copy source data from another tile (so we can reuse source data for overzoomed tiles)
+    copyTileData (source, dest) {
+        log('trace', `Copy tile data from ${source.key} to ${dest.key}`);
+        dest.source_data = { layers: source.source_data.layers };
+        dest.rasters = [...source.rasters];
+        dest.pad_scale = source.pad_scale;
+        dest.default_winding = source.default_winding;
+        return dest;
+    }
+
     // Set the internal tile size in pixels, e.g. '256px' (default), '512px', etc.
     // Must be a power of 2, and greater than or equal to 256
     setTileSize (tile_size) {

@@ -213,10 +213,20 @@ const SceneWorker = Object.assign(self, {
         });
     },
 
-    // Load this tile's data source
+    // Load this tile's data source, or copy from an existing tile's data
     loadTileSourceData (tile) {
-        if (this.sources[tile.source]) {
-            return this.sources[tile.source].load(tile);
+        const source = this.sources[tile.source];
+        if (source) {
+            // Search existing tiles to see if we can reuse existing source data for this coordinate
+            for (const t in this.tiles) {
+                const ref = this.tiles[t];
+                if (ref.loaded && ref.coords.key === tile.coords.key) {
+                    return Promise.resolve(source.copyTileData(ref, tile));
+                }
+            }
+
+            // Load new tile data (no existing data found)
+            return source.load(tile);
         }
         else {
             tile.source_data = {};
