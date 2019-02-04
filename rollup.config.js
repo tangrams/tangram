@@ -39,6 +39,8 @@ const config = [{
             preferBuiltins: false
         }),
         commonjs({
+            // Avoids Webpack minification errors
+            ignoreGlobal: true,
             // There hints are required for importing jszip
             // See https://rollupjs.org/guide/en#error-name-is-not-exported-by-module-
             namedExports: {
