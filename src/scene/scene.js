@@ -788,7 +788,11 @@ export default class Scene {
     }
 
     // Query features within visible tiles, with optional filter conditions
-    queryFeatures({ filter, unique = true, group_by = null, visible = null, geometry = false } = {}) {
+    async queryFeatures({ filter, unique = true, group_by = null, visible = null, geometry = false } = {}) {
+        if (!this.initialized) {
+            return [];
+        }
+
         filter = Utils.serializeWithFunctions(filter);
 
         // Optional uniqueify criteria
@@ -810,32 +814,31 @@ export default class Scene {
             return Array.isArray(group_by) ? JSON.stringify(sliceObject(obj, group_by)) : obj[group_by];
         });
 
-        let tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
-        return WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, visible, geometry, tile_keys }).then(results => {
-            let features = [];
-            let keys = {};
-            let groups = {};
+        const tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
+        const results = await WorkerBroker.postMessage(this.workers, 'self.queryFeatures', { filter, visible, geometry, tile_keys });
+        const features = [];
+        const keys = {};
+        const groups = {};
 
-            results.forEach(r => r.forEach(feature => {
-                if (uniqueify) {
-                    let str = uniqueify(feature);
-                    if (keys[str]) {
-                        return;
-                    }
-                    keys[str] = true;
+        results.forEach(r => r.forEach(feature => {
+            if (uniqueify) {
+                const str = uniqueify(feature);
+                if (keys[str]) {
+                    return;
                 }
+                keys[str] = true;
+            }
 
-                if (group) {
-                    let str = group(feature.properties);
-                    groups[str] = groups[str] || [];
-                    groups[str].push(feature);
-                }
-                else {
-                    features.push(feature);
-                }
-            }));
-            return group ? groups : features; // returned grouped results, or all results
-        });
+            if (group) {
+                const str = group(feature.properties);
+                groups[str] = groups[str] || [];
+                groups[str].push(feature);
+            }
+            else {
+                features.push(feature);
+            }
+        }));
+        return group ? groups : features; // returned grouped results, or all results
     }
 
     // Rebuild all tiles, without re-parsing the config or re-compiling styles
