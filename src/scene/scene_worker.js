@@ -220,7 +220,9 @@ const SceneWorker = Object.assign(self, {
             // Search existing tiles to see if we can reuse existing source data for this coordinate
             for (const t in this.tiles) {
                 const ref = this.tiles[t];
-                if (ref.loaded && ref.coords.key === tile.coords.key) {
+                if (ref.source === tile.source &&
+                    ref.coords.key === tile.coords.key &&
+                    ref.loaded) {
                     return Promise.resolve(source.copyTileData(ref, tile));
                 }
             }
