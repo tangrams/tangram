@@ -1818,7 +1818,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.17.2";
+var version = "0.17.3";
 
 var version$1 = 'v' + version;
 
@@ -24342,7 +24342,7 @@ var SceneWorker = Object.assign(self, {
       for (var t in this.tiles) {
         var ref = this.tiles[t];
 
-        if (ref.loaded && ref.coords.key === tile.coords.key) {
+        if (ref.source === tile.source && ref.coords.key === tile.coords.key && ref.loaded) {
           return Promise.resolve(source.copyTileData(ref, tile));
         }
       } // Load new tile data (no existing data found)
@@ -48577,7 +48577,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '50f587b2f6892e815d0719a61f71314abe5386b2';
+	Tangram.debug.SHA = '6babc9c3d1b1db21af9b99cefa46b7ea500a3920';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
