@@ -34,8 +34,6 @@ function define(_, chunk) {
 
 define(['exports'], function (exports) { 'use strict';
 
-var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
-
 function commonjsRequire () {
 	throw new Error('Dynamic requires are not currently supported by rollup-plugin-commonjs');
 }
@@ -1820,7 +1818,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.17.1";
+var version = "0.17.2";
 
 var version$1 = 'v' + version;
 
@@ -5347,7 +5345,7 @@ GLSL.parseUniforms = function (uniforms) {
                 for (u = 0; u < uniform.length; u++) {
                   parsed.push({
                     type: 'vec' + uniform[0].length,
-                    method: uniform[u].length + 'fv',
+                    method: uniform[0].length + 'fv',
                     name: name + '[' + u + ']',
                     value: uniform[u],
                     key: u,
@@ -5414,7 +5412,7 @@ GLSL.defineVariable = function (name, value) {
         else if (Array.isArray(value[0]) && typeof value[0][0] === 'number') {
             // float vectors (vec2, vec3, vec4)
             if (value[0].length >= 2 && value[0].length <= 4) {
-              type = 'vec' + value.length;
+              type = 'vec' + value[0].length;
               array = value.length;
             }
           }
@@ -5744,12 +5742,17 @@ function () {
       this.compiling = false;
       this.error = error; // shader error info
 
+      this.error.vertex_shader_source = this.computed_vertex_source;
+      this.error.fragment_shader_source = this.computed_fragment_source;
+
       if (error.type === 'vertex' || error.type === 'fragment') {
         this.shader_errors = error.errors;
         this.shader_errors.forEach(function (e) {
           e.type = error.type;
           e.block = _this.block(error.type, e.line);
+          e.line = _this.block(error.type, e.line);
         });
+        this.error.shader_errors = this.shader_errors;
       }
 
       throw error;
@@ -8922,6 +8925,18 @@ function () {
   /*dest*/
   {
     throw new MethodNotImplemented('_load');
+  } // Copy source data from another tile (so we can reuse source data for overzoomed tiles)
+  ;
+
+  _proto.copyTileData = function copyTileData(source, dest) {
+    log('trace', "Copy tile data from " + source.key + " to " + dest.key);
+    dest.source_data = {
+      layers: source.source_data.layers
+    };
+    dest.rasters = [].concat(source.rasters);
+    dest.pad_scale = source.pad_scale;
+    dest.default_winding = source.default_winding;
+    return dest;
   } // Set the internal tile size in pixels, e.g. '256px' (default), '512px', etc.
   // Must be a power of 2, and greater than or equal to 256
   ;
@@ -9771,7 +9786,7 @@ DataSource.register('Raster', function (source) {
 
 var selection_fragment_source = "// Fragment shader for feature selection passes\n// Renders in silhouette according to selection (picking) color, or black if none defined\n\n#ifdef TANGRAM_FEATURE_SELECTION\n    varying vec4 v_selection_color;\n#endif\n\nvoid main (void) {\n    #ifdef TANGRAM_FEATURE_SELECTION\n        gl_FragColor = v_selection_color;\n    #else\n        gl_FragColor = vec4(0., 0., 0., 1.);\n    #endif\n}\n";
 
-var rasters_source = "// Uniforms defining raster textures and macros for accessing them\n\n#ifdef TANGRAM_FRAGMENT_SHADER\nuniform sampler2D u_rasters[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture samplers\nuniform vec2 u_raster_sizes[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture sizes (width/height in pixels)\nuniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile texture UV starting offset for tile\n\n// Raster sources can optionally mask by the alpha channel (render with only full or no alpha, based on a threshold),\n// which is used for handling transparency outside the raster image when rendering with opaque blending\n#if defined(TANGRAM_HAS_MASKED_RASTERS) && !defined(TANGRAM_ALL_MASKED_RASTERS) // only add uniform if we need it\nuniform bool u_raster_mask_alpha;\n#endif\n\n// Note: the raster accessors below are #defines rather than functions to\n// avoid issues with constant integer expressions for array indices\n\n// Adjusts UVs in model space to account for raster tile texture overzooming\n// (applies scale and offset adjustments)\n#define adjustRasterUV(raster_index, uv) \\\n    ((uv) * u_raster_offsets[raster_index].z + u_raster_offsets[raster_index].xy)\n\n// Returns the UVs of the current model position for a raster sampler\n#define currentRasterUV(raster_index) \\\n    (adjustRasterUV(raster_index, v_modelpos_base_zoom.xy))\n\n// Returns pixel location in raster tile texture at current model position\n#define currentRasterPixel(raster_index) \\\n    (currentRasterUV(raster_index) * rasterPixelSize(raster_index))\n\n// Samples a raster tile texture for the current model position\n#define sampleRaster(raster_index) \\\n    (texture2D(u_rasters[raster_index], currentRasterUV(raster_index)))\n\n// Samples a raster tile texture for a given pixel\n#define sampleRasterAtPixel(raster_index, pixel) \\\n    (texture2D(u_rasters[raster_index], adjustRasterUV(raster_index, (pixel) / rasterPixelSize(raster_index))))\n\n// Returns size of raster sampler in pixels\n#define rasterPixelSize(raster_index) \\\n    (u_raster_sizes[raster_index])\n\n#endif\n";
+var rasters_source = "// Uniforms defining raster textures and macros for accessing them\n\n#ifdef TANGRAM_FRAGMENT_SHADER\nuniform sampler2D u_rasters[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture samplers\nuniform vec2 u_raster_sizes[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture sizes (width/height in pixels)\nuniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile texture UV starting offset for tile\n\n// Raster sources can optionally mask by the alpha channel (render with only full or no alpha, based on a threshold),\n// which is used for handling transparency outside the raster image when rendering with opaque blending\n#if defined(TANGRAM_HAS_MASKED_RASTERS) && !defined(TANGRAM_ALL_MASKED_RASTERS) // only add uniform if we need it\nuniform bool u_raster_mask_alpha;\n#endif\n\n// Note: the raster accessors below are #defines rather than functions to\n// avoid issues with constant integer expressions for array indices\n\n// Adjusts UVs in model space to account for raster tile texture overzooming\n// (applies scale and offset adjustments)\n#define adjustRasterUV(raster_index, uv) \\\n    ((uv) * u_raster_offsets[raster_index].z + u_raster_offsets[raster_index].xy)\n\n// Returns the UVs of the current model position for a raster sampler\n#define currentRasterUV(raster_index) \\\n    (adjustRasterUV(raster_index, v_modelpos_base_zoom.xy))\n\n// Returns pixel location in raster tile texture at current model position\n#define currentRasterPixel(raster_index) \\\n    (currentRasterUV(raster_index) * rasterPixelSize(raster_index))\n\n// Samples a raster tile texture for the current model position\n#define sampleRaster(raster_index) \\\n    (texture2D(u_rasters[raster_index], currentRasterUV(raster_index)))\n\n// Samples a raster tile texture for a given pixel\n#define sampleRasterAtPixel(raster_index, pixel) \\\n    (texture2D(u_rasters[raster_index], (pixel) / rasterPixelSize(raster_index)))\n\n// Returns size of raster sampler in pixels\n#define rasterPixelSize(raster_index) \\\n    (u_raster_sizes[raster_index])\n\n#endif\n";
 
 var Style = {
   init: function init(_temp) {
@@ -10194,7 +10209,7 @@ var Style = {
       try {
         program.compile();
       } catch (e) {
-        log('error', "Style: error compiling program for style '" + this.name + "' (program key '" + key + "')", this, e.stack);
+        log('error', "Style: error compiling program for style '" + this.name + "' (program key '" + key + "')", this, e.stack, e.type, e.shader_errors);
       }
     }
 
@@ -17204,10 +17219,8 @@ function () {
     // TODO: will this function ever be called when view isn't ready?
     if (!this.ready()) {
       return;
-    } // Remove tiles that are a specified # of tiles outside of the viewport border
+    }
 
-
-    var border_tiles = [Math.ceil((Math.floor(this.size.css.width / Geo$1.tile_size) + 2) / 2), Math.ceil((Math.floor(this.size.css.height / Geo$1.tile_size) + 2) / 2)];
     this.scene.tile_manager.removeTiles(function (tile) {
       // Ignore visible tiles
       if (tile.visible || tile.isProxy()) {
@@ -17225,16 +17238,17 @@ function () {
 
       if (zdiff > preserve_tiles_within_zoom) {
         return true;
-      } // Handle tiles at different zooms
+      } // Discard tiles outside an area surrounding the viewport, handling tiles at different zooms
+      // Get min and max tiles for the viewport, at the scale of the tile currently being evaluated
 
 
-      var coords = TileID.coordAtZoom(tile.coords, _this.tile_zoom); // Discard tiles outside an area surrounding the viewport
+      var view_buffer = _this.meters_per_pixel * Geo$1.tile_size; // buffer area to keep tiles surrounding viewport
 
-      if (Math.abs(coords.x - _this.center.tile.x) - border_tiles[0] > _this.buffer) {
-        log('trace', "View: remove tile " + tile.key + " (as " + coords.x + "/" + coords.y + "/" + _this.tile_zoom + ") for being too far out of visible area ***");
-        return true;
-      } else if (Math.abs(coords.y - _this.center.tile.y) - border_tiles[1] > _this.buffer) {
-        log('trace', "View: remove tile " + tile.key + " (as " + coords.x + "/" + coords.y + "/" + _this.tile_zoom + ") for being too far out of visible area ***");
+      var view_tile_min = TileID.coordAtZoom(Geo$1.tileForMeters([_this.center.meters.x - _this.size.meters.x / 2 - view_buffer, _this.center.meters.y + _this.size.meters.y / 2 + view_buffer], _this.tile_zoom), tile.coords.z);
+      var view_tile_max = TileID.coordAtZoom(Geo$1.tileForMeters([_this.center.meters.x + _this.size.meters.x / 2 + view_buffer, _this.center.meters.y - _this.size.meters.y / 2 - view_buffer], _this.tile_zoom), tile.coords.z);
+
+      if (tile.coords.x < view_tile_min.x || tile.coords.x > view_tile_max.x || tile.coords.y < view_tile_min.y || tile.coords.y > view_tile_max.y) {
+        log('trace', "View: remove tile " + tile.key + " (as " + tile.coords.key + ") " + ("for being too far out of visible area (" + view_tile_min.key + ", " + view_tile_max.key + ")"));
         return true;
       }
 
@@ -20123,12 +20137,8 @@ function () {
     this.is_built = false;
     enabled = enabled === undefined ? visible : enabled; // `visible` property is backwards compatible for `enabled`
 
-    if (this.parent && this.parent.visible === false) {
-      this.enabled = false; // all descendants of disabled layer are also disabled
-    } else {
-      this.enabled = enabled !== false; // layer is enabled unless explicitly set to disabled
-    } // Denormalize layer name to draw groups
-
+    this.enabled = enabled !== false; // layer is enabled unless explicitly set to disabled
+    // Denormalize layer name to draw groups
 
     if (this.draw) {
       for (var group in this.draw) {
@@ -20598,10 +20608,9 @@ function () {
     var coords = _ref.coords,
         style_z = _ref.style_z,
         source = _ref.source,
-        worker = _ref.worker,
+        workers = _ref.workers,
         view = _ref.view;
     this.id = id$2++;
-    this.worker = worker;
     this.view = view;
     this.source = source;
     this.generation = null;
@@ -20631,7 +20640,7 @@ function () {
       z: this.coords.z
     }), this.span = {
       x: this.max.x - this.min.x,
-      y: this.max.y - this.min.y
+      y: -(this.max.y - this.min.y)
     };
     this.bounds = {
       sw: {
@@ -20656,6 +20665,8 @@ function () {
     this.new_mesh_styles = []; // meshes that have been built so far in current build generation
 
     this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
+
+    this.setWorker(workers);
   } // Free resources owned by tile
 
 
@@ -20707,6 +20718,20 @@ function () {
       generation: this.generation,
       debug: this.debug
     };
+  } // Find the appropriate worker thread for this tile
+  ;
+
+  _proto.setWorker = function setWorker(workers) {
+    if (this.source.tiled) {
+      // Pin tile to a worker thread based on its coordinates
+      this.worker_id = Math.abs(this.coords.x + this.coords.y + this.coords.z) % workers.length;
+    } else {
+      // Pin all tiles from each non-tiled source to a single worker
+      // Prevents data for these sources from being loaded more than once
+      this.worker_id = this.source.id % workers.length;
+    }
+
+    this.worker = workers[this.worker_id];
   };
 
   _proto.workerMessage = function workerMessage() {
@@ -20920,7 +20945,7 @@ function () {
               Collision.resetTile(tile.id); // clear collision if we're done with the tile
             }
           }).catch(function (e) {
-            log('error', "Error for style group '" + group_name + "' for tile " + tile.key, e.stack);
+            log('error', "Error for style group '" + group_name + "' for tile " + tile.key, e && e.stack || e);
           });
         };
 
@@ -21185,7 +21210,7 @@ function () {
 
     mat4.identity(model);
     mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
-    mat4.scale(model, model, vec3.fromValues(this.span.x / Geo$1.tile_scale, -1 * this.span.y / Geo$1.tile_scale, 1)); // scale tile local coords to meters
+    mat4.scale(model, model, vec3.fromValues(this.span.x / Geo$1.tile_scale, this.span.y / Geo$1.tile_scale, 1)); // scale tile local coords to meters
 
     mat4.copy(model32, model);
     program.uniform('Matrix4fv', 'u_model', model32); // Fade in labels according to proxy status, avoiding "flickering" where
@@ -24064,7 +24089,6 @@ DataSource.register('TopoJSON', function (source) {
 // add all data source types
 
 exports.createCommonjsModule = createCommonjsModule;
-exports.commonjsGlobal = commonjsGlobal;
 exports.commonjsRequire = commonjsRequire;
 exports.Utils = Utils;
 exports.isRelativeURL = isRelativeURL;
@@ -24309,10 +24333,22 @@ var SceneWorker = Object.assign(self, {
         }
     });
   },
-  // Load this tile's data source
+  // Load this tile's data source, or copy from an existing tile's data
   loadTileSourceData: function loadTileSourceData(tile) {
-    if (this.sources[tile.source]) {
-      return this.sources[tile.source].load(tile);
+    var source = this.sources[tile.source];
+
+    if (source) {
+      // Search existing tiles to see if we can reuse existing source data for this coordinate
+      for (var t in this.tiles) {
+        var ref = this.tiles[t];
+
+        if (ref.loaded && ref.coords.key === tile.coords.key) {
+          return Promise.resolve(source.copyTileData(ref, tile));
+        }
+      } // Load new tile data (no existing data found)
+
+
+      return source.load(tile);
     } else {
       tile.source_data = {};
       return Promise.resolve(tile);
@@ -27297,7 +27333,7 @@ exports.format = function(f) {
 // If --no-deprecation is set, then it is a no-op.
 exports.deprecate = function(fn, msg) {
   // Allow for deprecating things in the process of starting up.
-  if (isUndefined(__chunk_1.commonjsGlobal.process)) {
+  if (isUndefined(global$1.process)) {
     return function() {
       return exports.deprecate(fn, msg).apply(this, arguments);
     };
@@ -30358,7 +30394,7 @@ _export(_export.G + _export.B, {
 
 var setImmediate = _core.setImmediate;
 
-var Mutation = __chunk_1.commonjsGlobal.MutationObserver || __chunk_1.commonjsGlobal.WebKitMutationObserver;
+var Mutation = global$1.MutationObserver || global$1.WebKitMutationObserver;
 
 var scheduleDrain;
 
@@ -30366,25 +30402,25 @@ var scheduleDrain;
   if (Mutation) {
     var called = 0;
     var observer = new Mutation(nextTick$1);
-    var element = __chunk_1.commonjsGlobal.document.createTextNode('');
+    var element = global$1.document.createTextNode('');
     observer.observe(element, {
       characterData: true
     });
     scheduleDrain = function () {
       element.data = (called = ++called % 2);
     };
-  } else if (!__chunk_1.commonjsGlobal.setImmediate && typeof __chunk_1.commonjsGlobal.MessageChannel !== 'undefined') {
-    var channel$1 = new __chunk_1.commonjsGlobal.MessageChannel();
+  } else if (!global$1.setImmediate && typeof global$1.MessageChannel !== 'undefined') {
+    var channel$1 = new global$1.MessageChannel();
     channel$1.port1.onmessage = nextTick$1;
     scheduleDrain = function () {
       channel$1.port2.postMessage(0);
     };
-  } else if ('document' in __chunk_1.commonjsGlobal && 'onreadystatechange' in __chunk_1.commonjsGlobal.document.createElement('script')) {
+  } else if ('document' in global$1 && 'onreadystatechange' in global$1.document.createElement('script')) {
     scheduleDrain = function () {
 
       // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
       // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
-      var scriptEl = __chunk_1.commonjsGlobal.document.createElement('script');
+      var scriptEl = global$1.document.createElement('script');
       scriptEl.onreadystatechange = function () {
         nextTick$1();
 
@@ -30392,7 +30428,7 @@ var scheduleDrain;
         scriptEl.parentNode.removeChild(scriptEl);
         scriptEl = null;
       };
-      __chunk_1.commonjsGlobal.document.documentElement.appendChild(scriptEl);
+      global$1.document.documentElement.appendChild(scriptEl);
     };
   } else {
     scheduleDrain = function () {
@@ -45593,22 +45629,6 @@ function () {
     }
 
     return this.renderable_tiles;
-  } // Assign tile to worker thread based on coordinates and data source
-  ;
-
-  _proto.getWorkerForTile = function getWorkerForTile(coords, source) {
-    var worker;
-
-    if (source.tiled) {
-      // Pin tile to a worker thread based on its coordinates
-      worker = this.scene.workers[Math.abs(coords.x + coords.y + coords.z) % this.scene.workers.length];
-    } else {
-      // Pin all tiles from each non-tiled source to a single worker
-      // Prevents data for these sources from being loaded more than once
-      worker = this.scene.workers[source.id % this.scene.workers.length];
-    }
-
-    return worker;
   };
 
   _proto.getActiveStyles = function getActiveStyles() {
@@ -45701,7 +45721,7 @@ function () {
         var tile = new __chunk_1.Tile({
           source: source,
           coords: coords,
-          worker: this.getWorkerForTile(coords, source),
+          workers: this.scene.workers,
           style_z: this.view.baseZoom(coords.z),
           view: this.view
         });
@@ -46409,6 +46429,8 @@ function () {
     __chunk_1.log.reset();
     this.updating++;
     this.initialized = false;
+    this.view_complete = false; // track if a view complete event has been triggered yet
+
     this.times.frame = null; // clear first frame time
 
     this.times.build = null; // clear first scene build time
@@ -47170,81 +47192,85 @@ function () {
   ;
 
   _proto.queryFeatures = function queryFeatures(_temp4) {
-    var _ref5 = _temp4 === void 0 ? {} : _temp4,
-        filter = _ref5.filter,
-        _ref5$unique = _ref5.unique,
-        unique = _ref5$unique === void 0 ? true : _ref5$unique,
-        _ref5$group_by = _ref5.group_by,
-        group_by = _ref5$group_by === void 0 ? null : _ref5$group_by,
-        _ref5$visible = _ref5.visible,
-        visible = _ref5$visible === void 0 ? null : _ref5$visible,
-        _ref5$geometry = _ref5.geometry,
-        geometry = _ref5$geometry === void 0 ? false : _ref5$geometry;
+    return new Promise(function ($return, $error) {
+      var _ref5, filter, _ref5$unique, unique, _ref5$group_by, group_by, _ref5$visible, visible, _ref5$geometry, geometry, uniqueify, group, tile_keys, results, features, keys, groups;
 
-    filter = __chunk_1.Utils.serializeWithFunctions(filter); // Optional uniqueify criteria
-    // Valid values: true, false/null, single property name, or array of property names
+      _ref5 = _temp4 === void 0 ? {} : _temp4, filter = _ref5.filter, _ref5$unique = _ref5.unique, unique = _ref5$unique === void 0 ? true : _ref5$unique, _ref5$group_by = _ref5.group_by, group_by = _ref5$group_by === void 0 ? null : _ref5$group_by, _ref5$visible = _ref5.visible, visible = _ref5$visible === void 0 ? null : _ref5$visible, _ref5$geometry = _ref5.geometry, geometry = _ref5$geometry === void 0 ? false : _ref5$geometry;
 
-    unique = typeof unique === 'string' ? [unique] : unique;
-
-    var uniqueify = unique && function (obj) {
-      var props = Array.isArray(unique) ? __chunk_1.sliceObject(obj.properties, unique) : obj.properties;
-
-      if (geometry) {
-        // when `geometry` flag is set, we need to uniqueify based on *both* feature properties and geometry
-        return JSON.stringify({
-          geometry: obj.geometry,
-          properties: props
-        });
+      if (!this.initialized) {
+        return $return([]);
       }
 
-      return JSON.stringify(props);
-    }; // Optional grouping criteria
-    // Valid values: false/null, single property name, or array of property names
+      filter = __chunk_1.Utils.serializeWithFunctions(filter); // Optional uniqueify criteria
+      // Valid values: true, false/null, single property name, or array of property names
 
+      unique = typeof unique === 'string' ? [unique] : unique;
 
-    group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
+      uniqueify = unique && function (obj) {
+        var props = Array.isArray(unique) ? __chunk_1.sliceObject(obj.properties, unique) : obj.properties;
 
-    var group = group_by && function (obj) {
-      return Array.isArray(group_by) ? JSON.stringify(__chunk_1.sliceObject(obj, group_by)) : obj[group_by];
-    };
+        if (geometry) {
+          // when `geometry` flag is set, we need to uniqueify based on *both* feature properties and geometry
+          return JSON.stringify({
+            geometry: obj.geometry,
+            properties: props
+          });
+        }
 
-    var tile_keys = this.tile_manager.getRenderableTiles().map(function (t) {
-      return t.key;
-    });
-    return __chunk_1.WorkerBroker.postMessage(this.workers, 'self.queryFeatures', {
-      filter: filter,
-      visible: visible,
-      geometry: geometry,
-      tile_keys: tile_keys
-    }).then(function (results) {
-      var features = [];
-      var keys = {};
-      var groups = {};
-      results.forEach(function (r) {
-        return r.forEach(function (feature) {
-          if (uniqueify) {
-            var str = uniqueify(feature);
+        return JSON.stringify(props);
+      };
 
-            if (keys[str]) {
-              return;
-            }
+      // Optional grouping criteria
+      // Valid values: false/null, single property name, or array of property names
+      group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
 
-            keys[str] = true;
-          }
+      group = group_by && function (obj) {
+        return Array.isArray(group_by) ? JSON.stringify(__chunk_1.sliceObject(obj, group_by)) : obj[group_by];
+      };
 
-          if (group) {
-            var _str = group(feature.properties);
-
-            groups[_str] = groups[_str] || [];
-
-            groups[_str].push(feature);
-          } else {
-            features.push(feature);
-          }
-        });
+      tile_keys = this.tile_manager.getRenderableTiles().map(function (t) {
+        return t.key;
       });
-      return group ? groups : features; // returned grouped results, or all results
-    });
+      return Promise.resolve(__chunk_1.WorkerBroker.postMessage(this.workers, 'self.queryFeatures', {
+        filter: filter,
+        visible: visible,
+        geometry: geometry,
+        tile_keys: tile_keys
+      })).then(function ($await_4) {
+        try {
+          results = $await_4;
+          features = [];
+          keys = {};
+          groups = {};
+          results.forEach(function (r) {
+            return r.forEach(function (feature) {
+              if (uniqueify) {
+                var str = uniqueify(feature);
+
+                if (keys[str]) {
+                  return;
+                }
+
+                keys[str] = true;
+              }
+
+              if (group) {
+                var _str = group(feature.properties);
+
+                groups[_str] = groups[_str] || [];
+
+                groups[_str].push(feature);
+              } else {
+                features.push(feature);
+              }
+            });
+          });
+          return $return(group ? groups : features); // returned grouped results, or all results
+        } catch ($boundEx) {
+          return $error($boundEx);
+        }
+      }, $error);
+    }.bind(this));
   } // Rebuild all tiles, without re-parsing the config or re-compiling styles
   // sync: boolean of whether to sync the config object to the worker
   // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
@@ -47832,7 +47858,10 @@ function () {
     if ((this.render_count_changed || this.generation !== this.last_complete_generation) && !this.tile_manager.isLoadingVisibleTiles() && this.tile_manager.allVisibleTilesLabeled()) {
       this.tile_manager.updateLabels();
       this.last_complete_generation = this.generation;
-      this.trigger('view_complete');
+      this.trigger('view_complete', {
+        first: this.view_complete !== true
+      });
+      this.view_complete = true;
     }
   };
 
@@ -48548,7 +48577,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '9a36003fff0cfce3add85f5861a9cb6379adc183';
+	Tangram.debug.SHA = '50f587b2f6892e815d0719a61f71314abe5386b2';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
