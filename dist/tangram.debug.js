@@ -1818,7 +1818,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.17.3";
+var version = "0.17.4";
 
 var version$1 = 'v' + version;
 
@@ -12799,8 +12799,6 @@ Lines.variants = {}; // mesh variants by variant key
 
 Lines.vertex_layouts = {}; // vertex layouts by variant key
 
-Lines.dash_textures = {}; // cache previously rendered line dash pattern textures
-
 var DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
 
 Object.assign(Lines, {
@@ -12821,6 +12819,8 @@ Object.assign(Lines, {
 
     this.outline_feature_style = {};
     this.inline_feature_style = this.feature_style; // save reference to main computed style object
+
+    this.dash_textures = {}; // cache previously rendered line dash pattern textures
   },
   // Calculate width or offset at zoom given in `context`
   calcDistance: function calcDistance(prop, context) {
@@ -13119,8 +13119,8 @@ Object.assign(Lines, {
   getDashTexture: function getDashTexture(dash) {
     var dash_key = this.dashTextureKey(dash);
 
-    if (Lines.dash_textures[dash_key] == null) {
-      Lines.dash_textures[dash_key] = true; // Render line pattern
+    if (this.dash_textures[dash_key] == null) {
+      this.dash_textures[dash_key] = true; // Render line pattern
 
       var dash_texture = renderDashArray(dash, {
         scale: DASH_SCALE
@@ -13165,8 +13165,8 @@ Object.assign(Lines, {
                     uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
                   }
 
-                  if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
-                    Lines.dash_textures[variant.dash_key] = true;
+                  if (variant.dash_key && _this.dash_textures[variant.dash_key] == null) {
+                    _this.dash_textures[variant.dash_key] = true;
 
                     var $Try_1_Post = function () {
                       try {
@@ -19487,9 +19487,7 @@ function () {
 
         style.destroy();
       }
-    }); // Reset dash texture cache
-
-    Lines.dash_textures = {};
+    });
   } // Register a style
   ;
 
@@ -48577,7 +48575,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '6babc9c3d1b1db21af9b99cefa46b7ea500a3920';
+	Tangram.debug.SHA = '4e1e5e57dbb83f6f1390296054cd650b57b01800';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
