@@ -75,9 +75,6 @@ export class StyleManager {
                 style.destroy();
             }
         });
-
-        // Reset dash texture cache
-        Lines.dash_textures = {};
     }
 
     // Register a style
