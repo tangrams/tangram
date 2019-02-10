@@ -529,7 +529,7 @@ export default class Scene {
         this.clearFrame();
 
         // Sort styles by blend order
-        let styles = this.tile_manager.getActiveStyles().
+        let styles = this.style_manager.getActiveStyles().
             map(s => this.styles[s]).
             filter(s => s). // guard against missing styles, such as while loading a new scene
             sort(Style.blendOrderSort);
@@ -1087,7 +1087,7 @@ export default class Scene {
         // Disable animation is scene flag requests it, otherwise enable animation if any animated styles are in view
         return (this.config.scene.animated === false ?
             false :
-            this.tile_manager.getActiveStyles().some(s => this.styles[s].animated));
+            this.style_manager.getActiveStyles().some(s => this.styles[s].animated));
     }
 
     // Get active camera - for public API

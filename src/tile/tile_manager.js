@@ -119,7 +119,7 @@ export default class TileManager {
         this.updateProxyTiles();
         this.view.pruneTilesForView();
         this.updateRenderableTiles();
-        this.updateActiveStyles();
+        this.style_manager.updateActiveStyles(this.renderable_tiles);
         return this.updateLabels();
     }
 
@@ -253,21 +253,6 @@ export default class TileManager {
             }
         }
         return this.renderable_tiles;
-    }
-
-    getActiveStyles () {
-        return this.active_styles;
-    }
-
-    updateActiveStyles () {
-        let tiles = this.renderable_tiles;
-        let active = {};
-        for (let t=0; t < tiles.length; t++) {
-            let tile = tiles[t];
-            Object.keys(tile.meshes).forEach(s => active[s] = true);
-        }
-        this.active_styles = Object.keys(active);
-        return this.active_styles;
     }
 
     isLoadingVisibleTiles () {

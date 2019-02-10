@@ -20,6 +20,7 @@ export class StyleManager {
     constructor () {
         this.styles = {};
         this.base_styles = {};
+        this.active_styles = [];
 
         // Add built-in rendering styles
         this.register(Object.create(Polygons));
@@ -86,6 +87,21 @@ export class StyleManager {
     // Remove a style
     remove (name) {
         delete this.styles[name];
+    }
+
+    getActiveStyles () {
+        return this.active_styles;
+    }
+
+    // Get list of active styles based on a set of tiles
+    updateActiveStyles (tiles) {
+        this.active_styles = Object.keys(
+            tiles.reduce((active, tile) => {
+                Object.keys(tile.meshes).forEach(s => active[s] = true);
+                return active;
+            }, {})
+        );
+        return this.active_styles;
     }
 
     mix (style, styles) {
