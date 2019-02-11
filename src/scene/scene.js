@@ -39,7 +39,7 @@ export default class Scene {
         this.sources = {};
 
         this.view = new View(this, options);
-        this.tile_manager = new TileManager({ scene: this, view: this.view });
+        this.tile_manager = new TileManager({ scene: this });
         this.num_workers = options.numWorkers || 2;
         if (options.disableVertexArrayObjects === true) {
             VertexArrayObject.disabled = true;
@@ -528,59 +528,61 @@ export default class Scene {
 
         this.clearFrame();
 
-        // Sort styles by blend order
-        let styles = this.style_manager.getActiveStyles().
-            map(s => this.styles[s]).
-            filter(s => s). // guard against missing styles, such as while loading a new scene
-            sort(Style.blendOrderSort);
-
-        // Render styles
         let count = 0; // how many primitives were rendered
-        let last_blend;
-        for (let s=0; s < styles.length; s++) {
-            let style = styles[s];
+        let last_blend; // blend mode active in last render pass
 
-            // Only update render state when blend mode changes
-            if (style.blend !== last_blend) {
-                let state = Object.assign({},
-                    Style.render_states[style.blend],       // render state for blend mode
-                    { blend: (allow_blend && style.blend) } // enable/disable blending (e.g. no blend for selection)
-                );
-                this.setRenderState(state);
+        // Get sorted list of current blend orders, with accompanying list of styles to render for each
+        const blend_orders = this.style_manager.getActiveBlendOrders();
+        for (const { blend_order, styles } of blend_orders) {
+            // Render each style
+            for (let s=0; s < styles.length; s++) {
+                let style = this.styles[styles[s]];
+                if (style == null) {
+                    continue;
+                }
+
+                // Only update render state when blend mode changes
+                if (style.blend !== last_blend) {
+                    let state = Object.assign({},
+                        Style.render_states[style.blend],       // render state for blend mode
+                        { blend: (allow_blend && style.blend) } // enable/disable blending (e.g. no blend for selection)
+                    );
+                    this.setRenderState(state);
+                }
+
+                // Depth pre-pass for translucency
+                let translucent = (style.blend === 'translucent' && program_key === 'program'); // skip for selection buffer render pass
+                if (translucent) {
+                    this.gl.colorMask(false, false, false, false);
+                    this.renderStyle(style.name, program_key, blend_order);
+
+                    this.gl.colorMask(true, true, true, true);
+                    this.gl.depthFunc(this.gl.EQUAL);
+
+                    // stencil buffer prevents compounding alpha from overlapping polys
+                    this.gl.enable(this.gl.STENCIL_TEST);
+                    this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
+                    this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
+                    this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
+                }
+
+                // Main render pass
+                count += this.renderStyle(style.name, program_key, blend_order);
+
+                if (translucent) {
+                    // disable translucency-specific settings
+                    this.gl.disable(this.gl.STENCIL_TEST);
+                    this.gl.depthFunc(this.gl.LESS);
+                }
+
+                last_blend = style.blend;
             }
-
-            // Depth pre-pass for translucency
-            let translucent = (style.blend === 'translucent' && program_key === 'program'); // skip for selection buffer render pass
-            if (translucent) {
-                this.gl.colorMask(false, false, false, false);
-                this.renderStyle(style.name, program_key);
-
-                this.gl.colorMask(true, true, true, true);
-                this.gl.depthFunc(this.gl.EQUAL);
-
-                // stencil buffer prevents compounding alpha from overlapping polys
-                this.gl.enable(this.gl.STENCIL_TEST);
-                this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
-                this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
-                this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
-            }
-
-            // Main render pass
-            count += this.renderStyle(style.name, program_key);
-
-            if (translucent) {
-                // disable translucency-specific settings
-                this.gl.disable(this.gl.STENCIL_TEST);
-                this.gl.depthFunc(this.gl.LESS);
-            }
-
-            last_blend = style.blend;
         }
 
         return count;
     }
 
-    renderStyle(style_name, program_key) {
+    renderStyle(style_name, program_key, blend_order) {
         let style = this.styles[style_name];
         let first_for_style = true;
         let render_count = 0;
@@ -589,19 +591,27 @@ export default class Scene {
         // Render tile GL geometries
         let renderable_tiles = this.tile_manager.getRenderableTiles();
 
+        // For each tile, only include meshes for the blend order currently being rendered
+        // Builds an array tiles and their associated meshes, each as a [tile, meshes] 2-element array
+        let tile_meshes = renderable_tiles
+            .map(t => {
+                if (t.meshes[style_name]) {
+                    return [t, t.meshes[style_name].filter(m => m.variant.blend_order === blend_order)];
+                }
+            })
+            .filter(x => x); // skip tiles with no meshes for this blend order
+
         // Mesh variants must be rendered in requested order across tiles, to prevent labels that cross
         // tile boundaries from rendering over adjacent tile features meant to be underneath
-        let max_mesh_variant_order =
-            Math.max(...renderable_tiles.map(t => {
-                return t.meshes[style_name] ?
-                    Math.max(...t.meshes[style_name].map(m => m.variant.order)) : -1;
-            })
-            );
+        let max_mesh_order =
+            Math.max(...tile_meshes.map(([, meshes]) => {
+                return Math.max(...meshes.map(m => m.variant.mesh_order));
+            }));
 
         // One pass per mesh variant order (loop goes to max value +1 because 0 is a valid order value)
-        for (let mo=0; mo < max_mesh_variant_order + 1; mo++) {
-            for (let t=0; t < renderable_tiles.length; t++) {
-                let tile = renderable_tiles[t];
+        for (let mo=0; mo < max_mesh_order + 1; mo++) {
+            // Loop over tiles, with meshes pre-filtered by current blend order
+            for (let [tile, meshes] of tile_meshes) {
                 let first_for_tile = true;
 
                 if (tile.meshes[style_name] == null) {
@@ -614,9 +624,9 @@ export default class Scene {
                     continue;
                 }
 
-                // Get meshes for current variant order, current style, and current tile
-                const meshes = tile.meshes[style_name].filter(m => m.variant.order === mo); // find meshes by variant order
-                if (meshes.length === 0) {
+                // Filter meshes further by current variant order
+                const order_meshes = meshes.filter(m => m.variant.mesh_order === mo);
+                if (order_meshes.length === 0) {
                     continue;
                 }
 
@@ -633,7 +643,7 @@ export default class Scene {
                 }
 
                 // Render each mesh (for current variant order)
-                meshes.forEach(mesh => {
+                order_meshes.forEach(mesh => {
                     // Tile-specific state
                     if (first_for_tile === true) {
                         first_for_tile = false;

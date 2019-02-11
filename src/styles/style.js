@@ -39,11 +39,21 @@ export var Style = {
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
 
         // Blending
-        this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending
-        this.defines[`TANGRAM_BLEND_${this.blend.toUpperCase()}`] = true;
-        if (this.blend_order == null) { // controls order of rendering for styles w/non-opaque blending
-            this.blend_order = -1; // defaults to first
+        // `opaque` styles are drawn first/under other styles, without alpha blending
+        this.blend = this.blend || 'opaque'; // default to opaque
+        if (this.blend !== 'opaque') {
+            // non-opaque styles can customize their blend order, which will determine which features
+            // are drawn first/under each other
+            if (this.blend_order == null) {
+                this.blend_order = this.default_blend_orders[this.blend];
+            }
         }
+        else {
+            // `opaque` ignores blend order, always render first/under
+            this.blend_order = this.default_blend_orders[this.blend];
+        }
+
+        this.defines[`TANGRAM_BLEND_${this.blend.toUpperCase()}`] = true;
 
         this.removeShaderBlock('setup'); // clear before material injection
 
@@ -715,7 +725,7 @@ export var Style = {
 
     // Default sort order for blend modes
     default_blend_orders: {
-        opaque: 0,
+        opaque: Number.MIN_SAFE_INTEGER,
         add: 1,
         multiply: 2,
         inlay: 3,
@@ -723,38 +733,9 @@ export var Style = {
         overlay: 5
     },
 
-    // Comparison function for sorting styles by blend
-    blendOrderSort (a, b) {
-        // opaque always comes first
-        if (a.blend === 'opaque' || b.blend === 'opaque') {
-            if (a.blend === 'opaque' && b.blend === 'opaque') { // if both are opaque
-                return a.name < b.name ? -1 : 1; // use name as tie breaker
-            }
-            else if (a.blend === 'opaque') {
-                return -1; // only `a` was opaque
-            }
-            else {
-                return 1; // only `b` was opaque
-            }
-        }
-
-        // use explicit blend order if possible
-        if (a.blend_order < b.blend_order) {
-            return -1;
-        }
-        else if (a.blend_order > b.blend_order) {
-            return 1;
-        }
-
-        // if blend orders are equal, use default order by blend mode
-        if (Style.default_blend_orders[a.blend] < Style.default_blend_orders[b.blend]) {
-            return -1;
-        }
-        else if (Style.default_blend_orders[a.blend] > Style.default_blend_orders[b.blend]) {
-            return 1;
-        }
-
-        return a.name < b.name ? -1 : 1; // use name as tie breaker
+    getBlendOrderForDraw (draw) {
+        // Allow draw block to override blend_order for non-opaque blend styles
+        return ((this.blend !== 'opaque' && draw.blend_order != null) ? draw.blend_order : this.blend_order);
     }
 
 };

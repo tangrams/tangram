@@ -134,6 +134,7 @@ Object.assign(TextStyle, {
                     style.label_texture = textures[text_info.align[q.label.align].texture_id];
                 }
 
+                style.blend_order = q.draw.blend_order; // copy pre-computed blend order
                 Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
         }
@@ -158,6 +159,7 @@ Object.assign(TextStyle, {
 
     // Sets up caching for draw properties
     _preprocess (draw) {
+        draw.blend_order = this.getBlendOrderForDraw(draw); // from draw block, or fall back on default style blend order
         return this.preprocessText(draw);
     },
 

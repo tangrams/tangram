@@ -331,7 +331,13 @@ Object.assign(Lines, {
                 draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color);
                 draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
                 draw.outline.texcoords = ((outline_style.texcoords || draw.outline.texture_merged) ? 1 : 0);
-                this.computeVariant(draw.outline);
+
+                // outline inherits draw blend order from parent inline, unless explicitly turned off with null
+                if (draw.outline.blend_order === undefined && draw.blend_order != null) {
+                    draw.outline.blend_order = draw.blend_order;
+                }
+
+                this.computeVariant(draw.outline, outline_style);
             }
             else {
                 log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
@@ -419,7 +425,7 @@ Object.assign(Lines, {
     },
 
     // Calculate and store mesh variant (unique by draw group but not feature)
-    computeVariant (draw) {
+    computeVariant (draw, style = this) {
         // Factors that determine a unique mesh rendering variant
         let key = (draw.offset ? 1 : 0); // whether feature has a line offset
         key += '/' + draw.texcoords; // whether feature has texture UVs
@@ -438,6 +444,9 @@ Object.assign(Lines, {
             key += draw.texture_merged;
         }
 
+        const blend_order = style.getBlendOrderForDraw(draw);
+        key += '/' + blend_order;
+
         // Create unique key
         key = hashString(key);
         draw.variant = key;
@@ -445,7 +454,8 @@ Object.assign(Lines, {
         if (Lines.variants[key] == null) {
             Lines.variants[key] = {
                 key,
-                order: (draw.is_outline ? 0 : 1), // outlines should be drawn first, so inline is on top
+                blend_order,
+                mesh_order: (draw.is_outline ? 0 : 1), // outlines should be drawn first, so inline is on top
                 selection: (draw.interactive ? 1 : 0),
                 offset: (draw.offset ? 1 : 0),
                 z_or_offset: ((draw.offset || draw.extrude || draw.z) ? 1 : 0),

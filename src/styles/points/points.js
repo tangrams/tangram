@@ -31,7 +31,7 @@ export const Points = Object.create(Style);
 Points.variants = {}; // mesh variants by variant key
 Points.vertex_layouts = {}; // vertex layouts by variant key
 
-const SHADER_POINT_VARIANT_KEY = 'shader_point';
+const SHADER_POINT_VARIANT = '__shader_point';
 
 // texture types
 const TANGRAM_POINT_TYPE_TEXTURE = 1; // style texture/sprites (assigned by user)
@@ -123,6 +123,7 @@ Object.assign(Points, {
         style.color = this.parseColor(draw.color, context);
         style.texture = draw.texture;   // optional point texture, specified in `draw` or at style level
         style.label_texture = null;     // assigned by labelling code if needed
+        style.blend_order = draw.blend_order; // copy pre-computed blend order
 
         // require color or texture
         if (!style.color && !style.texture) {
@@ -375,6 +376,7 @@ Object.assign(Points, {
                 style.angle = 0; // text attached to point is always upright
                 style.texcoords = text_info.align[q.label.align].texcoords;
                 style.label_texture = textures[text_info.align[q.label.align].texture_id];
+                style.blend_order = q.draw.blend_order; // copy blend order from parent point
 
                 Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
@@ -394,6 +396,7 @@ Object.assign(Points, {
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
         draw.texture = (draw.texture !== undefined ? draw.texture : this.texture); // optional or default texture
+        draw.blend_order = this.getBlendOrderForDraw(draw); // from draw block, or fall back on default style blend order
 
         if (draw.outline) {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
@@ -456,6 +459,7 @@ Object.assign(Points, {
             draw.text.group = draw.group;
             draw.text.layers = draw.layers;
             draw.text.order = draw.order;
+            draw.text.blend_order = draw.blend_order;
             draw.text.repeat_group = (draw.text.repeat_group != null ? draw.text.repeat_group : draw.repeat_group);
             draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
@@ -914,12 +918,14 @@ Object.assign(Points, {
 
     // Override
     meshVariantTypeForDraw (draw) {
-        let key = draw.label_texture || draw.texture || SHADER_POINT_VARIANT_KEY; // unique key by texture name
+        const texture = draw.label_texture || draw.texture || SHADER_POINT_VARIANT; // unique key by texture name
+        const key = texture + '/' + draw.blend_order;
         if (Points.variants[key] == null) {
             Points.variants[key] = {
                 key,
-                shader_point: (key === SHADER_POINT_VARIANT_KEY), // is shader point
-                order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
+                shader_point: (texture === SHADER_POINT_VARIANT), // is shader point
+                blend_order: draw.blend_order,
+                mesh_order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
             };
         }
         return Points.variants[key]; // return pre-calculated mesh variant

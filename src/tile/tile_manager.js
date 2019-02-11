@@ -9,16 +9,14 @@ import Task from '../utils/task';
 
 export default class TileManager {
 
-    constructor({ scene, view }) {
+    constructor({ scene }) {
         this.scene = scene;
-        this.view = view;
         this.tiles = {};
         this.pyramid = new TilePyramid();
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
         this.renderable_tiles = [];
-        this.active_styles = [];
         this.collision = {
             tile_keys: null,
             mesh_set: null,
@@ -38,8 +36,15 @@ export default class TileManager {
         this.visible_coords = {};
         this.queued_coords = [];
         this.scene = null;
-        this.view = null;
         WorkerBroker.removeTarget(this.main_thread_target);
+    }
+
+    get view () {
+        return this.scene.view;
+    }
+
+    get style_manager () {
+        return this.scene.style_manager;
     }
 
     keepTile(tile) {
@@ -120,6 +125,7 @@ export default class TileManager {
         this.view.pruneTilesForView();
         this.updateRenderableTiles();
         this.style_manager.updateActiveStyles(this.renderable_tiles);
+        this.style_manager.updateActiveBlendOrders(this.renderable_tiles);
         return this.updateLabels();
     }
 

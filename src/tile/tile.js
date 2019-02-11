@@ -409,8 +409,8 @@ export default class Tile {
                         mesh.labels = mesh_variant.labels;
                         meshes[s] = meshes[s] || [];
                         meshes[s].push(mesh);
-                        if (mesh.variant.order == null) {
-                            mesh.variant.order = meshes[s].length - 1; // assign default variant render order
+                        if (mesh.variant.mesh_order == null) {
+                            mesh.variant.mesh_order = meshes[s].length - 1; // assign default variant render order
                         }
 
                         this.debug.buffer_size += mesh.buffer_size;
@@ -422,7 +422,7 @@ export default class Tile {
                 if (meshes[s]) {
                     meshes[s].sort((a, b) => {
                         // Sort variant order ascending if present, then all null values (where order is unspecified)
-                        let ao = a.variant.order, bo = b.variant.order;
+                        let ao = a.variant.mesh_order, bo = b.variant.mesh_order;
                         return (ao == null ? 1 : (bo == null ? -1 : (ao < bo ? -1 : 1)));
                     });
                 }

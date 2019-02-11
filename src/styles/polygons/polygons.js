@@ -81,16 +81,18 @@ Object.assign(Polygons, {
     // Calculate and store mesh variant (unique by draw group but not feature)
     computeVariant (draw) {
         // Factors that determine a unique mesh rendering variant
-        let selection = (draw.interactive ? 1 : 0); // whether feature has interactivity
-        let normal = (draw.extrude != null ? 1 : 0); // whether feature has extrusion (need per-vertex normals)
-        let texcoords = (this.texcoords ? 1 : 0); // whether feature has texture UVs
-        let key = [selection, normal, texcoords].join('/');
+        const selection = (draw.interactive ? 1 : 0); // whether feature has interactivity
+        const normal = (draw.extrude != null ? 1 : 0); // whether feature has extrusion (need per-vertex normals)
+        const texcoords = (this.texcoords ? 1 : 0); // whether feature has texture UVs
+        const blend_order = this.getBlendOrderForDraw(draw);
+        const key = [selection, normal, texcoords, blend_order].join('/');
         draw.variant = key;
 
         if (Polygons.variants[key] == null) {
             Polygons.variants[key] = {
                 key,
-                order: 0,
+                blend_order,
+                mesh_order: 0,
                 selection,
                 normal,
                 texcoords
