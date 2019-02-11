@@ -21,6 +21,7 @@ export class StyleManager {
         this.styles = {};
         this.base_styles = {};
         this.active_styles = [];
+        this.active_blend_orders = [];
 
         // Add built-in rendering styles
         this.register(Object.create(Polygons));
@@ -102,6 +103,33 @@ export class StyleManager {
             }, {})
         );
         return this.active_styles;
+    }
+
+    getActiveBlendOrders () {
+        return this.active_blend_orders;
+    }
+
+    updateActiveBlendOrders (tiles) {
+        const orders = [];
+        tiles.forEach(tile => {
+            Object.entries(tile.meshes)
+                .forEach(([style, style_meshes]) => { // for each tile's set of meshes, keyed by style name
+                    style_meshes.forEach(mesh => { // for each style's list of meshes
+                        // find entry for this mesh's blend order, insert if first entry
+                        const blend_order = mesh.variant.blend_order;
+                        let oi = orders.findIndex(x => x.blend_order === blend_order);
+                        oi = oi > -1 ? oi : orders.push({ blend_order, styles: [] }) - 1;
+
+                        // add style to list for this blend order
+                        if (orders[oi].styles.indexOf(style) === -1) {
+                            orders[oi].styles.push(style);
+                        }
+                    });
+                });
+        });
+
+        // sort ascending by blend order
+        this.active_blend_orders = orders.sort((a, b) => a.blend_order - b.blend_order);
     }
 
     mix (style, styles) {
