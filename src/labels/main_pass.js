@@ -130,6 +130,10 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
                 }
 
                 let mesh = container.mesh;
+                if (!mesh.valid) {
+                    return;
+                }
+
                 let off = mesh.vertex_layout.offset.a_shape; // byte offset (within each vertex) of attribute
                 let stride = mesh.vertex_layout.stride;      // byte stride per vertex
 
