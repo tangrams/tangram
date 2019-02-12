@@ -2,7 +2,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_map_position;
 uniform vec4 u_tile_origin;
-uniform float u_tile_proxy_depth;
+uniform float u_tile_proxy_order_offset;
 uniform bool u_tile_fade_in;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
@@ -172,7 +172,7 @@ void main() {
 
     #ifdef TANGRAM_LAYER_ORDER
         // +1 is to keep all layers including proxies > 0
-        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);
+        applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);
     #endif
 
     // Apply pixel offset in screen-space

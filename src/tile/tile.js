@@ -33,8 +33,8 @@ export default class Tile {
 
         this.visible = false;
         this.proxy_for = null;
-        this.proxy_depth = 0;
         this.proxied_as = null;
+        this.proxy_order_offset = 0;
         this.fade_in = true;
         this.loading = false;
         this.loaded = false;
@@ -516,12 +516,12 @@ export default class Tile {
             this.visible = true;
             this.proxy_for = this.proxy_for || [];
             this.proxy_for.push(tile);
-            this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
+            this.proxy_order_offset = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
             tile.proxied_as = (tile.style_z > this.style_z ? 'child' : 'parent');
         }
         else {
             this.proxy_for = null;
-            this.proxy_depth = 0;
+            this.proxy_order_offset = 0;
         }
     }
 
@@ -540,7 +540,7 @@ export default class Tile {
     setupProgram ({ model, model32 }, program) {
         // Tile origin
         program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_z, this.coords.z]);
-        program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth);
+        program.uniform('1f', 'u_tile_proxy_order_offset', this.proxy_order_offset);
 
         // Model - transform tile space into world space (meters, absolute mercator position)
         mat4.identity(model);
