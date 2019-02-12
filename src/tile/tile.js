@@ -34,6 +34,7 @@ export default class Tile {
         this.visible = false;
         this.proxy_for = null;
         this.proxied_as = null;
+        this.proxy_level = 0;
         this.proxy_order_offset = 0;
         this.fade_in = true;
         this.loading = false;
@@ -518,10 +519,12 @@ export default class Tile {
             this.proxy_for.push(tile);
             this.proxy_order_offset = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
             tile.proxied_as = (tile.style_z > this.style_z ? 'child' : 'parent');
+            this.proxy_level = Math.abs(tile.style_z - this.style_z); // # of zoom levels proxy is above/below target tile
         }
         else {
             this.proxy_for = null;
             this.proxy_order_offset = 0;
+            this.proxy_level = 0;
         }
     }
 

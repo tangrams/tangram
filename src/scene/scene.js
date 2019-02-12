@@ -550,27 +550,65 @@ export default class Scene {
                     this.setRenderState(state);
                 }
 
-                // Depth pre-pass for translucency
-                let translucent = (style.blend === 'translucent' && program_key === 'program'); // skip for selection buffer render pass
-                if (translucent) {
+                const blend = allow_blend && style.blend;
+                if (blend === 'translucent') {
+                    // Depth pre-pass for translucency
                     this.gl.colorMask(false, false, false, false);
                     this.renderStyle(style.name, program_key, blend_order);
 
                     this.gl.colorMask(true, true, true, true);
                     this.gl.depthFunc(this.gl.EQUAL);
 
-                    // stencil buffer prevents compounding alpha from overlapping polys
+                    // Stencil buffer mask prevents overlap/flicker from compounding alpha of overlapping polys
                     this.gl.enable(this.gl.STENCIL_TEST);
+                    this.gl.clearStencil(0);
                     this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
                     this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
                     this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
                 }
+                else if (blend !== 'opaque') {
+                    // Mask proxy tiles to with stencil buffer to avoid overlap/flicker from compounding alpha
+                    // Find unique levels of proxy tiles to render for this style
+                    const proxy_levels = this.tile_manager.getRenderableTiles()
+                        .filter(t => t.meshes[style.name]) // must have meshes for this style
+                        .map(t => t.proxy_level) // get the proxy depth
+                        .reduce((levels, level) => { // count unique proxy depths
+                            levels.indexOf(level) > -1 || levels.push(level);
+                            return levels;
+                        }, [])
+                        .sort(); // sort by lower depth first
 
-                // Main render pass
-                count += this.renderStyle(style.name, program_key, blend_order);
+                    if (proxy_levels.length > 1) {
+                        // When there are multiple "levels" of tiles to render (e.g. non-proxy and one or more proxy
+                        // tile levels, or multiple proxy tile levels but no non-proxy tiles, etc.):
+                        // Render each proxy tile level to stencil buffer, masking each level such that it will not
+                        // render over any pixel rendered by a previous proxy tile level.
+                        this.gl.enable(this.gl.STENCIL_TEST);
+                        this.gl.clearStencil(0);
+                        this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
+                        this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.REPLACE);
 
-                if (translucent) {
-                    // disable translucency-specific settings
+                        for (let i = 0; i < proxy_levels.length; i++) {
+                            // stencil test passes either for zero (not-yet-rendered),
+                            // or for other pixels at this proxy level (but not previous proxy levels)
+                            this.gl.stencilFunc(this.gl.GEQUAL, proxy_levels.length - i, 0xFF);
+                            count += this.renderStyle(style.name, program_key, blend_order, proxy_levels[i]);
+                        }
+                        this.gl.disable(this.gl.STENCIL_TEST);
+                    }
+                    else {
+                        // No special render handling needed when there are no proxy tiles,
+                        // or if there is ONLY a single proxy tile level (e.g. with no non-proxy tiles)
+                        count += this.renderStyle(style.name, program_key, blend_order);
+                    }
+                }
+                else {
+                    // Regular opaque render pass (or any blend mode when blending disabled, e.g. selection buffer pass)
+                    count += this.renderStyle(style.name, program_key, blend_order);
+                }
+
+                if (blend === 'translucent') {
+                    // Disable translucency-specific settings
                     this.gl.disable(this.gl.STENCIL_TEST);
                     this.gl.depthFunc(this.gl.LESS);
                 }
@@ -582,9 +620,9 @@ export default class Scene {
         return count;
     }
 
-    renderStyle(style_name, program_key, blend_order) {
+    renderStyle(style_name, program_key, blend_order, proxy_level = null) {
         let style = this.styles[style_name];
-        let first_for_style = true;
+        let first_for_style = true; // TODO: allow this state to be passed in (for multilpe blend orders, stencil tests, etc)
         let render_count = 0;
         let program;
 
@@ -594,6 +632,7 @@ export default class Scene {
         // For each tile, only include meshes for the blend order currently being rendered
         // Builds an array tiles and their associated meshes, each as a [tile, meshes] 2-element array
         let tile_meshes = renderable_tiles
+            .filter(t => typeof proxy_level !== 'number' || t.proxy_level === proxy_level) // optional filter by proxy level
             .map(t => {
                 if (t.meshes[style_name]) {
                     return [t, t.meshes[style_name].filter(m => m.variant.blend_order === blend_order)];
@@ -613,10 +652,6 @@ export default class Scene {
             // Loop over tiles, with meshes pre-filtered by current blend order
             for (let [tile, meshes] of tile_meshes) {
                 let first_for_tile = true;
-
-                if (tile.meshes[style_name] == null) {
-                    continue;
-                }
 
                 // Skip proxy tiles if new tiles have finished loading this style
                 if (!tile.shouldProxyForStyle(style_name)) {
