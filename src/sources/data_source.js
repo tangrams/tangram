@@ -15,7 +15,7 @@ export default class DataSource {
         this.sources = sources; // full set of data sources TODO: centralize these like textures?
         this.id = config.id;
         this.name = config.name;
-        this.pad_scale = config.pad_scale || 0.0001; // scale tile up by small factor to cover seams
+        this.pad_scale = config.pad_scale || 0.00001; // scale tile up by small factor to cover seams
         this.default_winding = null; // winding order will adapt to data source
         this.rasters = []; // attached raster tile sources
         if (Array.isArray(config.rasters)) { // copy unique set of raster sources
