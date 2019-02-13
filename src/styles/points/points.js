@@ -70,6 +70,12 @@ Object.assign(Points, {
         this.collision_group_points = this.name+'-points';
         this.collision_group_text = this.name+'-text';
 
+        // Stenciling proxy tiles (to avoid compounding alpha artifacts) doesn't work well with
+        // points/text labels, which have pure transparent pixels that interfere with the stencil buffer,
+        // causing a "cut-out"/"x-ray" effect (preventing pixels that would usually be covered by proxy tiles
+        // underneath from being rendered).
+        this.stencil_proxy_tiles = false;
+
         this.reset();
     },
 
