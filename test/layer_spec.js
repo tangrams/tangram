@@ -1,5 +1,5 @@
 import chai from 'chai';
-import {LayerLeaf, LayerTree, mergeTrees, parseLayers, groupProps, calculateDraw} from '../src/styles/layer';
+import { LayerLeaf, LayerTree, matchFeature, mergeTrees, parseLayers, groupProps, calculateDraw } from '../src/styles/layer';
 import sampleLayers from './fixtures/sample-layers.json';
 
 let assert = chai.assert;
@@ -91,25 +91,6 @@ describe('.mergeTrees()', () => {
 
     });
 
-    describe('when given layers with ambiguous properties', () => {
-
-        const subject = [
-            [ { group: { a: 1, layer_name: 'x' } } ],
-            [ { group: { a: 2, layer_name: 'z' } } ],
-            [ { group: { a: 3, layer_name: 'y' } } ]
-        ];
-
-        it('the lexically sorted highest layer wins', () => {
-            let result = mergeTrees(subject, 'group');
-            let compare = {
-                a: 2,
-                visible: true
-            };
-            assert.deepEqual(result, compare);
-        });
-
-    });
-
 });
 
 describe('.parseLayer(layers)', () => {
@@ -125,6 +106,7 @@ describe('.parseLayer(layers)', () => {
             let numChildren = Object.keys(tree.root.children_to_parse).length;
             assert.equal(numChildren, 2);
         });
+
     });
 });
 
@@ -369,6 +351,133 @@ describe('LayerTree.buildDrawGroups(context)', () => {
                 let layer = subject.root.buildDrawGroups(context);
                 assert.equal(Object.keys(layer).length, 1);
                 assert.deepEqual(layer.group.color, [1, 2, 3]);
+            });
+
+        });
+
+        describe('layer prioritization', () => {
+
+            let context = {
+                feature: {
+                    properties: {
+                    }
+                }
+            };
+
+            describe('when layers have explicit priorities', () => {
+
+                const priorities = {
+                    root: {
+                        a: {
+                            priority: 2,
+                            draw: { group: { value: 'a', a: true } }
+                        },
+                        b: {
+                            priority: 1,
+                            draw: { group: { value: 'b', b: true } }
+                        },
+                        c: {
+                            priority: 3,
+                            draw: { group: { value: 'c', c: true } }
+                        }
+                    }
+                };
+
+                it('the lowest priority value layer wins', () => {
+                    let tree = parseLayers(priorities);
+                    let groups = tree.root.buildDrawGroups(context);
+                    assert.equal(groups.group.value, 'b');
+                    assert.equal(groups.group.a, true);
+                    assert.equal(groups.group.b, true);
+                    assert.equal(groups.group.c, true);
+                });
+
+            });
+
+            describe('when layers have no explicit priority', () => {
+
+                const priorities = {
+                    root: {
+                        a: {
+                            draw: { group: { value: 'a', a: true } }
+                        },
+                        b: {
+                            draw: { group: { value: 'b', b: true } }
+                        },
+                        c: {
+                            draw: { group: { value: 'c', c: true } }
+                        }
+                    }
+                };
+
+                it('the alphabetically sorted last layer wins', () => {
+                    let tree = parseLayers(priorities);
+                    let groups = tree.root.buildDrawGroups(context);
+                    assert.equal(groups.group.value, 'c');
+                    assert.equal(groups.group.a, true);
+                    assert.equal(groups.group.b, true);
+                    assert.equal(groups.group.c, true);
+                });
+
+            });
+
+            describe('when layers have exclusivity and no priority', () => {
+
+                const priorities = {
+                    root: {
+                        a: {
+                            exclusive: true,
+                            draw: { group: { value: 'a', a: true } }
+                        },
+                        b: {
+                            exclusive: true,
+                            draw: { group: { value: 'b', b: true } }
+                        },
+                        c: {
+                            draw: { group: { value: 'c', c: true } }
+                        }
+                    }
+                };
+
+                it('the alphabetically sorted last exclusive layer wins', () => {
+                    let tree = parseLayers(priorities);
+                    let groups = tree.root.buildDrawGroups(context);
+                    assert.equal(groups.group.value, 'b');
+                    assert.equal(groups.group.a, null);
+                    assert.equal(groups.group.b, true);
+                    assert.equal(groups.group.c, null);
+                });
+
+            });
+
+            describe('when layers have exclusivity and priority', () => {
+
+                const priorities = {
+                    root: {
+                        a: {
+                            exclusive: true,
+                            priority: 1,
+                            draw: { group: { value: 'a', a: true } }
+                        },
+                        b: {
+                            draw: { group: { value: 'b', b: true } }
+                        },
+                        c: {
+                            exclusive: true,
+                            draw: { group: { value: 'c', c: true } }
+                        }
+                    }
+                };
+
+                it('the lowest priority value exclusive layer wins', () => {
+                    let tree = parseLayers(priorities);
+                    let groups = tree.root.buildDrawGroups(context);
+                    assert.equal(groups.group.value, 'a');
+                    assert.equal(groups.group.a, true);
+                    assert.equal(groups.group.b, null);
+                    assert.equal(groups.group.c, null);
+                });
+
             });
 
         });
