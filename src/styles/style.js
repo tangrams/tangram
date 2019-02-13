@@ -34,6 +34,7 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
+        this.stencil_proxy_tiles = true;            // applied to proxy tiles w/non-opaque blend mode to avoid compounding alpha
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;

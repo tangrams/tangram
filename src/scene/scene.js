@@ -566,7 +566,7 @@ export default class Scene {
                     this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
                     this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
                 }
-                else if (blend !== 'opaque') {
+                else if (blend !== 'opaque' && style.stencil_proxy_tiles === true) {
                     // Mask proxy tiles to with stencil buffer to avoid overlap/flicker from compounding alpha
                     // Find unique levels of proxy tiles to render for this style
                     const proxy_levels = this.tile_manager.getRenderableTiles()
