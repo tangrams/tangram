@@ -52,21 +52,28 @@ void main (void) {
     { // enclose in scope to avoid leakage of internal variables
         vec4 raster_color = sampleRaster(0);
 
-        #ifdef TANGRAM_BLEND_OPAQUE
+        #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)
             // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.
-            // This is used for handling transparency outside the raster image when rendering with opaque blending,
-            // which doesn't support alpha (with expected results anyway).
+            // This is used for handling transparency outside the raster image in some blend modes,
+            // which either don't support alpha, or would cause transparent pixels to write to the depth buffer,
+            // obscuring geometry underneath.
             #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources
             #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip conditional if *only* masked raster sources (always true)
             if (u_raster_mask_alpha) {
             #else
             {
             #endif
+                #if defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)
+                if (raster_color.a < TANGRAM_EPSILON) {
+                    discard;
+                }
+                #else // TANGRAM_BLEND_OPAQUE
                 if (raster_color.a < 1. - TANGRAM_EPSILON) {
                     discard;
                 }
                 // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)
                 raster_color.a = 1.;
+                #endif
             }
             #endif
         #endif
