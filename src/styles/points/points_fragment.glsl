@@ -102,12 +102,13 @@ void main (void) {
         }
     #endif
 
-    // If blending is off, use alpha discard as a lower-quality substitute
-    #ifdef TANGRAM_BLEND_OPAQUE
-        if (color.a < 1. - TANGRAM_EPSILON) {
+    // Use alpha test as a lower-quality substitute
+    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath
+    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black
+    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)
+        if (color.a < TANGRAM_ALPHA_TEST) {
             discard;
         }
-        color.a = 1.; // only allow full alpha in opaque blend mode
     #endif
 
     gl_FragColor = color;
