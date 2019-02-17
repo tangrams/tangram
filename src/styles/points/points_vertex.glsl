@@ -9,6 +9,8 @@ uniform float u_device_pixel_ratio;
 uniform float u_visible_time;
 uniform bool u_view_panning;
 uniform float u_view_pan_snap_timer;
+uniform float u_view_pitch;
+uniform float u_view_roll;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
@@ -122,6 +124,11 @@ void main() {
     float theta = a_shape.z / 4096.;
 
     #ifdef TANGRAM_CURVED_LABEL
+        // adjust label angle for view rotation
+        theta = mod(theta - u_view_roll, PI * 2.);
+        // if (theta > PI * .5 && theta < PI * 1.5) theta += PI; // flip to keep upright
+        theta += step(PI * .5, theta) * step(theta, PI * 1.5) * PI; // flip to keep upright
+
         //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
         if (a_offsets[0] != 0.){
             vec4 angles_scaled = (PI / 16384.) * a_angles;
@@ -132,15 +139,22 @@ void main() {
             float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);
             float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
 
+            // adjust label angle for view rotation
+            angle = mod(angle - u_view_roll, PI * 2.);
+            // if (angle > PI * .5 && angle < PI * 1.5) angle += PI; // flip to keep upright - doesn't work for curved labels
+
+            // curved label segment
             shape = rotate2D(shape, pre_angle); // rotate in place
             shape.x += offset_curve;            // offset for curved label segment
             shape = rotate2D(shape, angle);     // rotate relative to curved label anchor
             shape += rotate2D(offset, theta);   // offset if specified in the scene file
         }
         else {
+            // straight label
             shape = rotate2D(shape + offset, theta);
         }
     #else
+        // point label (always upright)
         shape = rotate2D(shape + offset, theta);
     #endif
 

@@ -334,6 +334,8 @@ export default class View {
         program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
         program.uniform('1f', 'u_view_pan_snap_timer', this.pan_snap_timer);
         program.uniform('1i', 'u_view_panning', this.panning);
+        program.uniform('1f', 'u_view_pitch', this.pitch);
+        program.uniform('1f', 'u_view_roll', this.roll);
 
         this.camera.setupProgram(program);
     }
