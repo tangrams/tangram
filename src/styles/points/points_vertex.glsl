@@ -75,6 +75,26 @@ vec2 rotate2D(vec2 _st, float _angle) {
     }
 #endif
 
+// for on a top-down label angle, gets adjusted angle for current view projection
+// requires globals: u_projection, u_resolution
+float angleForLabel (vec4 position, float theta) {
+    // make a line based on the label's xy plane rotation (label rotation with top-down view)
+    vec4 p1 = position;
+    vec4 p2 = position + vec4(rotate2D(vec2(1., 0.), theta), 0., 0.);
+    p1 = u_projection * p1; // use projection matrix to apply rotate/tilt for current view
+    p2 = u_projection * p2;
+    p1.xyz /= p1.w;         // divide by w to get screenspace position
+    p2.xyz /= p2.w;
+    p1.xy *= u_resolution;  // adjust for viewport aspect ratio
+    p2.xy *= u_resolution;
+
+    // get screenspace angle of projected line
+    vec2 pd = vec2(p2.x - p1.x, p2.y - p1.y);
+    theta = -atan(pd.y, pd.x);
+    theta = mod(theta, PI * 2.);
+    return theta;
+}
+
 void main() {
     // Initialize globals
     #pragma tangram: setup
@@ -125,8 +145,10 @@ void main() {
 
     #ifdef TANGRAM_CURVED_LABEL
         // adjust label angle for view rotation
-        theta = mod(theta - u_view_roll, PI * 2.);
+        // theta = mod(theta - u_view_roll, PI * 2.);
         // if (theta > PI * .5 && theta < PI * 1.5) theta += PI; // flip to keep upright
+
+        theta = angleForLabel(position, theta);
         theta += step(PI * .5, theta) * step(theta, PI * 1.5) * PI; // flip to keep upright
 
         //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
@@ -140,8 +162,9 @@ void main() {
             float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
 
             // adjust label angle for view rotation
-            angle = mod(angle - u_view_roll, PI * 2.);
+            // angle = mod(angle - u_view_roll, PI * 2.);
             // if (angle > PI * .5 && angle < PI * 1.5) angle += PI; // flip to keep upright - doesn't work for curved labels
+            angle = angleForLabel(position + vec4(offset_curve, 0., 0., 0.), angle);
 
             // curved label segment
             shape = rotate2D(shape, pre_angle); // rotate in place
