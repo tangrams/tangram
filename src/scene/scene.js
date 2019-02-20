@@ -565,6 +565,13 @@ export default class Scene {
                     this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
                     this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
                     this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
+
+                    // Main render pass
+                    count += this.renderStyle(style.name, program_key, blend_order);
+
+                    // Disable translucency-specific settings
+                    this.gl.disable(this.gl.STENCIL_TEST);
+                    this.gl.depthFunc(this.gl.LESS);
                 }
                 else if (blend !== 'opaque' && style.stencil_proxy_tiles === true) {
                     // Mask proxy tiles to with stencil buffer to avoid overlap/flicker from compounding alpha
@@ -603,14 +610,8 @@ export default class Scene {
                     }
                 }
                 else {
-                    // Regular opaque render pass (or any blend mode when blending disabled, e.g. selection buffer pass)
+                    // Regular render pass (no special blend handling, or selection buffer pass)
                     count += this.renderStyle(style.name, program_key, blend_order);
-                }
-
-                if (blend === 'translucent') {
-                    // Disable translucency-specific settings
-                    this.gl.disable(this.gl.STENCIL_TEST);
-                    this.gl.depthFunc(this.gl.LESS);
                 }
 
                 last_blend = style.blend;
