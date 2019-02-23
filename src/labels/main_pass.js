@@ -30,59 +30,56 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
             meshes.forEach(mesh => {
                 if (mesh.labels) {
                     for (let label_id in mesh.labels) {
-                        if (!labels[label_id]) {
-                            const params = mesh.labels[label_id].container.label;
-                            const linked = mesh.labels[label_id].container.linked;
-                            const ranges = mesh.labels[label_id].ranges;
-                            const debug = Object.assign({}, mesh.labels[label_id].debug, {tile, params, label_id});
+                        const params = mesh.labels[label_id].container.label;
+                        const linked = mesh.labels[label_id].container.linked;
+                        const ranges = mesh.labels[label_id].ranges;
+                        const debug = Object.assign({}, mesh.labels[label_id].debug, {tile, params, label_id});
 
-                            let label = labels[label_id] = {};
-                            label.discard = discard.bind(label);
-                            label.build_id = tile.build_id; // original order in which tiles were built
+                        let label = labels[label_id] = {};
+                        label.discard = discard.bind(label);
+                        label.build_id = tile.build_id; // original order in which tiles were built
 
-                            Object.assign(label, params);
-                            label.layout = Object.assign({}, params.layout); // TODO: ideally remove need to copy props here
-                            label.layout.repeat_scale = 0.75; // looser second pass on repeat groups, to weed out repeats near tile edges
-                            label.layout.repeat_distance = label.layout.repeat_distance || 0;
-                            label.layout.repeat_distance /= size_scale; // TODO: where should this be scaled?
+                        Object.assign(label, params);
+                        label.layout = Object.assign({}, params.layout); // TODO: ideally remove need to copy props here
+                        label.layout.repeat_scale = 0.75; // looser second pass on repeat groups, to weed out repeats near tile edges
+                        label.layout.repeat_distance = label.layout.repeat_distance || 0;
+                        label.layout.repeat_distance /= size_scale; // TODO: where should this be scaled?
 
-                            label.position = [ // don't overwrite referenced values
-                                label.position[0] / units_per_meter + tile.min.x,
-                                label.position[1] / units_per_meter + tile.min.y
-                            ];
-                            label.unit_scale = meters_per_pixel;
+                        label.position = [ // don't overwrite referenced values
+                            label.position[0] / units_per_meter + tile.min.x,
+                            label.position[1] / units_per_meter + tile.min.y
+                        ];
+                        label.unit_scale = meters_per_pixel;
 
-                            // if (params.obb) {
-                            if (label.type === 'point') { // TODO: move to integer constants to avoid excess string copies
-                                LabelPoint.prototype.updateBBoxes.call(label);
-                            }
-                            else if (label.type === 'straight') {
-                                LabelLineStraight.prototype.updateBBoxes.call(label, label.position, label.size, label.angle, label.angle, label.offset);
-                            }
-                            else if (params.obbs) {
-                                // NB: this is a very rough approximation of curved label collision at intermediate zooms,
-                                // becuase the position/scale of each collision box isn't correctly updated; however,
-                                // it's good enough to provide some additional label coverage, with less overhead
-                                const obbs = params.obbs.map(o => {
-                                    let {x, y, a, w, h} = o;
-                                    x = x / units_per_meter + tile.min.x;
-                                    y = y / units_per_meter + tile.min.y;
-                                    w /= size_scale;
-                                    h /= size_scale;
-                                    return new OBB(x, y, a, w, h);
-                                });
-                                label.obbs = obbs;
-                                label.aabbs = obbs.map(o => o.getExtent());
-                            }
-
-                            containers[label_id] = {
-                                label,
-                                linked,
-                                ranges,
-                                mesh,
-                                debug
-                            };
+                        if (label.type === 'point') { // TODO: move to integer constants to avoid excess string copies
+                            LabelPoint.prototype.updateBBoxes.call(label);
                         }
+                        else if (label.type === 'straight') {
+                            LabelLineStraight.prototype.updateBBoxes.call(label, label.position, label.size, label.angle, label.angle, label.offset);
+                        }
+                        else if (params.obbs) {
+                            // NB: this is a very rough approximation of curved label collision at intermediate zooms,
+                            // becuase the position/scale of each collision box isn't correctly updated; however,
+                            // it's good enough to provide some additional label coverage, with less overhead
+                            const obbs = params.obbs.map(o => {
+                                let {x, y, a, w, h} = o;
+                                x = x / units_per_meter + tile.min.x;
+                                y = y / units_per_meter + tile.min.y;
+                                w /= size_scale;
+                                h /= size_scale;
+                                return new OBB(x, y, a, w, h);
+                            });
+                            label.obbs = obbs;
+                            label.aabbs = obbs.map(o => o.getExtent());
+                        }
+
+                        containers[label_id] = {
+                            label,
+                            linked,
+                            ranges,
+                            mesh,
+                            debug
+                        };
                     }
                 }
             });
