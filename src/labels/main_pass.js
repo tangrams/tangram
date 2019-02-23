@@ -30,6 +30,14 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
             meshes.forEach(mesh => {
                 if (mesh.labels) {
                     for (let label_id in mesh.labels) {
+                        // For proxy tiles, only allow visible labels to be *hidden* by further collisions,
+                        // don't allow new ones to appear. Promotes label stability and prevents thrash
+                        // from different labels (often not thematically relevant given the different zoom level of
+                        // the proxy tile content, e.g. random POIs popping in/out when zooming out to city-wide view).
+                        if (tile.isProxy() && !prev_visible[label_id]) {
+                            continue;
+                        }
+
                         const params = mesh.labels[label_id].container.label;
                         const linked = mesh.labels[label_id].container.linked;
                         const ranges = mesh.labels[label_id].ranges;
