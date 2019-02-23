@@ -670,6 +670,14 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
     gl.attachShader(program, vertex_shader);
     gl.attachShader(program, fragment_shader);
 
+    // Require position to be at attribute location 0
+    // Attribute 0 should never be disabled (per GL best practices). All of our shader programs have an `a_position`
+    // attribute, and it's customary for the vertex position to be the first attribute, so we enforce that here.
+    // This can avoid unexpected/undefined interaction between static and dynamic attributes in Safari, and
+    // possible warnings/errors in other browsers.
+    // See https://stackoverflow.com/questions/20305231/webgl-warning-attribute-0-is-disabled-this-has-significant-performance-penalt/20923946
+    gl.bindAttribLocation(program, 0, 'a_position');
+
     gl.linkProgram(program);
 
     // TODO: reference count and delete shader objects when no programs reference them
