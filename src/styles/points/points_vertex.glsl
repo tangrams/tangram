@@ -64,6 +64,7 @@ vec2 rotate2D(vec2 _st, float _angle) {
 #ifdef TANGRAM_CURVED_LABEL
     // Assumes stops are [0, 0.33, 0.66, 0.99];
     float mix4linear(float a, float b, float c, float d, float x) {
+        x = clamp(x, 0., 1.);
         return mix(mix(a, b, 3. * x),
                    mix(b,
                        mix(c, d, 3. * (max(x, .66) - .66)),
@@ -150,14 +151,6 @@ void main() {
         if (u_tile_fade_in) {
             v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);
         }
-    #endif
-
-    // Fade out when tile is zooming out, e.g. acting as proxy tiles
-    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels
-    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.
-    // Value passed to fragment shader in the v_alpha_factor varying
-    #ifdef TANGRAM_FADE_ON_ZOOM_OUT
-        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);
     #endif
 
     // World coordinates for 3d procedural textures
