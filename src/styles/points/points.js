@@ -86,11 +86,7 @@ Object.assign(Points, {
             this.defines.TANGRAM_LAYER_ORDER = true;
         }
 
-        // Fade out when tile is zooming out, e.g. acting as proxy tiles
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
-
-        // Fade in (depending on tile proxy status)
+        // Fade in labels
         if (debugSettings.suppress_label_fade_in === true) {
             this.fade_in_time = 0;
             this.defines.TANGRAM_FADE_IN_RATE = null;
