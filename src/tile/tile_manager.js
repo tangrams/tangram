@@ -177,8 +177,7 @@ export default class TileManager {
                         Task.finish(task, results);
                         this.updateTileStates().then(() => this.scene.immediateRedraw());
                     });
-                },
-                user_moving_view: false // don't run task when user is moving view
+                }
             };
             Task.add(this.collision.task);
         }
