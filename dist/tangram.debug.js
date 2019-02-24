@@ -519,7 +519,7 @@ var _iterDefine = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORC
       // Set @@toStringTag to native iterators
       _setToStringTag(IteratorPrototype, TAG, true);
       // fix for some old engines
-      if (typeof IteratorPrototype[ITERATOR] != 'function') _hide(IteratorPrototype, ITERATOR, returnThis);
+      if (!_library && typeof IteratorPrototype[ITERATOR] != 'function') _hide(IteratorPrototype, ITERATOR, returnThis);
     }
   }
   // fix Array#{values, @@iterator}.name in V8 / FF
@@ -528,7 +528,7 @@ var _iterDefine = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORC
     $default = function values() { return $native.call(this); };
   }
   // Define iterator
-  if (BUGGY || VALUES_BUG || !proto[ITERATOR]) {
+  if ((!_library || FORCED) && (BUGGY || VALUES_BUG || !proto[ITERATOR])) {
     _hide(proto, ITERATOR, $default);
   }
   // Plug for library
@@ -1068,6 +1068,100 @@ _export(_export.P + _export.F * (_fails(function () {
   }
 });
 
+var _meta = createCommonjsModule(function (module) {
+var META = _uid('meta');
+
+
+var setDesc = _objectDp.f;
+var id = 0;
+var isExtensible = Object.isExtensible || function () {
+  return true;
+};
+var FREEZE = !_fails(function () {
+  return isExtensible(Object.preventExtensions({}));
+});
+var setMeta = function (it) {
+  setDesc(it, META, { value: {
+    i: 'O' + ++id, // object ID
+    w: {}          // weak collections IDs
+  } });
+};
+var fastKey = function (it, create) {
+  // return primitive with prefix
+  if (!_isObject(it)) return typeof it == 'symbol' ? it : (typeof it == 'string' ? 'S' : 'P') + it;
+  if (!_has(it, META)) {
+    // can't set metadata to uncaught frozen object
+    if (!isExtensible(it)) return 'F';
+    // not necessary to add metadata
+    if (!create) return 'E';
+    // add missing metadata
+    setMeta(it);
+  // return object ID
+  } return it[META].i;
+};
+var getWeak = function (it, create) {
+  if (!_has(it, META)) {
+    // can't set metadata to uncaught frozen object
+    if (!isExtensible(it)) return true;
+    // not necessary to add metadata
+    if (!create) return false;
+    // add missing metadata
+    setMeta(it);
+  // return hash weak collections IDs
+  } return it[META].w;
+};
+// add metadata on freeze-family methods calling
+var onFreeze = function (it) {
+  if (FREEZE && meta.NEED && isExtensible(it) && !_has(it, META)) setMeta(it);
+  return it;
+};
+var meta = module.exports = {
+  KEY: META,
+  NEED: false,
+  fastKey: fastKey,
+  getWeak: getWeak,
+  onFreeze: onFreeze
+};
+});
+var _meta_1 = _meta.KEY;
+var _meta_2 = _meta.NEED;
+var _meta_3 = _meta.fastKey;
+var _meta_4 = _meta.getWeak;
+var _meta_5 = _meta.onFreeze;
+
+// 7.2.2 IsArray(argument)
+
+var _isArray = Array.isArray || function isArray(arg) {
+  return _cof(arg) == 'Array';
+};
+
+// 19.1.2.7 / 15.2.3.4 Object.getOwnPropertyNames(O)
+
+var hiddenKeys = _enumBugKeys.concat('length', 'prototype');
+
+var f$3 = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
+  return _objectKeysInternal(O, hiddenKeys);
+};
+
+var _objectGopn = {
+	f: f$3
+};
+
+var gOPD = Object.getOwnPropertyDescriptor;
+
+var f$4 = _descriptors ? gOPD : function getOwnPropertyDescriptor(O, P) {
+  O = _toIobject(O);
+  P = _toPrimitive(P, true);
+  if (_ie8DomDefine) try {
+    return gOPD(O, P);
+  } catch (e) { /* empty */ }
+  if (_has(O, P)) return _propertyDesc(!_objectPie.f.call(O, P), O[P]);
+};
+
+var _objectGopd = {
+	f: f$4
+};
+
 var $at = _stringAt(true);
 
 // 21.1.3.27 String.prototype[@@iterator]()
@@ -1333,12 +1427,12 @@ function PromiseCapability(C) {
   this.reject = _aFunction(reject);
 }
 
-var f$3 = function (C) {
+var f$5 = function (C) {
   return new PromiseCapability(C);
 };
 
 var _newPromiseCapability = {
-	f: f$3
+	f: f$5
 };
 
 var _perform = function (exec) {
@@ -1818,7 +1912,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.17.5";
+var version = "0.18.0";
 
 var version$1 = 'v' + version;
 
@@ -3221,21 +3315,6 @@ function mergeDebugSettings(settings) {
   Object.assign(debugSettings, settings);
 }
 
-var gOPD = Object.getOwnPropertyDescriptor;
-
-var f$4 = _descriptors ? gOPD : function getOwnPropertyDescriptor(O, P) {
-  O = _toIobject(O);
-  P = _toPrimitive(P, true);
-  if (_ie8DomDefine) try {
-    return gOPD(O, P);
-  } catch (e) { /* empty */ }
-  if (_has(O, P)) return _propertyDesc(!_objectPie.f.call(O, P), O[P]);
-};
-
-var _objectGopd = {
-	f: f$4
-};
-
 // Works with __proto__ only. Old v8 can't work with null proto objects.
 /* eslint-disable no-proto */
 
@@ -3269,18 +3348,6 @@ var _inheritIfRequired = function (that, target, C) {
   if (S !== C && typeof S == 'function' && (P = S.prototype) !== C.prototype && _isObject(P) && setPrototypeOf) {
     setPrototypeOf(that, P);
   } return that;
-};
-
-// 19.1.2.7 / 15.2.3.4 Object.getOwnPropertyNames(O)
-
-var hiddenKeys = _enumBugKeys.concat('length', 'prototype');
-
-var f$5 = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
-  return _objectKeysInternal(O, hiddenKeys);
-};
-
-var _objectGopn = {
-	f: f$5
 };
 
 var dP$2 = _objectDp.f;
@@ -4039,12 +4106,6 @@ _hide($DataView[PROTOTYPE], _typed.VIEW, true);
 exports[ARRAY_BUFFER] = $ArrayBuffer;
 exports[DATA_VIEW] = $DataView;
 });
-
-// 7.2.2 IsArray(argument)
-
-var _isArray = Array.isArray || function isArray(arg) {
-  return _cof(arg) == 'Array';
-};
 
 var SPECIES$3 = _wks('species');
 
@@ -6286,7 +6347,14 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
   }
 
   gl.attachShader(program, vertex_shader);
-  gl.attachShader(program, fragment_shader);
+  gl.attachShader(program, fragment_shader); // Require position to be at attribute location 0
+  // Attribute 0 should never be disabled (per GL best practices). All of our shader programs have an `a_position`
+  // attribute, and it's customary for the vertex position to be the first attribute, so we enforce that here.
+  // This can avoid unexpected/undefined interaction between static and dynamic attributes in Safari, and
+  // possible warnings/errors in other browsers.
+  // See https://stackoverflow.com/questions/20305231/webgl-warning-attribute-0-is-disabled-this-has-significant-performance-penalt/20923946
+
+  gl.bindAttribLocation(program, 0, 'a_position');
   gl.linkProgram(program); // TODO: reference count and delete shader objects when no programs reference them
 
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
@@ -6351,11 +6419,16 @@ var VertexArrayObject = {
       log('warn', 'Vertex Array Object extension force disabled');
     }
   },
+  getExtension: function getExtension$$1(gl, ext_name) {
+    if (this.disabled !== true) {
+      return getExtension(gl, ext_name);
+    }
+  },
   create: function create(gl, setup, teardown) {
     var vao = {};
     vao.setup = setup;
     vao.teardown = teardown;
-    var ext = getExtension(gl, 'OES_vertex_array_object');
+    var ext = this.getExtension(gl, 'OES_vertex_array_object');
 
     if (ext != null) {
       vao._vao = ext.createVertexArrayOES();
@@ -6384,7 +6457,7 @@ var VertexArrayObject = {
     }
   },
   bind: function bind(gl, vao) {
-    var ext = getExtension(gl, 'OES_vertex_array_object');
+    var ext = this.getExtension(gl, 'OES_vertex_array_object');
 
     if (vao != null) {
       if (ext != null && vao._vao != null) {
@@ -6406,7 +6479,7 @@ var VertexArrayObject = {
     }
   },
   destroy: function destroy(gl, vao) {
-    var ext = getExtension(gl, 'OES_vertex_array_object');
+    var ext = this.getExtension(gl, 'OES_vertex_array_object');
 
     if (ext != null && vao != null && vao._vao != null) {
       ext.deleteVertexArrayOES(vao._vao);
@@ -6425,6 +6498,20 @@ _export(_export.S, 'Object', {
     return $values(it);
   }
 });
+
+// 22.1.3.9 Array.prototype.findIndex(predicate, thisArg = undefined)
+
+var $find = _arrayMethods(6);
+var KEY = 'findIndex';
+var forced = true;
+// Shouldn't skip holes
+if (KEY in []) Array(1)[KEY](function () { forced = false; });
+_export(_export.P + _export.F * forced, 'Array', {
+  findIndex: function findIndex(callbackfn /* , that = undefined */) {
+    return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+  }
+});
+_addToUnscopables(KEY);
 
 // Deep/recursive merge of one or more source objects into a destination object
 function mergeObjects(dest) {
@@ -6458,66 +6545,103 @@ function mergeObjects(dest) {
   return dest;
 }
 
-var _meta = createCommonjsModule(function (module) {
-var META = _uid('meta');
+var _stringWs = '\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u180E\u2000\u2001\u2002\u2003' +
+  '\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
+
+var space = '[' + _stringWs + ']';
+var non = '\u200b\u0085';
+var ltrim = RegExp('^' + space + space + '*');
+var rtrim = RegExp(space + space + '*$');
+
+var exporter = function (KEY, exec, ALIAS) {
+  var exp = {};
+  var FORCE = _fails(function () {
+    return !!_stringWs[KEY]() || non[KEY]() != non;
+  });
+  var fn = exp[KEY] = FORCE ? exec(trim) : _stringWs[KEY];
+  if (ALIAS) exp[ALIAS] = fn;
+  _export(_export.P + _export.F * FORCE, 'String', exp);
+};
+
+// 1 -> String#trimLeft
+// 2 -> String#trimRight
+// 3 -> String#trim
+var trim = exporter.trim = function (string, TYPE) {
+  string = String(_defined(string));
+  if (TYPE & 1) string = string.replace(ltrim, '');
+  if (TYPE & 2) string = string.replace(rtrim, '');
+  return string;
+};
+
+var _stringTrim = exporter;
+
+var gOPN$1 = _objectGopn.f;
+var gOPD$1 = _objectGopd.f;
+var dP$3 = _objectDp.f;
+var $trim = _stringTrim.trim;
+var NUMBER = 'Number';
+var $Number = _global[NUMBER];
+var Base$1 = $Number;
+var proto$2 = $Number.prototype;
+// Opera ~12 has broken Object#toString
+var BROKEN_COF = _cof(_objectCreate(proto$2)) == NUMBER;
+var TRIM = 'trim' in String.prototype;
+
+// 7.1.3 ToNumber(argument)
+var toNumber = function (argument) {
+  var it = _toPrimitive(argument, false);
+  if (typeof it == 'string' && it.length > 2) {
+    it = TRIM ? it.trim() : $trim(it, 3);
+    var first = it.charCodeAt(0);
+    var third, radix, maxCode;
+    if (first === 43 || first === 45) {
+      third = it.charCodeAt(2);
+      if (third === 88 || third === 120) return NaN; // Number('+0x1') should be NaN, old V8 fix
+    } else if (first === 48) {
+      switch (it.charCodeAt(1)) {
+        case 66: case 98: radix = 2; maxCode = 49; break; // fast equal /^0b[01]+$/i
+        case 79: case 111: radix = 8; maxCode = 55; break; // fast equal /^0o[0-7]+$/i
+        default: return +it;
+      }
+      for (var digits = it.slice(2), i = 0, l = digits.length, code; i < l; i++) {
+        code = digits.charCodeAt(i);
+        // parseInt parses a string to a first unavailable symbol
+        // but ToNumber should return NaN if a string contains unavailable symbols
+        if (code < 48 || code > maxCode) return NaN;
+      } return parseInt(digits, radix);
+    }
+  } return +it;
+};
+
+if (!$Number(' 0o1') || !$Number('0b1') || $Number('+0x1')) {
+  $Number = function Number(value) {
+    var it = arguments.length < 1 ? 0 : value;
+    var that = this;
+    return that instanceof $Number
+      // check on 1..constructor(foo) case
+      && (BROKEN_COF ? _fails(function () { proto$2.valueOf.call(that); }) : _cof(that) != NUMBER)
+        ? _inheritIfRequired(new Base$1(toNumber(it)), that, $Number) : toNumber(it);
+  };
+  for (var keys$1 = _descriptors ? gOPN$1(Base$1) : (
+    // ES3:
+    'MAX_VALUE,MIN_VALUE,NaN,NEGATIVE_INFINITY,POSITIVE_INFINITY,' +
+    // ES6 (in case, if modules with ES6 Number statics required before):
+    'EPSILON,isFinite,isInteger,isNaN,isSafeInteger,MAX_SAFE_INTEGER,' +
+    'MIN_SAFE_INTEGER,parseFloat,parseInt,isInteger'
+  ).split(','), j = 0, key$1; keys$1.length > j; j++) {
+    if (_has(Base$1, key$1 = keys$1[j]) && !_has($Number, key$1)) {
+      dP$3($Number, key$1, gOPD$1(Base$1, key$1));
+    }
+  }
+  $Number.prototype = proto$2;
+  proto$2.constructor = $Number;
+  _redefine(_global, NUMBER, $Number);
+}
+
+// 20.1.2.10 Number.MIN_SAFE_INTEGER
 
 
-var setDesc = _objectDp.f;
-var id = 0;
-var isExtensible = Object.isExtensible || function () {
-  return true;
-};
-var FREEZE = !_fails(function () {
-  return isExtensible(Object.preventExtensions({}));
-});
-var setMeta = function (it) {
-  setDesc(it, META, { value: {
-    i: 'O' + ++id, // object ID
-    w: {}          // weak collections IDs
-  } });
-};
-var fastKey = function (it, create) {
-  // return primitive with prefix
-  if (!_isObject(it)) return typeof it == 'symbol' ? it : (typeof it == 'string' ? 'S' : 'P') + it;
-  if (!_has(it, META)) {
-    // can't set metadata to uncaught frozen object
-    if (!isExtensible(it)) return 'F';
-    // not necessary to add metadata
-    if (!create) return 'E';
-    // add missing metadata
-    setMeta(it);
-  // return object ID
-  } return it[META].i;
-};
-var getWeak = function (it, create) {
-  if (!_has(it, META)) {
-    // can't set metadata to uncaught frozen object
-    if (!isExtensible(it)) return true;
-    // not necessary to add metadata
-    if (!create) return false;
-    // add missing metadata
-    setMeta(it);
-  // return hash weak collections IDs
-  } return it[META].w;
-};
-// add metadata on freeze-family methods calling
-var onFreeze = function (it) {
-  if (FREEZE && meta.NEED && isExtensible(it) && !_has(it, META)) setMeta(it);
-  return it;
-};
-var meta = module.exports = {
-  KEY: META,
-  NEED: false,
-  fastKey: fastKey,
-  getWeak: getWeak,
-  onFreeze: onFreeze
-};
-});
-var _meta_1 = _meta.KEY;
-var _meta_2 = _meta.NEED;
-var _meta_3 = _meta.fastKey;
-var _meta_4 = _meta.getWeak;
-var _meta_5 = _meta.onFreeze;
+_export(_export.S, 'Number', { MIN_SAFE_INTEGER: -0x1fffffffffffff });
 
 // 19.1.2.5 Object.freeze(O)
 
@@ -8779,9 +8903,9 @@ function () {
     this.extra_data = config.extra_data; // Optional additional scripts made available to the transform function
     // NOTE: these are loaded alongside the library when the workers are instantiated
 
-    this.scripts = config.scripts; // overzoom will apply for zooms higher than this
+    this.scripts = config.scripts; // Configure zoom ranges at which new data will be loaded
 
-    this.max_zoom = config.max_zoom != null ? config.max_zoom : Geo$1.default_source_max_zoom; // set a custom extra overzoom adjustment factor to load consistently lower zoom levels
+    this.setZooms(config); // set a custom extra overzoom adjustment factor to load consistently lower zoom levels
     // than the current map zoom level – eg a zoom_offset of 1 would load z3 data at z4
 
     this.zoom_offset = config.zoom_offset != null ? config.zoom_offset : 0;
@@ -8797,7 +8921,7 @@ function () {
 
     this.setTileSize(config.tile_size); // no tiles will be requested or displayed outside of these min/max values
 
-    this.min_display_zoom = config.min_display_zoom != null ? config.min_display_zoom : 0;
+    this.min_display_zoom = Math.max(config.min_display_zoom || 0, this.zooms[0]);
     this.max_display_zoom = config.max_display_zoom != null ? config.max_display_zoom : null;
   } // Register a new data source type name, providing a function that returns the class name
   // to instantiate based on the source definition in the scene
@@ -8830,7 +8954,7 @@ function () {
     } // subset of parameters that affect tile layout
 
 
-    var rebuild_params = ['max_zoom', 'min_display_zoom', 'max_display_zoom', 'bounds', 'tile_size', 'zoom_offset'];
+    var rebuild_params = ['max_zoom', 'zooms', 'min_display_zoom', 'max_display_zoom', 'bounds', 'tile_size', 'zoom_offset'];
     var cur = sliceObject(source.config, rebuild_params);
     var prev = sliceObject(prev_source.config, rebuild_params);
     return JSON.stringify(cur) !== JSON.stringify(prev);
@@ -8937,6 +9061,27 @@ function () {
     dest.pad_scale = source.pad_scale;
     dest.default_winding = source.default_winding;
     return dest;
+  } // Configure zoom ranges at which new data will be loaded
+  // e.g. can be used to skip fetching data for some zooms, reusing data from next lowest available zoom instead
+  ;
+
+  _proto.setZooms = function setZooms(_ref2) {
+    var max_zoom = _ref2.max_zoom,
+        zooms = _ref2.zooms;
+    // overzoom will apply for zooms higher than this
+    this.max_zoom = max_zoom != null ? max_zoom : Geo$1.default_source_max_zoom;
+
+    if (Array.isArray(zooms)) {
+      this.zooms = zooms; // TODO: support range parsing, e.g. [0-4, 6-7, 12]?
+
+      this.max_zoom = this.zooms[this.zooms.length - 1]; // overrides `max_zoom` when both are present
+    } else {
+      this.zooms = [];
+
+      for (var i = 0; i <= this.max_zoom; i++) {
+        this.zooms[i] = i;
+      }
+    }
   } // Set the internal tile size in pixels, e.g. '256px' (default), '512px', etc.
   // Must be a power of 2, and greater than or equal to 256
   ;
@@ -8956,12 +9101,7 @@ function () {
     // 1024px tiles are 2 levels bigger
 
 
-    this.zoom_bias = Math.log2(this.tile_size) - 8 + this.zoom_offset; // the max/min coordinate zoom level at which tiles will be loaded from server
-    // (but tiles can be styled at other zooms)
-    // zoom_bias adjusts for tile sizes > than 256px, and manual zoom_offset
-
-    this.max_coord_zoom = this.max_zoom + this.zoom_bias;
-    this.min_coord_zoom = this.zoom_bias;
+    this.zoom_bias = Math.log2(this.tile_size) - 8 + this.zoom_offset;
   } // Infer winding for data source from first ring of provided geometry
   ;
 
@@ -9025,9 +9165,9 @@ function (_DataSource) {
         dupes = _URLs$addParamsToURL[1];
 
     _this3.url = url;
-    dupes.forEach(function (_ref2) {
-      var param = _ref2[0],
-          value = _ref2[1];
+    dupes.forEach(function (_ref3) {
+      var param = _ref3[0],
+          value = _ref3[1];
       log({
         level: 'warn',
         once: true
@@ -9229,7 +9369,8 @@ function (_NetworkSource) {
     } // tile URL template replacement
 
 
-    var url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{r}', this.getDensityModifier()); // modify URL by display density (e.g. @2x)
+    var url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
+    .replace('{q}', this.toQuadKey(coords)); // quadkey for tile coordinates
 
     if (this.url_subdomains != null) {
       url = url.replace('{s}', this.url_subdomains[this.next_url_subdomain]);
@@ -9258,17 +9399,32 @@ function (_NetworkSource) {
     }
 
     return ''; // for 1x (or less) displays, no URL modifier is used (following @2x URL convention)
+  };
+
+  _proto3.toQuadKey = function toQuadKey(_ref4) {
+    var x = _ref4.x,
+        y = _ref4.y,
+        z = _ref4.z;
+    var quadkey = '';
+
+    for (var i = z; i > 0; i--) {
+      var b = 0;
+      var mask = 1 << i - 1;
+      if ((x & mask) !== 0) b++;
+      if ((y & mask) !== 0) b += 2;
+      quadkey += b.toString();
+    }
+
+    return quadkey;
   } // Checks for the x/y/z tile pattern in URL template
   ;
 
   NetworkTileSource.urlHasTilePattern = function urlHasTilePattern(url) {
-    return url && url.search('{x}') > -1 && url.search('{y}') > -1 && url.search('{z}') > -1;
+    return url && (url.search('{x}') > -1 && url.search('{y}') > -1 && url.search('{z}') > -1 || url.search('{q}') > -1);
   };
 
   return NetworkTileSource;
 }(NetworkSource);
-
-var COORD_CHILDREN = {}; // only allocate children coords once per coord
 
 var TileID = {
   coord: function coord(c) {
@@ -9297,10 +9453,10 @@ var TileID = {
   },
   normalizedCoord: function normalizedCoord(coords, source) {
     if (source.zoom_bias) {
-      coords = this.coordAtZoom(coords, coords.z - source.zoom_bias);
+      coords = this.coordAtZoom(coords, Math.max(coords.z - source.zoom_bias, source.zooms[0]));
     }
 
-    return this.coordWithMaxZoom(coords, source.max_zoom);
+    return this.coordForTileZooms(coords, source.zooms);
   },
   coordAtZoom: function coordAtZoom(_ref2, zoom) {
     var x = _ref2.x,
@@ -9321,17 +9477,18 @@ var TileID = {
       z: z
     });
   },
-  coordWithMaxZoom: function coordWithMaxZoom(_ref3, max_zoom) {
+  coordForTileZooms: function coordForTileZooms(_ref3, zooms) {
     var x = _ref3.x,
         y = _ref3.y,
         z = _ref3.z;
+    var nz = this.findZoomInRange(z, zooms);
 
-    if (max_zoom != null && z > max_zoom) {
+    if (nz !== z) {
       return this.coordAtZoom({
         x: x,
         y: y,
         z: z
-      }, max_zoom);
+      }, nz);
     }
 
     return this.coord({
@@ -9340,36 +9497,10 @@ var TileID = {
       z: z
     });
   },
-  childrenForCoord: function childrenForCoord(_ref4) {
-    var x = _ref4.x,
-        y = _ref4.y,
-        z = _ref4.z,
-        key = _ref4.key;
-
-    if (!COORD_CHILDREN[key]) {
-      z++;
-      x *= 2;
-      y *= 2;
-      COORD_CHILDREN[key] = [this.coord({
-        x: x,
-        y: y,
-        z: z
-      }), this.coord({
-        x: x + 1,
-        y: y,
-        z: z
-      }), this.coord({
-        x: x,
-        y: y + 1,
-        z: z
-      }), this.coord({
-        x: x + 1,
-        y: y + 1,
-        z: z
-      })];
-    }
-
-    return COORD_CHILDREN[key];
+  findZoomInRange: function findZoomInRange(z, zooms) {
+    return zooms.filter(function (s) {
+      return z >= s;
+    }).reverse()[0] || zooms[0];
   },
   isDescendant: function isDescendant(parent, descendant) {
     if (descendant.z > parent.z) {
@@ -9383,60 +9514,83 @@ var TileID = {
     return false;
   },
   // Return identifying info for tile's parent tile
-  parent: function parent(_ref5) {
-    var coords = _ref5.coords,
-        source = _ref5.source,
-        style_z = _ref5.style_z;
+  parent: function parent(_ref4) {
+    var coords = _ref4.coords,
+        source = _ref4.source,
+        style_z = _ref4.style_z;
 
-    if (style_z > source.max_coord_zoom || style_z <= source.min_coord_zoom) {
-      if (style_z > 0) {
-        // no more tiles above style zoom 0
-        return {
-          key: this.key(coords, source, style_z - 1),
-          coords: coords,
-          style_z: style_z - 1,
-          source: source
-        };
+    if (style_z > 0) {
+      // no more tiles above style zoom 0
+      style_z--;
+      var sz = Math.max(style_z - source.zoom_bias, source.zooms[0]); // z can't be lower than tile source
+
+      var c = this.coordForTileZooms(this.coordAtZoom(coords, sz), source.zooms);
+
+      if (c.z > style_z) {
+        return null;
       }
 
-      return;
-    } else if (style_z > 0) {
-      // no more tiles above style zoom 0
-      var c = this.coordAtZoom(coords, coords.z - 1);
       return {
-        key: this.key(c, source, style_z - 1),
+        key: this.key(c, source, style_z),
         coords: c,
-        style_z: style_z - 1,
+        style_z: style_z,
         source: source
       };
     }
   },
   // Return identifying info for tile's child tiles
-  children: function children(_ref6) {
-    var _this = this;
+  children: function children(_ref5, CACHE) {
+    var coords = _ref5.coords,
+        source = _ref5.source,
+        style_z = _ref5.style_z;
 
-    var coords = _ref6.coords,
-        source = _ref6.source,
-        style_z = _ref6.style_z;
-
-    if (style_z >= source.max_coord_zoom || style_z < source.min_coord_zoom) {
-      return [{
-        key: this.key(coords, source, style_z + 1),
-        coords: coords,
-        style_z: style_z + 1,
-        source: source
-      }];
+    if (CACHE === void 0) {
+      CACHE = {};
     }
 
-    var children = this.childrenForCoord(coords);
-    return children.map(function (c) {
-      return {
-        key: _this.key(c, source, style_z + 1),
+    style_z++;
+    var c = this.coordForTileZooms(this.coordAtZoom(coords, style_z - source.zoom_bias), source.zooms);
+
+    if (c.z === coords.z) {
+      // same coord zoom for next level down
+      return [{
+        key: this.key(c, source, style_z),
         coords: c,
-        style_z: style_z + 1,
+        style_z: style_z,
         source: source
-      };
-    });
+      }];
+    } else {
+      // coord zoom advanced down
+      var key = this.key(c, source, style_z);
+      CACHE[source.id] = CACHE[source.id] || {};
+
+      if (CACHE[source.id][key] == null) {
+        var span = Math.pow(2, c.z - coords.z);
+        var x = coords.x * span;
+        var y = coords.y * span;
+        var children = [];
+
+        for (var nx = x; nx < x + span; nx++) {
+          for (var ny = y; ny < y + span; ny++) {
+            var nc = this.coord({
+              x: nx,
+              y: ny,
+              z: c.z
+            });
+            children.push({
+              key: this.key(nc, source, style_z),
+              coords: nc,
+              style_z: style_z,
+              source: source
+            });
+          }
+        }
+
+        CACHE[source.id][key] = children;
+      }
+
+      return CACHE[source.id][key];
+    }
   }
 };
 
@@ -9532,7 +9686,7 @@ function (_NetworkTileSource) {
         // do extra zoom adjustment and apply this raster source's max zoom
         coords = TileID.normalizedCoord(tile.coords, {
           zoom_bias: zdiff,
-          max_zoom: this.max_zoom
+          zooms: this.zooms
         });
       } else {
         // raster source supports higher detail, but was downsampled to match (the downsampling already
@@ -9545,7 +9699,7 @@ function (_NetworkTileSource) {
         } // no extra zoom adjustment needed, but still need to apply this raster source's max zoom
 
 
-        coords = TileID.coordWithMaxZoom(coords, this.max_zoom);
+        coords = TileID.coordForTileZooms(coords, this.zooms);
       }
     }
 
@@ -9819,19 +9973,27 @@ var Style = {
 
     this.vertex_template = []; // shared single-vertex template, filled out by each style
 
-    this.tile_data = {}; // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
+    this.tile_data = {};
+    this.stencil_proxy_tiles = true; // applied to proxy tiles w/non-opaque blend mode to avoid compounding alpha
+    // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
 
     this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000; // Blending
+    // `opaque` styles are drawn first/under other styles, without alpha blending
 
-    this.blend = this.blend || 'opaque'; // default: opaque styles are drawn first, without blending
+    this.blend = this.blend || 'opaque'; // default to opaque
 
-    this.defines["TANGRAM_BLEND_" + this.blend.toUpperCase()] = true;
-
-    if (this.blend_order == null) {
-      // controls order of rendering for styles w/non-opaque blending
-      this.blend_order = -1; // defaults to first
+    if (this.blend !== 'opaque') {
+      // non-opaque styles can customize their blend order, which will determine which features
+      // are drawn first/under each other
+      if (this.blend_order == null) {
+        this.blend_order = this.default_blend_orders[this.blend];
+      }
+    } else {
+      // `opaque` ignores blend order, always render first/under
+      this.blend_order = this.default_blend_orders[this.blend];
     }
 
+    this.defines["TANGRAM_BLEND_" + this.blend.toUpperCase()] = true;
     this.removeShaderBlock('setup'); // clear before material injection
     // If the style defines its own material, replace the inherited material instance
 
@@ -10580,42 +10742,16 @@ var Style = {
   },
   // Default sort order for blend modes
   default_blend_orders: {
-    opaque: 0,
+    opaque: Number.MIN_SAFE_INTEGER,
     add: 1,
     multiply: 2,
     inlay: 3,
     translucent: 4,
     overlay: 5
   },
-  // Comparison function for sorting styles by blend
-  blendOrderSort: function blendOrderSort(a, b) {
-    // opaque always comes first
-    if (a.blend === 'opaque' || b.blend === 'opaque') {
-      if (a.blend === 'opaque' && b.blend === 'opaque') {
-        // if both are opaque
-        return a.name < b.name ? -1 : 1; // use name as tie breaker
-      } else if (a.blend === 'opaque') {
-        return -1; // only `a` was opaque
-      } else {
-        return 1; // only `b` was opaque
-      }
-    } // use explicit blend order if possible
-
-
-    if (a.blend_order < b.blend_order) {
-      return -1;
-    } else if (a.blend_order > b.blend_order) {
-      return 1;
-    } // if blend orders are equal, use default order by blend mode
-
-
-    if (Style.default_blend_orders[a.blend] < Style.default_blend_orders[b.blend]) {
-      return -1;
-    } else if (Style.default_blend_orders[a.blend] > Style.default_blend_orders[b.blend]) {
-      return 1;
-    }
-
-    return a.name < b.name ? -1 : 1; // use name as tie breaker
+  getBlendOrderForDraw: function getBlendOrderForDraw(draw) {
+    // Allow draw block to override blend_order for non-opaque blend styles
+    return this.blend !== 'opaque' && draw.blend_order != null ? draw.blend_order : this.blend_order;
   }
 }; // add feature and geometry counts for a single layer
 
@@ -11882,7 +12018,7 @@ function triangulatePolygon(data) {
   return earcut_1(data.vertices, data.holes, data.dimensions);
 }
 
-var polygons_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    attribute vec2 a_extrude; // extrusion direction in xy plane\n    attribute vec2 a_offset;  // offset direction in xy plane\n\n    // Polygon and line styles have slightly different VBO layouts, saving memory by optimizing vertex packing.\n    // All lines have a width scaling factor, but only some have a height (position.z) or offset.\n    // The vertex height is stored in different attributes to account for this.\n    attribute vec2 a_z_and_offset_scale; // stores vertex height in x, and offset scaling factor in y\n    #define TANGRAM_POSITION_Z a_z_and_offset_scale.x // vertex height is stored in separate line-specific attrib\n    #define TANGRAM_OFFSET_SCALING a_z_and_offset_scale.y // zoom scaling factor for line offset\n    #define TANGRAM_WIDTH_SCALING a_position.z // zoom scaling factor for line width (stored in position attrib)\n\n    uniform float u_v_scale_adjust; // scales texture UVs for line dash patterns w/fractional pixel width\n#else\n    #define TANGRAM_POSITION_Z a_position.z // vertex height\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#define TANGRAM_UNPACK_SCALING(x) (x / 1024.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= u_v_scale_adjust;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, TANGRAM_POSITION_Z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 extrude = a_extrude.xy;\n        vec2 offset = a_offset.xy;\n\n        // Adjust line width based on zoom level, to prevent proxied lines\n        // from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from\n        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines\n        // from becoming too small when far away).\n        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));\n\n        // Interpolate line width between zooms\n        float mdz = (dz - 0.5) * 2.; // zoom from mid-point\n        extrude -= extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * mdz;\n\n        // Interpolate line offset between zooms\n        // Scales from the larger value to the smaller one\n        float dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);\n        float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates \"direction\" of scaling\n        offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale \"up\" or \"down\"\n\n        // Scale line width and offset to be consistent in screen space\n        float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));\n        extrude *= ssz;\n        offset *= ssz;\n\n        // Modify line width before extrusion\n        #ifdef TANGRAM_BLOCK_WIDTH\n            float width = 1.;\n            #pragma tangram: width\n            extrude *= width;\n        #endif\n\n        position.xy += extrude + offset;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n\n    gl_Position = position;\n}\n";
+var polygons_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    attribute vec2 a_extrude; // extrusion direction in xy plane\n    attribute vec2 a_offset;  // offset direction in xy plane\n\n    // Polygon and line styles have slightly different VBO layouts, saving memory by optimizing vertex packing.\n    // All lines have a width scaling factor, but only some have a height (position.z) or offset.\n    // The vertex height is stored in different attributes to account for this.\n    attribute vec2 a_z_and_offset_scale; // stores vertex height in x, and offset scaling factor in y\n    #define TANGRAM_POSITION_Z a_z_and_offset_scale.x // vertex height is stored in separate line-specific attrib\n    #define TANGRAM_OFFSET_SCALING a_z_and_offset_scale.y // zoom scaling factor for line offset\n    #define TANGRAM_WIDTH_SCALING a_position.z // zoom scaling factor for line width (stored in position attrib)\n\n    uniform float u_v_scale_adjust; // scales texture UVs for line dash patterns w/fractional pixel width\n#else\n    #define TANGRAM_POSITION_Z a_position.z // vertex height\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#define TANGRAM_UNPACK_SCALING(x) (x / 1024.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= u_v_scale_adjust;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, TANGRAM_POSITION_Z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 extrude = a_extrude.xy;\n        vec2 offset = a_offset.xy;\n\n        // Adjust line width based on zoom level, to prevent proxied lines\n        // from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from\n        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines\n        // from becoming too small when far away).\n        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));\n\n        // Interpolate line width between zooms\n        float mdz = (dz - 0.5) * 2.; // zoom from mid-point\n        extrude -= extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * mdz;\n\n        // Interpolate line offset between zooms\n        // Scales from the larger value to the smaller one\n        float dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);\n        float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates \"direction\" of scaling\n        offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale \"up\" or \"down\"\n\n        // Scale line width and offset to be consistent in screen space\n        float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));\n        extrude *= ssz;\n        offset *= ssz;\n\n        // Modify line width before extrusion\n        #ifdef TANGRAM_BLOCK_WIDTH\n            float width = 1.;\n            #pragma tangram: width\n            extrude *= width;\n        #endif\n\n        position.xy += extrude + offset;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n\n    gl_Position = position;\n}\n";
 
 var polygons_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#ifdef TANGRAM_EXTRUDE_LINES\n    uniform bool u_has_line_texture;\n    uniform sampler2D u_texture;\n    uniform float u_texture_ratio;\n    uniform vec4 u_dash_background_color;\n#endif\n\n#define TANGRAM_NORMAL v_normal\n\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n    { // enclose in scope to avoid leakage of internal variables\n        vec4 raster_color = sampleRaster(0);\n\n        #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n            // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.\n            // This is used for handling transparency outside the raster image in some blend modes,\n            // which either don't support alpha, or would cause transparent pixels to write to the depth buffer,\n            // obscuring geometry underneath.\n            #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources\n            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip conditional if *only* masked raster sources (always true)\n            if (u_raster_mask_alpha) {\n            #else\n            {\n            #endif\n                #if defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n                if (raster_color.a < TANGRAM_EPSILON) {\n                    discard;\n                }\n                #else // TANGRAM_BLEND_OPAQUE\n                if (raster_color.a < 1. - TANGRAM_EPSILON) {\n                    discard;\n                }\n                // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)\n                raster_color.a = 1.;\n                #endif\n            }\n            #endif\n        #endif\n\n        color *= raster_color; // multiplied to tint texture color\n    }\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_EXTRUDE_LINES\n    { // enclose in scope to avoid leakage of internal variables\n        if (u_has_line_texture) {\n            vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n            vec4 _line_color = texture2D(u_texture, _line_st);\n\n            if (_line_color.a < TANGRAM_ALPHA_TEST) {\n                #if defined(TANGRAM_BLEND_OPAQUE)\n                    // use discard when alpha blending is unavailable\n                    if (u_dash_background_color.a < 1. - TANGRAM_EPSILON) {\n                        discard;\n                    }\n                    color = vec4(u_dash_background_color.rgb, 1.); // only allow full alpha in opaque blend mode\n                #else\n                    // use alpha channel when blending is available\n                    color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));\n                #endif\n            }\n            else {\n                color *= _line_color;\n            }\n        }\n    }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
 
@@ -11958,13 +12094,15 @@ Object.assign(Polygons, {
 
     var texcoords = this.texcoords ? 1 : 0; // whether feature has texture UVs
 
-    var key = [selection, normal, texcoords].join('/');
+    var blend_order = this.getBlendOrderForDraw(draw);
+    var key = [selection, normal, texcoords, blend_order].join('/');
     draw.variant = key;
 
     if (Polygons.variants[key] == null) {
       Polygons.variants[key] = {
         key: key,
-        order: 0,
+        blend_order: blend_order,
+        mesh_order: 0,
         selection: selection,
         normal: normal,
         texcoords: texcoords
@@ -13098,8 +13236,13 @@ Object.assign(Lines, {
         draw.outline.dash_background_color = draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : outline_style.dash_background_color;
         draw.outline.dash_background_color = draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color;
         draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
-        draw.outline.texcoords = outline_style.texcoords || draw.outline.texture_merged ? 1 : 0;
-        this.computeVariant(draw.outline);
+        draw.outline.texcoords = outline_style.texcoords || draw.outline.texture_merged ? 1 : 0; // outline inherits draw blend order from parent inline, unless explicitly turned off with null
+
+        if (draw.outline.blend_order === undefined && draw.blend_order != null) {
+          draw.outline.blend_order = draw.blend_order;
+        }
+
+        this.computeVariant(draw.outline, outline_style);
       } else {
         log({
           level: 'warn',
@@ -13284,7 +13427,11 @@ Object.assign(Lines, {
     }.bind(this));
   },
   // Calculate and store mesh variant (unique by draw group but not feature)
-  computeVariant: function computeVariant(draw) {
+  computeVariant: function computeVariant(draw, style) {
+    if (style === void 0) {
+      style = this;
+    }
+
     // Factors that determine a unique mesh rendering variant
     var key = draw.offset ? 1 : 0; // whether feature has a line offset
 
@@ -13308,8 +13455,10 @@ Object.assign(Lines, {
     if (draw.texture_merged) {
       // whether feature has a line texture
       key += draw.texture_merged;
-    } // Create unique key
+    }
 
+    var blend_order = style.getBlendOrderForDraw(draw);
+    key += '/' + blend_order; // Create unique key
 
     key = hashString(key);
     draw.variant = key;
@@ -13317,7 +13466,8 @@ Object.assign(Lines, {
     if (Lines.variants[key] == null) {
       Lines.variants[key] = {
         key: key,
-        order: draw.is_outline ? 0 : 1,
+        blend_order: blend_order,
+        mesh_order: draw.is_outline ? 0 : 1,
         // outlines should be drawn first, so inline is on top
         selection: draw.interactive ? 1 : 0,
         offset: draw.offset ? 1 : 0,
@@ -17298,7 +17448,7 @@ function () {
   return View;
 }();
 
-var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_depth;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 angles_scaled = (TANGRAM_PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // Fade out when tile is zooming out, e.g. acting as proxy tiles\n    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels\n    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_ON_ZOOM_OUT\n        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        x = clamp(x, 0., 1.);\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 angles_scaled = (TANGRAM_PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
 
 var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n            // Distance to this fragment from the center.\n            float l = length(v_texcoord);\n            // Mask of outermost circle, either outline or point boundary.\n            float outer_alpha  = _tangram_antialias(l, 1.);\n            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // Use alpha test as a lower-quality substitute\n    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath\n    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black\n    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
@@ -17312,7 +17462,7 @@ Points.variants = {}; // mesh variants by variant key
 
 Points.vertex_layouts = {}; // vertex layouts by variant key
 
-var SHADER_POINT_VARIANT_KEY = 'shader_point'; // texture types
+var SHADER_POINT_VARIANT = '__shader_point'; // texture types
 
 var TANGRAM_POINT_TYPE_TEXTURE = 1; // style texture/sprites (assigned by user)
 
@@ -17350,7 +17500,12 @@ Object.assign(Points, {
     this.defines.TANGRAM_POINT_TYPE_LABEL = TANGRAM_POINT_TYPE_LABEL;
     this.defines.TANGRAM_POINT_TYPE_SHADER = TANGRAM_POINT_TYPE_SHADER;
     this.collision_group_points = this.name + '-points';
-    this.collision_group_text = this.name + '-text';
+    this.collision_group_text = this.name + '-text'; // Stenciling proxy tiles (to avoid compounding alpha artifacts) doesn't work well with
+    // points/text labels, which have pure transparent pixels that interfere with the stencil buffer,
+    // causing a "cut-out"/"x-ray" effect (preventing pixels that would usually be covered by proxy tiles
+    // underneath from being rendered).
+
+    this.stencil_proxy_tiles = false;
     this.reset();
   },
   // Setup defines common to points base and child (text) styles
@@ -17358,12 +17513,8 @@ Object.assign(Points, {
     // If we're not rendering as overlay, we need a layer attribute
     if (this.blend !== 'overlay') {
       this.defines.TANGRAM_LAYER_ORDER = true;
-    } // Fade out when tile is zooming out, e.g. acting as proxy tiles
+    } // Fade in labels
 
-
-    this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
-    this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
-    // Fade in (depending on tile proxy status)
 
     if (debugSettings$1.suppress_label_fade_in === true) {
       this.fade_in_time = 0;
@@ -17403,6 +17554,8 @@ Object.assign(Points, {
     style.texture = draw.texture; // optional point texture, specified in `draw` or at style level
 
     style.label_texture = null; // assigned by labelling code if needed
+
+    style.blend_order = draw.blend_order; // copy pre-computed blend order
     // require color or texture
 
     if (!style.color && !style.texture) {
@@ -17659,6 +17812,8 @@ Object.assign(Points, {
 
               style.texcoords = text_info.align[q.label.align].texcoords;
               style.label_texture = textures[text_info.align[q.label.align].texture_id];
+              style.blend_order = q.draw.blend_order; // copy blend order from parent point
+
               Style.addFeature.call(_this, q.feature, q.draw, q.context);
             });
           }
@@ -17691,6 +17846,8 @@ Object.assign(Points, {
   _preprocess: function _preprocess(draw) {
     draw.color = StyleParser.createColorPropertyCache(draw.color);
     draw.texture = draw.texture !== undefined ? draw.texture : this.texture; // optional or default texture
+
+    draw.blend_order = this.getBlendOrderForDraw(draw); // from draw block, or fall back on default style blend order
 
     if (draw.outline) {
       draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
@@ -17754,6 +17911,7 @@ Object.assign(Points, {
       draw.text.group = draw.group;
       draw.text.layers = draw.layers;
       draw.text.order = draw.order;
+      draw.text.blend_order = draw.blend_order;
       draw.text.repeat_group = draw.text.repeat_group != null ? draw.text.repeat_group : draw.repeat_group;
       draw.text.anchor = draw.text.anchor || this.default_anchor;
       draw.text.optional = typeof draw.text.optional === 'boolean' ? draw.text.optional : false; // default text to required
@@ -18235,14 +18393,17 @@ Object.assign(Points, {
   },
   // Override
   meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
-    var key = draw.label_texture || draw.texture || SHADER_POINT_VARIANT_KEY; // unique key by texture name
+    var texture = draw.label_texture || draw.texture || SHADER_POINT_VARIANT; // unique key by texture name
+
+    var key = texture + '/' + draw.blend_order;
 
     if (Points.variants[key] == null) {
       Points.variants[key] = {
         key: key,
-        shader_point: key === SHADER_POINT_VARIANT_KEY,
+        shader_point: texture === SHADER_POINT_VARIANT,
         // is shader point
-        order: draw.label_texture ? 1 : 0 // put text on top of points (e.g. for highway shields, etc.)
+        blend_order: draw.blend_order,
+        mesh_order: draw.label_texture ? 1 : 0 // put text on top of points (e.g. for highway shields, etc.)
 
       };
     }
@@ -19207,6 +19368,8 @@ Object.assign(TextStyle, {
                 style.label_texture = textures[text_info.align[q.label.align].texture_id];
               }
 
+              style.blend_order = q.draw.blend_order; // copy pre-computed blend order
+
               Style.addFeature.call(_this2, q.feature, q.draw, q.context);
             });
           }
@@ -19243,6 +19406,8 @@ Object.assign(TextStyle, {
   },
   // Sets up caching for draw properties
   _preprocess: function _preprocess(draw) {
+    draw.blend_order = this.getBlendOrderForDraw(draw); // from draw block, or fall back on default style blend order
+
     return this.preprocessText(draw);
   },
   // Implements label building for TextLabels mixin
@@ -19436,7 +19601,9 @@ var StyleManager =
 function () {
   function StyleManager() {
     this.styles = {};
-    this.base_styles = {}; // Add built-in rendering styles
+    this.base_styles = {};
+    this.active_styles = [];
+    this.active_blend_orders = []; // Add built-in rendering styles
 
     this.register(Object.create(Polygons));
     this.register(Object.create(Lines));
@@ -19499,6 +19666,56 @@ function () {
 
   _proto.remove = function remove(name) {
     delete this.styles[name];
+  };
+
+  _proto.getActiveStyles = function getActiveStyles() {
+    return this.active_styles;
+  } // Get list of active styles based on a set of tiles
+  ;
+
+  _proto.updateActiveStyles = function updateActiveStyles(tiles) {
+    this.active_styles = Object.keys(tiles.reduce(function (active, tile) {
+      Object.keys(tile.meshes).forEach(function (s) {
+        return active[s] = true;
+      });
+      return active;
+    }, {}));
+    return this.active_styles;
+  };
+
+  _proto.getActiveBlendOrders = function getActiveBlendOrders() {
+    return this.active_blend_orders;
+  };
+
+  _proto.updateActiveBlendOrders = function updateActiveBlendOrders(tiles) {
+    var orders = [];
+    tiles.forEach(function (tile) {
+      Object.entries(tile.meshes).forEach(function (_ref) {
+        var style = _ref[0],
+            style_meshes = _ref[1];
+        // for each tile's set of meshes, keyed by style name
+        style_meshes.forEach(function (mesh) {
+          // for each style's list of meshes
+          // find entry for this mesh's blend order, insert if first entry
+          var blend_order = mesh.variant.blend_order;
+          var oi = orders.findIndex(function (x) {
+            return x.blend_order === blend_order;
+          });
+          oi = oi > -1 ? oi : orders.push({
+            blend_order: blend_order,
+            styles: []
+          }) - 1; // add style to list for this blend order
+
+          if (orders[oi].styles.indexOf(style) === -1) {
+            orders[oi].styles.push(style);
+          }
+        });
+      });
+    }); // sort ascending by blend order
+
+    this.active_blend_orders = orders.sort(function (a, b) {
+      return a.blend_order - b.blend_order;
+    });
   };
 
   _proto.mix = function mix(style, styles) {
@@ -19879,6 +20096,11 @@ function () {
   return StyleManager;
 }();
 
+// 20.1.2.6 Number.MAX_SAFE_INTEGER
+
+
+_export(_export.S, 'Number', { MAX_SAFE_INTEGER: 0x1fffffffffffff });
+
 function notNull(x) {
   return x != null;
 }
@@ -20030,7 +20252,7 @@ function buildFilter(filter, options) {
   return new Function('context', 'return ' + filterToString(parseFilter(filter, options)) + ';');
 }
 
-var reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
+var reserved = ['filter', 'draw', 'visible', 'enabled', 'data', 'exclusive', 'priority'];
 var layer_cache = {};
 function layerCache() {
   return layer_cache;
@@ -20083,18 +20305,10 @@ function mergeTrees(matchingTrees, group) {
 
     if (draws.length === 0) {
       return "continue";
-    } // Sort by layer name before merging, so layers are applied deterministically
-    // when multiple layers modify the same properties
+    } // Merge draw objects
 
 
-    draws.sort(function (a, b) {
-      return (a && a.layer_name) > (b && b.layer_name) ? 1 : -1;
-    }); // Merge draw objects
-
-    mergeObjects.apply(void 0, [draw].concat(draws)); // Remove layer names, they were only used transiently to sort and calculate final layer
-    // (final merged names will not be accurate since only one tree can win)
-
-    delete draw.layer_name;
+    mergeObjects.apply(void 0, [draw].concat(draws));
   };
 
   for (var x = 0; x < treeDepth; x++) {
@@ -20123,6 +20337,8 @@ function () {
         visible = _ref.visible,
         enabled = _ref.enabled,
         filter = _ref.filter,
+        exclusive = _ref.exclusive,
+        priority = _ref.priority,
         styles = _ref.styles;
     this.id = Layer.id++;
     this.config_data = layer.data;
@@ -20131,6 +20347,8 @@ function () {
     this.full_name = this.parent ? this.parent.full_name + ':' + this.name : this.name;
     this.draw = draw;
     this.filter = filter;
+    this.exclusive = exclusive === true;
+    this.priority = priority != null ? priority : Number.MAX_SAFE_INTEGER;
     this.styles = styles;
     this.is_built = false;
     enabled = enabled === undefined ? visible : enabled; // `visible` property is backwards compatible for `enabled`
@@ -20149,8 +20367,6 @@ function () {
           log('warn', msg); // TODO: fire external event that clients to subscribe to
 
           delete this.draw[group];
-        } else {
-          this.draw[group].layer_name = this.full_name;
         }
       }
     }
@@ -20537,7 +20753,25 @@ function parseLayerChildren(parent, children, styles) {
 
       log('warn', msg); // TODO: fire external event that clients to subscribe to
     }
-  }
+  } // Sort sub-layers so they are applied deterministically when multiple layers modify the same properties
+  // Sort order is: exclusive layers first, then by explicit layer priority, then by layer name
+
+
+  parent.layers.sort(function (a, b) {
+    // Exclusive layers come first
+    // If an exclusive layer matches, no further sibling layers are matched
+    if (a.exclusive < b.exclusive) return 1;else if (a.exclusive > b.exclusive) return -1; // When sub-sorting exclusive layers, sort the higher priority layers first, since only one exlcusive layer
+    // can match and the first one that matches should be the highest priority.
+    // When sub-sorting non-exclusive layers, sort the lower priority layers first, since multiple layers may
+    // match, and when they are merged in order, the later layers will overwrite the earlier ones -- so we want
+    // the higher priority ones to match last so that they "win".
+
+    var direction = a.exclusive ? 1 : -1; // Sub-sort by explicit priority
+
+    if (a.priority > b.priority) return direction;else if (a.priority < b.priority) return -direction; // Sub-sort by layer name as last resort
+
+    if (a.full_name < b.full_name) return direction;else if (a.full_name > b.full_name) return -direction;
+  });
 }
 
 function parseLayers(layers, styles) {
@@ -20557,7 +20791,7 @@ function parseLayers(layers, styles) {
 }
 function matchFeature(context, layers, collected_layers, collected_layers_ids) {
   var matched = false;
-  var childMatched = false;
+  var child_matched = false;
 
   if (layers.length === 0) {
     return;
@@ -20571,15 +20805,23 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
         matched = true;
         collected_layers.push(current);
         collected_layers_ids.push(current.id);
+
+        if (current.exclusive) {
+          break; // only one exclusive layer can match, stop matching further sibling layers
+        }
       }
     } else if (current.is_tree) {
       if (current.doesMatch(context)) {
         matched = true;
-        childMatched = matchFeature(context, current.layers, collected_layers, collected_layers_ids);
+        child_matched = matchFeature(context, current.layers, collected_layers, collected_layers_ids);
 
-        if (!childMatched) {
+        if (!child_matched) {
           collected_layers.push(current);
           collected_layers_ids.push(current.id);
+        }
+
+        if (current.exclusive) {
+          break; // only one exclusive layer can match, stop matching further sibling layers
         }
       }
     }
@@ -20615,8 +20857,9 @@ function () {
     this.valid = true;
     this.visible = false;
     this.proxy_for = null;
-    this.proxy_depth = 0;
     this.proxied_as = null;
+    this.proxy_level = 0;
+    this.proxy_order_offset = 0;
     this.fade_in = true;
     this.loading = false;
     this.loaded = false;
@@ -21057,8 +21300,8 @@ function () {
             meshes[s] = meshes[s] || [];
             meshes[s].push(mesh);
 
-            if (mesh.variant.order == null) {
-              mesh.variant.order = meshes[s].length - 1; // assign default variant render order
+            if (mesh.variant.mesh_order == null) {
+              mesh.variant.mesh_order = meshes[s].length - 1; // assign default variant render order
             }
 
             this.debug.buffer_size += mesh.buffer_size;
@@ -21070,8 +21313,8 @@ function () {
         if (meshes[s]) {
           meshes[s].sort(function (a, b) {
             // Sort variant order ascending if present, then all null values (where order is unspecified)
-            var ao = a.variant.order,
-                bo = b.variant.order;
+            var ao = a.variant.mesh_order,
+                bo = b.variant.mesh_order;
             return ao == null ? 1 : bo == null ? -1 : ao < bo ? -1 : 1;
           });
         }
@@ -21176,12 +21419,14 @@ function () {
       this.visible = true;
       this.proxy_for = this.proxy_for || [];
       this.proxy_for.push(tile);
-      this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
+      this.proxy_order_offset = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
 
       tile.proxied_as = tile.style_z > this.style_z ? 'child' : 'parent';
+      this.proxy_level = Math.abs(tile.style_z - this.style_z); // # of zoom levels proxy is above/below target tile
     } else {
       this.proxy_for = null;
-      this.proxy_depth = 0;
+      this.proxy_order_offset = 0;
+      this.proxy_level = 0;
     }
   };
 
@@ -21204,7 +21449,7 @@ function () {
         model32 = _ref5.model32;
     // Tile origin
     program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_z, this.coords.z]);
-    program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth); // Model - transform tile space into world space (meters, absolute mercator position)
+    program.uniform('1f', 'u_tile_proxy_order_offset', this.proxy_order_offset); // Model - transform tile space into world space (meters, absolute mercator position)
 
     mat4.identity(model);
     mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
@@ -23605,8 +23850,6 @@ function (_NetworkSource) {
     _this.load_data = null;
     _this.tile_indexes = {}; // geojson-vt tile indices, by layer name
 
-    _this.max_zoom = Math.max(_this.max_zoom || 0, 15); // TODO: max zoom < 15 causes artifacts/no-draw at 20, investigate
-
     _this.setTileSize(512); // auto-tile to 512px tiles for fewer internal tiles
 
 
@@ -24086,6 +24329,33 @@ DataSource.register('TopoJSON', function (source) {
 
 // add all data source types
 
+exports.require$$0 = _wks;
+exports.require$$1 = _core;
+exports.global = _global;
+exports.require$$1$1 = _objectDp;
+exports.getKeys = _objectKeys;
+exports.gOPS = _objectGops;
+exports.require$$0$1 = _objectPie;
+exports.toIObject = _toIobject;
+exports.require$$0$2 = _objectGopn;
+exports.require$$0$3 = _meta;
+exports.require$$0$4 = _shared;
+exports.DESCRIPTORS = _descriptors;
+exports.fails = _fails;
+exports.require$$22 = _objectCreate;
+exports.uid = _uid;
+exports.redefine = _redefine;
+exports.LIBRARY = _library;
+exports.$export = _export;
+exports.require$$17 = _has;
+exports.isObject = _isObject;
+exports.isArray = _isArray;
+exports.hide = _hide;
+exports.setToStringTag = _setToStringTag;
+exports.require$$1$2 = _objectGopd;
+exports.anObject = _anObject;
+exports.require$$16 = _toPrimitive;
+exports.require$$9 = _propertyDesc;
 exports.createCommonjsModule = createCommonjsModule;
 exports.commonjsRequire = commonjsRequire;
 exports.Utils = Utils;
@@ -24112,22 +24382,22 @@ exports.Label = Label;
 exports.WorkerBroker = WorkerBroker$1;
 exports.Task = Task;
 exports.Tile = Tile;
-exports.require$$0 = _typedArray;
+exports._createClass = _createClass;
+exports.require$$0$5 = _typedArray;
 exports.StyleParser = StyleParser;
 exports.Texture = Texture;
 exports.debugSettings = debugSettings$1;
 exports.debugSumLayerStats = debugSumLayerStats;
 exports.ShaderProgram = ShaderProgram;
 exports.VertexArrayObject = VertexArrayObject;
-exports.Style = Style;
 exports.TextCanvas = TextCanvas;
 exports.DataSource = DataSource;
 exports.Light = Light;
 exports.FontManager = FontManager;
 exports.FeatureSelection = FeatureSelection;
-exports._createClass = _createClass;
 exports.View = View;
 exports.StyleManager = StyleManager;
+exports.Style = Style;
 exports.sliceObject = sliceObject;
 exports.Thread = Thread;
 exports.mergeDebugSettings = mergeDebugSettings;
@@ -24509,6 +24779,294 @@ __chunk_1.WorkerBroker.addTarget('self', SceneWorker);
 
 define(['./shared.js'], function (__chunk_1) { 'use strict';
 
+var f = __chunk_1.require$$0;
+
+var _wksExt = {
+	f: f
+};
+
+var defineProperty = __chunk_1.require$$1$1.f;
+var _wksDefine = function (name) {
+  var $Symbol = __chunk_1.require$$1.Symbol || (__chunk_1.require$$1.Symbol = __chunk_1.global.Symbol || {});
+  if (name.charAt(0) != '_' && !(name in $Symbol)) defineProperty($Symbol, name, { value: _wksExt.f(name) });
+};
+
+_wksDefine('asyncIterator');
+
+// all enumerable object keys, includes symbols
+
+
+
+var _enumKeys = function (it) {
+  var result = __chunk_1.getKeys(it);
+  var getSymbols = __chunk_1.gOPS.f;
+  if (getSymbols) {
+    var symbols = getSymbols(it);
+    var isEnum = __chunk_1.require$$0$1.f;
+    var i = 0;
+    var key;
+    while (symbols.length > i) if (isEnum.call(it, key = symbols[i++])) result.push(key);
+  } return result;
+};
+
+// fallback for IE11 buggy Object.getOwnPropertyNames with iframe and window
+
+var gOPN = __chunk_1.require$$0$2.f;
+var toString = {}.toString;
+
+var windowNames = typeof window == 'object' && window && Object.getOwnPropertyNames
+  ? Object.getOwnPropertyNames(window) : [];
+
+var getWindowNames = function (it) {
+  try {
+    return gOPN(it);
+  } catch (e) {
+    return windowNames.slice();
+  }
+};
+
+var f$1 = function getOwnPropertyNames(it) {
+  return windowNames && toString.call(it) == '[object Window]' ? getWindowNames(it) : gOPN(__chunk_1.toIObject(it));
+};
+
+var _objectGopnExt = {
+	f: f$1
+};
+
+// ECMAScript 6 symbols shim
+
+
+
+
+
+var META = __chunk_1.require$$0$3.KEY;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var gOPD = __chunk_1.require$$1$2.f;
+var dP = __chunk_1.require$$1$1.f;
+var gOPN$1 = _objectGopnExt.f;
+var $Symbol = __chunk_1.global.Symbol;
+var $JSON = __chunk_1.global.JSON;
+var _stringify = $JSON && $JSON.stringify;
+var PROTOTYPE = 'prototype';
+var HIDDEN = __chunk_1.require$$0('_hidden');
+var TO_PRIMITIVE = __chunk_1.require$$0('toPrimitive');
+var isEnum = {}.propertyIsEnumerable;
+var SymbolRegistry = __chunk_1.require$$0$4('symbol-registry');
+var AllSymbols = __chunk_1.require$$0$4('symbols');
+var OPSymbols = __chunk_1.require$$0$4('op-symbols');
+var ObjectProto = Object[PROTOTYPE];
+var USE_NATIVE = typeof $Symbol == 'function';
+var QObject = __chunk_1.global.QObject;
+// Don't use setters in Qt Script, https://github.com/zloirock/core-js/issues/173
+var setter = !QObject || !QObject[PROTOTYPE] || !QObject[PROTOTYPE].findChild;
+
+// fallback for old Android, https://code.google.com/p/v8/issues/detail?id=687
+var setSymbolDesc = __chunk_1.DESCRIPTORS && __chunk_1.fails(function () {
+  return __chunk_1.require$$22(dP({}, 'a', {
+    get: function () { return dP(this, 'a', { value: 7 }).a; }
+  })).a != 7;
+}) ? function (it, key, D) {
+  var protoDesc = gOPD(ObjectProto, key);
+  if (protoDesc) delete ObjectProto[key];
+  dP(it, key, D);
+  if (protoDesc && it !== ObjectProto) dP(ObjectProto, key, protoDesc);
+} : dP;
+
+var wrap = function (tag) {
+  var sym = AllSymbols[tag] = __chunk_1.require$$22($Symbol[PROTOTYPE]);
+  sym._k = tag;
+  return sym;
+};
+
+var isSymbol = USE_NATIVE && typeof $Symbol.iterator == 'symbol' ? function (it) {
+  return typeof it == 'symbol';
+} : function (it) {
+  return it instanceof $Symbol;
+};
+
+var $defineProperty = function defineProperty(it, key, D) {
+  if (it === ObjectProto) $defineProperty(OPSymbols, key, D);
+  __chunk_1.anObject(it);
+  key = __chunk_1.require$$16(key, true);
+  __chunk_1.anObject(D);
+  if (__chunk_1.require$$17(AllSymbols, key)) {
+    if (!D.enumerable) {
+      if (!__chunk_1.require$$17(it, HIDDEN)) dP(it, HIDDEN, __chunk_1.require$$9(1, {}));
+      it[HIDDEN][key] = true;
+    } else {
+      if (__chunk_1.require$$17(it, HIDDEN) && it[HIDDEN][key]) it[HIDDEN][key] = false;
+      D = __chunk_1.require$$22(D, { enumerable: __chunk_1.require$$9(0, false) });
+    } return setSymbolDesc(it, key, D);
+  } return dP(it, key, D);
+};
+var $defineProperties = function defineProperties(it, P) {
+  __chunk_1.anObject(it);
+  var keys = _enumKeys(P = __chunk_1.toIObject(P));
+  var i = 0;
+  var l = keys.length;
+  var key;
+  while (l > i) $defineProperty(it, key = keys[i++], P[key]);
+  return it;
+};
+var $create = function create(it, P) {
+  return P === undefined ? __chunk_1.require$$22(it) : $defineProperties(__chunk_1.require$$22(it), P);
+};
+var $propertyIsEnumerable = function propertyIsEnumerable(key) {
+  var E = isEnum.call(this, key = __chunk_1.require$$16(key, true));
+  if (this === ObjectProto && __chunk_1.require$$17(AllSymbols, key) && !__chunk_1.require$$17(OPSymbols, key)) return false;
+  return E || !__chunk_1.require$$17(this, key) || !__chunk_1.require$$17(AllSymbols, key) || __chunk_1.require$$17(this, HIDDEN) && this[HIDDEN][key] ? E : true;
+};
+var $getOwnPropertyDescriptor = function getOwnPropertyDescriptor(it, key) {
+  it = __chunk_1.toIObject(it);
+  key = __chunk_1.require$$16(key, true);
+  if (it === ObjectProto && __chunk_1.require$$17(AllSymbols, key) && !__chunk_1.require$$17(OPSymbols, key)) return;
+  var D = gOPD(it, key);
+  if (D && __chunk_1.require$$17(AllSymbols, key) && !(__chunk_1.require$$17(it, HIDDEN) && it[HIDDEN][key])) D.enumerable = true;
+  return D;
+};
+var $getOwnPropertyNames = function getOwnPropertyNames(it) {
+  var names = gOPN$1(__chunk_1.toIObject(it));
+  var result = [];
+  var i = 0;
+  var key;
+  while (names.length > i) {
+    if (!__chunk_1.require$$17(AllSymbols, key = names[i++]) && key != HIDDEN && key != META) result.push(key);
+  } return result;
+};
+var $getOwnPropertySymbols = function getOwnPropertySymbols(it) {
+  var IS_OP = it === ObjectProto;
+  var names = gOPN$1(IS_OP ? OPSymbols : __chunk_1.toIObject(it));
+  var result = [];
+  var i = 0;
+  var key;
+  while (names.length > i) {
+    if (__chunk_1.require$$17(AllSymbols, key = names[i++]) && (IS_OP ? __chunk_1.require$$17(ObjectProto, key) : true)) result.push(AllSymbols[key]);
+  } return result;
+};
+
+// 19.4.1.1 Symbol([description])
+if (!USE_NATIVE) {
+  $Symbol = function Symbol() {
+    if (this instanceof $Symbol) throw TypeError('Symbol is not a constructor!');
+    var tag = __chunk_1.uid(arguments.length > 0 ? arguments[0] : undefined);
+    var $set = function (value) {
+      if (this === ObjectProto) $set.call(OPSymbols, value);
+      if (__chunk_1.require$$17(this, HIDDEN) && __chunk_1.require$$17(this[HIDDEN], tag)) this[HIDDEN][tag] = false;
+      setSymbolDesc(this, tag, __chunk_1.require$$9(1, value));
+    };
+    if (__chunk_1.DESCRIPTORS && setter) setSymbolDesc(ObjectProto, tag, { configurable: true, set: $set });
+    return wrap(tag);
+  };
+  __chunk_1.redefine($Symbol[PROTOTYPE], 'toString', function toString() {
+    return this._k;
+  });
+
+  __chunk_1.require$$1$2.f = $getOwnPropertyDescriptor;
+  __chunk_1.require$$1$1.f = $defineProperty;
+  __chunk_1.require$$0$2.f = _objectGopnExt.f = $getOwnPropertyNames;
+  __chunk_1.require$$0$1.f = $propertyIsEnumerable;
+  __chunk_1.gOPS.f = $getOwnPropertySymbols;
+
+  if (__chunk_1.DESCRIPTORS && !__chunk_1.LIBRARY) {
+    __chunk_1.redefine(ObjectProto, 'propertyIsEnumerable', $propertyIsEnumerable, true);
+  }
+
+  _wksExt.f = function (name) {
+    return wrap(__chunk_1.require$$0(name));
+  };
+}
+
+__chunk_1.$export(__chunk_1.$export.G + __chunk_1.$export.W + __chunk_1.$export.F * !USE_NATIVE, { Symbol: $Symbol });
+
+for (var es6Symbols = (
+  // 19.4.2.2, 19.4.2.3, 19.4.2.4, 19.4.2.6, 19.4.2.8, 19.4.2.9, 19.4.2.10, 19.4.2.11, 19.4.2.12, 19.4.2.13, 19.4.2.14
+  'hasInstance,isConcatSpreadable,iterator,match,replace,search,species,split,toPrimitive,toStringTag,unscopables'
+).split(','), j = 0; es6Symbols.length > j;)__chunk_1.require$$0(es6Symbols[j++]);
+
+for (var wellKnownSymbols = __chunk_1.getKeys(__chunk_1.require$$0.store), k = 0; wellKnownSymbols.length > k;) _wksDefine(wellKnownSymbols[k++]);
+
+__chunk_1.$export(__chunk_1.$export.S + __chunk_1.$export.F * !USE_NATIVE, 'Symbol', {
+  // 19.4.2.1 Symbol.for(key)
+  'for': function (key) {
+    return __chunk_1.require$$17(SymbolRegistry, key += '')
+      ? SymbolRegistry[key]
+      : SymbolRegistry[key] = $Symbol(key);
+  },
+  // 19.4.2.5 Symbol.keyFor(sym)
+  keyFor: function keyFor(sym) {
+    if (!isSymbol(sym)) throw TypeError(sym + ' is not a symbol!');
+    for (var key in SymbolRegistry) if (SymbolRegistry[key] === sym) return key;
+  },
+  useSetter: function () { setter = true; },
+  useSimple: function () { setter = false; }
+});
+
+__chunk_1.$export(__chunk_1.$export.S + __chunk_1.$export.F * !USE_NATIVE, 'Object', {
+  // 19.1.2.2 Object.create(O [, Properties])
+  create: $create,
+  // 19.1.2.4 Object.defineProperty(O, P, Attributes)
+  defineProperty: $defineProperty,
+  // 19.1.2.3 Object.defineProperties(O, Properties)
+  defineProperties: $defineProperties,
+  // 19.1.2.6 Object.getOwnPropertyDescriptor(O, P)
+  getOwnPropertyDescriptor: $getOwnPropertyDescriptor,
+  // 19.1.2.7 Object.getOwnPropertyNames(O)
+  getOwnPropertyNames: $getOwnPropertyNames,
+  // 19.1.2.8 Object.getOwnPropertySymbols(O)
+  getOwnPropertySymbols: $getOwnPropertySymbols
+});
+
+// 24.3.2 JSON.stringify(value [, replacer [, space]])
+$JSON && __chunk_1.$export(__chunk_1.$export.S + __chunk_1.$export.F * (!USE_NATIVE || __chunk_1.fails(function () {
+  var S = $Symbol();
+  // MS Edge converts symbol values to JSON as {}
+  // WebKit converts symbol values to JSON as null
+  // V8 throws on boxed symbols
+  return _stringify([S]) != '[null]' || _stringify({ a: S }) != '{}' || _stringify(Object(S)) != '{}';
+})), 'JSON', {
+  stringify: function stringify(it) {
+    var args = [it];
+    var i = 1;
+    var replacer, $replacer;
+    while (arguments.length > i) args.push(arguments[i++]);
+    $replacer = replacer = args[1];
+    if (!__chunk_1.isObject(replacer) && it === undefined || isSymbol(it)) return; // IE8 returns string on undefined
+    if (!__chunk_1.isArray(replacer)) replacer = function (key, value) {
+      if (typeof $replacer == 'function') value = $replacer.call(this, key, value);
+      if (!isSymbol(value)) return value;
+    };
+    args[1] = replacer;
+    return _stringify.apply($JSON, args);
+  }
+});
+
+// 19.4.3.4 Symbol.prototype[@@toPrimitive](hint)
+$Symbol[PROTOTYPE][TO_PRIMITIVE] || __chunk_1.hide($Symbol[PROTOTYPE], TO_PRIMITIVE, $Symbol[PROTOTYPE].valueOf);
+// 19.4.3.5 Symbol.prototype[@@toStringTag]
+__chunk_1.setToStringTag($Symbol, 'Symbol');
+// 20.2.1.9 Math[@@toStringTag]
+__chunk_1.setToStringTag(Math, 'Math', true);
+// 24.3.3 JSON[@@toStringTag]
+__chunk_1.setToStringTag(__chunk_1.global.JSON, 'JSON', true);
+
 // WebGL context wrapper
 var Context;
 var Context$1 = Context = {};
@@ -24757,10 +25315,10 @@ function write (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128;
 }
 
-var toString = {}.toString;
+var toString$1 = {}.toString;
 
 var isArray = Array.isArray || function (arr) {
-  return toString.call(arr) == '[object Array]';
+  return toString$1.call(arr) == '[object Array]';
 };
 
 var INSPECT_MAX_BYTES = 50;
@@ -30197,14 +30755,14 @@ var _toPrimitive = function(it, S){
   throw TypeError("Can't convert object to primitive value");
 };
 
-var dP             = Object.defineProperty;
+var dP$1             = Object.defineProperty;
 
-var f = _descriptors ? Object.defineProperty : function defineProperty(O, P, Attributes){
+var f$2 = _descriptors ? Object.defineProperty : function defineProperty(O, P, Attributes){
   _anObject(O);
   P = _toPrimitive(P, true);
   _anObject(Attributes);
   if(_ie8DomDefine)try {
-    return dP(O, P, Attributes);
+    return dP$1(O, P, Attributes);
   } catch(e){ /* empty */ }
   if('get' in Attributes || 'set' in Attributes)throw TypeError('Accessors not supported!');
   if('value' in Attributes)O[P] = Attributes.value;
@@ -30212,7 +30770,7 @@ var f = _descriptors ? Object.defineProperty : function defineProperty(O, P, Att
 };
 
 var _objectDp = {
-	f: f
+	f: f$2
 };
 
 var _propertyDesc = function(bitmap, value){
@@ -30231,7 +30789,7 @@ var _hide = _descriptors ? function(object, key, value){
   return object;
 };
 
-var PROTOTYPE = 'prototype';
+var PROTOTYPE$1 = 'prototype';
 
 var $export = function(type, name, source){
   var IS_FORCED = type & $export.F
@@ -30241,8 +30799,8 @@ var $export = function(type, name, source){
     , IS_BIND   = type & $export.B
     , IS_WRAP   = type & $export.W
     , exports   = IS_GLOBAL ? _core : _core[name] || (_core[name] = {})
-    , expProto  = exports[PROTOTYPE]
-    , target    = IS_GLOBAL ? _global : IS_STATIC ? _global[name] : (_global[name] || {})[PROTOTYPE]
+    , expProto  = exports[PROTOTYPE$1]
+    , target    = IS_GLOBAL ? _global : IS_STATIC ? _global[name] : (_global[name] || {})[PROTOTYPE$1]
     , key, own, out;
   if(IS_GLOBAL)source = name;
   for(key in source){
@@ -30266,7 +30824,7 @@ var $export = function(type, name, source){
           } return new C(a, b, c);
         } return C.apply(this, arguments);
       };
-      F[PROTOTYPE] = C[PROTOTYPE];
+      F[PROTOTYPE$1] = C[PROTOTYPE$1];
       return F;
     // make static versions for prototype methods
     })(out) : IS_PROTO && typeof out == 'function' ? _ctx(Function.call, out) : out;
@@ -30308,10 +30866,10 @@ var _invoke = function(fn, args, that){
 
 var _html = _global.document && document.documentElement;
 
-var toString$1 = {}.toString;
+var toString$2 = {}.toString;
 
 var _cof = function(it){
-  return toString$1.call(it).slice(8, -1);
+  return toString$2.call(it).slice(8, -1);
 };
 
 var process$1            = _global.process
@@ -36073,7 +36631,7 @@ function ZStream() {
 
 var zstream = ZStream;
 
-var toString$2 = Object.prototype.toString;
+var toString$3 = Object.prototype.toString;
 
 /* Public constants ==========================================================*/
 /* ===========================================================================*/
@@ -36237,7 +36795,7 @@ function Deflate(options) {
     if (typeof opt.dictionary === 'string') {
       // If we need to compress text, change encoding to utf8.
       dict = strings.string2buf(opt.dictionary);
-    } else if (toString$2.call(opt.dictionary) === '[object ArrayBuffer]') {
+    } else if (toString$3.call(opt.dictionary) === '[object ArrayBuffer]') {
       dict = new Uint8Array(opt.dictionary);
     } else {
       dict = opt.dictionary;
@@ -36295,7 +36853,7 @@ Deflate.prototype.push = function (data, mode) {
   if (typeof data === 'string') {
     // If we need to compress text, change encoding to utf8.
     strm.input = strings.string2buf(data);
-  } else if (toString$2.call(data) === '[object ArrayBuffer]') {
+  } else if (toString$3.call(data) === '[object ArrayBuffer]') {
     strm.input = new Uint8Array(data);
   } else {
     strm.input = data;
@@ -38847,7 +39405,7 @@ function GZheader() {
 
 var gzheader = GZheader;
 
-var toString$3 = Object.prototype.toString;
+var toString$4 = Object.prototype.toString;
 
 /**
  * class Inflate
@@ -39031,7 +39589,7 @@ Inflate.prototype.push = function (data, mode) {
   if (typeof data === 'string') {
     // Only binary strings can be decompressed on practice
     strm.input = strings.binstring2buf(data);
-  } else if (toString$3.call(data) === '[object ArrayBuffer]') {
+  } else if (toString$4.call(data) === '[object ArrayBuffer]') {
     strm.input = new Uint8Array(data);
   } else {
     strm.input = data;
@@ -39053,7 +39611,7 @@ Inflate.prototype.push = function (data, mode) {
       // Convert data if needed
       if (typeof dictionary === 'string') {
         dict = strings.string2buf(dictionary);
-      } else if (toString$3.call(dictionary) === '[object ArrayBuffer]') {
+      } else if (toString$4.call(dictionary) === '[object ArrayBuffer]') {
         dict = new Uint8Array(dictionary);
       } else {
         dict = dictionary;
@@ -45033,6 +45591,7 @@ function () {
     this.max_proxy_descendant_depth = 6; // # of levels to search up/down for proxy tiles
 
     this.max_proxy_ancestor_depth = 7;
+    this.children_cache = {}; // cache for children of coordinates
   }
 
   var _proto = TilePyramid.prototype;
@@ -45094,7 +45653,6 @@ function () {
     var level = 0;
 
     while (level < this.max_proxy_ancestor_depth) {
-      var last_z = tile.coords.z;
       tile = __chunk_1.TileID.parent(tile);
 
       if (!tile) {
@@ -45105,9 +45663,7 @@ function () {
         return this.tiles[tile.key].tile;
       }
 
-      if (tile.coords.z !== last_z) {
-        level++;
-      }
+      level++;
     }
   } // Find the descendant tiles for a given tile and style zoom level
   ;
@@ -45122,7 +45678,7 @@ function () {
     var descendants = [];
 
     if (level < this.max_proxy_descendant_depth) {
-      var tiles = __chunk_1.TileID.children(tile);
+      var tiles = __chunk_1.TileID.children(tile, this.children_cache);
 
       if (!tiles) {
         return;
@@ -45134,7 +45690,7 @@ function () {
             descendants.push(_this.tiles[t.key].tile);
           } else if (_this.tiles[t.key].descendants > 0) {
             // didn't find any children, try next level
-            descendants.push.apply(descendants, _this.getDescendants(t, level + (t.coords.z !== tile.coords.z)));
+            descendants.push.apply(descendants, _this.getDescendants(t, level + 1));
           }
         }
       });
@@ -45179,66 +45735,72 @@ function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
       meshes.forEach(function (mesh) {
         if (mesh.labels) {
           for (var label_id in mesh.labels) {
-            if (!labels[label_id]) {
-              var params = mesh.labels[label_id].container.label;
-              var linked = mesh.labels[label_id].container.linked;
-              var ranges = mesh.labels[label_id].ranges;
-              var debug = Object.assign({}, mesh.labels[label_id].debug, {
-                tile: tile,
-                params: params,
-                label_id: label_id
-              });
-              var label = labels[label_id] = {};
-              label.discard = discard.bind(label);
-              label.build_id = tile.build_id; // original order in which tiles were built
-
-              Object.assign(label, params);
-              label.layout = Object.assign({}, params.layout); // TODO: ideally remove need to copy props here
-
-              label.layout.repeat_scale = 0.75; // looser second pass on repeat groups, to weed out repeats near tile edges
-
-              label.layout.repeat_distance = label.layout.repeat_distance || 0;
-              label.layout.repeat_distance /= size_scale; // TODO: where should this be scaled?
-
-              label.position = [// don't overwrite referenced values
-              label.position[0] / units_per_meter + tile.min.x, label.position[1] / units_per_meter + tile.min.y];
-              label.unit_scale = meters_per_pixel; // if (params.obb) {
-
-              if (label.type === 'point') {
-                // TODO: move to integer constants to avoid excess string copies
-                __chunk_1.LabelPoint.prototype.updateBBoxes.call(label);
-              } else if (label.type === 'straight') {
-                __chunk_1.LabelLineStraight.prototype.updateBBoxes.call(label, label.position, label.size, label.angle, label.angle, label.offset);
-              } else if (params.obbs) {
-                // NB: this is a very rough approximation of curved label collision at intermediate zooms,
-                // becuase the position/scale of each collision box isn't correctly updated; however,
-                // it's good enough to provide some additional label coverage, with less overhead
-                var obbs = params.obbs.map(function (o) {
-                  var x = o.x,
-                      y = o.y,
-                      a = o.a,
-                      w = o.w,
-                      h = o.h;
-                  x = x / units_per_meter + tile.min.x;
-                  y = y / units_per_meter + tile.min.y;
-                  w /= size_scale;
-                  h /= size_scale;
-                  return new __chunk_1.OBB(x, y, a, w, h);
-                });
-                label.obbs = obbs;
-                label.aabbs = obbs.map(function (o) {
-                  return o.getExtent();
-                });
-              }
-
-              containers[label_id] = {
-                label: label,
-                linked: linked,
-                ranges: ranges,
-                mesh: mesh,
-                debug: debug
-              };
+            // For proxy tiles, only allow visible labels to be *hidden* by further collisions,
+            // don't allow new ones to appear. Promotes label stability and prevents thrash
+            // from different labels (often not thematically relevant given the different zoom level of
+            // the proxy tile content, e.g. random POIs popping in/out when zooming out to city-wide view).
+            if (tile.isProxy() && !prev_visible[label_id]) {
+              continue;
             }
+
+            var params = mesh.labels[label_id].container.label;
+            var linked = mesh.labels[label_id].container.linked;
+            var ranges = mesh.labels[label_id].ranges;
+            var debug = Object.assign({}, mesh.labels[label_id].debug, {
+              tile: tile,
+              params: params,
+              label_id: label_id
+            });
+            var label = labels[label_id] = {};
+            label.discard = discard.bind(label);
+            label.build_id = tile.build_id; // original order in which tiles were built
+
+            Object.assign(label, params);
+            label.layout = Object.assign({}, params.layout); // TODO: ideally remove need to copy props here
+
+            label.layout.repeat_scale = 0.75; // looser second pass on repeat groups, to weed out repeats near tile edges
+
+            label.layout.repeat_distance = label.layout.repeat_distance || 0;
+            label.layout.repeat_distance /= size_scale; // TODO: where should this be scaled?
+
+            label.position = [// don't overwrite referenced values
+            label.position[0] / units_per_meter + tile.min.x, label.position[1] / units_per_meter + tile.min.y];
+            label.unit_scale = meters_per_pixel;
+
+            if (label.type === 'point') {
+              // TODO: move to integer constants to avoid excess string copies
+              __chunk_1.LabelPoint.prototype.updateBBoxes.call(label);
+            } else if (label.type === 'straight') {
+              __chunk_1.LabelLineStraight.prototype.updateBBoxes.call(label, label.position, label.size, label.angle, label.angle, label.offset);
+            } else if (params.obbs) {
+              // NB: this is a very rough approximation of curved label collision at intermediate zooms,
+              // becuase the position/scale of each collision box isn't correctly updated; however,
+              // it's good enough to provide some additional label coverage, with less overhead
+              var obbs = params.obbs.map(function (o) {
+                var x = o.x,
+                    y = o.y,
+                    a = o.a,
+                    w = o.w,
+                    h = o.h;
+                x = x / units_per_meter + tile.min.x;
+                y = y / units_per_meter + tile.min.y;
+                w /= size_scale;
+                h /= size_scale;
+                return new __chunk_1.OBB(x, y, a, w, h);
+              });
+              label.obbs = obbs;
+              label.aabbs = obbs.map(function (o) {
+                return o.getExtent();
+              });
+            }
+
+            containers[label_id] = {
+              label: label,
+              linked: linked,
+              ranges: ranges,
+              mesh: mesh,
+              debug: debug
+            };
           }
         }
       });
@@ -45359,17 +45921,14 @@ var TileManager =
 /*#__PURE__*/
 function () {
   function TileManager(_ref) {
-    var scene = _ref.scene,
-        view = _ref.view;
+    var scene = _ref.scene;
     this.scene = scene;
-    this.view = view;
     this.tiles = {};
     this.pyramid = new TilePyramid();
     this.visible_coords = {};
     this.queued_coords = [];
     this.building_tiles = null;
     this.renderable_tiles = [];
-    this.active_styles = [];
     this.collision = {
       tile_keys: null,
       mesh_set: null,
@@ -45393,7 +45952,6 @@ function () {
     this.visible_coords = {};
     this.queued_coords = [];
     this.scene = null;
-    this.view = null;
     __chunk_1.WorkerBroker.removeTarget(this.main_thread_target);
   };
 
@@ -45478,7 +46036,8 @@ function () {
     this.updateProxyTiles();
     this.view.pruneTilesForView();
     this.updateRenderableTiles();
-    this.updateActiveStyles();
+    this.style_manager.updateActiveStyles(this.renderable_tiles);
+    this.style_manager.updateActiveBlendOrders(this.renderable_tiles);
     return this.updateLabels();
   };
 
@@ -45539,9 +46098,7 @@ function () {
               return _this2.scene.immediateRedraw();
             });
           });
-        },
-        user_moving_view: false // don't run task when user is moving view
-
+        }
       };
       __chunk_1.Task.add(this.collision.task);
     } // else {
@@ -45632,25 +46189,6 @@ function () {
     }
 
     return this.renderable_tiles;
-  };
-
-  _proto.getActiveStyles = function getActiveStyles() {
-    return this.active_styles;
-  };
-
-  _proto.updateActiveStyles = function updateActiveStyles() {
-    var tiles = this.renderable_tiles;
-    var active = {};
-
-    for (var t = 0; t < tiles.length; t++) {
-      var tile = tiles[t];
-      Object.keys(tile.meshes).forEach(function (s) {
-        return active[s] = true;
-      });
-    }
-
-    this.active_styles = Object.keys(active);
-    return this.active_styles;
   };
 
   _proto.isLoadingVisibleTiles = function isLoadingVisibleTiles() {
@@ -45845,6 +46383,18 @@ function () {
     return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
   };
 
+  __chunk_1._createClass(TileManager, [{
+    key: "view",
+    get: function get() {
+      return this.scene.view;
+    }
+  }, {
+    key: "style_manager",
+    get: function get() {
+      return this.scene.style_manager;
+    }
+  }]);
+
   return TileManager;
 }(); // Round a number to given number of decimal divisions
 
@@ -45958,7 +46508,7 @@ var RenderStateManager = function RenderStateManager(gl) {
   });
 };
 
-__chunk_1.require$$0('Uint8', 1, function (init) {
+__chunk_1.require$$0$5('Uint8', 1, function (init) {
   return function Uint8ClampedArray(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
@@ -46326,8 +46876,7 @@ function () {
     this.sources = {};
     this.view = new __chunk_1.View(this, options);
     this.tile_manager = new TileManager({
-      scene: this,
-      view: this.view
+      scene: this
     });
     this.num_workers = options.numWorkers || 2;
 
@@ -46875,99 +47424,204 @@ function () {
 
     // optionally force alpha off (e.g. for selection pass)
     allow_blend = allow_blend == null ? true : allow_blend;
-    this.clearFrame(); // Sort styles by blend order
-
-    var styles = this.tile_manager.getActiveStyles().map(function (s) {
-      return _this6.styles[s];
-    }).filter(function (s) {
-      return s;
-    }). // guard against missing styles, such as while loading a new scene
-    sort(__chunk_1.Style.blendOrderSort); // Render styles
-
+    this.clearFrame();
     var count = 0; // how many primitives were rendered
 
-    var last_blend;
+    var last_blend; // blend mode active in last render pass
+    // Get sorted list of current blend orders, with accompanying list of styles to render for each
 
-    for (var s = 0; s < styles.length; s++) {
-      var style = styles[s]; // Only update render state when blend mode changes
+    var blend_orders = this.style_manager.getActiveBlendOrders();
 
-      if (style.blend !== last_blend) {
-        var state = Object.assign({}, __chunk_1.Style.render_states[style.blend], // render state for blend mode
-        {
-          blend: allow_blend && style.blend // enable/disable blending (e.g. no blend for selection)
+    for (var _iterator = blend_orders, _isArray = Array.isArray(_iterator), _i = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
+      var _ref3;
 
-        });
-        this.setRenderState(state);
-      } // Depth pre-pass for translucency
-
-
-      var translucent = style.blend === 'translucent' && program_key === 'program'; // skip for selection buffer render pass
-
-      if (translucent) {
-        this.gl.colorMask(false, false, false, false);
-        this.renderStyle(style.name, program_key);
-        this.gl.colorMask(true, true, true, true);
-        this.gl.depthFunc(this.gl.EQUAL); // stencil buffer prevents compounding alpha from overlapping polys
-
-        this.gl.enable(this.gl.STENCIL_TEST);
-        this.gl.clear(this.gl.STENCIL_BUFFER_BIT);
-        this.gl.stencilFunc(this.gl.EQUAL, this.gl.ZERO, 0xFF);
-        this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.INCR);
-      } // Main render pass
-
-
-      count += this.renderStyle(style.name, program_key);
-
-      if (translucent) {
-        // disable translucency-specific settings
-        this.gl.disable(this.gl.STENCIL_TEST);
-        this.gl.depthFunc(this.gl.LESS);
+      if (_isArray) {
+        if (_i >= _iterator.length) break;
+        _ref3 = _iterator[_i++];
+      } else {
+        _i = _iterator.next();
+        if (_i.done) break;
+        _ref3 = _i.value;
       }
 
-      last_blend = style.blend;
+      var _ref4 = _ref3,
+          blend_order = _ref4.blend_order,
+          styles = _ref4.styles;
+
+      var _loop2 = function _loop2(s) {
+        var style = _this6.styles[styles[s]];
+
+        if (style == null) {
+          return "continue";
+        } // Only update render state when blend mode changes
+
+
+        if (style.blend !== last_blend) {
+          var state = Object.assign({}, __chunk_1.Style.render_states[style.blend], // render state for blend mode
+          {
+            blend: allow_blend && style.blend // enable/disable blending (e.g. no blend for selection)
+
+          });
+
+          _this6.setRenderState(state);
+        }
+
+        var blend = allow_blend && style.blend;
+
+        if (blend === 'translucent') {
+          // Depth pre-pass for translucency
+          _this6.gl.colorMask(false, false, false, false);
+
+          _this6.renderStyle(style.name, program_key, blend_order);
+
+          _this6.gl.colorMask(true, true, true, true);
+
+          _this6.gl.depthFunc(_this6.gl.EQUAL); // Stencil buffer mask prevents overlap/flicker from compounding alpha of overlapping polys
+
+
+          _this6.gl.enable(_this6.gl.STENCIL_TEST);
+
+          _this6.gl.clearStencil(0);
+
+          _this6.gl.clear(_this6.gl.STENCIL_BUFFER_BIT);
+
+          _this6.gl.stencilFunc(_this6.gl.EQUAL, _this6.gl.ZERO, 0xFF);
+
+          _this6.gl.stencilOp(_this6.gl.KEEP, _this6.gl.KEEP, _this6.gl.INCR); // Main render pass
+
+
+          count += _this6.renderStyle(style.name, program_key, blend_order); // Disable translucency-specific settings
+
+          _this6.gl.disable(_this6.gl.STENCIL_TEST);
+
+          _this6.gl.depthFunc(_this6.gl.LESS);
+        } else if (blend !== 'opaque' && style.stencil_proxy_tiles === true) {
+          // Mask proxy tiles to with stencil buffer to avoid overlap/flicker from compounding alpha
+          // Find unique levels of proxy tiles to render for this style
+          var proxy_levels = _this6.tile_manager.getRenderableTiles().filter(function (t) {
+            return t.meshes[style.name];
+          }) // must have meshes for this style
+          .map(function (t) {
+            return t.proxy_level;
+          }) // get the proxy depth
+          .reduce(function (levels, level) {
+            // count unique proxy depths
+            levels.indexOf(level) > -1 || levels.push(level);
+            return levels;
+          }, []).sort(); // sort by lower depth first
+
+
+          if (proxy_levels.length > 1) {
+            // When there are multiple "levels" of tiles to render (e.g. non-proxy and one or more proxy
+            // tile levels, or multiple proxy tile levels but no non-proxy tiles, etc.):
+            // Render each proxy tile level to stencil buffer, masking each level such that it will not
+            // render over any pixel rendered by a previous proxy tile level.
+            _this6.gl.enable(_this6.gl.STENCIL_TEST);
+
+            _this6.gl.clearStencil(0);
+
+            _this6.gl.clear(_this6.gl.STENCIL_BUFFER_BIT);
+
+            _this6.gl.stencilOp(_this6.gl.KEEP, _this6.gl.KEEP, _this6.gl.REPLACE);
+
+            for (var i = 0; i < proxy_levels.length; i++) {
+              // stencil test passes either for zero (not-yet-rendered),
+              // or for other pixels at this proxy level (but not previous proxy levels)
+              _this6.gl.stencilFunc(_this6.gl.GEQUAL, proxy_levels.length - i, 0xFF);
+
+              count += _this6.renderStyle(style.name, program_key, blend_order, proxy_levels[i]);
+            }
+
+            _this6.gl.disable(_this6.gl.STENCIL_TEST);
+          } else {
+            // No special render handling needed when there are no proxy tiles,
+            // or if there is ONLY a single proxy tile level (e.g. with no non-proxy tiles)
+            count += _this6.renderStyle(style.name, program_key, blend_order);
+          }
+        } else {
+          // Regular render pass (no special blend handling, or selection buffer pass)
+          count += _this6.renderStyle(style.name, program_key, blend_order);
+        }
+
+        last_blend = style.blend;
+      };
+
+      // Render each style
+      for (var s = 0; s < styles.length; s++) {
+        var _ret = _loop2(s);
+
+        if (_ret === "continue") continue;
+      }
     }
 
     return count;
   };
 
-  _proto.renderStyle = function renderStyle(style_name, program_key) {
+  _proto.renderStyle = function renderStyle(style_name, program_key, blend_order, proxy_level) {
     var _this7 = this;
 
+    if (proxy_level === void 0) {
+      proxy_level = null;
+    }
+
     var style = this.styles[style_name];
-    var first_for_style = true;
+    var first_for_style = true; // TODO: allow this state to be passed in (for multilpe blend orders, stencil tests, etc)
+
     var render_count = 0;
     var program; // Render tile GL geometries
 
-    var renderable_tiles = this.tile_manager.getRenderableTiles(); // Mesh variants must be rendered in requested order across tiles, to prevent labels that cross
+    var renderable_tiles = this.tile_manager.getRenderableTiles(); // For each tile, only include meshes for the blend order currently being rendered
+    // Builds an array tiles and their associated meshes, each as a [tile, meshes] 2-element array
+
+    var tile_meshes = renderable_tiles.filter(function (t) {
+      return typeof proxy_level !== 'number' || t.proxy_level === proxy_level;
+    }) // optional filter by proxy level
+    .map(function (t) {
+      if (t.meshes[style_name]) {
+        return [t, t.meshes[style_name].filter(function (m) {
+          return m.variant.blend_order === blend_order;
+        })];
+      }
+    }).filter(function (x) {
+      return x;
+    }); // skip tiles with no meshes for this blend order
+    // Mesh variants must be rendered in requested order across tiles, to prevent labels that cross
     // tile boundaries from rendering over adjacent tile features meant to be underneath
 
-    var max_mesh_variant_order = Math.max.apply(Math, renderable_tiles.map(function (t) {
-      return t.meshes[style_name] ? Math.max.apply(Math, t.meshes[style_name].map(function (m) {
-        return m.variant.order;
-      })) : -1;
+    var max_mesh_order = Math.max.apply(Math, tile_meshes.map(function (_ref5) {
+      var meshes = _ref5[1];
+      return Math.max.apply(Math, meshes.map(function (m) {
+        return m.variant.mesh_order;
+      }));
     })); // One pass per mesh variant order (loop goes to max value +1 because 0 is a valid order value)
 
-    var _loop2 = function _loop2(mo) {
-      var _loop3 = function _loop3(t) {
-        var tile = renderable_tiles[t];
-        var first_for_tile = true;
+    var _loop3 = function _loop3(mo) {
+      var _loop5 = function _loop5() {
+        if (_isArray2) {
+          if (_i2 >= _iterator2.length) return "break";
+          _ref6 = _iterator2[_i2++];
+        } else {
+          _i2 = _iterator2.next();
+          if (_i2.done) return "break";
+          _ref6 = _i2.value;
+        }
 
-        if (tile.meshes[style_name] == null) {
-          return "continue";
-        } // Skip proxy tiles if new tiles have finished loading this style
-
+        var _ref7 = _ref6,
+            tile = _ref7[0],
+            meshes = _ref7[1];
+        var first_for_tile = true; // Skip proxy tiles if new tiles have finished loading this style
 
         if (!tile.shouldProxyForStyle(style_name)) {
           // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
           return "continue";
-        } // Get meshes for current variant order, current style, and current tile
+        } // Filter meshes further by current variant order
 
 
-        var meshes = tile.meshes[style_name].filter(function (m) {
-          return m.variant.order === mo;
-        }); // find meshes by variant order
+        var order_meshes = meshes.filter(function (m) {
+          return m.variant.mesh_order === mo;
+        });
 
-        if (meshes.length === 0) {
+        if (order_meshes.length === 0) {
           return "continue";
         } // Style-specific state
         // Only setup style if rendering for first time this frame
@@ -46989,7 +47643,7 @@ function () {
         } // Render each mesh (for current variant order)
 
 
-        meshes.forEach(function (mesh) {
+        order_meshes.forEach(function (mesh) {
           // Tile-specific state
           if (first_for_tile === true) {
             first_for_tile = false;
@@ -47006,23 +47660,29 @@ function () {
         });
       };
 
-      for (var t = 0; t < renderable_tiles.length; t++) {
-        var _ret2 = _loop3(t);
+      // Loop over tiles, with meshes pre-filtered by current blend order
+      _loop4: for (var _iterator2 = tile_meshes, _isArray2 = Array.isArray(_iterator2), _i2 = 0, _iterator2 = _isArray2 ? _iterator2 : _iterator2[Symbol.iterator]();;) {
+        var _ref6;
 
-        switch (_ret2) {
+        var _ret3 = _loop5();
+
+        switch (_ret3) {
+          case "break":
+            break _loop4;
+
           case "continue":
             continue;
 
           default:
-            if (typeof _ret2 === "object") return _ret2.v;
+            if (typeof _ret3 === "object") return _ret3.v;
         }
       }
     };
 
-    for (var mo = 0; mo < max_mesh_variant_order + 1; mo++) {
-      var _ret = _loop2(mo);
+    for (var mo = 0; mo < max_mesh_order + 1; mo++) {
+      var _ret2 = _loop3(mo);
 
-      if (typeof _ret === "object") return _ret.v;
+      if (typeof _ret2 === "object") return _ret2.v;
     }
 
     return render_count;
@@ -47072,11 +47732,11 @@ function () {
   };
 
   _proto.setRenderState = function setRenderState(_temp2) {
-    var _ref3 = _temp2 === void 0 ? {} : _temp2,
-        depth_test = _ref3.depth_test,
-        depth_write = _ref3.depth_write,
-        cull_face = _ref3.cull_face,
-        blend = _ref3.blend;
+    var _ref8 = _temp2 === void 0 ? {} : _temp2,
+        depth_test = _ref8.depth_test,
+        depth_write = _ref8.depth_write,
+        cull_face = _ref8.cull_face,
+        blend = _ref8.blend;
 
     if (!this.initialized) {
       return;
@@ -47147,8 +47807,8 @@ function () {
   ;
 
   _proto.getFeatureAt = function getFeatureAt(pixel, _temp3) {
-    var _ref4 = _temp3 === void 0 ? {} : _temp3,
-        radius = _ref4.radius;
+    var _ref9 = _temp3 === void 0 ? {} : _temp3,
+        radius = _ref9.radius;
 
     if (!this.initialized) {
       __chunk_1.log('debug', 'Scene.getFeatureAt() called before scene was initialized');
@@ -47196,9 +47856,9 @@ function () {
 
   _proto.queryFeatures = function queryFeatures(_temp4) {
     return new Promise(function ($return, $error) {
-      var _ref5, filter, _ref5$unique, unique, _ref5$group_by, group_by, _ref5$visible, visible, _ref5$geometry, geometry, uniqueify, group, tile_keys, results, features, keys, groups;
+      var _ref10, filter, _ref10$unique, unique, _ref10$group_by, group_by, _ref10$visible, visible, _ref10$geometry, geometry, uniqueify, group, tile_keys, results, features, keys, groups;
 
-      _ref5 = _temp4 === void 0 ? {} : _temp4, filter = _ref5.filter, _ref5$unique = _ref5.unique, unique = _ref5$unique === void 0 ? true : _ref5$unique, _ref5$group_by = _ref5.group_by, group_by = _ref5$group_by === void 0 ? null : _ref5$group_by, _ref5$visible = _ref5.visible, visible = _ref5$visible === void 0 ? null : _ref5$visible, _ref5$geometry = _ref5.geometry, geometry = _ref5$geometry === void 0 ? false : _ref5$geometry;
+      _ref10 = _temp4 === void 0 ? {} : _temp4, filter = _ref10.filter, _ref10$unique = _ref10.unique, unique = _ref10$unique === void 0 ? true : _ref10$unique, _ref10$group_by = _ref10.group_by, group_by = _ref10$group_by === void 0 ? null : _ref10$group_by, _ref10$visible = _ref10.visible, visible = _ref10$visible === void 0 ? null : _ref10$visible, _ref10$geometry = _ref10.geometry, geometry = _ref10$geometry === void 0 ? false : _ref10$geometry;
 
       if (!this.initialized) {
         return $return([]);
@@ -47282,18 +47942,18 @@ function () {
   _proto.rebuild = function rebuild(_temp5) {
     var _this8 = this;
 
-    var _ref6 = _temp5 === void 0 ? {} : _temp5,
-        _ref6$initial = _ref6.initial,
-        initial = _ref6$initial === void 0 ? false : _ref6$initial,
-        _ref6$new_generation = _ref6.new_generation,
-        new_generation = _ref6$new_generation === void 0 ? true : _ref6$new_generation,
-        _ref6$sources = _ref6.sources,
-        sources = _ref6$sources === void 0 ? null : _ref6$sources,
-        serialize_funcs = _ref6.serialize_funcs,
-        _ref6$profile = _ref6.profile,
-        profile = _ref6$profile === void 0 ? false : _ref6$profile,
-        _ref6$fade_in = _ref6.fade_in,
-        fade_in = _ref6$fade_in === void 0 ? false : _ref6$fade_in;
+    var _ref11 = _temp5 === void 0 ? {} : _temp5,
+        _ref11$initial = _ref11.initial,
+        initial = _ref11$initial === void 0 ? false : _ref11$initial,
+        _ref11$new_generation = _ref11.new_generation,
+        new_generation = _ref11$new_generation === void 0 ? true : _ref11$new_generation,
+        _ref11$sources = _ref11.sources,
+        sources = _ref11$sources === void 0 ? null : _ref11$sources,
+        serialize_funcs = _ref11.serialize_funcs,
+        _ref11$profile = _ref11.profile,
+        profile = _ref11$profile === void 0 ? false : _ref11$profile,
+        _ref11$fade_in = _ref11.fade_in,
+        fade_in = _ref11$fade_in === void 0 ? false : _ref11$fade_in;
 
     return new Promise(function (resolve, reject) {
       // Skip rebuild if already in progress
@@ -47417,9 +48077,9 @@ function () {
       config_source = null;
     }
 
-    var _ref7 = _temp6 === void 0 ? {} : _temp6,
-        base_path = _ref7.base_path,
-        file_type = _ref7.file_type;
+    var _ref12 = _temp6 === void 0 ? {} : _temp6,
+        base_path = _ref12.base_path,
+        file_type = _ref12.file_type;
 
     this.config_source = config_source || this.config_source;
 
@@ -47435,9 +48095,9 @@ function () {
     return SceneLoader$1.loadScene(this.config_source, {
       path: this.base_path,
       type: file_type
-    }).then(function (_ref8) {
-      var config = _ref8.config,
-          bundle = _ref8.bundle;
+    }).then(function (_ref13) {
+      var config = _ref13.config,
+          bundle = _ref13.bundle;
       _this9.config = config;
       _this9.config_bundle = bundle;
       return _this9.config;
@@ -47693,16 +48353,16 @@ function () {
   _proto.updateConfig = function updateConfig(_temp7) {
     var _this14 = this;
 
-    var _ref9 = _temp7 === void 0 ? {} : _temp7,
-        _ref9$loading = _ref9.loading,
-        loading = _ref9$loading === void 0 ? false : _ref9$loading,
-        _ref9$rebuild = _ref9.rebuild,
-        rebuild = _ref9$rebuild === void 0 ? true : _ref9$rebuild,
-        serialize_funcs = _ref9.serialize_funcs,
-        _ref9$normalize = _ref9.normalize,
-        normalize = _ref9$normalize === void 0 ? true : _ref9$normalize,
-        _ref9$fade_in = _ref9.fade_in,
-        fade_in = _ref9$fade_in === void 0 ? false : _ref9$fade_in;
+    var _ref14 = _temp7 === void 0 ? {} : _temp7,
+        _ref14$loading = _ref14.loading,
+        loading = _ref14$loading === void 0 ? false : _ref14$loading,
+        _ref14$rebuild = _ref14.rebuild,
+        rebuild = _ref14$rebuild === void 0 ? true : _ref14$rebuild,
+        serialize_funcs = _ref14.serialize_funcs,
+        _ref14$normalize = _ref14.normalize,
+        normalize = _ref14$normalize === void 0 ? true : _ref14$normalize,
+        _ref14$fade_in = _ref14.fade_in,
+        fade_in = _ref14$fade_in === void 0 ? false : _ref14$fade_in;
 
     this.generation = ++Scene.generation;
     this.updating++;
@@ -47755,9 +48415,9 @@ function () {
   ;
 
   _proto.syncConfigToWorker = function syncConfigToWorker(_temp8) {
-    var _ref10 = _temp8 === void 0 ? {} : _temp8,
-        _ref10$serialize_func = _ref10.serialize_funcs,
-        serialize_funcs = _ref10$serialize_func === void 0 ? true : _ref10$serialize_func;
+    var _ref15 = _temp8 === void 0 ? {} : _temp8,
+        _ref15$serialize_func = _ref15.serialize_funcs,
+        serialize_funcs = _ref15$serialize_func === void 0 ? true : _ref15$serialize_func;
 
     // Tell workers we're about to rebuild (so they can update styles, etc.)
     var config_serialized = serialize_funcs ? __chunk_1.Utils.serializeWithFunctions(this.config) : JSON.stringify(this.config);
@@ -47876,9 +48536,9 @@ function () {
   ;
 
   _proto.screenshot = function screenshot(_temp9) {
-    var _ref11 = _temp9 === void 0 ? {} : _temp9,
-        _ref11$background = _ref11.background,
-        background = _ref11$background === void 0 ? 'white' : _ref11$background;
+    var _ref16 = _temp9 === void 0 ? {} : _temp9,
+        _ref16$background = _ref16.background,
+        background = _ref16$background === void 0 ? 'white' : _ref16$background;
 
     this.requestRedraw();
     return this.media_capture.screenshot({
@@ -47917,7 +48577,7 @@ function () {
       var _this18 = this;
 
       // Disable animation is scene flag requests it, otherwise enable animation if any animated styles are in view
-      return this.config.scene.animated === false ? false : this.tile_manager.getActiveStyles().some(function (s) {
+      return this.config.scene.animated === false ? false : this.style_manager.getActiveStyles().some(function (s) {
         return _this18.styles[s].animated;
       });
     }
@@ -48559,6 +49219,7 @@ var debug$1 = {
   Task: __chunk_1.Task,
   StyleManager: __chunk_1.StyleManager,
   StyleParser: __chunk_1.StyleParser,
+  TileID: __chunk_1.TileID,
   Collision: __chunk_1.Collision,
   FeatureSelection: __chunk_1.FeatureSelection,
   TextCanvas: __chunk_1.TextCanvas,
@@ -48580,7 +49241,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '2601a1fb6864e05bb4f865aebd6904ff195fd3e0';
+	Tangram.debug.SHA = 'f4235dbb2a13111efbbb66b24ab2f8258922885c';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
