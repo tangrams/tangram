@@ -2,13 +2,17 @@ import Utils from '../utils/utils';
 import ShaderProgram from '../gl/shader_program';
 import {mat4, mat3, vec3} from '../utils/gl-matrix';
 
+
 // Abstract base class
 export default class Camera {
 
     constructor(name, view, options = {}) {
         this.view = view;
         this.position = options.position;
-        this.zoom = options.zoom;
+        this.zoom = options.zoom || view ? view.zoom : null;
+        this.roll = options.roll || view ? view.roll : null;
+        this.pitch = options.pitch || view ? view.pitch : null;
+        // this.already = false;
     }
 
     // Create a camera by type name, factory-style
@@ -43,12 +47,19 @@ export default class Camera {
             if (this.zoom) {
                 view.zoom = this.zoom;
             }
+            if (this.roll) {
+                view.roll = this.roll;
+            }
+            if (this.pitch) {
+                view.pitch = this.pitch;
+            }
             this.view.setView(view);
         }
     }
 
     // Set model-view and normal matrices
     setupMatrices (matrices, program) {
+        // console.log('camera setupMatrices');
         // Model view matrix - transform tile space into view space (meters, relative to camera)
         mat4.multiply(matrices.model_view32, this.view_matrix, matrices.model);
         program.uniform('Matrix4fv', 'u_modelView', matrices.model_view32);
@@ -90,6 +101,8 @@ class PerspectiveCamera extends Camera {
             // Default focal length ranges by zoom
             this.focal_length = [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]];
         }
+
+        this.rotation = options.rotation || {x: 0, y: 0};
 
         this.vanishing_point = options.vanishing_point || [0, 0]; // [x, y]
         this.vanishing_point = this.vanishing_point.map(parseFloat); // we implicitly only support px units here
@@ -141,9 +154,13 @@ class PerspectiveCamera extends Camera {
     }
 
     updateMatrices() {
+        // if (!this.already) {
+        //     console.error('perspective cam updateMatrices');
+        //     this.already = true;
+        // }
         // TODO: only re-calculate these vars when necessary
 
-        // Height of the viewport in meters at current zoom
+        // Height of the viewport in meters at current zoom - assumes landscape mode
         var viewport_height = this.view.size.css.height * this.view.meters_per_pixel;
 
         // Compute camera properties to fit desired view
@@ -191,6 +208,8 @@ class PerspectiveCamera extends Camera {
 
         // Include camera height in projection matrix
         mat4.translate(this.projection_matrix, this.projection_matrix, vec3.fromValues(0, 0, -height));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, this.pitch, vec3.fromValues(1, 0, 0));
+        mat4.rotate(this.projection_matrix, this.projection_matrix, this.roll, vec3.fromValues(0, 0, 1));
     }
 
     update() {
@@ -207,7 +226,7 @@ class PerspectiveCamera extends Camera {
 }
 
 // Isometric-style projection
-// Note: this is actually an "axonometric" projection, but I'm using the colloquial term isometric because it is more recognizable.
+// Note: this is technically an "axonometric" projection, but we're using the colloquial term isometric.
 // An isometric projection is a specific subset of axonometric projections.
 // 'axis' determines the xy skew applied to a vertex based on its z coordinate, e.g. [0, 1] axis causes buildings to be drawn
 // straight upwards on screen at their true height, [0, .5] would draw them up at half-height, [1, 0] would be sideways, etc.

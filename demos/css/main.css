@@ -11,10 +11,6 @@ body {
     height: 100%;
 }
 
-div > .leaflet-pelias-control {
-    clear: right;
-}
-
 .featureTable {
     display: table;
     background: white;

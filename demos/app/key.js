@@ -1,7 +1,7 @@
 (function(){
     window.addEventListener('load', function () {
         // Inject demo API key on load or update
-        layer.scene.subscribe({
+        map.scene.subscribe({
             load: function (msg) {
                 injectAPIKey(msg.config);
             },
@@ -12,7 +12,7 @@
     });
 
     function injectAPIKey(config) {
-        var demo_key = 'NaqqS33fTUmyQcvbuIUCKA';
+        var demo_key = '3XqXMjEdT2StnrIRJ4HYbg';
         if (config.global.sdk_api_key) {
             config.global.sdk_api_key = demo_key;
         }

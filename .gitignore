@@ -16,3 +16,6 @@ build
 
 # storing some screenshots here
 screenshots
+
+# ignore custom vscode workspace config
+.vscode

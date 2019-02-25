@@ -21,6 +21,9 @@ cameras:
         type: perspective
         vanishing_point: [0, -250px] # relative to center of screen, in pixels
         active: true
+        # rotation:
+        #     x: 0
+        #     y: -.5
 
     isometric:
         type: isometric
@@ -34,6 +37,7 @@ cameras:
 scene:
     background:
         color: '#f0ebeb'
+    animated: false
 
 fonts:
     Montserrat:
@@ -97,12 +101,16 @@ sources:
         type: TopoJSON
         url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
         tile_size: 512
-        max_zoom: 16
-        # zooms: [0, 2, 4, 6, 8, 10, 12, 14, 16] # only load tiles every 2 zooms (overrides max_zoom)
+        max_zoom: 15
         url_params:
-            api_key: global.api_key
+            api_key: NaqqS33fTUmyQcvbuIUCKA
         # request_headers: # send custom headers with tile requests
         #     Authorization: Bearer xxxxxxxxx
+        # # Data filtering demo with 'scripts' and 'transform' properties:
+        # # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
+        # # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
+        # # That feature is then filtered on below in the 'roads' layer.
+        # scripts: ['https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js']
         # Data filtering demo with 'scripts' and 'transform' properties:
         # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
         # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
@@ -141,7 +149,6 @@ sources:
     # counties:
     #     type: TopoJSON
     #     url: https://gist.githubusercontent.com/mbostock/4090846/raw/c899e3d4f3353924e495667c842f54a07090cfab/us.json
-    #     zooms: [0, 4, 8, 10]
 
 layers:
 
