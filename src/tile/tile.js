@@ -162,7 +162,7 @@ export default class Tile {
     static buildGeometry (tile, { scene_id, layers, styles, global }) {
         let data = tile.source_data;
 
-        tile.debug.rendering = +new Date();
+        tile.debug.building = +new Date();
         tile.debug.feature_count = 0;
         tile.debug.layers = null;
 
@@ -185,7 +185,7 @@ export default class Tile {
             // Get data for one or more layers from source
             let source_layers = Tile.getDataForSource(data, layer.config_data, layer_name);
 
-            // Render features in layer
+            // Build features in layer
             for (let s=0; s < source_layers.length; s++) {
                 let source_layer = source_layers[s];
                 let geom = source_layer.geom;
@@ -210,7 +210,7 @@ export default class Tile {
                         continue;
                     }
 
-                    // Render draw groups
+                    // Build draw groups
                     for (let group_name in draw_groups) {
                         let group = draw_groups[group_name];
 
@@ -237,13 +237,13 @@ export default class Tile {
                 }
             }
         }
-        tile.debug.rendering = +new Date() - tile.debug.rendering;
+        tile.debug.building = +new Date() - tile.debug.building;
 
         // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
         let tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]);
-        Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.collision ? 'collision' : 'non-collision');
-        // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.name); // call for each style
-        // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => 'styles'); // all styles in single call (previous behavior)
+        Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.collision ? 'collision' : 'non-collision');
+        // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.name); // call for each style
+        // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => 'styles'); // all styles in single call (previous behavior)
     }
 
     static stylesForTile (tile, styles) {
@@ -256,66 +256,64 @@ export default class Tile {
         return tile_styles;
     }
 
-    // Send groups of styles back to main thread, asynchronously (as they finish building),
-    // grouped by the provided function
-    static sendStyleGroups(tile, styles, { scene_id }, group_by) {
-        // Group styles
-        let groups = {};
-        styles.forEach(s => {
-            let group_name = group_by(s);
-            groups[group_name] = groups[group_name] || [];
-            groups[group_name].push(s);
-        });
+    // Build styles (grouped by the provided function) and send back to main thread as they finish building
+    static buildStyleGroups(tile, styles, scene_id, group_by) {
+        // Group the styles; each group will be sent to the main thread when the styles in the group finish building.
+        const groups = styles.reduce((groups, style) => {
+            const group = group_by(style);
+            groups[group] = groups[group] || [];
+            groups[group].push(style);
+            return groups;
+        }, {});
 
-        if (Object.keys(groups).length > 0) {
-            let progress = { start: true };
-            tile.mesh_data = {};
-
-            for (let group_name in groups) {
-                let group = groups[group_name];
-
-                Promise.all(
-                    group.map(style => {
-                        return style.endData(tile)
-                            .then(style_data => {
-                                if (style_data) {
-                                    tile.mesh_data[style.name] = style_data;
-                                }
-                            });
-                    }))
-                    .then(() => {
-                        log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
-
-                        // Clear group and check if all groups finished
-                        groups[group_name] = [];
-                        if (Object.keys(groups).every(g => groups[g].length === 0)) {
-                            progress.done = true;
-                        }
-
-                        // Send meshes to main thread
-                        WorkerBroker.postMessage(
-                            `TileManager_${scene_id}.buildTileStylesCompleted`,
-                            WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
-                        );
-                        progress.start = null;
-                        tile.mesh_data = {}; // reset so each group sends separate set of style meshes
-
-                        if (progress.done) {
-                            Collision.resetTile(tile.id); // clear collision if we're done with the tile
-                        }
-                    })
-                    .catch((e) => {
-                        log('error', `Error for style group '${group_name}' for tile ${tile.key}`, (e && e.stack) || e);
-                    });
-            }
-        }
-        else {
-            // Nothing to build, return empty tile to main thread
+        // If nothing to build, return empty tile to main thread
+        if (Object.keys(groups).length === 0) {
             WorkerBroker.postMessage(
                 `TileManager_${scene_id}.buildTileStylesCompleted`,
                 WorkerBroker.withTransferables({ tile: Tile.slice(tile), progress: { start: true, done: true } })
             );
             Collision.resetTile(tile.id); // clear collision if we're done with the tile
+            return;
+        }
+
+        // Build each group of styles
+        const progress = {};
+        for (const group_name in groups) {
+            Tile.buildStyleGroup({ group_name, groups, tile, progress, scene_id });
+        }
+    }
+
+    // Build a single group of styles
+    static async buildStyleGroup({ group_name, groups, tile, progress, scene_id }) {
+        const group = groups[group_name];
+        const mesh_data = {};
+        try {
+            // For each group, build all styles in the group
+            await Promise.all(group.map(async (style) => {
+                const style_data = await style.endData(tile);
+                if (style_data) {
+                    mesh_data[style.name] = style_data;
+                }
+            }));
+
+            // Mark the group as done, and check if all groups have finished
+            log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
+            groups[group_name] = null;
+            if (Object.keys(groups).every(g => groups[g] == null)) {
+                progress.done = true;
+            }
+
+            // Send meshes to main thread
+            WorkerBroker.postMessage(
+                `TileManager_${scene_id}.buildTileStylesCompleted`,
+                WorkerBroker.withTransferables({ tile: { ...Tile.slice(tile), mesh_data }, progress })
+            );
+            if (progress.done) {
+                Collision.resetTile(tile.id); // clear collision if we're done with the tile
+            }
+        }
+        catch (e) {
+            log('error', `Error for style group '${group_name}' for tile ${tile.key}`, (e && e.stack) || e);
         }
     }
 
