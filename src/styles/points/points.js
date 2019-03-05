@@ -8,7 +8,6 @@ import VertexLayout from '../../gl/vertex_layout';
 import {buildQuadsForPoints} from '../../builders/points';
 import Texture from '../../gl/texture';
 import Geo from '../../utils/geo';
-import Vector from '../../utils/vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import placePointsOnLine from '../../labels/point_placement';
@@ -20,11 +19,6 @@ import points_vs from './points_vertex.glsl';
 import points_fs from './points_fragment.glsl';
 
 const PLACEMENT = LabelPoint.PLACEMENT;
-
-const pre_angles_normalize = 128 / Math.PI;
-const angles_normalize = 16384 / Math.PI;
-const offsets_normalize = 64;
-const texcoord_normalize = 65535;
 
 export const Points = Object.create(Style);
 
@@ -673,7 +667,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, angles, pre_angles, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, angles, pre_angles, offset, offsets, texcoords, curve, vertex_data, vertex_template) {
         if (size[0] <= 0 || size[1] <= 0) {
             return 0; // size must be positive
         }
@@ -682,30 +676,16 @@ Object.assign(Points, {
             points,
             vertex_data,
             vertex_template,
-            {
-                texcoord_index: vertex_data.vertex_layout.index.a_texcoord,
-                position_index: vertex_data.vertex_layout.index.a_position,
-                shape_index: vertex_data.vertex_layout.index.a_shape,
-                offset_index: vertex_data.vertex_layout.index.a_offset,
-                offsets_index: vertex_data.vertex_layout.index.a_offsets,
-                pre_angles_index: vertex_data.vertex_layout.index.a_pre_angles,
-                angles_index: vertex_data.vertex_layout.index.a_angles
-            },
-            {
-                quad: size,
-                quad_normalize: 256,    // values have an 8-bit fraction
-                offset,
-                offsets,
-                pre_angles: pre_angles,
-                angle: angle * 4096,    // values have a 12-bit fraction
-                angles: angles,
-                curve,
-                texcoord_scale,
-                texcoord_normalize,
-                pre_angles_normalize,
-                angles_normalize,
-                offsets_normalize
-            }
+            vertex_data.vertex_layout.index,
+            size,
+            256, // size values have an 8-bit fraction
+            offset,
+            offsets,
+            pre_angles,
+            angle * 4096, // angle values have a 12-bit fraction
+            angles,
+            texcoords,
+            curve
         );
     },
 
