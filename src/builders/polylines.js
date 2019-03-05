@@ -19,47 +19,37 @@ const JOIN_TYPE = {
     round: 2
 };
 
-const DEFAULT = {
-    MITER_LIMIT: 3,
-    TEXCOORD_NORMALIZE: 1,
-    TEXCOORD_RATIO: 1,
-    MIN_FAN_WIDTH: 5        // Width of line in tile units to place 1 triangle per fan
-};
+const DEFAULT_MITER_LIMIT = 3;
+const MIN_FAN_WIDTH = 5; // Width of line in tile units to place 1 triangle per fan
+const TEXCOORD_NORMALIZE = 65536; // Scaling factor for UV attribute values
 
 // Scaling factor to add precision to line texture V coordinate packed as normalized short
-const v_scale_adjust = Geo.tile_scale;
+const V_SCALE_ADJUST = Geo.tile_scale;
 const zero_v = [0, 0], one_v = [1, 0], mid_v = [0.5, 0]; // reusable instances, updated with V coordinate
 
-export function buildPolylines (lines, width, vertex_data, vertex_template,
-    {
-        closed_polygon,
-        remove_tile_edges,
-        tile_edge_tolerance,
-        texcoord_index,
-        texcoord_width,
-        texcoord_ratio,
-        texcoord_normalize,
-        extrude_index,
-        offset_index,
-        join, cap,
-        miter_limit,
-        offset
-    }) {
-    var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
-    var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter;
+export function buildPolylines (
+    lines,
+    style,
+    vertex_data,
+    vertex_template,
+    vindex,
+    closed_polygon,
+    remove_tile_edges,
+    tile_edge_tolerance) {
+
+    var cap_type = style.cap ? CAP_TYPE[style.cap] : CAP_TYPE.butt;
+    var join_type = style.join ? JOIN_TYPE[style.join] : JOIN_TYPE.miter;
 
     // Configure miter limit
     if (join_type === JOIN_TYPE.miter) {
-        miter_limit = miter_limit || DEFAULT.MITER_LIMIT; // default miter limit
+        const miter_limit = style.miter_limit || DEFAULT_MITER_LIMIT; // default miter limit
         var miter_len_sq = miter_limit * miter_limit;
     }
 
     // Texture Variables
     var v_scale;
-    if (texcoord_index) {
-        texcoord_normalize = texcoord_normalize || DEFAULT.TEXCOORD_NORMALIZE;
-        texcoord_ratio = texcoord_ratio || DEFAULT.TEXCOORD_RATIO;
-        v_scale = 1 / (texcoord_width * texcoord_ratio * v_scale_adjust); // scales line texture as a ratio of the line's width
+    if (vindex.a_texcoord) {
+        v_scale = 1 / (style.texcoord_width * V_SCALE_ADJUST); // scales line texture as a ratio of the line's width
     }
 
     // Values that are constant for each line and are passed to helper functions
@@ -72,26 +62,25 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         cap_type,
         vertex_data,
         vertex_template,
-        half_width: width / 2,
-        extrude_index,
-        offset_index,
+        half_width: style.width / 2,
+        extrude_index: vindex.a_extrude,
+        offset_index: vindex.a_offset,
         v_scale,
-        texcoord_index,
-        texcoord_width,
-        texcoord_normalize,
-        offset,
+        texcoord_index: vindex.a_texcoord,
+        texcoord_width: style.texcoord_width,
+        offset: style.offset,
         geom_count: 0
     };
 
     // Process lines
-    for (let index = 0; index < lines.length; index++) {
-        buildPolyline(lines[index], context);
+    for (let i = 0; i < lines.length; i++) {
+        buildPolyline(lines[i], context);
     }
 
     // Process extra lines (which are created above if lines need to be mutated for easier processing)
     if (context.extra_lines) {
-        for (let index = 0; index < context.extra_lines.length; index++) {
-            buildPolyline(context.extra_lines[index], context);
+        for (let i = 0; i < context.extra_lines.length; i++) {
+            buildPolyline(context.extra_lines[i], context);
         }
     }
 
@@ -452,8 +441,8 @@ function addVertex(position, extrude, normal, u, v, context, flip) {
 
     // set UVs
     if (context.texcoord_index != null) {
-        vertex_template[context.texcoord_index + 0] = u * context.texcoord_normalize;
-        vertex_template[context.texcoord_index + 1] = v * context.texcoord_normalize;
+        vertex_template[context.texcoord_index + 0] = u * TEXCOORD_NORMALIZE;
+        vertex_template[context.texcoord_index + 1] = v * TEXCOORD_NORMALIZE;
     }
 
     vertex_data.addVertex(vertex_template);
@@ -645,7 +634,7 @@ function trianglesPerArc (angle, width) {
         angle = -angle;
     }
 
-    var numTriangles = (width > 2 * DEFAULT.MIN_FAN_WIDTH) ? Math.log2(width / DEFAULT.MIN_FAN_WIDTH) : 1;
+    var numTriangles = (width > 2 * MIN_FAN_WIDTH) ? Math.log2(width / MIN_FAN_WIDTH) : 1;
     return Math.ceil(angle / Math.PI * numTriangles);
 }
 

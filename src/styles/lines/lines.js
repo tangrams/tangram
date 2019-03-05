@@ -567,23 +567,13 @@ Object.assign(Lines, {
         let vertex_template = this.makeVertexTemplate(style, mesh);
         return buildPolylines(
             lines,
-            style.width,
+            style,
             vertex_data,
             vertex_template,
-            {
-                cap: style.cap,
-                join: style.join,
-                miter_limit: style.miter_limit,
-                extrude_index: vertex_layout.index.a_extrude,
-                offset_index: vertex_layout.index.a_offset,
-                texcoord_index: vertex_layout.index.a_texcoord,
-                texcoord_width: style.texcoord_width,
-                texcoord_normalize: 65535, // scale UVs to unsigned shorts
-                closed_polygon: options && options.closed_polygon,
-                remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
-                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 2,
-                offset: style.offset
-            }
+            vertex_layout.index,
+            (options && options.closed_polygon), // closed_polygon
+            (!style.tile_edges && options && options.remove_tile_edges), // remove_tile_edges
+            (Geo.tile_scale * context.tile.pad_scale * 2) // tile_edge_tolerance
         );
     },
 
