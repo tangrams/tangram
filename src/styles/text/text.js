@@ -11,6 +11,8 @@ import VertexLayout from '../../gl/vertex_layout';
 
 export let TextStyle = Object.create(Points);
 
+TextStyle.vertex_layouts = {}; // vertex layouts by variant key
+
 Object.assign(TextStyle, {
     name: 'text',
     super: Points,
@@ -38,10 +40,14 @@ Object.assign(TextStyle, {
     makeVertexTemplate(style, mesh) {
         this.super.makeVertexTemplate.apply(this, arguments);
         let vertex_layout = mesh.vertex_data.vertex_layout;
+        let i = vertex_layout.index.a_pre_angles;
 
-        this.fillVertexTemplate(vertex_layout, 'a_pre_angles', 0, { size: 4 });
-        this.fillVertexTemplate(vertex_layout, 'a_offsets', 0, { size: 4 });
-        this.fillVertexTemplate(vertex_layout, 'a_angles', 0, { size: 4 });
+        // a_pre_angles.xyzw - rotation of entire curved label
+        // a_angles.xyzw - angle of each curved label segment
+        // a_offsets.xyzw - offset of each curved label segment
+        for (let j=0; j < 12; j++) {
+            this.vertex_template[i++] = 0;
+        }
 
         return this.vertex_template;
     },
@@ -257,8 +263,9 @@ Object.assign(TextStyle, {
 
     // Override
     // Create or return vertex layout
-    vertexLayoutForMeshVariant () {
-        if (this.vertex_layout == null) {
+    vertexLayoutForMeshVariant(variant) {
+        // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
+        if (TextStyle.vertex_layouts[variant.shader_point] == null) {
             // TODO: could make selection, offset, and curved label attribs optional, but may not be worth it
             // since text points generally don't consume much memory anyway
             const attribs = [
@@ -267,15 +274,15 @@ Object.assign(TextStyle, {
                 { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
                 { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
                 { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) },
+                { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
                 { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
                 { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
-                { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
-                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             ];
 
-            this.vertex_layout = new VertexLayout(attribs);
+            TextStyle.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
         }
-        return this.vertex_layout;
+        return TextStyle.vertex_layouts[variant.shader_point];
     },
 });
 

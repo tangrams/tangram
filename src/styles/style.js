@@ -110,21 +110,6 @@ export var Style = {
         }
     },
 
-    fillVertexTemplate(vertex_layout, attribute, value, { size, offset }) {
-        offset = (offset === undefined) ? 0 : offset;
-
-        let index = vertex_layout.index[attribute];
-        if (index === undefined) {
-            log('warn', `Style: in style '${this.name}', no index found in vertex layout for attribute '${attribute}'`);
-            return;
-        }
-
-        for (let i = 0; i < size; ++i) {
-            let v = value.length > i ? value[i] : value;
-            this.vertex_template[index + i + offset] = v;
-        }
-    },
-
     /*** Style parsing and geometry construction ***/
 
     // Returns an object to hold feature data (for a tile or other object)

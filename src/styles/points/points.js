@@ -615,37 +615,60 @@ Object.assign(Points, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style, mesh) {
-        let color = style.color || StyleParser.defaults.color;
-        let vertex_layout = mesh.vertex_data.vertex_layout;
+        let i = 0;
 
-        // position - x & y coords will be filled in per-vertex below
-        this.fillVertexTemplate(vertex_layout, 'a_position', 0, { size: 2 });
-        this.fillVertexTemplate(vertex_layout, 'a_position', style.z || 0, { size: 1, offset: 2 });
-        // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.fillVertexTemplate(vertex_layout, 'a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
+        // a_position.xyz - vertex position
+        // a_position.w - layer order
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = style.z || 0;
+        this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // scaling vector - (x, y) components per pixel, z = angle, w = show/hide
-        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 4 });
-        this.fillVertexTemplate(vertex_layout, 'a_shape', style.label.layout.collide ? 0 : 1, { size: 1, offset: 3 }); // set initial label hide/show state
+        // a_shape.xy - size of point in pixels (scaling vector)
+        // a_shape.z - angle of point
+        // a_shape.w - show/hide flag
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = style.label.layout.collide ? 0 : 1; // set initial label hide/show state
 
-        // texture coords
-        this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, { size: 2 });
-
-        // offsets
-        this.fillVertexTemplate(vertex_layout, 'a_offset', 0, { size: 2 });
-
-        // color
-        this.fillVertexTemplate(vertex_layout, 'a_color', Vector.mult(color, 255), { size: 4 });
-
-        // outline (can be static or dynamic depending on style)
-        if (this.defines.TANGRAM_HAS_SHADER_POINTS && mesh.variant.shader_point) {
-            let outline_color = style.outline_color || StyleParser.defaults.outline.color;
-            this.fillVertexTemplate(vertex_layout, 'a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
-            this.fillVertexTemplate(vertex_layout, 'a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, { size: 1 });
+        // a_texcoord.xy - texture coords
+        if (!mesh.variant.shader_point) {
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
         }
 
-        // selection color
-        this.fillVertexTemplate(vertex_layout, 'a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
+        // a_offset.xy - offset of point from center, in pixels
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+
+        // a_color.rgba - feature color
+        const color = style.color || StyleParser.defaults.color;
+        this.vertex_template[i++] = color[0] * 255;
+        this.vertex_template[i++] = color[1] * 255;
+        this.vertex_template[i++] = color[2] * 255;
+        this.vertex_template[i++] = color[3] * 255;
+
+        // a_selection_color.rgba - selection color
+        if (mesh.variant.selection) {
+            this.vertex_template[i++] = style.selection_color[0] * 255;
+            this.vertex_template[i++] = style.selection_color[1] * 255;
+            this.vertex_template[i++] = style.selection_color[2] * 255;
+            this.vertex_template[i++] = style.selection_color[3] * 255;
+        }
+
+        // point outline
+        if (mesh.variant.shader_point) {
+            // a_outline_color.rgba - outline color
+            const outline_color = style.outline_color || StyleParser.defaults.outline.color;
+            this.vertex_template[i++] = outline_color[0] * 255;
+            this.vertex_template[i++] = outline_color[1] * 255;
+            this.vertex_template[i++] = outline_color[2] * 255;
+            this.vertex_template[i++] = outline_color[3] * 255;
+
+            // a_outline_edge - point outline edge (as % of point size where outline begins)
+            this.vertex_template[i++] = style.outline_edge_pct || StyleParser.defaults.outline.width;
+        }
 
         return this.vertex_template;
     },
@@ -904,12 +927,12 @@ Object.assign(Points, {
             const attribs = [
                 { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
                 { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
-                { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
+                { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.shader_point ? [0, 0] : null) },
                 { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
                 { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) },
                 { name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.shader_point ? null : [0, 0, 0, 0]) },
-                { name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false, static: (variant.shader_point ? null : 0) },
-                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false, static: (variant.shader_point ? null : 0) }
             ];
 
             Points.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
@@ -925,6 +948,7 @@ Object.assign(Points, {
         if (Points.variants[key] == null) {
             Points.variants[key] = {
                 key,
+                selection: 1, // TODO: make this vary by draw params
                 shader_point: (texture === SHADER_POINT_VARIANT), // is shader point
                 blend_order: draw.blend_order,
                 mesh_order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
