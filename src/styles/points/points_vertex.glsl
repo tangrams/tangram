@@ -94,21 +94,20 @@ void main() {
         }
     #endif
 
-
     v_alpha_factor = 1.0;
     v_color = a_color;
-    v_texcoord = a_texcoord; // UV from vertex
+    v_texcoord = a_texcoord; // UV from vertex attribute
 
     #ifdef TANGRAM_HAS_SHADER_POINTS
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
+
         if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
-            v_outline_color = a_outline_color;
-            v_outline_edge = a_outline_edge;
-            float size = abs(a_shape.x/128.); // radius in pixels
-            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);
-            size+=2.;
-            v_aa_offset=2./size;
+            // use point dimensions for UVs instead (ignore attribute), add antialiasing info for fragment shader
+            float size = abs(a_shape.x / 128.); // radius in pixels
+            v_texcoord = sign(a_shape.xy) * (size + 1.) / size;
+            size += 2.;
+            v_aa_offset = 2. / size;
         }
     #endif
 

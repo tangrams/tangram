@@ -63,12 +63,12 @@ void main (void) {
         else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
             float outline_edge = v_outline_edge;
             vec4 outlineColor  = v_outline_color;
-            // Distance to this fragment from the center.
-            float l = length(v_texcoord);
-            // Mask of outermost circle, either outline or point boundary.
-            float outer_alpha  = _tangram_antialias(l, 1.);
-            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
-            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
+
+            // Mask of outermost circle, either outline or point boundary
+            float l = length(v_texcoord); // distance to this fragment from the point center
+            float outer_alpha = _tangram_antialias(l, 1.);
+            float fill_alpha = _tangram_antialias(l, 1. - (v_outline_edge * 0.5)) * color.a;
+            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1. - v_outline_edge)) * outlineColor.a;
 
             // Apply alpha compositing with stroke 'over' fill.
             #ifdef TANGRAM_BLEND_ADD
