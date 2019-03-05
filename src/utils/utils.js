@@ -4,7 +4,6 @@
 import log from './log';
 import Thread from './thread';
 import WorkerBroker from './worker_broker';
-import Geo from './geo';
 
 export default Utils;
 
@@ -236,8 +235,4 @@ Utils.toCSSColor = function (color) {
     }
     // RGB is between [0, 255] opacity is between [0, 1]
     return `rgba(${color.map((c, i) => (i < 3 && Math.round(c * 255)) || c).join(', ')})`;
-};
-
-Utils.pointInTile = function (point) {
-    return point[0] >= 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] <= 0;
 };

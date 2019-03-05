@@ -1,6 +1,5 @@
 import PointAnchor from './point_anchor';
 import {boxIntersectsList} from './intersect';
-import Utils from '../utils/utils';
 import OBB from '../utils/obb';
 import Geo from '../utils/geo';
 // import log from '../utils/log';
@@ -79,13 +78,10 @@ export default class Label {
 
     // checks whether the label is within the tile boundaries
     inTileBounds () {
-        let min = [ this.aabb[0], this.aabb[1] ];
-        let max = [ this.aabb[2], this.aabb[3] ];
-
-        if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
+        if ((this.aabb[0] >= 0 && this.aabb[1] > -Geo.tile_scale && this.aabb[0] < Geo.tile_scale && this.aabb[1] <= 0) ||
+            (this.aabb[2] >= 0 && this.aabb[3] > -Geo.tile_scale && this.aabb[2] < Geo.tile_scale && this.aabb[3] <= 0)) {
             return false;
         }
-
         return true;
     }
 
