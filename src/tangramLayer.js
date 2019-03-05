@@ -14,8 +14,12 @@ import * as interaction from './interaction';
 
 export function tangramLayer(element, options = {}) {
     if (Thread.is_main) {
+        const container = typeof element === 'string' ? document.getElementById(element) : element;
+        if (!container) {
+            throw new Error(`DOM element "${element}" could not be found.`);
+        }
         return {
-            container: typeof element === 'string' ? document.getElementById(element) : element,
+            container: container,
             initialize(initOptions = {}) {
                 this.isloaded = false;
                 // if options were defined in both the layer instantiation and the initialize call, merge them
