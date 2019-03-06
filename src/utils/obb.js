@@ -1,13 +1,15 @@
 import Vector from './vector';
 
+const ZERO_AXES = [[1, 0], [0, 1]]; // re-use single allocation of axes for 0-angle
+
 export default class OBB {
 
     constructor (x, y, a, w, h) {
         this.dimension = [w, h];
         this.angle = a;
         this.centroid = [x, y];
-        this.quad = [];
-        this.axes = [];
+        this.quad = null;
+        this.axes = null;
 
         this.update();
     }
@@ -23,6 +25,11 @@ export default class OBB {
     }
 
     getExtent () {
+        // special handling to skip calculations for 0-angle
+        if (this.angle === 0) {
+            return [this.quad[0][0], this.quad[0][1], this.quad[2][0], this.quad[2][1]];
+        }
+
         let aabb = [Infinity, Infinity, -Infinity, -Infinity];
 
         for (let i = 0; i < 4; ++i) {
@@ -36,23 +43,49 @@ export default class OBB {
     }
 
     perpAxes () {
-        this.axes[0] = Vector.normalize(Vector.sub(this.quad[2], this.quad[3]));
-        this.axes[1] = Vector.normalize(Vector.sub(this.quad[2], this.quad[1]));
+        this.axes = [
+            // Vector.normalize(Vector.sub(this.quad[2], this.quad[3])),
+            // Vector.normalize(Vector.sub(this.quad[2], this.quad[1]))
+            Vector.normalize([this.quad[2][0] - this.quad[1][0], this.quad[2][1] - this.quad[1][1]]),
+            Vector.normalize([this.quad[2][0] - this.quad[1][0], this.quad[2][1] - this.quad[1][1]])
+        ];
     }
 
     update () {
-        let x = [ Math.cos(this.angle), Math.sin(this.angle)];
-        let y = [-Math.sin(this.angle), Math.cos(this.angle)];
+        // special handling to skip calculations for 0-angle
+        if (this.angle === 0) {
+            const c = this.centroid;
+            const w2 = this.dimension[0] / 2;
+            const h2 = this.dimension[1] / 2;
+            this.quad = [
+                [c[0] - w2, c[1] - h2], // lower-left
+                [c[0] + w2, c[1] - h2], // lower-right
+                [c[0] + w2, c[1] + h2], // upper-right
+                [c[0] - w2, c[1] + h2]  // upper-left
+            ];
+            this.axes = ZERO_AXES;
+        }
+        // calculate axes and enclosing quad
+        else {
+            let x = [ Math.cos(this.angle), Math.sin(this.angle)];
+            let y = [-Math.sin(this.angle), Math.cos(this.angle)];
 
-        x = Vector.mult(x, this.dimension[0] / 2.0);
-        y = Vector.mult(y, this.dimension[1] / 2.0);
+            x = Vector.mult(x, this.dimension[0] / 2.0);
+            y = Vector.mult(y, this.dimension[1] / 2.0);
 
-        this.quad[0] = Vector.sub(Vector.sub(this.centroid, x), y); // lower-left
-        this.quad[1] = Vector.sub(Vector.add(this.centroid, x), y); // lower-right
-        this.quad[2] = Vector.add(Vector.add(this.centroid, x), y); // uper-right
-        this.quad[3] = Vector.add(Vector.sub(this.centroid, x), y); // uper-left
+            this.quad = [
+                // Vector.sub(Vector.sub(this.centroid, x), y), // lower-left
+                // Vector.sub(Vector.add(this.centroid, x), y), // lower-right
+                // Vector.add(Vector.add(this.centroid, x), y), // upper-right
+                // Vector.add(Vector.sub(this.centroid, x), y)  // upper-left
+                [this.centroid[0] - x[0] - y[0], this.centroid[1] - x[1] - y[1]], // lower-left
+                [this.centroid[0] + x[0] - y[0], this.centroid[1] + x[1] - y[1]], // lower-right
+                [this.centroid[0] + x[0] + y[0], this.centroid[1] + x[1] + y[1]], // upper-right
+                [this.centroid[0] - x[0] + y[0], this.centroid[1] - x[1] + y[1]]  // upper-left
+            ];
 
-        this.perpAxes();
+            this.perpAxes();
+        }
     }
 
     static projectToAxis (obb, axis) {
