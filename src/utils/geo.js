@@ -68,34 +68,32 @@ Geo.wrapTile = function({ x, y, z }, mask = { x: true, y: false }) {
 };
 
 /**
-   Convert mercator meters to lat-lng
+   Convert mercator meters to lat-lng, in-place
 */
-Geo.metersToLatLng = function ([x, y]) {
+Geo.metersToLatLng = function (c) {
+    c[0] /= Geo.half_circumference_meters;
+    c[1] /= Geo.half_circumference_meters;
 
-    x /= Geo.half_circumference_meters;
-    y /= Geo.half_circumference_meters;
+    c[1] = (2 * Math.atan(Math.exp(c[1] * Math.PI)) - (Math.PI / 2)) / Math.PI;
 
-    y = (2 * Math.atan(Math.exp(y * Math.PI)) - (Math.PI / 2)) / Math.PI;
+    c[0] *= 180;
+    c[1] *= 180;
 
-    x *= 180;
-    y *= 180;
-
-    return [x, y];
+    return c;
 };
 
 /**
-  Convert lat-lng to mercator meters
+  Convert lat-lng to mercator meters, in-place
 */
-Geo.latLngToMeters = function([x, y]) {
-
+Geo.latLngToMeters = function (c) {
     // Latitude
-    y = Math.log(Math.tan(y*Math.PI/360 + Math.PI/4)) / Math.PI;
-    y *= Geo.half_circumference_meters;
+    c[1] = Math.log(Math.tan(c[1] * Math.PI / 360 + Math.PI / 4)) / Math.PI;
+    c[1] *= Geo.half_circumference_meters;
 
     // Longitude
-    x *= Geo.half_circumference_meters / 180;
+    c[0] *= Geo.half_circumference_meters / 180;
 
-    return [x, y];
+    return c;
 };
 
 // Transform from local tile coordinats to lat lng
@@ -104,10 +102,7 @@ Geo.tileSpaceToLatlng = function (geometry, z, min) {
     Geo.transformGeometry(geometry, coord => {
         coord[0] = (coord[0] / units_per_meter) + min.x;
         coord[1] = (coord[1] / units_per_meter) + min.y;
-
-        let [x, y] = Geo.metersToLatLng(coord);
-        coord[0] = x;
-        coord[1] = y;
+        Geo.metersToLatLng(coord);
     });
     return geometry;
 };

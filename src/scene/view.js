@@ -198,8 +198,8 @@ export default class View {
         };
 
         // Center of viewport in meters, and tile
-        let [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
-        this.center.meters = { x, y };
+        const m = Geo.latLngToMeters([this.center.lng, this.center.lat]);
+        this.center.meters = { x: m[0], y: m[1] };
 
         this.center.tile = Geo.tileForMeters([this.center.meters.x, this.center.meters.y], this.tile_zoom);
 

@@ -114,17 +114,17 @@ export default class DataSource {
             var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = source.layers[t].features[f];
-                Geo.transformGeometry(feature.geometry, coord => {
-                    var [x, y] = Geo.latLngToMeters(coord);
-                    coord[0] = x;
-                    coord[1] = y;
-                });
+                Geo.transformGeometry(feature.geometry, this.projectCoord);
             }
         }
 
         if (source.debug !== undefined) {
             source.debug.projection = +new Date() - timer;
         }
+    }
+
+    static projectCoord (coord) {
+        Geo.latLngToMeters(coord);
     }
 
     /**
