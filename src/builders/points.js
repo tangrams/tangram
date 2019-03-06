@@ -6,17 +6,28 @@ const pre_angles_normalize = 128 / Math.PI;
 const angles_normalize = 16384 / Math.PI;
 const offsets_normalize = 64;
 const texcoord_normalize = 65535;
+const size_normalize = 128; // width/height are 8.8 fixed-point, but are halved (so multiply by 128 instead of 256)
+
+// These index values map a 4-element vertex position counter from this pattern (used for size and UVs):
+//  [min_x, min_y, max_x, max_y]
+// to this pattern:
+//  [min_x, min_y],
+//  [max_x, min_y],
+//  [max_x, max_y],
+//  [min_x, max_y]
+const ix = [0, 2, 2, 0];
+const iy = [1, 1, 3, 3];
+const shape = new Array(4); // single, reusable allocation
 
 // Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
-// properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
-// of a sprite between two zoom levels.
+// properties for width, height, angle, and texture UVs. Curved label segment sprites have additional properties
+// for interpolating their position and angle across zooms.
 export function buildQuadsForPoints (
     points,
     vertex_data,
     vertex_template,
     vindex,
-    quad,
-    quad_normalize,
+    size,
     offset,
     offsets,
     pre_angles,
@@ -25,53 +36,42 @@ export function buildQuadsForPoints (
     texcoords,
     curve) {
 
-    quad_normalize = quad_normalize || 1;
-    let w2 = quad[0] / 2 * quad_normalize;
-    let h2 = quad[1] / 2 * quad_normalize;
-    let scaling = [
-        [-w2, -h2],
-        [w2, -h2],
-        [w2, h2],
-        [-w2, h2]
-    ];
+    // Half-sized point dimensions in fixed point
+    const w2 = size[0] * size_normalize;
+    const h2 = size[1] * size_normalize;
+    shape[0] = -w2;
+    shape[1] = -h2;
+    shape[2] = w2;
+    shape[3] = h2;
 
-    let vertex_elements = vertex_data.vertex_elements;
+    const uvs = texcoords || default_uvs;
+
+    const vertex_elements = vertex_data.vertex_elements;
     let element_offset = vertex_data.vertex_count;
 
-    let uvs;
-    if (vindex.a_texcoord) {
-        var [min_u, min_v, max_u, max_v] = texcoords || default_uvs;
-
-        uvs = [
-            [min_u, min_v],
-            [max_u, min_v],
-            [max_u, max_v],
-            [min_u, max_v]
-        ];
-    }
-
-    var geom_count = 0;
+    let geom_count = 0;
     let num_points = points.length;
     for (let p=0; p < num_points; p++) {
         let point = points[p];
 
         for (let pos=0; pos < 4; pos++) {
-            // Add texcoords
-            if (vindex.a_texcoord) {
-                vertex_template[vindex.a_texcoord + 0] = uvs[pos][0] * texcoord_normalize;
-                vertex_template[vindex.a_texcoord + 1] = uvs[pos][1] * texcoord_normalize;
-            }
-
             vertex_template[vindex.a_position + 0] = point[0];
             vertex_template[vindex.a_position + 1] = point[1];
 
-            vertex_template[vindex.a_shape + 0] = scaling[pos][0];
-            vertex_template[vindex.a_shape + 1] = scaling[pos][1];
+            vertex_template[vindex.a_shape + 0] = shape[ix[pos]];
+            vertex_template[vindex.a_shape + 1] = shape[iy[pos]];
             vertex_template[vindex.a_shape + 2] = angle;
 
             vertex_template[vindex.a_offset + 0] = offset[0];
             vertex_template[vindex.a_offset + 1] = offset[1];
 
+            // Add texcoords
+            if (vindex.a_texcoord) {
+                vertex_template[vindex.a_texcoord + 0] = uvs[ix[pos]] * texcoord_normalize;
+                vertex_template[vindex.a_texcoord + 1] = uvs[iy[pos]] * texcoord_normalize;
+            }
+
+            // Add curved label segment props
             if (curve) {
                 // 1 byte (signed) range: [-127, 128]
                 // actual range: [-2pi, 2pi]

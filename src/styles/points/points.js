@@ -678,7 +678,6 @@ Object.assign(Points, {
             vertex_template,
             vertex_data.vertex_layout.index,
             size,
-            256, // size values have an 8-bit fraction
             offset,
             offsets,
             pre_angles,
