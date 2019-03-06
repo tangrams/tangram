@@ -12,6 +12,7 @@ export default class Label {
         this.size = size;
         this.layout = layout;
         this.position = null;
+        this.angle = 0;
         this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
         this.placed = null;
         this.offset = layout.offset;
@@ -29,6 +30,7 @@ export default class Label {
             type: this.type,
             obb: this.obb.toJSON(),
             position: this.position,
+            angle: this.angle,
             size: this.size,
             offset: this.offset,
             breach: this.breach,

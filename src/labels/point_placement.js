@@ -7,9 +7,10 @@ const PLACEMENT = LabelPoint.PLACEMENT;
 const default_spacing = 80; // spacing of points along line in pixels
 
 export default function placePointsOnLine (line, size, options) {
-    let labels = [];
-    let strategy = options.placement;
-    let min_length = Math.max(size[0], size[1]) * options.placement_min_length_ratio * options.units_per_pixel;
+    const labels = [];
+    const layout = Object.create(options);
+    const strategy = options.placement;
+    const min_length = Math.max(size[0], size[1]) * options.placement_min_length_ratio * options.units_per_pixel;
 
     if (strategy === PLACEMENT.SPACED) {
         let result = getPositionsAndAngles(line, min_length, options);
@@ -24,8 +25,8 @@ export default function placePointsOnLine (line, size, options) {
             let position = positions[i];
             let angle = angles[i];
             if (options.tile_edges === true || !isCoordOutsideTile(position)) {
-                let label = new LabelPoint(position, size, options);
-                label.angle = angle;
+                layout.angle = angle;
+                let label = new LabelPoint(position, size, layout);
                 labels.push(label);
             }
         }
@@ -36,15 +37,15 @@ export default function placePointsOnLine (line, size, options) {
             p = line[i];
             q = line[i + 1];
             if (options.tile_edges === true || !isCoordOutsideTile(p)) {
-                label = new LabelPoint(p, size, options);
-                label.angle = getAngle(p, q, options.angle);
+                layout.angle = getAngle(p, q, options.angle);
+                label = new LabelPoint(p, size, layout);
                 labels.push(label);
             }
         }
 
         // add last endpoint
-        label = new LabelPoint(q, size, options);
-        label.angle = getAngle(p, q, options.angle);
+        layout.angle = getAngle(p, q, options.angle);
+        label = new LabelPoint(q, size, layout);
         labels.push(label);
     }
     else if (strategy === PLACEMENT.MIDPOINT) {
@@ -57,8 +58,8 @@ export default function placePointsOnLine (line, size, options) {
             ];
             if (options.tile_edges === true || !isCoordOutsideTile(position)) {
                 if (!min_length || norm(p, q) > min_length) {
-                    let label = new LabelPoint(position, size, options);
-                    label.angle = getAngle(p, q, options.angle);
+                    layout.angle = getAngle(p, q, options.angle);
+                    let label = new LabelPoint(position, size, layout);
                     labels.push(label);
                 }
             }

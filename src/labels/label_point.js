@@ -9,6 +9,7 @@ export default class LabelPoint extends Label {
         super(size, layout);
         this.type = 'point';
         this.position = [position[0], position[1]];
+        this.angle = layout.angle || 0;
         this.parent = this.layout.parent;
         this.update();
 
@@ -59,7 +60,7 @@ export default class LabelPoint extends Label {
         this.obb = new OBB(
             this.position[0] + (this.offset[0] * this.unit_scale),
             this.position[1] - (this.offset[1] * this.unit_scale),
-            0,
+            -this.angle, // angle is negative because tile system y axis is pointing down
             width,
             height
         );

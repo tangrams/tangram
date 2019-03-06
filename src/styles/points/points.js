@@ -702,7 +702,6 @@ Object.assign(Points, {
     buildStraightLabel (label, style, context) {
         let mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
         let vertex_template = this.makeVertexTemplate(style, mesh);
-        let angle = label.angle || style.angle;
 
         let size, texcoords;
         if (label.type !== 'point') {
@@ -739,7 +738,7 @@ Object.assign(Points, {
         let geom_count = this.buildQuad(
             label.position,                 // position
             size,                           // size in pixels
-            angle,                          // angle in radians
+            label.angle,                    // angle in radians
             null,                           // placeholder for multiple angles
             null,                           // placeholder for multiple pre_angles
             offset,                         // offset from center in pixels
@@ -758,7 +757,6 @@ Object.assign(Points, {
 
     buildCurvedLabel (label, style, context) {
         let mesh, vertex_template;
-        let angle = label.angle;
         let geom_count = 0;
 
         // two passes for stroke and fill, where stroke needs to be drawn first (painter's algorithm)
@@ -790,7 +788,7 @@ Object.assign(Points, {
             let seg_count = this.buildQuad(
                 position,                       // position
                 size,                           // size in pixels
-                angle,                          // angle in degrees
+                label.angle,                    // angle in degrees
                 angles,                         // angles per segment
                 pre_angles,                     // pre_angle array (rotation applied before offseting)
                 offset,                         // offset from center in pixels
@@ -832,7 +830,7 @@ Object.assign(Points, {
             let seg_count = this.buildQuad(
                 position,                       // position
                 size,                           // size in pixels
-                angle,                          // angle in degrees
+                label.angle,                    // angle in degrees
                 angles,                         // angles per segment
                 pre_angles,                     // pre_angle array (rotation applied before offseting)
                 offset,                         // offset from center in pixels
