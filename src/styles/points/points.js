@@ -5,7 +5,7 @@ import {Style} from '../style';
 import StyleParser from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
-import {buildQuadsForPoints} from '../../builders/points';
+import { buildQuadForPoint } from '../../builders/points';
 import Texture from '../../gl/texture';
 import Geo from '../../utils/geo';
 import Collision from '../../labels/collision';
@@ -667,13 +667,13 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, angles, pre_angles, offset, offsets, texcoords, curve, vertex_data, vertex_template) {
+    buildQuad(point, size, angle, angles, pre_angles, offset, offsets, texcoords, curve, vertex_data, vertex_template) {
         if (size[0] <= 0 || size[1] <= 0) {
             return 0; // size must be positive
         }
 
-        return buildQuadsForPoints(
-            points,
+        return buildQuadForPoint(
+            point,
             vertex_data,
             vertex_template,
             vertex_data.vertex_layout.index,
@@ -737,7 +737,7 @@ Object.assign(Points, {
         // TODO: instead of passing null, pass arrays with fingerprintable values
         // This value is checked in the shader to determine whether to apply curving logic
         let geom_count = this.buildQuad(
-            [label.position],               // position
+            label.position,                 // position
             size,                           // size in pixels
             angle,                          // angle in radians
             null,                           // placeholder for multiple angles
@@ -788,7 +788,7 @@ Object.assign(Points, {
             let pre_angles = label.pre_angles[i];
 
             let seg_count = this.buildQuad(
-                [position],                     // position
+                position,                       // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
                 angles,                         // angles per segment
@@ -830,7 +830,7 @@ Object.assign(Points, {
             let pre_angles = label.pre_angles[i];
 
             let seg_count = this.buildQuad(
-                [position],                     // position
+                position,                       // position
                 size,                           // size in pixels
                 angle,                          // angle in degrees
                 angles,                         // angles per segment
