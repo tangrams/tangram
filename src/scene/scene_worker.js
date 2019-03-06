@@ -39,6 +39,7 @@ const SceneWorker = Object.assign(self, {
         this.style_manager = new StyleManager();
         this.importExternalScripts(external_scripts);
         Label.id_prefix = worker_id;
+        Label.id_multiplier = num_workers;
         return worker_id;
     },
 

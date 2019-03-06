@@ -130,10 +130,11 @@ Label.add = function (label, bboxes) {
 };
 
 Label.id = 0;
-Label.id_prefix = ''; // id prefix scoped to worker thread
+Label.id_prefix = 0; // id prefix scoped to worker thread
+Label.id_multiplier = 0; // multiplier to keep label ids distinct across threads
 
 Label.nextLabelId = function () {
-    return Label.id_prefix + '/' + (Label.id++);
+    return Label.id_prefix + ((Label.id++) * Label.id_multiplier);
 };
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
