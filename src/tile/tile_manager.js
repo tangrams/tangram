@@ -171,12 +171,17 @@ export default class TileManager {
             // make a new collision task
             this.collision.task = {
                 type: 'tileManagerUpdateLabels',
-                run: (task) => {
-                    return mainThreadLabelCollisionPass(tiles, this.collision.zoom, this.isLoadingVisibleTiles()).then(results => {
-                        this.collision.task = null;
-                        Task.finish(task, results);
-                        this.updateTileStates().then(() => this.scene.immediateRedraw());
-                    });
+                run: async task => {
+                    // Do collision pass, then update view
+                    const results = await mainThreadLabelCollisionPass(tiles, this.collision.zoom, this.isLoadingVisibleTiles());
+                    this.scene.requestRedraw();
+
+                    // Clear state to allow another collision pass to start
+                    this.collision.task = null;
+                    Task.finish(task, results);
+
+                    // Check if tiles changed during previous collision pass - will start new pass if so
+                    this.updateTileStates();
                 }
             };
             Task.add(this.collision.task);
