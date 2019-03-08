@@ -31,31 +31,38 @@ export default class OBB {
     getExtent () {
         // special handling to skip calculations for 0-angle
         if (this.angle === 0) {
-            return [this.quad[0], this.quad[1], this.quad[4], this.quad[5]];
+            return [
+                this.quad[0], this.quad[1], // lower-left
+                this.quad[4], this.quad[5]  // upper-right
+            ];
         }
 
         let aabb = [
-            Math.min(this.quad[0], this.quad[2], this.quad[4], this.quad[6]),
-            Math.min(this.quad[1], this.quad[3], this.quad[5], this.quad[7]),
-            Math.max(this.quad[0], this.quad[2], this.quad[4], this.quad[6]),
-            Math.max(this.quad[1], this.quad[3], this.quad[5], this.quad[7])
+            Math.min(this.quad[0], this.quad[2], this.quad[4], this.quad[6]), // min x
+            Math.min(this.quad[1], this.quad[3], this.quad[5], this.quad[7]), // min y
+            Math.max(this.quad[0], this.quad[2], this.quad[4], this.quad[6]), // max x
+            Math.max(this.quad[1], this.quad[3], this.quad[5], this.quad[7])  // max y
         ];
 
         return aabb;
     }
 
-    perpAxes () {
+    updateAxes () {
+        // upper-left to upper-right
         this.axis_0 = Vector.normalize([this.quad[4] - this.quad[6], this.quad[5] - this.quad[7]]);
+
+        // lower-right to upper-right
         this.axis_1 = Vector.normalize([this.quad[4] - this.quad[2], this.quad[5] - this.quad[3]]);
     }
 
     update () {
+        const c = this.centroid;
+        const w2 = this.dimension[0];
+        const h2 = this.dimension[1];
+
         // special handling to skip calculations for 0-angle
         if (this.angle === 0) {
-            const c = this.centroid;
-            const w2 = this.dimension[0];
-            const h2 = this.dimension[1];
-
+            // quad is a flat array storing 4 [x, y] vectors
             this.quad = [
                 c[0] - w2, c[1] - h2, // lower-left
                 c[0] + w2, c[1] - h2, // lower-right
@@ -68,13 +75,13 @@ export default class OBB {
         }
         // calculate axes and enclosing quad
         else {
-            let x0 = Math.cos(this.angle) * this.dimension[0];
-            let x1 = Math.sin(this.angle) * this.dimension[0];
+            let x0 = Math.cos(this.angle) * w2;
+            let x1 = Math.sin(this.angle) * w2;
 
-            let y0 = -Math.sin(this.angle) * this.dimension[1];
-            let y1 = Math.cos(this.angle) * this.dimension[1];
+            let y0 = -Math.sin(this.angle) * h2;
+            let y1 = Math.cos(this.angle) * h2;
 
-            const c = this.centroid;
+            // quad is a flat array storing 4 [x, y] vectors
             this.quad = [
                 c[0] - x0 - y0, c[1] - x1 - y1, // lower-left
                 c[0] + x0 - y0, c[1] + x1 - y1, // lower-right
@@ -82,7 +89,7 @@ export default class OBB {
                 c[0] - x0 + y0, c[1] - x1 + y1  // upper-left
             ];
 
-            this.perpAxes();
+            this.updateAxes();
         }
     }
 
