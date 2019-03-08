@@ -45,7 +45,7 @@ export default class OBB {
     }
 
     perpAxes () {
-        this.axis_0 = Vector.normalize([this.quad[4] - this.quad[2], this.quad[5] - this.quad[3]]);
+        this.axis_0 = Vector.normalize([this.quad[4] - this.quad[6], this.quad[5] - this.quad[7]]);
         this.axis_1 = Vector.normalize([this.quad[4] - this.quad[2], this.quad[5] - this.quad[3]]);
     }
 
