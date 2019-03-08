@@ -5,11 +5,11 @@ import StyleParser from '../styles/style_parser';
 
 export default class LabelPoint extends Label {
 
-    constructor (position, size, layout) {
+    constructor (position, size, layout, angle = 0) {
         super(size, layout);
         this.type = 'point';
         this.position = [position[0], position[1]];
-        this.angle = layout.angle || 0;
+        this.angle = angle;
         this.parent = this.layout.parent;
         this.update();
 

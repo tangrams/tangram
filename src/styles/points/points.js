@@ -369,7 +369,6 @@ Object.assign(Points, {
                 style.label = q.label;
                 style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
                 style.size = text_info.size.logical_size;
-                style.angle = 0; // text attached to point is always upright
                 style.texcoords = text_info.align[q.label.align].texcoords;
                 style.label_texture = textures[text_info.align[q.label.align].texture_id];
                 style.blend_order = q.draw.blend_order; // copy blend order from parent point
@@ -531,22 +530,22 @@ Object.assign(Points, {
     },
 
     // Builds one or more point labels for a geometry
-    buildLabels (size, geometry, options) {
+    buildLabels (size, geometry, layout) {
         let labels = [];
 
         if (geometry.type === 'Point') {
-            labels.push(new LabelPoint(geometry.coordinates, size, options));
+            labels.push(new LabelPoint(geometry.coordinates, size, layout, layout.angle));
         }
         else if (geometry.type === 'MultiPoint') {
             let points = geometry.coordinates;
             for (let i = 0; i < points.length; ++i) {
                 let point = points[i];
-                labels.push(new LabelPoint(point, size, options));
+                labels.push(new LabelPoint(point, size, layout, layout.angle));
             }
         }
         else if (geometry.type === 'LineString') {
             let line = geometry.coordinates;
-            let point_labels = placePointsOnLine(line, size, options);
+            let point_labels = placePointsOnLine(line, size, layout);
             for (let i = 0; i < point_labels.length; ++i) {
                 labels.push(point_labels[i]);
             }
@@ -555,7 +554,7 @@ Object.assign(Points, {
             let lines = geometry.coordinates;
             for (let ln = 0; ln < lines.length; ln++) {
                 let line = lines[ln];
-                let point_labels = placePointsOnLine(line, size, options);
+                let point_labels = placePointsOnLine(line, size, layout);
                 for (let i = 0; i < point_labels.length; ++i) {
                     labels.push(point_labels[i]);
                 }
@@ -563,17 +562,17 @@ Object.assign(Points, {
         }
         else if (geometry.type === 'Polygon') {
             // Point at polygon centroid (of outer ring)
-            if (options.placement === PLACEMENT.CENTROID) {
+            if (layout.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.centroid(geometry.coordinates);
                 if (centroid) { // skip degenerate polygons
-                    labels.push(new LabelPoint(centroid, size, options));
+                    labels.push(new LabelPoint(centroid, size, layout, layout.angle));
                 }
             }
             // Point at each polygon vertex (all rings)
             else {
                 let rings = geometry.coordinates;
                 for (let ln = 0; ln < rings.length; ln++) {
-                    let point_labels = placePointsOnLine(rings[ln], size, options);
+                    let point_labels = placePointsOnLine(rings[ln], size, layout);
                     for (let i = 0; i < point_labels.length; ++i) {
                         labels.push(point_labels[i]);
                     }
@@ -581,10 +580,10 @@ Object.assign(Points, {
             }
         }
         else if (geometry.type === 'MultiPolygon') {
-            if (options.placement === PLACEMENT.CENTROID) {
+            if (layout.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.multiCentroid(geometry.coordinates);
                 if (centroid) { // skip degenerate polygons
-                    labels.push(new LabelPoint(centroid, size, options));
+                    labels.push(new LabelPoint(centroid, size, layout, layout.angle));
                 }
             }
             else {
@@ -592,7 +591,7 @@ Object.assign(Points, {
                 for (let p = 0; p < polys.length; p++) {
                     let rings = polys[p];
                     for (let ln = 0; ln < rings.length; ln++) {
-                        let point_labels = placePointsOnLine(rings[ln], size, options);
+                        let point_labels = placePointsOnLine(rings[ln], size, layout);
                         for (let i = 0; i < point_labels.length; ++i) {
                             labels.push(point_labels[i]);
                         }
