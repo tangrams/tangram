@@ -443,6 +443,7 @@ export default class Scene {
 
         // Bail if no need to render
         if (!will_render) {
+            // log('debug', 'Scene.render() SKIP', this.frame);
             return false;
         }
         this.dirty = false; // subclasses can set this back to true when animation is needed
@@ -462,7 +463,7 @@ export default class Scene {
         }
 
         this.frame++;
-        log('trace', 'Scene.render()');
+        // log('debug', 'Scene.render()', this.frame);
         return true;
     }
 
@@ -655,10 +656,10 @@ export default class Scene {
                 let first_for_tile = true;
 
                 // Skip proxy tiles if new tiles have finished loading this style
-                if (!tile.shouldProxyForStyle(style_name)) {
-                    // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
-                    continue;
-                }
+                // if (!tile.shouldProxyForStyle(style_name)) {
+                //     // log('trace', `Scene.renderStyle(): Skip proxy tile for style '${style_name}' `, tile, tile.proxy_for);
+                //     continue;
+                // }
 
                 // Filter meshes further by current variant order
                 const order_meshes = meshes.filter(m => m.variant.mesh_order === mo);

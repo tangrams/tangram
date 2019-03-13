@@ -40,7 +40,7 @@ export default class Tile {
         this.fade_in = true;
         this.loading = false;
         this.loaded = false;
-        this.built = false;
+        this.built = null;
         this.labeled = false;
         this.error = null;
         this.debug = {};
@@ -62,6 +62,7 @@ export default class Tile {
         this.preserve_tiles_within_zoom = this.source.preserve_tiles_within_zoom; // source-specific tile retention policy
 
         this.meshes = {}; // renderable VBO meshes keyed by style
+        this.pending_mesh_data = []; // mesh data waiting to be built
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
         this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
 
@@ -135,9 +136,12 @@ export default class Tile {
         this.fade_in = fade_in;
         if (!this.loaded) {
             this.loading = true;
-            this.built = false;
+            this.built = null;
             this.labeled = false;
         }
+        this.building = true;
+        this.build_seqs = [];
+        this.build_last_seq = null;
         return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
 
@@ -168,6 +172,12 @@ export default class Tile {
         tile.debug.layers = null;
 
         Collision.startTile(tile.id, { apply_repeat_groups: true });
+
+        let build_seq = 0;
+        let start = true;
+        let last_count = 0;
+        let counts = [100, 250, 500, 1000, 5000];
+        let last_count_index = 0;
 
         // Process each top-level layer
         for (let layer_name in layers) {
@@ -235,14 +245,36 @@ export default class Tile {
                     }
 
                     tile.debug.feature_count++;
+
+                    // if (tile.debug.feature_count - last_count > 500) {
+                    if (tile.debug.feature_count - last_count > counts[last_count_index]) {
+                        const tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]).filter(s => !s.collision);
+                        if (tile_styles.length > 0) {
+                            last_count = tile.debug.feature_count;
+                            last_count_index = Math.min(last_count_index + 1, counts.length - 1);
+                            console.log('*** PROGRESSIVE BUILD', tile.key, last_count, tile_styles.map(s => s.name));
+                            Tile.buildStyleGroups(tile, tile_styles, scene_id, () => 'progressive', { start, build_seq });
+                            start = false;
+                            build_seq++;
+                        }
+                    }
                 }
             }
+
+            // const tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]).filter(s => !s.collision);
+            // if (tile_styles.length > 0) {
+            //     console.log('*** PROGRESSIVE BUILD', tile.key, layer_name, tile_styles.map(s => s.name));
+            //     Tile.buildStyleGroups(tile, tile_styles, scene_id, () => 'progressive', { start, build_seq });
+            //     start = false;
+            //     build_seq++;
+            // }
         }
         tile.debug.building = +new Date() - tile.debug.building;
 
         // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
-        let tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]);
-        Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.collision ? 'collision' : 'non-collision');
+        const tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]);
+        Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.collision ? 'collision' : 'non-collision', { start, done: true, build_seq });
+        // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.collision ? null : 'non-collision', { start });
         // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.name); // call for each style
         // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => 'styles'); // all styles in single call (previous behavior)
     }
@@ -258,7 +290,7 @@ export default class Tile {
     }
 
     // Build styles (grouped by the provided function) and send back to main thread as they finish building
-    static buildStyleGroups(tile, styles, scene_id, group_by) {
+    static buildStyleGroups(tile, styles, scene_id, group_by, { start, done = false, build_seq } = {}) {
         // Group the styles; each group will be sent to the main thread when the styles in the group finish building.
         const groups = styles.reduce((groups, style) => {
             const group = group_by(style);
@@ -268,24 +300,24 @@ export default class Tile {
         }, {});
 
         // If nothing to build, return empty tile to main thread
-        if (Object.keys(groups).length === 0) {
+        if (done && Object.keys(groups).length === 0) {
             WorkerBroker.postMessage(
                 `TileManager_${scene_id}.buildTileStylesCompleted`,
-                WorkerBroker.withTransferables({ tile: Tile.slice(tile), progress: { start: true, done: true } })
+                WorkerBroker.withTransferables({ tile: Tile.slice(tile), progress: { start, done: true, build_seq } })
             );
             Collision.resetTile(tile.id); // clear collision if we're done with the tile
             return;
         }
 
         // Build each group of styles
-        const progress = {};
+        const progress = { start };
         for (const group_name in groups) {
-            Tile.buildStyleGroup({ group_name, groups, tile, progress, scene_id });
+            Tile.buildStyleGroup({ group_name, groups, tile, progress, scene_id, done, build_seq });
         }
     }
 
     // Build a single group of styles
-    static async buildStyleGroup({ group_name, groups, tile, progress, scene_id }) {
+    static async buildStyleGroup({ group_name, groups, tile, progress, scene_id, done, build_seq }) {
         const group = groups[group_name];
         const mesh_data = {};
         try {
@@ -300,15 +332,18 @@ export default class Tile {
             // Mark the group as done, and check if all groups have finished
             log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
             groups[group_name] = null;
-            if (Object.keys(groups).every(g => groups[g] == null)) {
+            if (done && Object.keys(groups).every(g => groups[g] == null)) {
                 progress.done = true;
             }
 
             // Send meshes to main thread
+            progress.build_seq = build_seq;
             WorkerBroker.postMessage(
                 `TileManager_${scene_id}.buildTileStylesCompleted`,
                 WorkerBroker.withTransferables({ tile: { ...Tile.slice(tile), mesh_data }, progress })
             );
+            progress.start = null;
+
             if (progress.done) {
                 Collision.resetTile(tile.id); // clear collision if we're done with the tile
             }
@@ -374,6 +409,7 @@ export default class Tile {
         }
 
         this.build_id = build_id++; // record order in which tile was built
+        this.build_seqs.push(progress.build_seq);
 
         // Debug
         if (progress.start) {
@@ -383,7 +419,9 @@ export default class Tile {
 
         // Create VBOs
         let meshes = {}; // new data to be added to tile
-        let mesh_data = this.mesh_data;
+        // let mesh_data = this.pending_mesh_data.pop();
+        let mesh_data = this.pending_mesh_data[this.pending_mesh_data.length-1];
+
         if (mesh_data) {
             for (let s in mesh_data) {
                 for (let variant in mesh_data[s].meshes) {
@@ -420,6 +458,7 @@ export default class Tile {
                 }
 
                 // Sort mesh variants by explicit render order (if present)
+                // TODO: will need to re-sort for progressive build as new meshes added for a style
                 if (meshes[s]) {
                     meshes[s].sort((a, b) => {
                         // Sort variant order ascending if present, then all null values (where order is unspecified)
@@ -429,17 +468,27 @@ export default class Tile {
                 }
             }
         }
-        delete this.mesh_data;
+        // delete this.mesh_data;
+        // this.pending_mesh_data.pop();
+        this.pending_mesh_data.splice(this.pending_mesh_data.indexOf(mesh_data), 1);
 
         // New meshes
         for (let m in meshes) {
             // swap in non-collision meshes right away
             if (!styles[m].collision) {
+                console.log('*** BUILD MESHES', this.key, this, progress);
+
+                // free meshes from previous generations
                 if (this.meshes[m]) {
-                    this.meshes[m].forEach(m => m.destroy()); // free old meshes
+                    this.meshes[m]
+                        .filter(m => m.generation !== this.generation)
+                        .forEach(m => m.destroy());
                 }
 
-                this.meshes[m] = meshes[m]; // set new mesh
+                // add new meshes
+                this.meshes[m] = this.meshes[m] || [];
+                this.meshes[m].push(...meshes[m]);
+
                 this.new_mesh_styles.push(m);
             }
             // keep label meshes out of view until collision is complete
@@ -458,9 +507,27 @@ export default class Tile {
                 }
             }
             this.new_mesh_styles = [];
+            this.built = 'some';
+            this.building = false;
+            this.build_last_seq = progress.build_seq;
 
             this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
         }
+
+        if (this.build_last_seq !== null) {
+            let done = true;
+            for (let i=0; i <= this.build_last_seq; i++) {
+                if (this.build_seqs.indexOf(i) === -1) {
+                    done = false;
+                    break;
+                }
+            }
+
+            if (done) {
+                this.built = 'all';
+            }
+        }
+
         this.printDebug(progress);
     }
 
@@ -495,20 +562,33 @@ export default class Tile {
         Collision.abortTile(tile.id);
 
         // Releases meshes
-        if (tile.mesh_data) {
-            for (let s in tile.mesh_data) {
-                let textures = tile.mesh_data[s].textures;
-                if (textures) {
-                    textures.forEach(t => {
-                        let texture = Texture.textures[t];
-                        if (texture) {
-                            log('trace', `releasing texture ${t} for tile ${tile.key}`);
-                            texture.release();
-                        }
-                    });
-                }
-            }
+        let mesh_data_sets = [];
+
+        if (Array.isArray(tile.pending_mesh_data)) {
+            mesh_data_sets.push(...tile.pending_mesh_data);
         }
+
+        if (tile.mesh_data) {
+            mesh_data_sets.push(tile.mesh_data);
+        }
+
+        // if (tile.pending_mesh_data) {
+            // tile.pending_mesh_data.forEach(mesh_data => {
+            mesh_data_sets.forEach(mesh_data => {
+                for (let s in mesh_data) {
+                    let textures = mesh_data[s].textures;
+                    if (textures) {
+                        textures.forEach(t => {
+                            let texture = Texture.textures[t];
+                            if (texture) {
+                                log('trace', `releasing texture ${t} for tile ${tile.key}`);
+                                texture.release();
+                            }
+                        });
+                    }
+                }
+            });
+        // }
     }
 
     // Set as a proxy tile for another tile
@@ -536,7 +616,7 @@ export default class Tile {
     // haven't finished loading that style yet. If all proxied tiles *have* data for that style, then it's
     // safe to hide the proxy tile's version.
     shouldProxyForStyle (style) {
-        return !this.proxy_for || this.proxy_for.some(t => t.meshes[style] == null);
+        return !this.proxy_for;// || this.proxy_for.some(t => t.meshes[style] && t.meshes[style].every(m => m.generation !== this.generation));
     }
 
     // Update model matrix and tile uniforms
@@ -590,7 +670,9 @@ export default class Tile {
         this.loaded = other.loaded;
         this.generation = other.generation;
         this.error = other.error;
-        this.mesh_data = other.mesh_data;
+        // this.mesh_data = other.mesh_data;
+        // this.mesh_data = { ...this.mesh_data, ...other.mesh_data };
+        this.pending_mesh_data.push(other.mesh_data);
         this.debug = mergeObjects(this.debug, other.debug);
         return this;
     }

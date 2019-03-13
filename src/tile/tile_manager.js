@@ -138,7 +138,7 @@ export default class TileManager {
         // get current visible tiles and sort by key for consistency collision order
         const tiles = this.renderable_tiles
             .filter(t => t.valid)
-            .filter(t => t.built);
+            .filter(t => t.built != null);
 
         if (tiles.length === 0) {
             return Promise.resolve({});
@@ -203,22 +203,30 @@ export default class TileManager {
         let proxy = false;
         this.forEachTile(tile => {
             if (this.view.zoom_direction === 1) {
-                if (tile.visible && !tile.labeled) {
+                // if (tile.visible && !tile.labeled) {
+                // if (tile.visible && (!tile.labeled || !tile.built)) {
+                // if (tile.visible && (!tile.labeled || tile.building)) {
+                if (tile.visible && (!tile.labeled || tile.built !== 'all')) {
                     const parent = this.pyramid.getAncestor(tile);
                     if (parent) {
                         parent.setProxyFor(tile);
                         proxy = true;
                     }
                 }
+                // else if (tile.key == "mapzen/-818/357/10/11") debugger;
             }
             else if (this.view.zoom_direction === -1) {
-                if (tile.visible && !tile.labeled) {
+                // if (tile.visible && !tile.labeled) {
+                // if (tile.visible && (!tile.labeled || !tile.built)) {
+                // if (tile.visible && (!tile.labeled || tile.building)) {
+                if (tile.visible && (!tile.labeled || tile.built !== 'all')) {
                     const descendants = this.pyramid.getDescendants(tile);
                     for (let i=0; i < descendants.length; i++) {
                         descendants[i].setProxyFor(tile);
                         proxy = true;
                     }
                 }
+                // else if (tile.key == "mapzen/-818/357/10/11") debugger;
             }
         });
 
@@ -266,7 +274,7 @@ export default class TileManager {
     }
 
     isLoadingVisibleTiles () {
-        return Object.keys(this.tiles).some(k => this.tiles[k].visible && !this.tiles[k].built);
+        return Object.keys(this.tiles).some(k => this.tiles[k].visible && this.tiles[k].built !== 'all');
     }
 
     allVisibleTilesLabeled () {
@@ -376,13 +384,17 @@ export default class TileManager {
                 tile = this.tiles[tile.key].merge(tile);
             }
 
-            if (progress.done) {
-                tile.built = true;
-            }
-
-            tile.buildMeshes(this.scene.styles, progress);
-            this.updateTileStates();
-            this.scene.requestRedraw();
+            // setTimeout(() => {
+            // Task.add({
+            //     type: 'buildMeshes',
+            //     run: task => {
+                    tile.buildMeshes(this.scene.styles, progress);
+                    this.updateTileStates();
+                    this.scene.immediateRedraw();
+            //         Task.finish(task);
+            //     }
+            // });
+            // }, 0);
         }
 
         if (progress.done) {

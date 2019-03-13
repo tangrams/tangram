@@ -90,7 +90,7 @@ styles:
             outline:
                 color: [.8, .8, .8]
                 width: 1px
-            interactive: true
+            # interactive: true
 
 sources:
     tilezen:
@@ -172,7 +172,7 @@ layers:
             draw:
                 polygons:
                     order: global.feature_order
-                    interactive: true
+                    # interactive: true
                     color: honeydew
 
 
@@ -206,7 +206,7 @@ layers:
         data: { source: tilezen }
         draw:
             polygons:
-                interactive: true
+                # interactive: true
                 order: global.feature_order
                 color: '#9dc3de'
 
@@ -463,9 +463,9 @@ layers:
                     color: [.83, .83, .83]
 
             # turn interactive feature selection on for buildings with names
-            interactive:
-                filter: { name: true }
-                draw: { polygons: { interactive: true } }
+            # interactive:
+            #     filter: { name: true }
+            #     draw: { polygons: { interactive: true } }
 
             # extrude 3d buildings
             extruded:
@@ -486,20 +486,25 @@ layers:
         # point labels for buildings
         labels:
             filter:
-                $geometry: point
-                name: true
-                any:
-                    - { $zoom: { min: 17 }, height: { min: 50 } }
-                    - $zoom: { min: 18 }
+                # $geometry: point
+                # name: true
+                # any:
+                #     - { $zoom: { min: 17 }, height: { min: 50 } }
+                #     - $zoom: { min: 18 }
             draw:
-                text:
-                    priority: 7
-                    text_source: global.language_text_source
-                    font:
-                        family: Helvetica
-                        size: 8pt
-                        fill: darkred
-                        stroke: { color: white, width: 3 }
+                points:
+                    # visible: false
+                    size: [[13, 6px], [17, 12px], [18, 24px], [20, 36px]]
+                    color: purple
+                    collide: false
+                # text:
+                #     priority: 7
+                #     text_source: global.language_text_source
+                #     font:
+                #         family: Helvetica
+                #         size: 8pt
+                #         fill: darkred
+                #         stroke: { color: white, width: 3 }
 
     pois:
         data: { source: tilezen }
@@ -508,7 +513,7 @@ layers:
         draw:
             points:
                 texture: icons
-                interactive: true
+                # interactive: true
 
         parks:
             filter:
@@ -558,11 +563,18 @@ layers:
                 $zoom: { min: 13 }
             draw:
                 points:
-                    size: [[13, [auto, 12px]], [15, [auto, 18px]], [20, 75%]]
+                    # size: [[13, [auto, 12px]], [15, [auto, 18px]], [20, 75%]]
+                    # size: [[13, [auto, 6px]], [17, 12px], [18, 24px], [20, 36px]]
+                    size: [[13, 6px], [17, 12px], [18, 24px], [20, 36px]]
+                    texture: null
+                    # sprite: null
+                    color: red
+                    collide: false
                     priority: 6
 
             # add text label at higher zoom
             labels:
+                enabled: false
                 filter:
                     - { $zoom: { min: 17 } }
                     - { $zoom: { min: 16 }, kind: station }
@@ -577,11 +589,13 @@ layers:
 
             # add generic icon at high zoom
             generic:
+                enabled: false
                 filter: { $zoom: { min: 18 } }
                 draw: { points: { sprite: info } }
 
             # examples of different icons mapped to feature properties
             icons:
+                enabled: false
                 restaurant:
                     filter: { kind: [restaurant] }
                     draw: { points: { sprite: restaurant } }
@@ -636,7 +650,7 @@ layers:
             filter: { kind: [region, macroregion, country] }
             draw:
                 text:
-                    interactive: true
+                    # interactive: true
                     text_source: global.language_text_source
                     font:
                         family: Montserrat

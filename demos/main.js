@@ -6,6 +6,22 @@
 
 (function () {
     var scene_url = 'demos/scene.yaml';
+    var scene_url = {
+        import: [
+            'https://www.nextzen.org/carto/bubble-wrap-style/10/bubble-wrap-style.zip',
+            'https://www.nextzen.org/carto/bubble-wrap-style/10/themes/label-10.zip',
+            'https://www.nextzen.org/carto/bubble-wrap-style/10/themes/bubble-wrap-road-shields-usa.zip',
+            'https://www.nextzen.org/carto/bubble-wrap-style/10/themes/bubble-wrap-road-shields-international.zip'
+        ]
+    };
+    // var scene_url = {
+    //     import: [
+    //         'https://www.nextzen.org/carto/walkabout-style/8/walkabout-style.zip',
+    //         'https://www.nextzen.org/carto/walkabout-style/8/themes/label-10.zip',
+    //         'https://www.nextzen.org/carto/walkabout-style/8/themes/walkabout-road-shields-usa.zip',
+    //         'https://www.nextzen.org/carto/walkabout-style/8/themes/walkabout-road-shields-international.zip'
+    //     ]
+    // };
 
     // Create Tangram as a Leaflet layer
     var layer = Tangram.leafletLayer({
