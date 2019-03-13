@@ -8,10 +8,74 @@ import Geo from '../utils/geo';
 let visible = {};       // currently visible labels
 let prev_visible = {};  // previously visible labels (in last collision run)
 
-export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_breach = false) {
+export default async function mainThreadLabelCollisionPass (tiles, view_zoom, hide_breach = false) {
+    // Swap/reset visible label set
     prev_visible = visible; // save last visible label set
     visible = {};           // initialize new visible label set
 
+    // Build label containers from tiles
+    let containers = buildLabels(tiles, view_zoom);
+
+    // Collide all labels in a single group
+    // TODO: maybe rename tile and style to group/subgroup?
+    Collision.startTile('main', { apply_repeat_groups: true, return_hidden: true });
+    Collision.addStyle('main', 'main');
+    const labels = await Collision.collide(containers, 'main', 'main');
+
+    // Update label visiblity
+    let meshes = [];
+    labels.forEach(container => {
+        // Hide breach labels (those that cross tile boundaries) while tiles are loading, unless they
+        // were previously visible (otherwise fully loaded/collided breach labels will flicker in and out
+        // when new tiles load, even if they aren't adjacent)
+        let show = 0;
+        if (container.show === true &&
+            (!hide_breach || !container.label.breach || prev_visible[container.label.id])) {
+            show = 1;
+        }
+
+        if (show) {
+            visible[container.label.id] = true; // track visible labels
+        }
+
+        let changed = true; // check if label visibility changed on this collision pass
+
+        container.ranges.forEach(r => {
+            if (!changed) {
+                return; // skip rest of label if state hasn't changed
+            }
+
+            let mesh = container.mesh;
+            if (!mesh.valid) {
+                return;
+            }
+
+            let off = mesh.vertex_layout.offset.a_shape; // byte offset (within each vertex) of attribute
+            let stride = mesh.vertex_layout.stride;      // byte stride per vertex
+
+            for (let i=0; i < r[1]; i++) {
+                // NB: +6 is because attribute is a short int (2 bytes each), and we're skipping to 3rd element, 6=3*2
+                if (mesh.vertex_data[r[0] + i * stride + off + 6] === show) {
+                    changed = false;
+                    return; // label hasn't changed states, skip further updates
+                }
+                mesh.vertex_data[r[0] + i * stride + off + 6] = show;
+            }
+
+            if (meshes.indexOf(mesh) === -1) {
+                meshes.push(mesh);
+            }
+        });
+    });
+
+    // Upload updated meshes and make them visible
+    meshes.forEach(mesh => mesh.upload());
+    tiles.forEach(t => t.swapPendingLabels());
+
+    return { labels, containers }; // currently returned for debugging
+}
+
+function buildLabels (tiles, view_zoom) {
     const labels = {};
     let containers = {};
 
@@ -19,7 +83,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
     tiles.forEach(tile => {
         const units_per_meter = Geo.unitsPerMeter(tile.coords.z); // scale from tile units to mercator meters
         const zoom_scale = Math.pow(2, view_zoom - tile.style_z); // adjust label size by view zoom
-        const size_scale = units_per_meter * zoom_scale;          // scale from tile units to zoom-adjusted meters
+        const size_scale = units_per_meter * zoom_scale; // scale from tile units to zoom-adjusted meters
         const meters_per_pixel = Geo.metersPerPixel(view_zoom);
 
         // First pass: create label instances and centralize collision containers
@@ -41,7 +105,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
                         const params = mesh.labels[label_id].container.label;
                         const linked = mesh.labels[label_id].container.linked;
                         const ranges = mesh.labels[label_id].ranges;
-                        const debug = Object.assign({}, mesh.labels[label_id].debug, {tile, params, label_id});
+                        const debug = Object.assign({}, mesh.labels[label_id].debug, { tile, params, label_id });
 
                         let label = labels[label_id] = {};
                         label.discard = discard.bind(label);
@@ -52,7 +116,6 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
                         label.layout.repeat_scale = 0.75; // looser second pass on repeat groups, to weed out repeats near tile edges
                         label.layout.repeat_distance = label.layout.repeat_distance || 0;
                         label.layout.repeat_distance /= size_scale; // TODO: where should this be scaled?
-
                         label.position = [ // don't overwrite referenced values
                             label.position[0] / units_per_meter + tile.min.x,
                             label.position[1] / units_per_meter + tile.min.y
@@ -67,10 +130,10 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
                         }
                         else if (params.obbs) {
                             // NB: this is a very rough approximation of curved label collision at intermediate zooms,
-                            // becuase the position/scale of each collision box isn't correctly updated; however,
+                            // because the position/scale of each collision box isn't correctly updated; however,
                             // it's good enough to provide some additional label coverage, with less overhead
                             const obbs = params.obbs.map(o => {
-                                let {x, y, a, w, h} = o;
+                                let { x, y, a, w, h } = o;
                                 x = x / units_per_meter + tile.min.x;
                                 y = y / units_per_meter + tile.min.y;
                                 w /= size_scale;
@@ -105,63 +168,7 @@ export default function mainThreadLabelCollisionPass (tiles, view_zoom, hide_bre
 
     // Convert container map to array
     containers = Object.keys(containers).map(k => containers[k]);
-
-    // Collide all labels in a single group
-    // TODO: maybe rename tile and style to group/subgroup?
-    Collision.startTile('main', { apply_repeat_groups: true, return_hidden: true });
-    Collision.addStyle('main', 'main');
-
-    return Collision.collide(containers, 'main', 'main').then(labels => {
-        let meshes = [];
-        labels.forEach(container => {
-            // Hide breach labels (those that cross tile boundaries) while tiles are loading, unless they
-            // were previously visible (otherwise fully loaded/collided breach labels will flicker in and out
-            // when new tiles load, even if they aren't adjacent)
-            let show = 0;
-            if (container.show === true &&
-                (!hide_breach || !container.label.breach || prev_visible[container.label.id])) {
-                show = 1;
-            }
-
-            if (show) {
-                visible[container.label.id] = true; // track visible labels
-            }
-
-            let changed = true; // check if label visibility changed on this collision pass
-
-            container.ranges.forEach(r => {
-                if (!changed) {
-                    return; // skip rest of label if state hasn't changed
-                }
-
-                let mesh = container.mesh;
-                if (!mesh.valid) {
-                    return;
-                }
-
-                let off = mesh.vertex_layout.offset.a_shape; // byte offset (within each vertex) of attribute
-                let stride = mesh.vertex_layout.stride;      // byte stride per vertex
-
-                for (let i=0; i < r[1]; i++) {
-                    // NB: +6 is because attribute is a short int (2 bytes each), and we're skipping to 3rd element, 6=3*2
-                    if (mesh.vertex_data[r[0] + i * stride + off + 6] === show) {
-                        changed = false;
-                        return; // label hasn't changed states, skip further updates
-                    }
-                    mesh.vertex_data[r[0] + i * stride + off + 6] = show;
-                }
-
-                if (meshes.indexOf(mesh) === -1) {
-                    meshes.push(mesh);
-                }
-            });
-        });
-
-        meshes.forEach(mesh => mesh.upload());
-        tiles.forEach(t => t.swapPendingLabels());
-
-        return { labels, containers }; // currently returned for debugging
-    });
+    return containers;
 }
 
 // Generic discard function for labels, does simple occlusion with one or more bounding boxes
