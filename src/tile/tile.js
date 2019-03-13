@@ -29,6 +29,7 @@ export default class Tile {
         this.view = view;
         this.source = source;
         this.generation = null;
+        this.build_id = null;
         this.valid = true;
 
         this.visible = false;
