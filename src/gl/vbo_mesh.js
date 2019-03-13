@@ -21,6 +21,7 @@ export default class VBOMesh  {
         this.uniforms = options.uniforms;
         this.textures = options.textures; // any textures owned by this mesh
         this.retain = options.retain || false; // whether to retain mesh data in CPU after uploading to GPU
+        this.generation = options.generation; // scene generation mesh is built for
         this.created_at = +new Date();
         this.fade_in_time = options.fade_in_time || 0; // optional time to fade in mesh
 

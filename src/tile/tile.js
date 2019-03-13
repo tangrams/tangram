@@ -397,6 +397,7 @@ export default class Tile {
                         let mesh_options = Object.assign({}, mesh_data[s]);
                         mesh_options.uniforms = Object.assign({}, mesh_options.uniforms, mesh_variant.uniforms);
                         mesh_options.variant = mesh_variant.variant;
+                        mesh_options.generation = this.generation;
 
                         // for labels, keep buffer data on CPU so they can be modified later
                         if (mesh_variant.labels) {
