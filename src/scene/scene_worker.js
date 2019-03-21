@@ -263,7 +263,9 @@ const SceneWorker = Object.assign(self, {
     // Query features within visible tiles, with optional filter conditions
     queryFeatures ({ filter, visible, geometry, tile_keys }) {
         let features = [];
-        let tiles = tile_keys.map(t => this.tiles[t]).filter(t => t);
+        let tiles = tile_keys
+            .map(t => this.tiles[t])
+            .filter(t => t && t.loaded);
 
         // Compile feature filter
         if (filter != null) {
