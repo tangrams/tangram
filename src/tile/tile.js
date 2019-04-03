@@ -324,36 +324,31 @@ export default class Tile {
             geom: GeoJSON FeatureCollection
     */
     static getDataForSource (source_data, source_config, scene_layer) {
-        var layers = [];
+        const layers = [];
+        const single_layer = (Object.keys(source_data.layers).length === 1 && Object.keys(source_data.layers)[0]);
 
         if (source_config != null && source_data != null && source_data.layers != null) {
-            // If no layer specified, and a default source layer exists
-            if (!source_config.layer && source_data.layers._default) {
-                layers.push({
-                    geom: source_data.layers._default
-                });
-            }
-            // If no layer specified, and a layer for the scene layer name exists
-            else if (!source_config.layer && scene_layer) {
+            // If no source layer specified:
+            // 1. Look for a source layer that matches the scene layer name
+            // 2. If not, but the source only has one layer, use that as the default
+            if (!source_config.layer && (scene_layer || single_layer)) {
                 layers.push({
                     layer: scene_layer,
-                    geom: source_data.layers[scene_layer]
+                    geom: source_data.layers[scene_layer] || source_data.layers[single_layer]
                 });
             }
-            // If a layer is specified by name, use it
+            // If a source layer is specified by name, use it
             else if (typeof source_config.layer === 'string') {
                 layers.push({
                     layer: source_config.layer,
                     geom: source_data.layers[source_config.layer]
                 });
             }
-            // If multiple layers are specified by name, combine them
+            // If multiple source layers are specified by name, combine them
             else if (Array.isArray(source_config.layer)) {
                 source_config.layer.forEach(layer => {
                     if (source_data.layers[layer] && source_data.layers[layer].features) {
-                        layers.push({
-                            layer,
-                            geom: source_data.layers[layer]
+                        layers.push({ layer, geom: source_data.layers[layer]
                         });
                     }
                 });
