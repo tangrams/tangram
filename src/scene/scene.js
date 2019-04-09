@@ -1333,7 +1333,7 @@ export default class Scene {
     // Fires event when rendered tile set or style changes
     updateViewComplete () {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
-            !this.building
+            !this.building &&
             this.tile_manager.allVisibleTilesLabeled()) {
             this.tile_manager.updateLabels();
             this.last_complete_generation = this.generation;
