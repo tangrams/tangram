@@ -1334,6 +1334,7 @@ export default class Scene {
     updateViewComplete () {
         if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
             !this.building &&
+            !this.tile_manager.isLoadingVisibleTiles() &&
             this.tile_manager.allVisibleTilesLabeled()) {
             this.tile_manager.updateLabels();
             this.last_complete_generation = this.generation;
