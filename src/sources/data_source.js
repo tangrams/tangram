@@ -417,12 +417,12 @@ export class NetworkTileSource extends NetworkSource {
 
             let min = bounds.tiles.min[coords.z];
             if (!min) {
-                min = bounds.tiles.min[coords.z] = Geo.wrapTile(Geo.tileForMeters(bounds.meters.min, coords.z));
+                min = bounds.tiles.min[coords.z] = Geo.tileForMeters(bounds.meters.min, coords.z);
             }
 
             let max = bounds.tiles.max[coords.z];
             if (!max) {
-                max = bounds.tiles.max[coords.z] = Geo.wrapTile(Geo.tileForMeters(bounds.meters.max, coords.z));
+                max = bounds.tiles.max[coords.z] = Geo.tileForMeters(bounds.meters.max, coords.z);
             }
 
             // check latitude
