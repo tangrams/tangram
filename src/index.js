@@ -2,6 +2,13 @@
 
 // The leaflet layer plugin is currently the primary public API
 import {leafletLayer} from './leaflet_layer';
+// self-contained public API
+import {tangramLayer} from './tangramLayer';
+
+// marker API
+import Marker from './marker';
+
+// The scene worker is only activated when a worker thread is instantiated, but must always be loaded
 import Scene from './scene/scene';
 
 // Additional modules are exposed for debugging
@@ -21,7 +28,6 @@ import WorkerBroker from './utils/worker_broker';
 import Task from './utils/task';
 import {StyleManager} from './styles/style_manager';
 import StyleParser from './styles/style_parser';
-import {TileID} from './tile/tile_id';
 import Collision from './labels/collision';
 import FeatureSelection from './selection/selection';
 import TextCanvas from './styles/text/text_canvas';
@@ -48,7 +54,6 @@ const debug = {
     Task,
     StyleManager,
     StyleParser,
-    TileID,
     Collision,
     FeatureSelection,
     TextCanvas,
@@ -57,6 +62,8 @@ const debug = {
 
 export default {
     leafletLayer,
+    tangramLayer,
+    Marker,
     debug,
     version
 };

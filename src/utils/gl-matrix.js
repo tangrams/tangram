@@ -32,20 +32,24 @@ const mat3 = {
 
 import {default as mat4_multiply} from 'gl-mat4/multiply';
 import {default as mat4_translate} from 'gl-mat4/translate';
+import {default as mat4_rotate} from 'gl-mat4/rotate';
 import {default as mat4_scale} from 'gl-mat4/scale';
 import {default as mat4_perspective} from 'gl-mat4/perspective';
 import {default as mat4_lookAt} from 'gl-mat4/lookAt';
 import {default as mat4_identity} from 'gl-mat4/identity';
 import {default as mat4_copy} from 'gl-mat4/copy';
+import {default as mat4_invert} from 'gl-mat4/invert';
 
 const mat4 = {
     multiply: mat4_multiply,
     translate: mat4_translate,
+    rotate: mat4_rotate,
     scale: mat4_scale,
     perspective: mat4_perspective,
     lookAt: mat4_lookAt,
     identity: mat4_identity,
-    copy: mat4_copy
+    copy: mat4_copy,
+    invert: mat4_invert,
 };
 
 

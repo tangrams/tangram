@@ -39,7 +39,7 @@ export default class Scene {
         this.sources = {};
 
         this.view = new View(this, options);
-        this.tile_manager = new TileManager({ scene: this });
+        this.tile_manager = new TileManager({ scene: this, view: this.view });
         this.num_workers = options.numWorkers || 2;
         if (options.disableVertexArrayObjects === true) {
             VertexArrayObject.disabled = true;
@@ -121,7 +121,6 @@ export default class Scene {
 
         this.updating++;
         this.initialized = false;
-        this.view_complete = false; // track if a view complete event has been triggered yet
         this.times.frame = null; // clear first frame time
         this.times.build = null; // clear first scene build time
 
@@ -235,12 +234,13 @@ export default class Scene {
         }
 
         this.container = this.container || document.body;
+        this.container.style.height = '100%'; // necessary for react?
         this.canvas = document.createElement('canvas');
         this.canvas.style.position = 'absolute';
         this.canvas.style.top = 0;
         this.canvas.style.left = 0;
 
-        // Force tangram canvas underneath all leaflet layers, and set background to transparent
+        // Force tangram canvas underneath all other layers, and set background to transparent
         this.container.style.backgroundColor = 'transparent';
         this.container.appendChild(this.canvas);
 
@@ -1133,7 +1133,7 @@ export default class Scene {
         // Disable animation is scene flag requests it, otherwise enable animation if any animated styles are in view
         return (this.config.scene.animated === false ?
             false :
-            this.style_manager.getActiveStyles().some(s => this.styles[s].animated));
+            this.tile_manager.getActiveStyles().some(s => this.styles[s].animated));
     }
 
     // Get active camera - for public API
@@ -1224,10 +1224,11 @@ export default class Scene {
             // just normalize top-level textures - necessary for adding base path to globals
             SceneLoader.normalizeTextures(this.config, this.config_bundle);
         }
-        this.trigger(loading ? 'load' : 'update', { config: this.config });
 
-        this.style_manager.init();
         this.view.reset();
+        this.view.updateBounds();
+        this.style_manager.init(); // removed in latest master - still needed?
+
         this.createLights();
         this.createDataSources(loading);
         this.loadTextures();
@@ -1244,8 +1245,9 @@ export default class Scene {
 
         // Finish by updating bounds and re-rendering
         this.updating--;
-        this.view.updateBounds();
         this.requestRedraw();
+
+        this.trigger(loading ? 'load' : 'update', { config: this.config });
 
         return done.then(() => {
             this.last_render_count = 0; // force re-evaluation of selection map
@@ -1338,8 +1340,7 @@ export default class Scene {
             this.tile_manager.allVisibleTilesLabeled()) {
             this.tile_manager.updateLabels();
             this.last_complete_generation = this.generation;
-            this.trigger('view_complete', { first: (this.view_complete !== true) });
-            this.view_complete = true;
+            this.trigger('view_complete');
         }
     }
 
