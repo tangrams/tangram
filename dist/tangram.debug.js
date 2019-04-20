@@ -1912,7 +1912,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.18.0";
+var version = "0.18.1";
 
 var version$1 = 'v' + version;
 
@@ -2661,377 +2661,6 @@ if (_fails(function () { return $toString.call({ source: 'a', flags: 'b' }) != '
   });
 }
 
-// Miscellaneous geo functions
-var Geo;
-var Geo$1 = Geo = {}; // Projection constants
-
-Geo.default_source_max_zoom = 18;
-Geo.default_view_max_zoom = 20;
-Geo.max_style_zoom = 25; // max zoom at which styles will be evaluated
-
-Geo.tile_size = 256;
-Geo.half_circumference_meters = 20037508.342789244;
-Geo.circumference_meters = Geo.half_circumference_meters * 2;
-Geo.min_zoom_meters_per_pixel = Geo.circumference_meters / Geo.tile_size; // min zoom draws world as 2 tiles wide
-
-var meters_per_pixel = [];
-
-Geo.metersPerPixel = function (z) {
-  meters_per_pixel[z] = meters_per_pixel[z] || Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
-  return meters_per_pixel[z];
-};
-
-var meters_per_tile = [];
-
-Geo.metersPerTile = function (z) {
-  meters_per_tile[z] = meters_per_tile[z] || Geo.circumference_meters / Math.pow(2, z);
-  return meters_per_tile[z];
-}; // Conversion functions based on an defined tile scale
-
-
-Geo.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
-
-Geo.units_per_pixel = Geo.tile_scale / Geo.tile_size;
-Geo.height_scale = 16; // provides sub-meter precision for height values (16ths of a meters)
-
-var units_per_meter = [];
-
-Geo.unitsPerMeter = function (z) {
-  units_per_meter[z] = units_per_meter[z] || Geo.tile_scale / (Geo.tile_size * Geo.metersPerPixel(z));
-  return units_per_meter[z];
-}; // Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
-
-
-Geo.metersForTile = function (tile) {
-  return {
-    x: tile.x * Geo.circumference_meters / Math.pow(2, tile.z) - Geo.half_circumference_meters,
-    y: -(tile.y * Geo.circumference_meters / Math.pow(2, tile.z) - Geo.half_circumference_meters)
-  };
-};
-/**
-   Given a point in mercator meters and a zoom level, return the tile X/Y/Z that the point lies in
-*/
-
-
-Geo.tileForMeters = function (_ref, zoom) {
-  var x = _ref[0],
-      y = _ref[1];
-  return {
-    x: Math.floor((x + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
-    y: Math.floor((-y + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
-    z: zoom
-  };
-}; // Wrap a tile to positive #s for zoom
-// Optionally specify the axes to wrap
-
-
-Geo.wrapTile = function (_ref2, mask) {
-  var x = _ref2.x,
-      y = _ref2.y,
-      z = _ref2.z;
-
-  if (mask === void 0) {
-    mask = {
-      x: true,
-      y: false
-    };
-  }
-
-  var m = (1 << z) - 1;
-
-  if (mask.x) {
-    x = x & m;
-  }
-
-  if (mask.y) {
-    y = y & m;
-  }
-
-  return {
-    x: x,
-    y: y,
-    z: z
-  };
-};
-/**
-   Convert mercator meters to lat-lng
-*/
-
-
-Geo.metersToLatLng = function (_ref3) {
-  var x = _ref3[0],
-      y = _ref3[1];
-  x /= Geo.half_circumference_meters;
-  y /= Geo.half_circumference_meters;
-  y = (2 * Math.atan(Math.exp(y * Math.PI)) - Math.PI / 2) / Math.PI;
-  x *= 180;
-  y *= 180;
-  return [x, y];
-};
-/**
-  Convert lat-lng to mercator meters
-*/
-
-
-Geo.latLngToMeters = function (_ref4) {
-  var x = _ref4[0],
-      y = _ref4[1];
-  // Latitude
-  y = Math.log(Math.tan(y * Math.PI / 360 + Math.PI / 4)) / Math.PI;
-  y *= Geo.half_circumference_meters; // Longitude
-
-  x *= Geo.half_circumference_meters / 180;
-  return [x, y];
-}; // Transform from local tile coordinats to lat lng
-
-
-Geo.tileSpaceToLatlng = function (geometry, z, min) {
-  var units_per_meter = Geo.unitsPerMeter(z);
-  Geo.transformGeometry(geometry, function (coord) {
-    coord[0] = coord[0] / units_per_meter + min.x;
-    coord[1] = coord[1] / units_per_meter + min.y;
-
-    var _Geo$metersToLatLng = Geo.metersToLatLng(coord),
-        x = _Geo$metersToLatLng[0],
-        y = _Geo$metersToLatLng[1];
-
-    coord[0] = x;
-    coord[1] = y;
-  });
-  return geometry;
-}; // Copy GeoJSON geometry
-
-
-Geo.copyGeometry = function (geometry) {
-  if (geometry == null) {
-    return; // skip if missing geometry (valid GeoJSON)
-  }
-
-  var copy = {
-    type: geometry.type
-  };
-
-  if (geometry.type === 'Point') {
-    copy.coordinates = [geometry.coordinates[0], geometry.coordinates[1]];
-  } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
-    copy.coordinates = geometry.coordinates.map(function (c) {
-      return [c[0], c[1]];
-    });
-  } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
-    copy.coordinates = geometry.coordinates.map(function (ring) {
-      return ring.map(function (c) {
-        return [c[0], c[1]];
-      });
-    });
-  } else if (geometry.type === 'MultiPolygon') {
-    copy.coordinates = geometry.coordinates.map(function (polygon) {
-      return polygon.map(function (ring) {
-        return ring.map(function (c) {
-          return [c[0], c[1]];
-        });
-      });
-    });
-  } // TODO: support GeometryCollection
-
-
-  return copy;
-}; // Run an in-place transform function on each cooordinate in a GeoJSON geometry
-
-
-Geo.transformGeometry = function (geometry, transform) {
-  if (geometry == null) {
-    return; // skip if missing geometry (valid GeoJSON)
-  }
-
-  if (geometry.type === 'Point') {
-    transform(geometry.coordinates);
-  } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
-    geometry.coordinates.forEach(transform);
-  } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
-    geometry.coordinates.forEach(function (ring) {
-      return ring.forEach(transform);
-    });
-  } else if (geometry.type === 'MultiPolygon') {
-    geometry.coordinates.forEach(function (polygon) {
-      polygon.forEach(function (ring) {
-        return ring.forEach(transform);
-      });
-    });
-  } // TODO: support GeometryCollection
-
-};
-
-Geo.boxIntersect = function (b1, b2) {
-  return !(b2.sw.x > b1.ne.x || b2.ne.x < b1.sw.x || b2.sw.y > b1.ne.y || b2.ne.y < b1.sw.y);
-}; // Finds the axis-aligned bounding box for a polygon
-
-
-Geo.findBoundingBox = function (polygon) {
-  var min_x = Infinity,
-      max_x = -Infinity,
-      min_y = Infinity,
-      max_y = -Infinity; // Only need to examine outer ring (polygon[0])
-
-  var num_coords = polygon[0].length;
-
-  for (var c = 0; c < num_coords; c++) {
-    var coord = polygon[0][c];
-
-    if (coord[0] < min_x) {
-      min_x = coord[0];
-    }
-
-    if (coord[1] < min_y) {
-      min_y = coord[1];
-    }
-
-    if (coord[0] > max_x) {
-      max_x = coord[0];
-    }
-
-    if (coord[1] > max_y) {
-      max_y = coord[1];
-    }
-  }
-
-  return [min_x, min_y, max_x, max_y];
-}; // Convert geometry type to one of: 'point', 'line', 'polygon'
-
-
-Geo.geometryType = function (type) {
-  if (type === 'Polygon' || type === 'MultiPolygon') {
-    return 'polygon';
-  } else if (type === 'LineString' || type === 'MultiLineString') {
-    return 'line';
-  }
-
-  if (type === 'Point' || type === 'MultiPoint') {
-    return 'point';
-  }
-}; // Geometric / weighted centroid of polygon
-// Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
-
-
-Geo.centroid = function (polygon, relative) {
-  if (relative === void 0) {
-    relative = true;
-  }
-
-  if (!polygon || polygon.length === 0) {
-    return;
-  }
-
-  var x = 0,
-      y = 0,
-      area = 0;
-  var ring = polygon[0]; // only use first ring for now
-
-  var len = ring.length; // optionally calculate relative to first coordinate to avoid precision issues w/small polygons
-
-  var origin;
-
-  if (relative) {
-    origin = ring[0];
-    ring = ring.map(function (v) {
-      return [v[0] - origin[0], v[1] - origin[1]];
-    });
-  }
-
-  for (var i = 0, j = len - 1; i < len; j = i, i++) {
-    var p0 = ring[i];
-    var p1 = ring[j];
-    var f = p0[1] * p1[0] - p1[1] * p0[0];
-    x += (p0[0] + p1[0]) * f;
-    y += (p0[1] + p1[1]) * f;
-    area += f * 3;
-  }
-
-  if (!area) {
-    return; // skip degenerate polygons
-  }
-
-  var c = [x / area, y / area];
-
-  if (relative) {
-    c[0] += origin[0];
-    c[1] += origin[1];
-  }
-
-  return c;
-};
-
-Geo.multiCentroid = function (polygons) {
-  var n = 0;
-  var centroid = null;
-
-  for (var p = 0; p < polygons.length; p++) {
-    var c = Geo.centroid(polygons[p]);
-
-    if (c) {
-      // skip degenerate polygons
-      centroid = centroid || [0, 0];
-      centroid[0] += c[0];
-      centroid[1] += c[1];
-      n++;
-    }
-  }
-
-  if (n > 0) {
-    centroid[0] /= n;
-    centroid[1] /= n;
-  }
-
-  return centroid; // will return null if all polygons were degenerate
-};
-
-Geo.signedPolygonRingAreaSum = function (ring) {
-  var area = 0;
-  var n = ring.length;
-
-  for (var i = 0; i < n - 1; i++) {
-    var p0 = ring[i];
-    var p1 = ring[i + 1];
-    area += p0[0] * p1[1] - p1[0] * p0[1];
-  }
-
-  area += ring[n - 1][0] * ring[0][1] - ring[0][0] * ring[n - 1][1];
-  return area;
-};
-
-Geo.polygonRingArea = function (ring) {
-  return Math.abs(Geo.signedPolygonRingAreaSum(ring)) / 2;
-}; // TODO: subtract inner rings
-
-
-Geo.polygonArea = function (polygon) {
-  if (!polygon) {
-    return;
-  }
-
-  return Geo.polygonRingArea(polygon[0]);
-};
-
-Geo.multiPolygonArea = function (polygons) {
-  var area = 0;
-
-  for (var p = 0; p < polygons.length; p++) {
-    area += Geo.polygonArea(polygons[p]);
-  }
-
-  return area;
-};
-
-Geo.ringWinding = function (ring) {
-  var area = Geo.signedPolygonRingAreaSum(ring);
-
-  if (area > 0) {
-    return 'CW';
-  } else if (area < 0) {
-    return 'CCW';
-  } // return undefined on zero area polygon
-
-};
-
 var Utils = {};
 WorkerBroker$1.addTarget('Utils', Utils); // Basic Safari detection
 // http://stackoverflow.com/questions/7944460/detect-safari-browser
@@ -3290,10 +2919,6 @@ Utils.toCSSColor = function (color) {
   return "rgba(" + color.map(function (c, i) {
     return i < 3 && Math.round(c * 255) || c;
   }).join(', ') + ")";
-};
-
-Utils.pointInTile = function (point) {
-  return point[0] >= 0 && point[1] > -Geo$1.tile_scale && point[0] < Geo$1.tile_scale && point[1] <= 0;
 };
 
 var debugSettings;
@@ -6545,6 +6170,367 @@ function mergeObjects(dest) {
   return dest;
 }
 
+// Miscellaneous geo functions
+var Geo;
+var Geo$1 = Geo = {}; // Projection constants
+
+Geo.default_source_max_zoom = 18;
+Geo.default_view_max_zoom = 20;
+Geo.max_style_zoom = 25; // max zoom at which styles will be evaluated
+
+Geo.tile_size = 256;
+Geo.half_circumference_meters = 20037508.342789244;
+Geo.circumference_meters = Geo.half_circumference_meters * 2;
+Geo.min_zoom_meters_per_pixel = Geo.circumference_meters / Geo.tile_size; // min zoom draws world as 2 tiles wide
+
+var meters_per_pixel = [];
+
+Geo.metersPerPixel = function (z) {
+  meters_per_pixel[z] = meters_per_pixel[z] || Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
+  return meters_per_pixel[z];
+};
+
+var meters_per_tile = [];
+
+Geo.metersPerTile = function (z) {
+  meters_per_tile[z] = meters_per_tile[z] || Geo.circumference_meters / Math.pow(2, z);
+  return meters_per_tile[z];
+}; // Conversion functions based on an defined tile scale
+
+
+Geo.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
+
+Geo.units_per_pixel = Geo.tile_scale / Geo.tile_size;
+Geo.height_scale = 16; // provides sub-meter precision for height values (16ths of a meters)
+
+var units_per_meter = [];
+
+Geo.unitsPerMeter = function (z) {
+  units_per_meter[z] = units_per_meter[z] || Geo.tile_scale / (Geo.tile_size * Geo.metersPerPixel(z));
+  return units_per_meter[z];
+}; // Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
+
+
+Geo.metersForTile = function (tile) {
+  return {
+    x: tile.x * Geo.circumference_meters / Math.pow(2, tile.z) - Geo.half_circumference_meters,
+    y: -(tile.y * Geo.circumference_meters / Math.pow(2, tile.z) - Geo.half_circumference_meters)
+  };
+};
+/**
+   Given a point in mercator meters and a zoom level, return the tile X/Y/Z that the point lies in
+*/
+
+
+Geo.tileForMeters = function (_ref, zoom) {
+  var x = _ref[0],
+      y = _ref[1];
+  return {
+    x: Math.floor((x + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
+    y: Math.floor((-y + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
+    z: zoom
+  };
+}; // Wrap a tile to positive #s for zoom
+// Optionally specify the axes to wrap
+
+
+Geo.wrapTile = function (_ref2, mask) {
+  var x = _ref2.x,
+      y = _ref2.y,
+      z = _ref2.z;
+
+  if (mask === void 0) {
+    mask = {
+      x: true,
+      y: false
+    };
+  }
+
+  var m = (1 << z) - 1;
+
+  if (mask.x) {
+    x = x & m;
+  }
+
+  if (mask.y) {
+    y = y & m;
+  }
+
+  return {
+    x: x,
+    y: y,
+    z: z
+  };
+};
+/**
+   Convert mercator meters to lat-lng, in-place
+*/
+
+
+Geo.metersToLatLng = function (c) {
+  c[0] /= Geo.half_circumference_meters;
+  c[1] /= Geo.half_circumference_meters;
+  c[1] = (2 * Math.atan(Math.exp(c[1] * Math.PI)) - Math.PI / 2) / Math.PI;
+  c[0] *= 180;
+  c[1] *= 180;
+  return c;
+};
+/**
+  Convert lat-lng to mercator meters, in-place
+*/
+
+
+Geo.latLngToMeters = function (c) {
+  // Latitude
+  c[1] = Math.log(Math.tan(c[1] * Math.PI / 360 + Math.PI / 4)) / Math.PI;
+  c[1] *= Geo.half_circumference_meters; // Longitude
+
+  c[0] *= Geo.half_circumference_meters / 180;
+  return c;
+}; // Transform from local tile coordinats to lat lng
+
+
+Geo.tileSpaceToLatlng = function (geometry, z, min) {
+  var units_per_meter = Geo.unitsPerMeter(z);
+  Geo.transformGeometry(geometry, function (coord) {
+    coord[0] = coord[0] / units_per_meter + min.x;
+    coord[1] = coord[1] / units_per_meter + min.y;
+    Geo.metersToLatLng(coord);
+  });
+  return geometry;
+}; // Copy GeoJSON geometry
+
+
+Geo.copyGeometry = function (geometry) {
+  if (geometry == null) {
+    return; // skip if missing geometry (valid GeoJSON)
+  }
+
+  var copy = {
+    type: geometry.type
+  };
+
+  if (geometry.type === 'Point') {
+    copy.coordinates = [geometry.coordinates[0], geometry.coordinates[1]];
+  } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
+    copy.coordinates = geometry.coordinates.map(function (c) {
+      return [c[0], c[1]];
+    });
+  } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
+    copy.coordinates = geometry.coordinates.map(function (ring) {
+      return ring.map(function (c) {
+        return [c[0], c[1]];
+      });
+    });
+  } else if (geometry.type === 'MultiPolygon') {
+    copy.coordinates = geometry.coordinates.map(function (polygon) {
+      return polygon.map(function (ring) {
+        return ring.map(function (c) {
+          return [c[0], c[1]];
+        });
+      });
+    });
+  } // TODO: support GeometryCollection
+
+
+  return copy;
+}; // Run an in-place transform function on each cooordinate in a GeoJSON geometry
+
+
+Geo.transformGeometry = function (geometry, transform) {
+  if (geometry == null) {
+    return; // skip if missing geometry (valid GeoJSON)
+  }
+
+  if (geometry.type === 'Point') {
+    transform(geometry.coordinates);
+  } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
+    geometry.coordinates.forEach(transform);
+  } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
+    geometry.coordinates.forEach(function (ring) {
+      return ring.forEach(transform);
+    });
+  } else if (geometry.type === 'MultiPolygon') {
+    geometry.coordinates.forEach(function (polygon) {
+      polygon.forEach(function (ring) {
+        return ring.forEach(transform);
+      });
+    });
+  } // TODO: support GeometryCollection
+
+};
+
+Geo.boxIntersect = function (b1, b2) {
+  return !(b2.sw.x > b1.ne.x || b2.ne.x < b1.sw.x || b2.sw.y > b1.ne.y || b2.ne.y < b1.sw.y);
+}; // Finds the axis-aligned bounding box for a polygon
+
+
+Geo.findBoundingBox = function (polygon) {
+  var min_x = Infinity,
+      max_x = -Infinity,
+      min_y = Infinity,
+      max_y = -Infinity; // Only need to examine outer ring (polygon[0])
+
+  var num_coords = polygon[0].length;
+
+  for (var c = 0; c < num_coords; c++) {
+    var coord = polygon[0][c];
+
+    if (coord[0] < min_x) {
+      min_x = coord[0];
+    }
+
+    if (coord[1] < min_y) {
+      min_y = coord[1];
+    }
+
+    if (coord[0] > max_x) {
+      max_x = coord[0];
+    }
+
+    if (coord[1] > max_y) {
+      max_y = coord[1];
+    }
+  }
+
+  return [min_x, min_y, max_x, max_y];
+}; // Convert geometry type to one of: 'point', 'line', 'polygon'
+
+
+Geo.geometryType = function (type) {
+  if (type === 'Polygon' || type === 'MultiPolygon') {
+    return 'polygon';
+  } else if (type === 'LineString' || type === 'MultiLineString') {
+    return 'line';
+  }
+
+  if (type === 'Point' || type === 'MultiPoint') {
+    return 'point';
+  }
+}; // Geometric / weighted centroid of polygon
+// Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
+
+
+Geo.centroid = function (polygon, relative) {
+  if (relative === void 0) {
+    relative = true;
+  }
+
+  if (!polygon || polygon.length === 0) {
+    return;
+  }
+
+  var x = 0,
+      y = 0,
+      area = 0;
+  var ring = polygon[0]; // only use first ring for now
+
+  var len = ring.length; // optionally calculate relative to first coordinate to avoid precision issues w/small polygons
+
+  var origin;
+
+  if (relative) {
+    origin = ring[0];
+    ring = ring.map(function (v) {
+      return [v[0] - origin[0], v[1] - origin[1]];
+    });
+  }
+
+  for (var i = 0, j = len - 1; i < len; j = i, i++) {
+    var p0 = ring[i];
+    var p1 = ring[j];
+    var f = p0[1] * p1[0] - p1[1] * p0[0];
+    x += (p0[0] + p1[0]) * f;
+    y += (p0[1] + p1[1]) * f;
+    area += f * 3;
+  }
+
+  if (!area) {
+    return; // skip degenerate polygons
+  }
+
+  var c = [x / area, y / area];
+
+  if (relative) {
+    c[0] += origin[0];
+    c[1] += origin[1];
+  }
+
+  return c;
+};
+
+Geo.multiCentroid = function (polygons) {
+  var n = 0;
+  var centroid = null;
+
+  for (var p = 0; p < polygons.length; p++) {
+    var c = Geo.centroid(polygons[p]);
+
+    if (c) {
+      // skip degenerate polygons
+      centroid = centroid || [0, 0];
+      centroid[0] += c[0];
+      centroid[1] += c[1];
+      n++;
+    }
+  }
+
+  if (n > 0) {
+    centroid[0] /= n;
+    centroid[1] /= n;
+  }
+
+  return centroid; // will return null if all polygons were degenerate
+};
+
+Geo.signedPolygonRingAreaSum = function (ring) {
+  var area = 0;
+  var n = ring.length;
+
+  for (var i = 0; i < n - 1; i++) {
+    var p0 = ring[i];
+    var p1 = ring[i + 1];
+    area += p0[0] * p1[1] - p1[0] * p0[1];
+  }
+
+  area += ring[n - 1][0] * ring[0][1] - ring[0][0] * ring[n - 1][1];
+  return area;
+};
+
+Geo.polygonRingArea = function (ring) {
+  return Math.abs(Geo.signedPolygonRingAreaSum(ring)) / 2;
+}; // TODO: subtract inner rings
+
+
+Geo.polygonArea = function (polygon) {
+  if (!polygon) {
+    return;
+  }
+
+  return Geo.polygonRingArea(polygon[0]);
+};
+
+Geo.multiPolygonArea = function (polygons) {
+  var area = 0;
+
+  for (var p = 0; p < polygons.length; p++) {
+    area += Geo.polygonArea(polygons[p]);
+  }
+
+  return area;
+};
+
+Geo.ringWinding = function (ring) {
+  var area = Geo.signedPolygonRingAreaSum(ring);
+
+  if (area > 0) {
+    return 'CW';
+  } else if (area < 0) {
+    return 'CCW';
+  } // return undefined on zero area polygon
+
+};
+
 var _stringWs = '\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u180E\u2000\u2001\u2002\u2003' +
   '\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
 
@@ -8724,12 +8710,9 @@ function (_Light3) {
     if (this.origin === 'world') {
       // For world origin, format is: [longitude, latitude, meters (default) or pixels w/px units]
       // Move light's world position into camera space
-      var _Geo$latLngToMeters = Geo$1.latLngToMeters(this.position),
-          x = _Geo$latLngToMeters[0],
-          y = _Geo$latLngToMeters[1];
-
-      this.position_eye[0] = x - this.view.camera.position_meters[0];
-      this.position_eye[1] = y - this.view.camera.position_meters[1];
+      var m = Geo$1.latLngToMeters([].concat(this.position));
+      this.position_eye[0] = m[0] - this.view.camera.position_meters[0];
+      this.position_eye[1] = m[1] - this.view.camera.position_meters[1];
       this.position_eye[2] = StyleParser.convertUnits(this.position[2], {
         zoom: this.view.zoom,
         meters_per_pixel: Geo$1.metersPerPixel(this.view.zoom)
@@ -8969,20 +8952,17 @@ function () {
 
       for (var f = 0; f < num_features; f++) {
         var feature = source.layers[t].features[f];
-        Geo$1.transformGeometry(feature.geometry, function (coord) {
-          var _Geo$latLngToMeters = Geo$1.latLngToMeters(coord),
-              x = _Geo$latLngToMeters[0],
-              y = _Geo$latLngToMeters[1];
-
-          coord[0] = x;
-          coord[1] = y;
-        });
+        Geo$1.transformGeometry(feature.geometry, this.projectCoord);
       }
     }
 
     if (source.debug !== undefined) {
       source.debug.projection = +new Date() - timer;
     }
+  };
+
+  DataSource.projectCoord = function projectCoord(coord) {
+    Geo$1.latLngToMeters(coord);
   }
   /**
    Re-scale geometries within each source to internal tile units
@@ -9318,13 +9298,13 @@ function (_NetworkSource) {
       var min = bounds.tiles.min[coords.z];
 
       if (!min) {
-        min = bounds.tiles.min[coords.z] = Geo$1.wrapTile(Geo$1.tileForMeters(bounds.meters.min, coords.z));
+        min = bounds.tiles.min[coords.z] = Geo$1.tileForMeters(bounds.meters.min, coords.z);
       }
 
       var max = bounds.tiles.max[coords.z];
 
       if (!max) {
-        max = bounds.tiles.max[coords.z] = Geo$1.wrapTile(Geo$1.tileForMeters(bounds.meters.max, coords.z));
+        max = bounds.tiles.max[coords.z] = Geo$1.tileForMeters(bounds.meters.max, coords.z);
       } // check latitude
 
 
@@ -10039,22 +10019,6 @@ var Style = {
 
     if (Thread.is_main) {
       WorkerBroker$1.addTarget(this.main_thread_target, this);
-    }
-  },
-  fillVertexTemplate: function fillVertexTemplate(vertex_layout, attribute, value, _ref2) {
-    var size = _ref2.size,
-        offset = _ref2.offset;
-    offset = offset === undefined ? 0 : offset;
-    var index = vertex_layout.index[attribute];
-
-    if (index === undefined) {
-      log('warn', "Style: in style '" + this.name + "', no index found in vertex layout for attribute '" + attribute + "'");
-      return;
-    }
-
-    for (var i = 0; i < size; ++i) {
-      var v = value.length > i ? value[i] : value;
-      this.vertex_template[index + i + offset] = v;
     }
   },
 
@@ -12256,38 +12220,23 @@ var JOIN_TYPE = {
   bevel: 1,
   round: 2
 };
-var DEFAULT = {
-  MITER_LIMIT: 3,
-  TEXCOORD_NORMALIZE: 1,
-  TEXCOORD_RATIO: 1,
-  MIN_FAN_WIDTH: 5 // Width of line in tile units to place 1 triangle per fan
+var DEFAULT_MITER_LIMIT = 3;
+var MIN_FAN_WIDTH = 5; // Width of line in tile units to place 1 triangle per fan
 
-}; // Scaling factor to add precision to line texture V coordinate packed as normalized short
+var TEXCOORD_NORMALIZE = 65536; // Scaling factor for UV attribute values
+// Scaling factor to add precision to line texture V coordinate packed as normalized short
 
-var v_scale_adjust = Geo$1.tile_scale;
+var V_SCALE_ADJUST = Geo$1.tile_scale;
 var zero_v = [0, 0],
     one_v = [1, 0],
     mid_v = [0.5, 0]; // reusable instances, updated with V coordinate
 
-function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
-  var closed_polygon = _ref.closed_polygon,
-      remove_tile_edges = _ref.remove_tile_edges,
-      tile_edge_tolerance = _ref.tile_edge_tolerance,
-      texcoord_index = _ref.texcoord_index,
-      texcoord_width = _ref.texcoord_width,
-      texcoord_ratio = _ref.texcoord_ratio,
-      texcoord_normalize = _ref.texcoord_normalize,
-      extrude_index = _ref.extrude_index,
-      offset_index = _ref.offset_index,
-      join = _ref.join,
-      cap = _ref.cap,
-      miter_limit = _ref.miter_limit,
-      offset = _ref.offset;
-  var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
-  var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter; // Configure miter limit
+function buildPolylines(lines, style, vertex_data, vertex_template, vindex, closed_polygon, remove_tile_edges, tile_edge_tolerance) {
+  var cap_type = style.cap ? CAP_TYPE[style.cap] : CAP_TYPE.butt;
+  var join_type = style.join ? JOIN_TYPE[style.join] : JOIN_TYPE.miter; // Configure miter limit
 
   if (join_type === JOIN_TYPE.miter) {
-    miter_limit = miter_limit || DEFAULT.MITER_LIMIT; // default miter limit
+    var miter_limit = style.miter_limit || DEFAULT_MITER_LIMIT; // default miter limit
 
     var miter_len_sq = miter_limit * miter_limit;
   } // Texture Variables
@@ -12295,10 +12244,8 @@ function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
 
   var v_scale;
 
-  if (texcoord_index) {
-    texcoord_normalize = texcoord_normalize || DEFAULT.TEXCOORD_NORMALIZE;
-    texcoord_ratio = texcoord_ratio || DEFAULT.TEXCOORD_RATIO;
-    v_scale = 1 / (texcoord_width * texcoord_ratio * v_scale_adjust); // scales line texture as a ratio of the line's width
+  if (vindex.a_texcoord) {
+    v_scale = 1 / (style.texcoord_width * V_SCALE_ADJUST); // scales line texture as a ratio of the line's width
   } // Values that are constant for each line and are passed to helper functions
 
 
@@ -12311,25 +12258,24 @@ function buildPolylines(lines, width, vertex_data, vertex_template, _ref) {
     cap_type: cap_type,
     vertex_data: vertex_data,
     vertex_template: vertex_template,
-    half_width: width / 2,
-    extrude_index: extrude_index,
-    offset_index: offset_index,
+    half_width: style.width / 2,
+    extrude_index: vindex.a_extrude,
+    offset_index: vindex.a_offset,
     v_scale: v_scale,
-    texcoord_index: texcoord_index,
-    texcoord_width: texcoord_width,
-    texcoord_normalize: texcoord_normalize,
-    offset: offset,
+    texcoord_index: vindex.a_texcoord,
+    texcoord_width: style.texcoord_width,
+    offset: style.offset,
     geom_count: 0
   }; // Process lines
 
-  for (var index = 0; index < lines.length; index++) {
-    buildPolyline(lines[index], context);
+  for (var i = 0; i < lines.length; i++) {
+    buildPolyline(lines[i], context);
   } // Process extra lines (which are created above if lines need to be mutated for easier processing)
 
 
   if (context.extra_lines) {
-    for (var _index = 0; _index < context.extra_lines.length; _index++) {
-      buildPolyline(context.extra_lines[_index], context);
+    for (var _i = 0; _i < context.extra_lines.length; _i++) {
+      buildPolyline(context.extra_lines[_i], context);
     }
   }
 
@@ -12672,8 +12618,8 @@ function addVertex(position, extrude, normal, u, v, context, flip) {
 
 
   if (context.texcoord_index != null) {
-    vertex_template[context.texcoord_index + 0] = u * context.texcoord_normalize;
-    vertex_template[context.texcoord_index + 1] = v * context.texcoord_normalize;
+    vertex_template[context.texcoord_index + 0] = u * TEXCOORD_NORMALIZE;
+    vertex_template[context.texcoord_index + 1] = v * TEXCOORD_NORMALIZE;
   }
 
   vertex_data.addVertex(vertex_template);
@@ -12860,7 +12806,7 @@ function trianglesPerArc(angle, width) {
     angle = -angle;
   }
 
-  var numTriangles = width > 2 * DEFAULT.MIN_FAN_WIDTH ? Math.log2(width / DEFAULT.MIN_FAN_WIDTH) : 1;
+  var numTriangles = width > 2 * MIN_FAN_WIDTH ? Math.log2(width / MIN_FAN_WIDTH) : 1;
   return Math.ceil(angle / Math.PI * numTriangles);
 } // Cyclically permute closed line starting at an index
 
@@ -13606,21 +13552,10 @@ Object.assign(Lines, {
     var vertex_data = mesh.vertex_data;
     var vertex_layout = vertex_data.vertex_layout;
     var vertex_template = this.makeVertexTemplate(style, mesh);
-    return buildPolylines(lines, style.width, vertex_data, vertex_template, {
-      cap: style.cap,
-      join: style.join,
-      miter_limit: style.miter_limit,
-      extrude_index: vertex_layout.index.a_extrude,
-      offset_index: vertex_layout.index.a_offset,
-      texcoord_index: vertex_layout.index.a_texcoord,
-      texcoord_width: style.texcoord_width,
-      texcoord_normalize: 65535,
-      // scale UVs to unsigned shorts
-      closed_polygon: options && options.closed_polygon,
-      remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
-      tile_edge_tolerance: Geo$1.tile_scale * context.tile.pad_scale * 2,
-      offset: style.offset
-    });
+    return buildPolylines(lines, style, vertex_data, vertex_template, vertex_layout.index, options && options.closed_polygon, // closed_polygon
+    !style.tile_edges && options && options.remove_tile_edges, // remove_tile_edges
+    Geo$1.tile_scale * context.tile.pad_scale * 2 // tile_edge_tolerance
+    );
   },
   buildPolygons: function buildPolygons(polygons, style, context) {
     // Render polygons as individual lines
@@ -13657,108 +13592,87 @@ _stringHtml('anchor', function (createHTML) {
 });
 
 // Point builders
-// properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
-// of a sprite between two zoom levels.
 
-function buildQuadsForPoints(points, vertex_data, vertex_template, _ref, _ref2) {
-  var texcoord_index = _ref.texcoord_index,
-      position_index = _ref.position_index,
-      shape_index = _ref.shape_index,
-      offset_index = _ref.offset_index,
-      offsets_index = _ref.offsets_index,
-      pre_angles_index = _ref.pre_angles_index,
-      angles_index = _ref.angles_index;
-  var quad = _ref2.quad,
-      quad_normalize = _ref2.quad_normalize,
-      offset = _ref2.offset,
-      offsets = _ref2.offsets,
-      pre_angles = _ref2.pre_angles,
-      angle = _ref2.angle,
-      angles = _ref2.angles,
-      curve = _ref2.curve,
-      texcoord_scale = _ref2.texcoord_scale,
-      texcoord_normalize = _ref2.texcoord_normalize,
-      pre_angles_normalize = _ref2.pre_angles_normalize,
-      angles_normalize = _ref2.angles_normalize,
-      offsets_normalize = _ref2.offsets_normalize;
-  quad_normalize = quad_normalize || 1;
-  var w2 = quad[0] / 2 * quad_normalize;
-  var h2 = quad[1] / 2 * quad_normalize;
-  var scaling = [[-w2, -h2], [w2, -h2], [w2, h2], [-w2, h2]];
+var pre_angles_normalize = 128 / Math.PI;
+var angles_normalize = 16384 / Math.PI;
+var offsets_normalize = 64;
+var texcoord_normalize = 65535;
+var size_normalize = 128; // width/height are 8.8 fixed-point, but are halved (so multiply by 128 instead of 256)
+// These index values map a 4-element vertex position counter from this pattern (used for size and UVs):
+//  [min_x, min_y, max_x, max_y]
+// to this pattern:
+//  [min_x, min_y],
+//  [max_x, min_y],
+//  [max_x, max_y],
+//  [min_x, max_y]
+
+var ix = [0, 2, 2, 0];
+var iy = [1, 1, 3, 3];
+var shape = new Array(4); // single, reusable allocation
+// Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
+// properties for width, height, angle, and texture UVs. Curved label segment sprites have additional properties
+// for interpolating their position and angle across zooms.
+
+function buildQuadForPoint(point, vertex_data, vertex_template, vindex, size, offset, offsets, pre_angles, angle, angles, texcoords, curve) {
+  // Half-sized point dimensions in fixed point
+  var w2 = size[0] * size_normalize;
+  var h2 = size[1] * size_normalize;
+  shape[0] = -w2;
+  shape[1] = -h2;
+  shape[2] = w2;
+  shape[3] = h2;
+  var uvs = texcoords || default_uvs;
   var vertex_elements = vertex_data.vertex_elements;
   var element_offset = vertex_data.vertex_count;
-  var texcoords;
 
-  if (texcoord_index) {
-    texcoord_normalize = texcoord_normalize || 1;
+  for (var p = 0; p < 4; p++) {
+    vertex_template[vindex.a_position + 0] = point[0];
+    vertex_template[vindex.a_position + 1] = point[1];
+    vertex_template[vindex.a_shape + 0] = shape[ix[p]];
+    vertex_template[vindex.a_shape + 1] = shape[iy[p]];
+    vertex_template[vindex.a_shape + 2] = angle;
+    vertex_template[vindex.a_offset + 0] = offset[0];
+    vertex_template[vindex.a_offset + 1] = offset[1]; // Add texcoords
 
-    var _ref3 = texcoord_scale || default_uvs,
-        min_u = _ref3[0],
-        min_v = _ref3[1],
-        max_u = _ref3[2],
-        max_v = _ref3[3];
+    if (vindex.a_texcoord) {
+      vertex_template[vindex.a_texcoord + 0] = uvs[ix[p]] * texcoord_normalize;
+      vertex_template[vindex.a_texcoord + 1] = uvs[iy[p]] * texcoord_normalize;
+    } // Add curved label segment props
 
-    texcoords = [[min_u, min_v], [max_u, min_v], [max_u, max_v], [min_u, max_v]];
-  }
 
-  var geom_count = 0;
-  var num_points = points.length;
+    if (curve) {
+      // 1 byte (signed) range: [-127, 128]
+      // actual range: [-2pi, 2pi]
+      // total: multiply by 128 / (2 PI)
+      vertex_template[vindex.a_pre_angles + 0] = pre_angles_normalize * pre_angles[0];
+      vertex_template[vindex.a_pre_angles + 1] = pre_angles_normalize * pre_angles[1];
+      vertex_template[vindex.a_pre_angles + 2] = pre_angles_normalize * pre_angles[2];
+      vertex_template[vindex.a_pre_angles + 3] = pre_angles_normalize * pre_angles[3]; // 2 byte (signed) of resolution [-32767, 32768]
+      // actual range: [-2pi, 2pi]
+      // total: multiply by 32768 / (2 PI) = 16384 / PI
 
-  for (var p = 0; p < num_points; p++) {
-    var point = points[p];
+      vertex_template[vindex.a_angles + 0] = angles_normalize * angles[0];
+      vertex_template[vindex.a_angles + 1] = angles_normalize * angles[1];
+      vertex_template[vindex.a_angles + 2] = angles_normalize * angles[2];
+      vertex_template[vindex.a_angles + 3] = angles_normalize * angles[3]; // offset range can be [0, 65535]
+      // actual range: [0, 1024]
 
-    for (var pos = 0; pos < 4; pos++) {
-      // Add texcoords
-      if (texcoord_index) {
-        vertex_template[texcoord_index + 0] = texcoords[pos][0] * texcoord_normalize;
-        vertex_template[texcoord_index + 1] = texcoords[pos][1] * texcoord_normalize;
-      }
-
-      vertex_template[position_index + 0] = point[0];
-      vertex_template[position_index + 1] = point[1];
-      vertex_template[shape_index + 0] = scaling[pos][0];
-      vertex_template[shape_index + 1] = scaling[pos][1];
-      vertex_template[shape_index + 2] = angle;
-      vertex_template[offset_index + 0] = offset[0];
-      vertex_template[offset_index + 1] = offset[1];
-
-      if (curve) {
-        // 1 byte (signed) range: [-127, 128]
-        // actual range: [-2pi, 2pi]
-        // total: multiply by 128 / (2 PI)
-        vertex_template[pre_angles_index + 0] = pre_angles_normalize * pre_angles[0];
-        vertex_template[pre_angles_index + 1] = pre_angles_normalize * pre_angles[1];
-        vertex_template[pre_angles_index + 2] = pre_angles_normalize * pre_angles[2];
-        vertex_template[pre_angles_index + 3] = pre_angles_normalize * pre_angles[3]; // 2 byte (signed) of resolution [-32767, 32768]
-        // actual range: [-2pi, 2pi]
-        // total: multiply by 32768 / (2 PI) = 16384 / PI
-
-        vertex_template[angles_index + 0] = angles_normalize * angles[0];
-        vertex_template[angles_index + 1] = angles_normalize * angles[1];
-        vertex_template[angles_index + 2] = angles_normalize * angles[2];
-        vertex_template[angles_index + 3] = angles_normalize * angles[3]; // offset range can be [0, 65535]
-        // actual range: [0, 1024]
-
-        vertex_template[offsets_index + 0] = offsets_normalize * offsets[0];
-        vertex_template[offsets_index + 1] = offsets_normalize * offsets[1];
-        vertex_template[offsets_index + 2] = offsets_normalize * offsets[2];
-        vertex_template[offsets_index + 3] = offsets_normalize * offsets[3];
-      }
-
-      vertex_data.addVertex(vertex_template);
+      vertex_template[vindex.a_offsets + 0] = offsets_normalize * offsets[0];
+      vertex_template[vindex.a_offsets + 1] = offsets_normalize * offsets[1];
+      vertex_template[vindex.a_offsets + 2] = offsets_normalize * offsets[2];
+      vertex_template[vindex.a_offsets + 3] = offsets_normalize * offsets[3];
     }
 
-    vertex_elements.push(element_offset + 0);
-    vertex_elements.push(element_offset + 1);
-    vertex_elements.push(element_offset + 2);
-    vertex_elements.push(element_offset + 2);
-    vertex_elements.push(element_offset + 3);
-    vertex_elements.push(element_offset + 0);
-    element_offset += 4;
-    geom_count += 2;
+    vertex_data.addVertex(vertex_template);
   }
 
-  return geom_count;
+  vertex_elements.push(element_offset + 0);
+  vertex_elements.push(element_offset + 1);
+  vertex_elements.push(element_offset + 2);
+  vertex_elements.push(element_offset + 2);
+  vertex_elements.push(element_offset + 3);
+  vertex_elements.push(element_offset + 0);
+  return 2; // geom count is always two triangles, for one quad
 }
 
 // Sets of values to match for directional and corner anchors
@@ -13863,15 +13777,22 @@ function boxIntersectsList(a, boxes, callback) {
   }
 }
 
+var ZERO_AXES = [[1, 0], [0, 1]];
+var proj_a = [],
+    proj_b = [];
+var d0, d1, d2, d3;
+
 var OBB =
 /*#__PURE__*/
 function () {
   function OBB(x, y, a, w, h) {
-    this.dimension = [w, h];
+    this.dimension = [w / 2, h / 2]; // store half-dimension as that's what's needed in calculations below
+
     this.angle = a;
     this.centroid = [x, y];
-    this.quad = [];
-    this.axes = [];
+    this.quad = null;
+    this.axis_0 = null;
+    this.axis_1 = null;
     this.update();
   }
 
@@ -13888,68 +13809,90 @@ function () {
   };
 
   _proto.getExtent = function getExtent() {
-    var aabb = [Infinity, Infinity, -Infinity, -Infinity];
-
-    for (var i = 0; i < 4; ++i) {
-      aabb[0] = Math.min(this.quad[i][0], aabb[0]);
-      aabb[1] = Math.min(this.quad[i][1], aabb[1]);
-      aabb[2] = Math.max(this.quad[i][0], aabb[2]);
-      aabb[3] = Math.max(this.quad[i][1], aabb[3]);
+    // special handling to skip calculations for 0-angle
+    if (this.angle === 0) {
+      return [this.quad[0], this.quad[1], // lower-left
+      this.quad[4], this.quad[5] // upper-right
+      ];
     }
 
+    var aabb = [Math.min(this.quad[0], this.quad[2], this.quad[4], this.quad[6]), // min x
+    Math.min(this.quad[1], this.quad[3], this.quad[5], this.quad[7]), // min y
+    Math.max(this.quad[0], this.quad[2], this.quad[4], this.quad[6]), // max x
+    Math.max(this.quad[1], this.quad[3], this.quad[5], this.quad[7]) // max y
+    ];
     return aabb;
   };
 
-  _proto.perpAxes = function perpAxes() {
-    this.axes[0] = Vector$1.normalize(Vector$1.sub(this.quad[2], this.quad[3]));
-    this.axes[1] = Vector$1.normalize(Vector$1.sub(this.quad[2], this.quad[1]));
+  _proto.updateAxes = function updateAxes() {
+    // upper-left to upper-right
+    this.axis_0 = Vector$1.normalize([this.quad[4] - this.quad[6], this.quad[5] - this.quad[7]]); // lower-right to upper-right
+
+    this.axis_1 = Vector$1.normalize([this.quad[4] - this.quad[2], this.quad[5] - this.quad[3]]);
   };
 
   _proto.update = function update() {
-    var x = [Math.cos(this.angle), Math.sin(this.angle)];
-    var y = [-Math.sin(this.angle), Math.cos(this.angle)];
-    x = Vector$1.mult(x, this.dimension[0] / 2.0);
-    y = Vector$1.mult(y, this.dimension[1] / 2.0);
-    this.quad[0] = Vector$1.sub(Vector$1.sub(this.centroid, x), y); // lower-left
+    var c = this.centroid;
+    var w2 = this.dimension[0];
+    var h2 = this.dimension[1]; // special handling to skip calculations for 0-angle
 
-    this.quad[1] = Vector$1.sub(Vector$1.add(this.centroid, x), y); // lower-right
+    if (this.angle === 0) {
+      // quad is a flat array storing 4 [x, y] vectors
+      this.quad = [c[0] - w2, c[1] - h2, // lower-left
+      c[0] + w2, c[1] - h2, // lower-right
+      c[0] + w2, c[1] + h2, // upper-right
+      c[0] - w2, c[1] + h2 // upper-left
+      ];
+      this.axis_0 = ZERO_AXES[0];
+      this.axis_1 = ZERO_AXES[1];
+    } // calculate axes and enclosing quad
+    else {
+        var x0 = Math.cos(this.angle) * w2;
+        var x1 = Math.sin(this.angle) * w2;
+        var y0 = -Math.sin(this.angle) * h2;
+        var y1 = Math.cos(this.angle) * h2; // quad is a flat array storing 4 [x, y] vectors
 
-    this.quad[2] = Vector$1.add(Vector$1.add(this.centroid, x), y); // uper-right
-
-    this.quad[3] = Vector$1.add(Vector$1.sub(this.centroid, x), y); // uper-left
-
-    this.perpAxes();
+        this.quad = [c[0] - x0 - y0, c[1] - x1 - y1, // lower-left
+        c[0] + x0 - y0, c[1] + x1 - y1, // lower-right
+        c[0] + x0 + y0, c[1] + x1 + y1, // upper-right
+        c[0] - x0 + y0, c[1] - x1 + y1 // upper-left
+        ];
+        this.updateAxes();
+      }
   };
 
-  OBB.projectToAxis = function projectToAxis(obb, axis) {
-    var min = Infinity;
-    var max = -Infinity;
-    var quad = obb.quad; // for each axis, project obb quad to it and find min and max values
+  OBB.projectToAxis = function projectToAxis(obb, axis, proj) {
+    // for each axis, project obb quad to it and find min and max values
+    var quad = obb.quad;
+    d0 = quad[0] * axis[0] + quad[1] * axis[1];
+    d1 = quad[2] * axis[0] + quad[3] * axis[1];
+    d2 = quad[4] * axis[0] + quad[5] * axis[1];
+    d3 = quad[6] * axis[0] + quad[7] * axis[1];
+    proj[0] = Math.min(d0, d1, d2, d3);
+    proj[1] = Math.max(d0, d1, d2, d3);
+    return proj;
+  };
 
-    for (var i = 0; i < 4; ++i) {
-      var d = Vector$1.dot(quad[i], axis);
-      min = Math.min(min, d);
-      max = Math.max(max, d);
+  OBB.axisCollide = function axisCollide(obb_a, obb_b, axis_0, axis_1) {
+    OBB.projectToAxis(obb_a, axis_0, proj_a);
+    OBB.projectToAxis(obb_b, axis_0, proj_b);
+
+    if (proj_b[0] > proj_a[1] || proj_b[1] < proj_a[0]) {
+      return false;
     }
 
-    return [min, max];
-  };
+    OBB.projectToAxis(obb_a, axis_1, proj_a);
+    OBB.projectToAxis(obb_b, axis_1, proj_b);
 
-  OBB.axisCollide = function axisCollide(obb_a, obb_b, axes) {
-    for (var i = 0; i < 2; ++i) {
-      var a_proj = OBB.projectToAxis(obb_a, axes[i]);
-      var b_proj = OBB.projectToAxis(obb_b, axes[i]);
-
-      if (b_proj[0] > a_proj[1] || b_proj[1] < a_proj[0]) {
-        return false;
-      }
+    if (proj_b[0] > proj_a[1] || proj_b[1] < proj_a[0]) {
+      return false;
     }
 
     return true;
   };
 
   OBB.intersect = function intersect(obb_a, obb_b) {
-    return OBB.axisCollide(obb_a, obb_b, obb_a.axes) && OBB.axisCollide(obb_a, obb_b, obb_b.axes);
+    return OBB.axisCollide(obb_a, obb_b, obb_a.axis_0, obb_a.axis_1) && OBB.axisCollide(obb_a, obb_b, obb_b.axis_0, obb_b.axis_1);
   };
 
   return OBB;
@@ -13969,6 +13912,7 @@ function () {
     this.size = size;
     this.layout = layout;
     this.position = null;
+    this.angle = 0;
     this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
 
     this.placed = null;
@@ -13989,6 +13933,7 @@ function () {
       type: this.type,
       obb: this.obb.toJSON(),
       position: this.position,
+      angle: this.angle,
       size: this.size,
       offset: this.offset,
       breach: this.breach,
@@ -14043,10 +13988,7 @@ function () {
   ;
 
   _proto.inTileBounds = function inTileBounds() {
-    var min = [this.aabb[0], this.aabb[1]];
-    var max = [this.aabb[2], this.aabb[3]];
-
-    if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
+    if (this.aabb[0] >= 0 && this.aabb[1] > -Geo$1.tile_scale && this.aabb[0] < Geo$1.tile_scale && this.aabb[1] <= 0 || this.aabb[2] >= 0 && this.aabb[3] > -Geo$1.tile_scale && this.aabb[2] < Geo$1.tile_scale && this.aabb[3] <= 0) {
       return false;
     }
 
@@ -14103,10 +14045,12 @@ Label.add = function (label, bboxes) {
 };
 
 Label.id = 0;
-Label.id_prefix = ''; // id prefix scoped to worker thread
+Label.id_prefix = 0; // id prefix scoped to worker thread
+
+Label.id_multiplier = 0; // multiplier to keep label ids distinct across threads
 
 Label.nextLabelId = function () {
-  return Label.id_prefix + '/' + Label.id++;
+  return Label.id_prefix + Label.id++ * Label.id_multiplier;
 };
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
@@ -14398,12 +14342,17 @@ var LabelPoint =
 function (_Label) {
   _inheritsLoose(LabelPoint, _Label);
 
-  function LabelPoint(position, size, layout) {
+  function LabelPoint(position, size, layout, angle) {
     var _this;
+
+    if (angle === void 0) {
+      angle = 0;
+    }
 
     _this = _Label.call(this, size, layout) || this;
     _this.type = 'point';
     _this.position = [position[0], position[1]];
+    _this.angle = angle;
     _this.parent = _this.layout.parent;
 
     _this.update();
@@ -14454,10 +14403,11 @@ function (_Label) {
 
     if (this.layout.italic) {
       width += 5 * this.unit_scale;
-    }
+    } // make bounding boxes
 
-    var p = [this.position[0] + this.offset[0] * this.unit_scale, this.position[1] - this.offset[1] * this.unit_scale];
-    this.obb = new OBB(p[0], p[1], 0, width, height);
+
+    this.obb = new OBB(this.position[0] + this.offset[0] * this.unit_scale, this.position[1] - this.offset[1] * this.unit_scale, -this.angle, // angle is negative because tile system y axis is pointing down
+    width, height);
     this.aabb = this.obb.getExtent();
 
     if (this.inTileBounds) {
@@ -14515,13 +14465,13 @@ LabelPoint.PLACEMENT = {
 var PLACEMENT = LabelPoint.PLACEMENT;
 var default_spacing = 80; // spacing of points along line in pixels
 
-function placePointsOnLine(line, size, options) {
+function placePointsOnLine(line, size, layout) {
   var labels = [];
-  var strategy = options.placement;
-  var min_length = Math.max(size[0], size[1]) * options.placement_min_length_ratio * options.units_per_pixel;
+  var strategy = layout.placement;
+  var min_length = Math.max(size[0], size[1]) * layout.placement_min_length_ratio * layout.units_per_pixel;
 
   if (strategy === PLACEMENT.SPACED) {
-    var result = getPositionsAndAngles(line, min_length, options); // false will be returned if line have no length
+    var result = getPositionsAndAngles(line, min_length, layout); // false will be returned if line have no length
 
     if (!result) {
       return [];
@@ -14534,42 +14484,39 @@ function placePointsOnLine(line, size, options) {
       var position = positions[i];
       var angle = angles[i];
 
-      if (options.tile_edges === true || !isCoordOutsideTile(position)) {
-        var label = new LabelPoint(position, size, options);
-        label.angle = angle;
-        labels.push(label);
+      if (layout.tile_edges === true || !isCoordOutsideTile(position)) {
+        labels.push(new LabelPoint(position, size, layout, angle));
       }
     }
   } else if (strategy === PLACEMENT.VERTEX) {
-    var p, q, _label;
+    var p, q;
 
     for (var _i = 0; _i < line.length - 1; _i++) {
       p = line[_i];
       q = line[_i + 1];
 
-      if (options.tile_edges === true || !isCoordOutsideTile(p)) {
-        _label = new LabelPoint(p, size, options);
-        _label.angle = getAngle(p, q, options.angle);
-        labels.push(_label);
+      if (layout.tile_edges === true || !isCoordOutsideTile(p)) {
+        var _angle2 = getAngle(p, q, layout.angle);
+
+        labels.push(new LabelPoint(p, size, layout, _angle2));
       }
     } // add last endpoint
 
 
-    _label = new LabelPoint(q, size, options);
-    _label.angle = getAngle(p, q, options.angle);
-    labels.push(_label);
+    var _angle = getAngle(p, q, layout.angle);
+
+    labels.push(new LabelPoint(q, size, layout, _angle));
   } else if (strategy === PLACEMENT.MIDPOINT) {
     for (var _i2 = 0; _i2 < line.length - 1; _i2++) {
       var _p = line[_i2];
       var _q = line[_i2 + 1];
       var _position = [0.5 * (_p[0] + _q[0]), 0.5 * (_p[1] + _q[1])];
 
-      if (options.tile_edges === true || !isCoordOutsideTile(_position)) {
+      if (layout.tile_edges === true || !isCoordOutsideTile(_position)) {
         if (!min_length || norm(_p, _q) > min_length) {
-          var _label2 = new LabelPoint(_position, size, options);
+          var _angle3 = getAngle(_p, _q, layout.angle);
 
-          _label2.angle = getAngle(_p, _q, options.angle);
-          labels.push(_label2);
+          labels.push(new LabelPoint(_position, size, layout, _angle3));
         }
       }
     }
@@ -14578,9 +14525,9 @@ function placePointsOnLine(line, size, options) {
   return labels;
 }
 
-function getPositionsAndAngles(line, min_length, options) {
-  var upp = options.units_per_pixel;
-  var spacing = (options.placement_spacing || default_spacing) * upp;
+function getPositionsAndAngles(line, min_length, layout) {
+  var upp = layout.units_per_pixel;
+  var spacing = (layout.placement_spacing || default_spacing) * upp;
   var length = getLineLength(line);
 
   if (length <= min_length) {
@@ -14594,7 +14541,7 @@ function getPositionsAndAngles(line, min_length, options) {
   var distance = 0.5 * remainder;
 
   for (var i = 0; i < num_labels; i++) {
-    var _interpolateLine = interpolateLine(line, distance, min_length, options),
+    var _interpolateLine = interpolateLine(line, distance, min_length, layout),
         position = _interpolateLine.position,
         angle = _interpolateLine.angle;
 
@@ -14636,7 +14583,7 @@ function norm(p, q) {
 // you don't have to start from the first index every time for placement
 
 
-function interpolateLine(line, distance, min_length, options) {
+function interpolateLine(line, distance, min_length, layout) {
   var sum = 0;
   var position, angle;
 
@@ -14653,7 +14600,7 @@ function interpolateLine(line, distance, min_length, options) {
 
     if (sum > distance) {
       position = interpolateSegment(p, q, sum - distance);
-      angle = getAngle(p, q, options.angle);
+      angle = getAngle(p, q, layout.angle);
       break;
     }
   }
@@ -17301,13 +17248,10 @@ function () {
       y: this.size.css.height * this.meters_per_pixel
     }; // Center of viewport in meters, and tile
 
-    var _Geo$latLngToMeters = Geo$1.latLngToMeters([this.center.lng, this.center.lat]),
-        x = _Geo$latLngToMeters[0],
-        y = _Geo$latLngToMeters[1];
-
+    var m = Geo$1.latLngToMeters([this.center.lng, this.center.lat]);
     this.center.meters = {
-      x: x,
-      y: y
+      x: m[0],
+      y: m[1]
     };
     this.center.tile = Geo$1.tileForMeters([this.center.meters.x, this.center.meters.y], this.tile_zoom); // Bounds in meters
 
@@ -17448,15 +17392,11 @@ function () {
   return View;
 }();
 
-var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        x = clamp(x, 0., 1.);\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            v_outline_color = a_outline_color;\n            v_outline_edge = a_outline_edge;\n            float size = abs(a_shape.x/128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);\n            size+=2.;\n            v_aa_offset=2./size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 angles_scaled = (TANGRAM_PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(float a, float b, float c, float d, float x) {\n        x = clamp(x, 0., 1.);\n        return mix(mix(a, b, 3. * x),\n                   mix(b,\n                       mix(c, d, 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex attribute\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // use point dimensions for UVs instead (ignore attribute), add antialiasing info for fragment shader\n            float size = abs(a_shape.x / 128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy) * (size + 1.) / size;\n            size += 2.;\n            v_aa_offset = 2. / size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n\n    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n    float theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 angles_scaled = (TANGRAM_PI / 16384.) * a_angles;\n            vec4 pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;\n            vec4 offsets_scaled = (1. / 64.) * a_offsets;\n\n            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);\n            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);\n            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);\n\n            shape = rotate2D(shape, pre_angle); // rotate in place\n            shape.x += offset_curve;            // offset for curved label segment\n            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor\n            shape += rotate2D(offset, theta);   // offset if specified in the scene file\n        }\n        else {\n            shape = rotate2D(shape + offset, theta);\n        }\n    #else\n        shape = rotate2D(shape + offset, theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
 
-var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n            // Distance to this fragment from the center.\n            float l = length(v_texcoord);\n            // Mask of outermost circle, either outline or point boundary.\n            float outer_alpha  = _tangram_antialias(l, 1.);\n            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // Use alpha test as a lower-quality substitute\n    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath\n    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black\n    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            float outline_edge = v_outline_edge;\n            vec4 outlineColor  = v_outline_color;\n\n            // Mask of outermost circle, either outline or point boundary\n            float l = length(v_texcoord); // distance to this fragment from the point center\n            float outer_alpha = _tangram_antialias(l, 1.);\n            float fill_alpha = _tangram_antialias(l, 1. - (v_outline_edge * 0.5)) * color.a;\n            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1. - v_outline_edge)) * outlineColor.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = stroke_alpha + fill_alpha;\n                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);\n                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // Use alpha test as a lower-quality substitute\n    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath\n    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black\n    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var PLACEMENT$1 = LabelPoint.PLACEMENT;
-var pre_angles_normalize = 128 / Math.PI;
-var angles_normalize = 16384 / Math.PI;
-var offsets_normalize = 64;
-var texcoord_normalize = 65535;
 var Points = Object.create(Style);
 Points.variants = {}; // mesh variants by variant key
 
@@ -17808,8 +17748,6 @@ Object.assign(Points, {
               style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
 
               style.size = text_info.size.logical_size;
-              style.angle = 0; // text attached to point is always upright
-
               style.texcoords = text_info.align[q.label.align].texcoords;
               style.label_texture = textures[text_info.align[q.label.align].texture_id];
               style.blend_order = q.draw.blend_order; // copy blend order from parent point
@@ -17982,21 +17920,21 @@ Object.assign(Points, {
     return labels;
   },
   // Builds one or more point labels for a geometry
-  buildLabels: function buildLabels(size, geometry, options) {
+  buildLabels: function buildLabels(size, geometry, layout) {
     var labels = [];
 
     if (geometry.type === 'Point') {
-      labels.push(new LabelPoint(geometry.coordinates, size, options));
+      labels.push(new LabelPoint(geometry.coordinates, size, layout, layout.angle));
     } else if (geometry.type === 'MultiPoint') {
       var points = geometry.coordinates;
 
       for (var i = 0; i < points.length; ++i) {
         var point = points[i];
-        labels.push(new LabelPoint(point, size, options));
+        labels.push(new LabelPoint(point, size, layout, layout.angle));
       }
     } else if (geometry.type === 'LineString') {
       var line = geometry.coordinates;
-      var point_labels = placePointsOnLine(line, size, options);
+      var point_labels = placePointsOnLine(line, size, layout);
 
       for (var _i = 0; _i < point_labels.length; ++_i) {
         labels.push(point_labels[_i]);
@@ -18007,7 +17945,7 @@ Object.assign(Points, {
       for (var ln = 0; ln < lines.length; ln++) {
         var _line = lines[ln];
 
-        var _point_labels = placePointsOnLine(_line, size, options);
+        var _point_labels = placePointsOnLine(_line, size, layout);
 
         for (var _i2 = 0; _i2 < _point_labels.length; ++_i2) {
           labels.push(_point_labels[_i2]);
@@ -18015,19 +17953,19 @@ Object.assign(Points, {
       }
     } else if (geometry.type === 'Polygon') {
       // Point at polygon centroid (of outer ring)
-      if (options.placement === PLACEMENT$1.CENTROID) {
+      if (layout.placement === PLACEMENT$1.CENTROID) {
         var centroid = Geo$1.centroid(geometry.coordinates);
 
         if (centroid) {
           // skip degenerate polygons
-          labels.push(new LabelPoint(centroid, size, options));
+          labels.push(new LabelPoint(centroid, size, layout, layout.angle));
         }
       } // Point at each polygon vertex (all rings)
       else {
           var rings = geometry.coordinates;
 
           for (var _ln = 0; _ln < rings.length; _ln++) {
-            var _point_labels2 = placePointsOnLine(rings[_ln], size, options);
+            var _point_labels2 = placePointsOnLine(rings[_ln], size, layout);
 
             for (var _i3 = 0; _i3 < _point_labels2.length; ++_i3) {
               labels.push(_point_labels2[_i3]);
@@ -18035,12 +17973,12 @@ Object.assign(Points, {
           }
         }
     } else if (geometry.type === 'MultiPolygon') {
-      if (options.placement === PLACEMENT$1.CENTROID) {
+      if (layout.placement === PLACEMENT$1.CENTROID) {
         var _centroid = Geo$1.multiCentroid(geometry.coordinates);
 
         if (_centroid) {
           // skip degenerate polygons
-          labels.push(new LabelPoint(_centroid, size, options));
+          labels.push(new LabelPoint(_centroid, size, layout, layout.angle));
         }
       } else {
         var polys = geometry.coordinates;
@@ -18049,7 +17987,7 @@ Object.assign(Points, {
           var _rings = polys[p];
 
           for (var _ln2 = 0; _ln2 < _rings.length; _ln2++) {
-            var _point_labels3 = placePointsOnLine(_rings[_ln2], size, options);
+            var _point_labels3 = placePointsOnLine(_rings[_ln2], size, layout);
 
             for (var _i4 = 0; _i4 < _point_labels3.length; ++_i4) {
               labels.push(_point_labels3[_i4]);
@@ -18067,89 +18005,65 @@ Object.assign(Points, {
    * A plain JS array matching the order of the vertex layout.
    */
   makeVertexTemplate: function makeVertexTemplate(style, mesh) {
+    var i = 0; // a_position.xyz - vertex position
+    // a_position.w - layer order
+
+    this.vertex_template[i++] = 0;
+    this.vertex_template[i++] = 0;
+    this.vertex_template[i++] = style.z || 0;
+    this.vertex_template[i++] = this.scaleOrder(style.order); // a_shape.xy - size of point in pixels (scaling vector)
+    // a_shape.z - angle of point
+    // a_shape.w - show/hide flag
+
+    this.vertex_template[i++] = 0;
+    this.vertex_template[i++] = 0;
+    this.vertex_template[i++] = 0;
+    this.vertex_template[i++] = style.label.layout.collide ? 0 : 1; // set initial label hide/show state
+    // a_texcoord.xy - texture coords
+
+    if (!mesh.variant.shader_point) {
+      this.vertex_template[i++] = 0;
+      this.vertex_template[i++] = 0;
+    } // a_offset.xy - offset of point from center, in pixels
+
+
+    this.vertex_template[i++] = 0;
+    this.vertex_template[i++] = 0; // a_color.rgba - feature color
+
     var color = style.color || StyleParser.defaults.color;
-    var vertex_layout = mesh.vertex_data.vertex_layout; // position - x & y coords will be filled in per-vertex below
+    this.vertex_template[i++] = color[0] * 255;
+    this.vertex_template[i++] = color[1] * 255;
+    this.vertex_template[i++] = color[2] * 255;
+    this.vertex_template[i++] = color[3] * 255; // a_selection_color.rgba - selection color
 
-    this.fillVertexTemplate(vertex_layout, 'a_position', 0, {
-      size: 2
-    });
-    this.fillVertexTemplate(vertex_layout, 'a_position', style.z || 0, {
-      size: 1,
-      offset: 2
-    }); // layer order - w coord of 'position' attribute (for packing efficiency)
+    if (mesh.variant.selection) {
+      this.vertex_template[i++] = style.selection_color[0] * 255;
+      this.vertex_template[i++] = style.selection_color[1] * 255;
+      this.vertex_template[i++] = style.selection_color[2] * 255;
+      this.vertex_template[i++] = style.selection_color[3] * 255;
+    } // point outline
 
-    this.fillVertexTemplate(vertex_layout, 'a_position', this.scaleOrder(style.order), {
-      size: 1,
-      offset: 3
-    }); // scaling vector - (x, y) components per pixel, z = angle, w = show/hide
 
-    this.fillVertexTemplate(vertex_layout, 'a_shape', 0, {
-      size: 4
-    });
-    this.fillVertexTemplate(vertex_layout, 'a_shape', style.label.layout.collide ? 0 : 1, {
-      size: 1,
-      offset: 3
-    }); // set initial label hide/show state
-    // texture coords
-
-    this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, {
-      size: 2
-    }); // offsets
-
-    this.fillVertexTemplate(vertex_layout, 'a_offset', 0, {
-      size: 2
-    }); // color
-
-    this.fillVertexTemplate(vertex_layout, 'a_color', Vector$1.mult(color, 255), {
-      size: 4
-    }); // outline (can be static or dynamic depending on style)
-
-    if (this.defines.TANGRAM_HAS_SHADER_POINTS && mesh.variant.shader_point) {
+    if (mesh.variant.shader_point) {
+      // a_outline_color.rgba - outline color
       var outline_color = style.outline_color || StyleParser.defaults.outline.color;
-      this.fillVertexTemplate(vertex_layout, 'a_outline_color', Vector$1.mult(outline_color, 255), {
-        size: 4
-      });
-      this.fillVertexTemplate(vertex_layout, 'a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, {
-        size: 1
-      });
-    } // selection color
+      this.vertex_template[i++] = outline_color[0] * 255;
+      this.vertex_template[i++] = outline_color[1] * 255;
+      this.vertex_template[i++] = outline_color[2] * 255;
+      this.vertex_template[i++] = outline_color[3] * 255; // a_outline_edge - point outline edge (as % of point size where outline begins)
 
+      this.vertex_template[i++] = style.outline_edge_pct || StyleParser.defaults.outline.width;
+    }
 
-    this.fillVertexTemplate(vertex_layout, 'a_selection_color', Vector$1.mult(style.selection_color, 255), {
-      size: 4
-    });
     return this.vertex_template;
   },
-  buildQuad: function buildQuad(points, size, angle, angles, pre_angles, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+  buildQuad: function buildQuad(point, size, angle, angles, pre_angles, offset, offsets, texcoords, curve, vertex_data, vertex_template) {
     if (size[0] <= 0 || size[1] <= 0) {
       return 0; // size must be positive
     }
 
-    return buildQuadsForPoints(points, vertex_data, vertex_template, {
-      texcoord_index: vertex_data.vertex_layout.index.a_texcoord,
-      position_index: vertex_data.vertex_layout.index.a_position,
-      shape_index: vertex_data.vertex_layout.index.a_shape,
-      offset_index: vertex_data.vertex_layout.index.a_offset,
-      offsets_index: vertex_data.vertex_layout.index.a_offsets,
-      pre_angles_index: vertex_data.vertex_layout.index.a_pre_angles,
-      angles_index: vertex_data.vertex_layout.index.a_angles
-    }, {
-      quad: size,
-      quad_normalize: 256,
-      // values have an 8-bit fraction
-      offset: offset,
-      offsets: offsets,
-      pre_angles: pre_angles,
-      angle: angle * 4096,
-      // values have a 12-bit fraction
-      angles: angles,
-      curve: curve,
-      texcoord_scale: texcoord_scale,
-      texcoord_normalize: texcoord_normalize,
-      pre_angles_normalize: pre_angles_normalize,
-      angles_normalize: angles_normalize,
-      offsets_normalize: offsets_normalize
-    });
+    return buildQuadForPoint(point, vertex_data, vertex_template, vertex_data.vertex_layout.index, size, offset, offsets, pre_angles, angle * 4096, // angle values have a 12-bit fraction
+    angles, texcoords, curve);
   },
   // Build quad for point sprite
   build: function build(style, context) {
@@ -18164,7 +18078,6 @@ Object.assign(Points, {
   buildStraightLabel: function buildStraightLabel(label, style, context) {
     var mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
     var vertex_template = this.makeVertexTemplate(style, mesh);
-    var angle = label.angle || style.angle;
     var size, texcoords;
 
     if (label.type !== 'point') {
@@ -18196,9 +18109,9 @@ Object.assign(Points, {
     var offset = label.offset; // TODO: instead of passing null, pass arrays with fingerprintable values
     // This value is checked in the shader to determine whether to apply curving logic
 
-    var geom_count = this.buildQuad([label.position], // position
+    var geom_count = this.buildQuad(label.position, // position
     size, // size in pixels
-    angle, // angle in radians
+    label.angle, // angle in radians
     null, // placeholder for multiple angles
     null, // placeholder for multiple pre_angles
     offset, // offset from center in pixels
@@ -18214,7 +18127,6 @@ Object.assign(Points, {
   },
   buildCurvedLabel: function buildCurvedLabel(label, style, context) {
     var mesh, vertex_template;
-    var angle = label.angle;
     var geom_count = 0; // two passes for stroke and fill, where stroke needs to be drawn first (painter's algorithm)
     // this ensures strokes don't overlap on other fills
     // pass for stroke
@@ -18236,9 +18148,9 @@ Object.assign(Points, {
       var angles = label.angles[i];
       var offsets = label.offsets[i];
       var pre_angles = label.pre_angles[i];
-      var seg_count = this.buildQuad([position], // position
+      var seg_count = this.buildQuad(position, // position
       size, // size in pixels
-      angle, // angle in degrees
+      label.angle, // angle in degrees
       angles, // angles per segment
       pre_angles, // pre_angle array (rotation applied before offseting)
       offset, // offset from center in pixels
@@ -18274,9 +18186,9 @@ Object.assign(Points, {
       var _offsets = label.offsets[_i5];
       var _pre_angles = label.pre_angles[_i5];
 
-      var _seg_count = this.buildQuad([_position], // position
+      var _seg_count = this.buildQuad(_position, // position
       _size, // size in pixels
-      angle, // angle in degrees
+      label.angle, // angle in degrees
       _angles, // angles per segment
       _pre_angles, // pre_angle array (rotation applied before offseting)
       _offset, // offset from center in pixels
@@ -18357,7 +18269,8 @@ Object.assign(Points, {
         name: 'a_texcoord',
         size: 2,
         type: gl$1.UNSIGNED_SHORT,
-        normalized: true
+        normalized: true,
+        static: variant.shader_point ? [0, 0] : null
       }, {
         name: 'a_offset',
         size: 2,
@@ -18368,6 +18281,12 @@ Object.assign(Points, {
         size: 4,
         type: gl$1.UNSIGNED_BYTE,
         normalized: true
+      }, {
+        name: 'a_selection_color',
+        size: 4,
+        type: gl$1.UNSIGNED_BYTE,
+        normalized: true,
+        static: variant.selection ? null : [0, 0, 0, 0]
       }, {
         name: 'a_outline_color',
         size: 4,
@@ -18380,11 +18299,6 @@ Object.assign(Points, {
         type: gl$1.FLOAT,
         normalized: false,
         static: variant.shader_point ? null : 0
-      }, {
-        name: 'a_selection_color',
-        size: 4,
-        type: gl$1.UNSIGNED_BYTE,
-        normalized: true
       }];
       Points.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
     }
@@ -18400,6 +18314,8 @@ Object.assign(Points, {
     if (Points.variants[key] == null) {
       Points.variants[key] = {
         key: key,
+        selection: 1,
+        // TODO: make this vary by draw params
         shader_point: texture === SHADER_POINT_VARIANT,
         // is shader point
         blend_order: draw.blend_order,
@@ -19238,6 +19154,8 @@ function getAbsAngleDiff(angle1, angle2) {
 }
 
 var TextStyle = Object.create(Points);
+TextStyle.vertex_layouts = {}; // vertex layouts by variant key
+
 Object.assign(TextStyle, {
   name: 'text',
   super: Points,
@@ -19264,15 +19182,14 @@ Object.assign(TextStyle, {
   makeVertexTemplate: function makeVertexTemplate(style, mesh) {
     this.super.makeVertexTemplate.apply(this, arguments);
     var vertex_layout = mesh.vertex_data.vertex_layout;
-    this.fillVertexTemplate(vertex_layout, 'a_pre_angles', 0, {
-      size: 4
-    });
-    this.fillVertexTemplate(vertex_layout, 'a_offsets', 0, {
-      size: 4
-    });
-    this.fillVertexTemplate(vertex_layout, 'a_angles', 0, {
-      size: 4
-    });
+    var i = vertex_layout.index.a_pre_angles; // a_pre_angles.xyzw - rotation of entire curved label
+    // a_angles.xyzw - angle of each curved label segment
+    // a_offsets.xyzw - offset of each curved label segment
+
+    for (var j = 0; j < 12; j++) {
+      this.vertex_template[i++] = 0;
+    }
+
     return this.vertex_template;
   },
   reset: function reset() {
@@ -19514,8 +19431,9 @@ Object.assign(TextStyle, {
   },
   // Override
   // Create or return vertex layout
-  vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant() {
-    if (this.vertex_layout == null) {
+  vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
+    // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
+    if (TextStyle.vertex_layouts[variant.shader_point] == null) {
       // TODO: could make selection, offset, and curved label attribs optional, but may not be worth it
       // since text points generally don't consume much memory anyway
       var attribs = [{
@@ -19544,6 +19462,17 @@ Object.assign(TextStyle, {
         type: gl$1.UNSIGNED_BYTE,
         normalized: true
       }, {
+        name: 'a_selection_color',
+        size: 4,
+        type: gl$1.UNSIGNED_BYTE,
+        normalized: true,
+        static: variant.selection ? null : [0, 0, 0, 0]
+      }, {
+        name: 'a_pre_angles',
+        size: 4,
+        type: gl$1.BYTE,
+        normalized: false
+      }, {
         name: 'a_angles',
         size: 4,
         type: gl$1.SHORT,
@@ -19553,21 +19482,11 @@ Object.assign(TextStyle, {
         size: 4,
         type: gl$1.UNSIGNED_SHORT,
         normalized: false
-      }, {
-        name: 'a_pre_angles',
-        size: 4,
-        type: gl$1.BYTE,
-        normalized: false
-      }, {
-        name: 'a_selection_color',
-        size: 4,
-        type: gl$1.UNSIGNED_BYTE,
-        normalized: true
       }];
-      this.vertex_layout = new VertexLayout(attribs);
+      TextStyle.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
     }
 
-    return this.vertex_layout;
+    return TextStyle.vertex_layouts[variant.shader_point];
   }
 });
 TextStyle.texture_id = 0; // namespaces per-tile label textures
@@ -21032,7 +20951,7 @@ function () {
         styles = _ref3.styles,
         global = _ref3.global;
     var data = tile.source_data;
-    tile.debug.rendering = +new Date();
+    tile.debug.building = +new Date();
     tile.debug.feature_count = 0;
     tile.debug.layers = null;
     Collision.startTile(tile.id, {
@@ -21053,7 +20972,7 @@ function () {
       } // Get data for one or more layers from source
 
 
-      var source_layers = Tile.getDataForSource(data, layer.config_data, layer_name); // Render features in layer
+      var source_layers = Tile.getDataForSource(data, layer.config_data, layer_name); // Build features in layer
 
       for (var s = 0; s < source_layers.length; s++) {
         var source_layer = source_layers[s];
@@ -21081,7 +21000,7 @@ function () {
 
           if (!draw_groups) {
             continue;
-          } // Render draw groups
+          } // Build draw groups
 
 
           for (var group_name in draw_groups) {
@@ -21111,17 +21030,15 @@ function () {
       }
     }
 
-    tile.debug.rendering = +new Date() - tile.debug.rendering; // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
+    tile.debug.building = +new Date() - tile.debug.building; // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
 
     var tile_styles = this.stylesForTile(tile, styles).map(function (s) {
       return styles[s];
     });
-    Tile.sendStyleGroups(tile, tile_styles, {
-      scene_id: scene_id
-    }, function (style) {
+    Tile.buildStyleGroups(tile, tile_styles, scene_id, function (style) {
       return style.collision ? 'collision' : 'non-collision';
-    }); // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.name); // call for each style
-    // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => 'styles'); // all styles in single call (previous behavior)
+    }); // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.name); // call for each style
+    // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => 'styles'); // all styles in single call (previous behavior)
   };
 
   Tile.stylesForTile = function stylesForTile(tile, styles) {
@@ -21134,68 +21051,19 @@ function () {
     }
 
     return tile_styles;
-  } // Send groups of styles back to main thread, asynchronously (as they finish building),
-  // grouped by the provided function
+  } // Build styles (grouped by the provided function) and send back to main thread as they finish building
   ;
 
-  Tile.sendStyleGroups = function sendStyleGroups(tile, styles, _ref4, group_by) {
-    var scene_id = _ref4.scene_id;
-    // Group styles
-    var groups = {};
-    styles.forEach(function (s) {
-      var group_name = group_by(s);
-      groups[group_name] = groups[group_name] || [];
-      groups[group_name].push(s);
-    });
+  Tile.buildStyleGroups = function buildStyleGroups(tile, styles, scene_id, group_by) {
+    // Group the styles; each group will be sent to the main thread when the styles in the group finish building.
+    var groups = styles.reduce(function (groups, style) {
+      var group = group_by(style);
+      groups[group] = groups[group] || [];
+      groups[group].push(style);
+      return groups;
+    }, {}); // If nothing to build, return empty tile to main thread
 
-    if (Object.keys(groups).length > 0) {
-      (function () {
-        var progress = {
-          start: true
-        };
-        tile.mesh_data = {};
-
-        var _loop = function _loop(group_name) {
-          var group = groups[group_name];
-          Promise.all(group.map(function (style) {
-            return style.endData(tile).then(function (style_data) {
-              if (style_data) {
-                tile.mesh_data[style.name] = style_data;
-              }
-            });
-          })).then(function () {
-            log('trace', "Finished style group '" + group_name + "' for tile " + tile.key); // Clear group and check if all groups finished
-
-            groups[group_name] = [];
-
-            if (Object.keys(groups).every(function (g) {
-              return groups[g].length === 0;
-            })) {
-              progress.done = true;
-            } // Send meshes to main thread
-
-
-            WorkerBroker$1.postMessage("TileManager_" + scene_id + ".buildTileStylesCompleted", WorkerBroker$1.withTransferables({
-              tile: Tile.slice(tile, ['mesh_data']),
-              progress: progress
-            }));
-            progress.start = null;
-            tile.mesh_data = {}; // reset so each group sends separate set of style meshes
-
-            if (progress.done) {
-              Collision.resetTile(tile.id); // clear collision if we're done with the tile
-            }
-          }).catch(function (e) {
-            log('error', "Error for style group '" + group_name + "' for tile " + tile.key, e && e.stack || e);
-          });
-        };
-
-        for (var group_name in groups) {
-          _loop(group_name);
-        }
-      })();
-    } else {
-      // Nothing to build, return empty tile to main thread
+    if (Object.keys(groups).length === 0) {
       WorkerBroker$1.postMessage("TileManager_" + scene_id + ".buildTileStylesCompleted", WorkerBroker$1.withTransferables({
         tile: Tile.slice(tile),
         progress: {
@@ -21204,7 +21072,100 @@ function () {
         }
       }));
       Collision.resetTile(tile.id); // clear collision if we're done with the tile
+
+      return;
+    } // Build each group of styles
+
+
+    var progress = {};
+
+    for (var group_name in groups) {
+      Tile.buildStyleGroup({
+        group_name: group_name,
+        groups: groups,
+        tile: tile,
+        progress: progress,
+        scene_id: scene_id
+      });
     }
+  } // Build a single group of styles
+  ;
+
+  Tile.buildStyleGroup = function buildStyleGroup(_ref4) {
+    return new Promise(function ($return, $error) {
+      var group_name, groups, tile, progress, scene_id, group, mesh_data;
+      group_name = _ref4.group_name, groups = _ref4.groups, tile = _ref4.tile, progress = _ref4.progress, scene_id = _ref4.scene_id;
+      group = groups[group_name];
+      mesh_data = {};
+
+      var $Try_1_Post = function () {
+        try {
+          return $return();
+        } catch ($boundEx) {
+          return $error($boundEx);
+        }
+      };
+
+      var $Try_1_Catch = function (e) {
+        try {
+          log('error', "Error for style group '" + group_name + "' for tile " + tile.key, e && e.stack || e);
+          return $Try_1_Post();
+        } catch ($boundEx) {
+          return $error($boundEx);
+        }
+      };
+
+      try {
+        return Promise.resolve(Promise.all(group.map(function (style) {
+          return new Promise(function ($return, $error) {
+            var style_data;
+            return Promise.resolve(style.endData(tile)).then(function ($await_2) {
+              try {
+                style_data = $await_2;
+
+                if (style_data) {
+                  mesh_data[style.name] = style_data;
+                }
+
+                return $return();
+              } catch ($boundEx) {
+                return $error($boundEx);
+              }
+            }, $error);
+          });
+        }))).then(function ($await_3) {
+          try {
+            // Mark the group as done, and check if all groups have finished
+            log('trace', "Finished style group '" + group_name + "' for tile " + tile.key);
+            groups[group_name] = null;
+
+            if (Object.keys(groups).every(function (g) {
+              return groups[g] == null;
+            })) {
+              progress.done = true;
+            } // Send meshes to main thread
+
+
+            WorkerBroker$1.postMessage("TileManager_" + scene_id + ".buildTileStylesCompleted", WorkerBroker$1.withTransferables({
+              tile: Object.assign({}, Tile.slice(tile), {
+                mesh_data: mesh_data
+              }),
+              progress: progress
+            }));
+
+            if (progress.done) {
+              Collision.resetTile(tile.id); // clear collision if we're done with the tile
+            }
+
+            return $Try_1_Post();
+          } catch ($boundEx) {
+            return $Try_1_Catch($boundEx);
+          }
+        }, $Try_1_Catch);
+      } catch (e) {
+        $Try_1_Catch(e);
+      }
+    });
   }
   /**
       Retrieves geometry from a tile according to a data source definition
@@ -24373,11 +24334,11 @@ exports.mergeObjects = mergeObjects;
 exports.isReserved = isReserved;
 exports.GLSL = GLSL;
 exports.TileID = TileID;
+exports.Collision = Collision;
 exports.Geo = Geo$1;
 exports.LabelPoint = LabelPoint;
 exports.LabelLineStraight = LabelLineStraight;
 exports.OBB = OBB;
-exports.Collision = Collision;
 exports.Label = Label;
 exports.WorkerBroker = WorkerBroker$1;
 exports.Task = Task;
@@ -24436,6 +24397,7 @@ var SceneWorker = Object.assign(self, {
     this.style_manager = new __chunk_1.StyleManager();
     this.importExternalScripts(external_scripts);
     __chunk_1.Label.id_prefix = worker_id;
+    __chunk_1.Label.id_multiplier = num_workers;
     return worker_id;
   },
   // Import custom external scripts
@@ -24655,7 +24617,7 @@ var SceneWorker = Object.assign(self, {
     var tiles = tile_keys.map(function (t) {
       return _this4.tiles[t];
     }).filter(function (t) {
-      return t;
+      return t && t.loaded;
     }); // Compile feature filter
 
     if (filter != null) {
@@ -45707,14 +45669,96 @@ var visible = {}; // currently visible labels
 var prev_visible = {}; // previously visible labels (in last collision run)
 
 function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
-  if (hide_breach === void 0) {
-    hide_breach = false;
-  }
+  return new Promise(function ($return, $error) {
+    var containers, labels, meshes;
 
-  prev_visible = visible; // save last visible label set
+    if (hide_breach === void 0) {
+      hide_breach = false;
+    }
 
-  visible = {}; // initialize new visible label set
+    // Swap/reset visible label set
+    prev_visible = visible; // save last visible label set
 
+    visible = {}; // initialize new visible label set
+    // Build label containers from tiles
+
+    containers = buildLabels(tiles, view_zoom);
+    // Collide all labels in a single group
+    // TODO: maybe rename tile and style to group/subgroup?
+    __chunk_1.Collision.startTile('main', {
+      apply_repeat_groups: true,
+      return_hidden: true
+    });
+    __chunk_1.Collision.addStyle('main', 'main');
+    return Promise.resolve(__chunk_1.Collision.collide(containers, 'main', 'main')).then(function ($await_1) {
+      try {
+        labels = $await_1;
+        meshes = [];
+        labels.forEach(function (container) {
+          // Hide breach labels (those that cross tile boundaries) while tiles are loading, unless they
+          // were previously visible (otherwise fully loaded/collided breach labels will flicker in and out
+          // when new tiles load, even if they aren't adjacent)
+          var show = 0;
+
+          if (container.show === true && (!hide_breach || !container.label.breach || prev_visible[container.label.id])) {
+            show = 1;
+          }
+
+          if (show) {
+            visible[container.label.id] = true; // track visible labels
+          }
+
+          var changed = true; // check if label visibility changed on this collision pass
+
+          container.ranges.forEach(function (r) {
+            if (!changed) {
+              return; // skip rest of label if state hasn't changed
+            }
+
+            var mesh = container.mesh;
+
+            if (!mesh.valid) {
+              return;
+            }
+
+            var off = mesh.vertex_layout.offset.a_shape; // byte offset (within each vertex) of attribute
+
+            var stride = mesh.vertex_layout.stride; // byte stride per vertex
+
+            for (var i = 0; i < r[1]; i++) {
+              // NB: +6 is because attribute is a short int (2 bytes each), and we're skipping to 3rd element, 6=3*2
+              if (mesh.vertex_data[r[0] + i * stride + off + 6] === show) {
+                changed = false;
+                return; // label hasn't changed states, skip further updates
+              }
+
+              mesh.vertex_data[r[0] + i * stride + off + 6] = show;
+            }
+
+            if (meshes.indexOf(mesh) === -1) {
+              meshes.push(mesh);
+            }
+          });
+        }); // Upload updated meshes and make them visible
+
+        meshes.forEach(function (mesh) {
+          return mesh.upload();
+        });
+        tiles.forEach(function (t) {
+          return t.swapPendingLabels();
+        });
+        return $return({
+          labels: labels,
+          containers: containers
+        }); // currently returned for debugging
+      } catch ($boundEx) {
+        return $error($boundEx);
+      }
+    }, $error);
+  });
+}
+
+function buildLabels(tiles, view_zoom) {
   var labels = {};
   var containers = {}; // Collect labels from each tile and turn into new label instances
 
@@ -45774,7 +45818,7 @@ function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
               __chunk_1.LabelLineStraight.prototype.updateBBoxes.call(label, label.position, label.size, label.angle, label.angle, label.offset);
             } else if (params.obbs) {
               // NB: this is a very rough approximation of curved label collision at intermediate zooms,
-              // becuase the position/scale of each collision box isn't correctly updated; however,
+              // because the position/scale of each collision box isn't correctly updated; however,
               // it's good enough to provide some additional label coverage, with less overhead
               var obbs = params.obbs.map(function (o) {
                 var x = o.x,
@@ -45819,75 +45863,11 @@ function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
 
   containers = Object.keys(containers).map(function (k) {
     return containers[k];
-  }); // Collide all labels in a single group
-  // TODO: maybe rename tile and style to group/subgroup?
-
-  __chunk_1.Collision.startTile('main', {
-    apply_repeat_groups: true,
-    return_hidden: true
   });
-  __chunk_1.Collision.addStyle('main', 'main');
-  return __chunk_1.Collision.collide(containers, 'main', 'main').then(function (labels) {
-    var meshes = [];
-    labels.forEach(function (container) {
-      // Hide breach labels (those that cross tile boundaries) while tiles are loading, unless they
-      // were previously visible (otherwise fully loaded/collided breach labels will flicker in and out
-      // when new tiles load, even if they aren't adjacent)
-      var show = 0;
-
-      if (container.show === true && (!hide_breach || !container.label.breach || prev_visible[container.label.id])) {
-        show = 1;
-      }
-
-      if (show) {
-        visible[container.label.id] = true; // track visible labels
-      }
-
-      var changed = true; // check if label visibility changed on this collision pass
-
-      container.ranges.forEach(function (r) {
-        if (!changed) {
-          return; // skip rest of label if state hasn't changed
-        }
-
-        var mesh = container.mesh;
-
-        if (!mesh.valid) {
-          return;
-        }
-
-        var off = mesh.vertex_layout.offset.a_shape; // byte offset (within each vertex) of attribute
-
-        var stride = mesh.vertex_layout.stride; // byte stride per vertex
-
-        for (var i = 0; i < r[1]; i++) {
-          // NB: +6 is because attribute is a short int (2 bytes each), and we're skipping to 3rd element, 6=3*2
-          if (mesh.vertex_data[r[0] + i * stride + off + 6] === show) {
-            changed = false;
-            return; // label hasn't changed states, skip further updates
-          }
-
-          mesh.vertex_data[r[0] + i * stride + off + 6] = show;
-        }
-
-        if (meshes.indexOf(mesh) === -1) {
-          meshes.push(mesh);
-        }
-      });
-    });
-    meshes.forEach(function (mesh) {
-      return mesh.upload();
-    });
-    tiles.forEach(function (t) {
-      return t.swapPendingLabels();
-    });
-    return {
-      labels: labels,
-      containers: containers
-    }; // currently returned for debugging
-  });
+  return containers;
 } // Generic discard function for labels, does simple occlusion with one or more bounding boxes
 // (no additional logic to try alternate anchors or other layout options, etc.)
+
 
 function discard(bboxes, exclude) {
   if (exclude === void 0) {
@@ -46090,13 +46070,25 @@ function () {
       this.collision.task = {
         type: 'tileManagerUpdateLabels',
         run: function run(task) {
-          return mainThreadLabelCollisionPass(tiles, _this2.collision.zoom, _this2.isLoadingVisibleTiles()).then(function (results) {
-            _this2.collision.task = null;
-            __chunk_1.Task.finish(task, results);
+          return new Promise(function ($return, $error) {
+            var results;
+            return Promise.resolve(mainThreadLabelCollisionPass(tiles, _this2.collision.zoom, _this2.isLoadingVisibleTiles())).then(function ($await_1) {
+              try {
+                results = $await_1;
 
-            _this2.updateTileStates().then(function () {
-              return _this2.scene.immediateRedraw();
-            });
+                _this2.scene.requestRedraw(); // Clear state to allow another collision pass to start
+
+
+                _this2.collision.task = null;
+                __chunk_1.Task.finish(task, results); // Check if tiles changed during previous collision pass - will start new pass if so
+
+                _this2.updateTileStates();
+
+                return $return();
+              } catch ($boundEx) {
+                return $error($boundEx);
+              }
+            }, $error);
           });
         }
       };
@@ -48518,7 +48510,7 @@ function () {
   ;
 
   _proto.updateViewComplete = function updateViewComplete() {
-    if ((this.render_count_changed || this.generation !== this.last_complete_generation) && !this.tile_manager.isLoadingVisibleTiles() && this.tile_manager.allVisibleTilesLabeled()) {
+    if ((this.render_count_changed || this.generation !== this.last_complete_generation) && !this.building && !this.tile_manager.isLoadingVisibleTiles() && this.tile_manager.allVisibleTilesLabeled()) {
       this.tile_manager.updateLabels();
       this.last_complete_generation = this.generation;
       this.trigger('view_complete', {
@@ -49241,7 +49233,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = 'f4235dbb2a13111efbbb66b24ab2f8258922885c';
+	Tangram.debug.SHA = 'b08f8c830cad59c24ca6f79f40b0d1db76b4136e';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
