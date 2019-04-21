@@ -323,31 +323,47 @@ export default class Tile {
             layer: source layer name
             geom: GeoJSON FeatureCollection
     */
-    static getDataForSource (source_data, source_config, scene_layer) {
+    static getDataForSource (source_data, source_config, scene_layer_name) {
         var layers = [];
 
         if (source_config != null && source_data != null && source_data.layers != null) {
-            // If no layer specified, and a default source layer exists
-            if (!source_config.layer && source_data.layers._default) {
+            // If source wildcard is specified, combine all source layers
+            if (source_config.all_layers === true) {
+                // Wildcard takes precedence over explicit source layer(s)
+                if (source_config.layer != null) {
+                    const msg = `Layer ${scene_layer_name} includes both 'all_layers: true' and an explicit ` +
+                        '\'layer\' keyword in its \'data\' block. \'all_layers: true\' takes precedence, \'layer\' ' +
+                        'will be ignored.';
+                    log({ level: 'warn', once: true }, msg);
+                }
+
+                for (const layer in source_data.layers) {
+                    if (source_data.layers[layer].features) {
+                        layers.push({ layer, geom: source_data.layers[layer] });
+                    }
+                }
+            }
+            // If no source layer specified, and a default data source layer exists
+            else if (!source_config.layer && source_data.layers._default) {
                 layers.push({
                     geom: source_data.layers._default
                 });
             }
-            // If no layer specified, and a layer for the scene layer name exists
-            else if (!source_config.layer && scene_layer) {
+            // If no source layer is specified, and a layer for the scene layer name exists
+            else if (!source_config.layer && scene_layer_name) {
                 layers.push({
-                    layer: scene_layer,
-                    geom: source_data.layers[scene_layer]
+                    layer: scene_layer_name,
+                    geom: source_data.layers[scene_layer_name]
                 });
             }
-            // If a layer is specified by name, use it
+            // If a source layer is specified by name, use it
             else if (typeof source_config.layer === 'string') {
                 layers.push({
                     layer: source_config.layer,
                     geom: source_data.layers[source_config.layer]
                 });
             }
-            // If multiple layers are specified by name, combine them
+            // If multiple source layers are specified by name, combine them
             else if (Array.isArray(source_config.layer)) {
                 source_config.layer.forEach(layer => {
                     if (source_data.layers[layer] && source_data.layers[layer].features) {
