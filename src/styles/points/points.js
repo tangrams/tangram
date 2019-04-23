@@ -214,10 +214,6 @@ Object.assign(Points, {
             // This can be overriden, as long as it is less than or equal to the default
             tf.layout.priority = draw.text.priority ? Math.max(tf.layout.priority, style.priority + 0.5) : (style.priority + 0.5);
 
-            // Text labels attached to points should not be moved into tile
-            // (they should stay fixed relative to the point)
-            tf.layout.move_into_tile = false;
-
             Collision.addStyle(this.collision_group_text, tile.id);
         }
 
