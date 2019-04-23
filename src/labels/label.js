@@ -82,9 +82,9 @@ export default class Label {
     inTileBounds () {
         if ((this.aabb[0] >= 0 && this.aabb[1] > -Geo.tile_scale && this.aabb[0] < Geo.tile_scale && this.aabb[1] <= 0) ||
             (this.aabb[2] >= 0 && this.aabb[3] > -Geo.tile_scale && this.aabb[2] < Geo.tile_scale && this.aabb[3] <= 0)) {
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     // some labels need further repeat culling checks on the main thread
