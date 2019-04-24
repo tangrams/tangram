@@ -68,18 +68,18 @@
 
             'Refill': {
                 import: [
-                  'https://www.nextzen.org/carto/refill-style/11/refill-style.zip',
-                  'https://www.nextzen.org/carto/refill-style/11/themes/label-10.zip',
+                  'https://www.nextzen.org/carto/refill-style/12/refill-style.zip',
+                  'https://www.nextzen.org/carto/refill-style/12/themes/label-10.zip',
                 ]
             },
 
             'Refill Blue Terrain': {
                 import: [
-                    'https://www.nextzen.org/carto/refill-style/11/refill-style.zip',
-                    'https://www.nextzen.org/carto/refill-style/11/themes/label-10.zip',
-                    'https://www.nextzen.org/carto/refill-style/11/themes/color-blue.zip',
-                    'https://www.nextzen.org/carto/refill-style/11/themes/no-texture.zip',
-                    'https://www.nextzen.org/carto/refill-style/11/themes/terrain-pattern-dark.zip'
+                    'https://www.nextzen.org/carto/refill-style/12/refill-style.zip',
+                    'https://www.nextzen.org/carto/refill-style/12/themes/label-10.zip',
+                    'https://www.nextzen.org/carto/refill-style/12/themes/color-blue.zip',
+                    'https://www.nextzen.org/carto/refill-style/12/themes/no-texture.zip',
+                    'https://www.nextzen.org/carto/refill-style/12/themes/terrain-pattern-dark.zip'
                 ]
             },
 
