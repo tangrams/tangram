@@ -182,7 +182,8 @@ export default class TileManager {
 
                     // Check if tiles changed during previous collision pass - will start new pass if so
                     this.updateTileStates();
-                }
+                },
+                immediate: true
             };
             Task.add(this.collision.task);
         }

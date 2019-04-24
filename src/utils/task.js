@@ -25,7 +25,7 @@ const Task = {
         // Run task immediately if under total frame time
         this.start_time = this.start_time || performance.now(); // start frame timer if necessary
         this.elapsed = performance.now() - this.start_time;
-        if (this.elapsed < Task.max_time) {
+        if (this.elapsed < Task.max_time || task.immediate) {
             this.process(task);
         }
 
