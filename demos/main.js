@@ -7,6 +7,17 @@
 (function () {
     var scene_url = 'demos/scene.yaml';
 
+    // optionally override scene URL
+    if ('URLSearchParams' in window) {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('scene')) {
+            scene_url = params.get('scene');
+            if (scene_url[0] === '{') {
+                scene_url = JSON.parse(scene_url); // parse JSON-encoded scenes
+            }
+        }
+    }
+
     // Create Tangram as a Leaflet layer
     var layer = Tangram.leafletLayer({
         scene: scene_url,

@@ -134,9 +134,17 @@
                 }
             }
         };
-        Object.keys(scenes).forEach(function(s){ scenes[s] = JSON.stringify(scenes[s]) }); // need to stringify JSON for dat.gui :(
 
-        gui.scene = scenes[scene_key];
+        Object.keys(scenes).forEach(function (s) { scenes[s] = JSON.stringify(scenes[s]) }); // need to stringify JSON for dat.gui :(
+
+        scene_key = Object.keys(scenes).filter(function (s) { return JSON.parse(scenes[s]) === scene.config_source })[0]; // find scene from sample list
+        if (scene_key) {
+            gui.scene = scenes[scene_key];
+        }
+        else {
+            gui.scene = {};
+        }
+
         gui.add(gui, 'scene', scenes).onChange(function(value) {
             scene_key = Object.keys(scenes).filter(function(s){ return scenes[s] === value })[0]; // find scene from sample list
             value = JSON.parse(value); // need to stringify JSON for dat.gui :(
