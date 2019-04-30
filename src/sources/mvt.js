@@ -128,20 +128,27 @@ export class MVTSource extends NetworkTileSource {
     parseJSONProperties (feature) {
         if (this.parse_json_type !== PARSE_JSON_TYPE.NONE) {
             const props = feature.properties;
-            for (const p in props) {
-                // if specified, check list of explicit properties to parse
-                // (otherwise try to parse all properties)
-                if (this.parse_json_type === PARSE_JSON_TYPE.SOME &&
-                    this.parse_json_prop_list.indexOf(p) === -1) {
-                    continue; // skip this property
-                }
 
-                // check if this property looks like JSON, and parse if so
-                if (PARSE_JSON_TEST.indexOf(props[p][0]) > -1) {
+            // if specified, check list of explicit properties to parse
+            if (this.parse_json_type === PARSE_JSON_TYPE.SOME) {
+                this.parse_json_prop_list.forEach(p => {
                     try {
                         props[p] = JSON.parse(props[p]);
                     } catch (e) {
                         // continue with original value if couldn't parse as JSON
+                    }
+                });
+            }
+            // otherwise try to parse all properties
+            else {
+                for (const p in props) {
+                    // check if this property looks like JSON, and parse if so
+                    if (PARSE_JSON_TEST.indexOf(props[p][0]) > -1) {
+                        try {
+                            props[p] = JSON.parse(props[p]);
+                        } catch (e) {
+                            // continue with original value if couldn't parse as JSON
+                        }
                     }
                 }
             }
