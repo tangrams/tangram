@@ -196,14 +196,14 @@ class Layer {
                     // Context property
                     this.context_prop_matches = this.context_prop_matches || [];
                     this.context_prop_matches.push([key.substring(1), array ? val : [val]]);
+                    delete this.filter[key];
                 }
-                else {
-                    // Feature property
+                else if (key.indexOf('.') === -1) { // exclude nested feature properties
+                    // Single-level feature property
                     this.feature_prop_matches = this.feature_prop_matches || [];
                     this.feature_prop_matches.push([key, array ? val : [val]]);
+                    delete this.filter[key];
                 }
-
-                delete this.filter[key];
             }
         });
     }

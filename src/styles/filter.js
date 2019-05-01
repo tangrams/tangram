@@ -10,8 +10,14 @@ function maybeQuote(value) {
 
 function lookUp(key) {
     if (key[0] === '$') {
+        // keys prefixed with $ are special properties in the context object (not feature properties)
         return 'context[\'' + key.substring(1) + '\']';
     }
+    else if (key.indexOf('.') > -1) {
+        // dot notation indicates a nested feature property
+        return `context.feature.properties${key.split('.').map(k => '[\'' + k + '\']').join('')}`;
+    }
+    // single-level feature property
     return 'context.feature.properties[\'' + key + '\']';
 }
 
