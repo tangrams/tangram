@@ -22,9 +22,9 @@ function lookUp(key) {
             // escaped dot notation will be interpreted as a single-level feature property with dots in the name
             // this splits on unescaped dots, which requires a temporary swap of escaped and unescaped dots
             let keys = key
-                .replace(/\\\./g, '__TANGRAM_SEPARATOR__')
+                .replace(/\\\./g, '__TANGRAM_DELIMITER__')
                 .split('.')
-                .map(s => s.replace(/__TANGRAM_SEPARATOR__/g, '.'));
+                .map(s => s.replace(/__TANGRAM_DELIMITER__/g, '.'));
             return `context.feature.properties${keys.map(k => '[\'' + k + '\']').join('')}`;
         }
     }
@@ -71,18 +71,46 @@ function propertyMatchesBoolean(key, value) {
     return wrap(lookUp(key) + (value ? ' != ' : ' == ')  + 'null');
 }
 
-function rangeMatch(key, values, options) {
+function rangeMatch(key, value, options) {
     var expressions = [];
     var transform = options && (typeof options.rangeTransform === 'function') && options.rangeTransform;
 
-    if (values.max) {
-        var max = transform ? transform(values.max) : values.max;
+    if (value.max) {
+        var max = transform ? transform(value.max) : value.max;
         expressions.push('' + lookUp(key) + ' < ' + max);
     }
 
-    if (values.min) {
-        var min = transform ? min = transform(values.min) : values.min;
+    if (value.min) {
+        var min = transform ? min = transform(value.min) : value.min;
         expressions.push('' + lookUp(key) + ' >= ' + min);
+    }
+
+    return wrap(expressions.join(' && '));
+}
+
+function includesMatch(key, value) {
+    let expressions = [];
+
+    // the array includes ONE OE MORE of the provided values
+    if (value.includes) {
+        if (Array.isArray(value.includes)) {
+            let arr = '['+ value.includes.map(maybeQuote).join(',') + ']';
+            expressions.push(`${arr}.some(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
+        }
+        else {
+            expressions.push(`${lookUp(key)}.indexOf(${maybeQuote(value.includes)}) > -1`);
+        }
+    }
+
+    // the array includes ALL of the provided values
+    if (value.includes_all) {
+        if (Array.isArray(value.includes_all)) {
+            let arr = '[' + value.includes_all.map(maybeQuote).join(',') + ']';
+            expressions.push(`${arr}.every(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
+        }
+        else {
+            expressions.push(`${lookUp(key)}.indexOf(${maybeQuote(value.includes_all)}) > -1`);
+        }
     }
 
     return wrap(expressions.join(' && '));
@@ -128,6 +156,9 @@ function parseFilter(filter, options) {
         } else if (type === 'object' && value != null) {
             if (value.max || value.min) {
                 filterAST.push(rangeMatch(key, value, options));
+            }
+            else if (value.includes || value.includes_all) {
+                filterAST.push(includesMatch(key, value, options));
             }
         } else if (value == null) {
             filterAST.push(nullValue(key, value));
