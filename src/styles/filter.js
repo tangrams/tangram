@@ -14,8 +14,19 @@ function lookUp(key) {
         return 'context[\'' + key.substring(1) + '\']';
     }
     else if (key.indexOf('.') > -1) {
-        // dot notation indicates a nested feature property
-        return `context.feature.properties${key.split('.').map(k => '[\'' + k + '\']').join('')}`;
+        if (key.indexOf('\\.') === -1) { // no escaped dot notation
+            // un-escaped dot notation indicates a nested feature property
+            return `context.feature.properties${key.split('.').map(k => '[\'' + k + '\']').join('')}`;
+        }
+        else { // mixed escaped/unescaped dot notation
+            // escaped dot notation will be interpreted as a single-level feature property with dots in the name
+            // this splits on unescaped dots, which requires a temporary swap of escaped and unescaped dots
+            let keys = key
+                .replace(/\\\./g, '__TANGRAM_SEPARATOR__')
+                .split('.')
+                .map(s => s.replace(/__TANGRAM_SEPARATOR__/g, '.'));
+            return `context.feature.properties${keys.map(k => '[\'' + k + '\']').join('')}`;
+        }
     }
     // single-level feature property
     return 'context.feature.properties[\'' + key + '\']';
