@@ -56,10 +56,8 @@ export function mergeTrees(matchingTrees, group) {
 
                 // Set or unset frozen draw group for this layer tree
                 if (tree[x][group].freeze === true) {
-                    frozen[i] = tree[x][group];
-                }
-                else if (tree[x][group].freeze === false) {
-                    frozen[i] = null;
+                    frozen[i] = frozen[i] || [];
+                    frozen[i].unshift(tree[x][group]); // reverse order so frozen ancestors take priority
                 }
             }
         });
@@ -69,7 +67,12 @@ export function mergeTrees(matchingTrees, group) {
     }
 
     // Add frozen draw groups (in layer priority order)
-    draws.push(...frozen.filter(x => x));
+    // If needed, merge multiple frozen groups within each tree (inverse order, so ancestors win, not descendants)
+    draws.push(
+        ...frozen
+            .filter(x => x)
+            .map(f => f.length > 1 ? mergeObjects({}, ...f) : f[0])
+    );
 
     // Merge draw objects
     mergeObjects(draw, ...draws);
