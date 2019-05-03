@@ -24,7 +24,8 @@ function propertyEqual(key, value) {
 }
 
 function propertyOr(key, values) {
-    return wrap(values.map(function (x) { return propertyEqual(key, x); }).join(' || '));
+    const arr = '[' + values.map(maybeQuote).join(',') + ']';
+    return wrap(`${arr}.indexOf(${lookUp(key)}) > -1`);
 }
 
 function printNested(values, joiner) {
