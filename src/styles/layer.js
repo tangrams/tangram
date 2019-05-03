@@ -28,15 +28,15 @@ function cacheKey (layers) {
 // Merge matching layer trees into a final draw group
 export function mergeTrees(matchingTrees, group) {
     // Find deepest tree
-    let treeDepth = 0;
-    for (let t=0; t < matchingTrees.length; t++) {
-        if (matchingTrees[t].length > treeDepth) {
-            treeDepth = matchingTrees[t].length;
+    let maxTreeDepth = 0;
+    for (let t = 0; t < matchingTrees.length; t++) {
+        if (matchingTrees[t].length > maxTreeDepth) {
+            maxTreeDepth = matchingTrees[t].length;
         }
     }
 
     // No layers to parse
-    if (treeDepth === 0) {
+    if (maxTreeDepth === 0) {
         return null;
     }
 
@@ -48,16 +48,16 @@ export function mergeTrees(matchingTrees, group) {
     // Iterate layer trees in parallel
     const draws = []; // matching draw groups in priority order
     const frozen = []; // any frozen draw groups, in priority order
-    for (let x=0; x < treeDepth; x++) {
+    for (let depth = 0; depth < maxTreeDepth; depth++) {
         // Pull out the requested draw group, for each tree, at this depth (avoiding duplicates at the same level in tree)
-        matchingTrees.forEach((tree, i) => {
-            if (tree[x] && tree[x][group] && draws.indexOf(tree[x][group]) === -1) {
-                draws.push(tree[x][group]);
+        matchingTrees.forEach((tree, column) => {
+            if (tree[depth] && tree[depth][group] && draws.indexOf(tree[depth][group]) === -1) {
+                draws.push(tree[depth][group]);
 
                 // Set or unset frozen draw group for this layer tree
-                if (tree[x][group].freeze === true) {
-                    frozen[i] = frozen[i] || [];
-                    frozen[i].unshift(tree[x][group]); // reverse order so frozen ancestors take priority
+                if (tree[depth][group].freeze === true) {
+                    frozen[column] = frozen[column] || [];
+                    frozen[column].unshift(tree[depth][group]); // reverse order so frozen ancestors take priority
                 }
             }
         });
