@@ -90,26 +90,18 @@ function rangeMatch(key, value, options) {
 function includesMatch(key, value) {
     let expressions = [];
 
-    // the array includes ONE OE MORE of the provided values
-    if (value.includes) {
-        if (Array.isArray(value.includes)) {
-            let arr = '['+ value.includes.map(maybeQuote).join(',') + ']';
-            expressions.push(`${arr}.some(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
-        }
-        else {
-            expressions.push(`${lookUp(key)}.indexOf(${maybeQuote(value.includes)}) > -1`);
-        }
+    // the array includes ONE OE MORE of the provided values (a single value is converted to an array)
+    if (value.includes_any) {
+        const vals = Array.isArray(value.includes_any) ? value.includes_any : [value.includes_any];
+        const arr = '['+ vals.map(maybeQuote).join(',') + ']';
+        expressions.push(`${arr}.some(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
     }
 
-    // the array includes ALL of the provided values
+    // the array includes ALL of the provided values (a single value is converted to an array)
     if (value.includes_all) {
-        if (Array.isArray(value.includes_all)) {
-            let arr = '[' + value.includes_all.map(maybeQuote).join(',') + ']';
-            expressions.push(`${arr}.every(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
-        }
-        else {
-            expressions.push(`${lookUp(key)}.indexOf(${maybeQuote(value.includes_all)}) > -1`);
-        }
+        const vals = Array.isArray(value.includes_all) ? value.includes_all : [value.includes_all];
+        const arr = '[' + vals.map(maybeQuote).join(',') + ']';
+        expressions.push(`${arr}.every(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
     }
 
     return wrap(expressions.join(' && '));
@@ -156,7 +148,7 @@ function parseFilter(filter, options) {
             if (value.max || value.min) {
                 filterAST.push(rangeMatch(key, value, options));
             }
-            else if (value.includes || value.includes_all) {
+            else if (value.includes_any || value.includes_all) {
                 filterAST.push(includesMatch(key, value, options));
             }
         } else if (value == null) {
