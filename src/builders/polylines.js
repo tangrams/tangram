@@ -21,7 +21,7 @@ const JOIN_TYPE = {
 
 const DEFAULT_MITER_LIMIT = 3;
 const MIN_FAN_WIDTH = 5; // Width of line in tile units to place 1 triangle per fan
-const TEXCOORD_NORMALIZE = 65536; // Scaling factor for UV attribute values
+const TEXCOORD_NORMALIZE = 65535; // Scaling factor for UV attribute values
 
 // Scaling factor to add precision to line texture V coordinate packed as normalized short
 const V_SCALE_ADJUST = Geo.tile_scale;
