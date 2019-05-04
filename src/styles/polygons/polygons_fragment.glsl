@@ -49,8 +49,7 @@ void main (void) {
 
     // Apply raster to vertex color
     #ifdef TANGRAM_RASTER_TEXTURE_COLOR
-    { // enclose in scope to avoid leakage of internal variables
-        vec4 raster_color = sampleRaster(0);
+        vec4 _raster_color = sampleRaster(0);
 
         #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)
             // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.
@@ -64,22 +63,21 @@ void main (void) {
             {
             #endif
                 #if defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)
-                if (raster_color.a < TANGRAM_EPSILON) {
+                if (_raster_color.a < TANGRAM_EPSILON) {
                     discard;
                 }
                 #else // TANGRAM_BLEND_OPAQUE
-                if (raster_color.a < 1. - TANGRAM_EPSILON) {
+                if (_raster_color.a < 1. - TANGRAM_EPSILON) {
                     discard;
                 }
                 // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)
-                raster_color.a = 1.;
+                _raster_color.a = 1.;
                 #endif
             }
             #endif
         #endif
 
-        color *= raster_color; // multiplied to tint texture color
-    }
+        color *= _raster_color; // multiplied to tint texture color
     #endif
 
     // Apply line texture

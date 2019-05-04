@@ -89,40 +89,40 @@ void main() {
     vec4 position = vec4(a_position.xy, TANGRAM_POSITION_Z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
 
     #ifdef TANGRAM_EXTRUDE_LINES
-        vec2 extrude = a_extrude.xy;
-        vec2 offset = a_offset.xy;
+        vec2 _extrude = a_extrude.xy;
+        vec2 _offset = a_offset.xy;
 
         // Adjust line width based on zoom level, to prevent proxied lines
         // from being either too small or too big.
         // "Flattens" the zoom between 1-2 to peg it to 1 (keeps lines from
         // prematurely shrinking), then interpolate and clamp to 4 (keeps lines
         // from becoming too small when far away).
-        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);
-        dz += step(1., dz) * (1. - dz) + mix(0., 2., clamp((dz - 2.) / 2., 0., 1.));
+        float _dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);
+        _dz += step(1., _dz) * (1. - _dz) + mix(0., 2., clamp((_dz - 2.) / 2., 0., 1.));
 
         // Interpolate line width between zooms
-        float mdz = (dz - 0.5) * 2.; // zoom from mid-point
-        extrude -= extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * mdz;
+        float _mdz = (_dz - 0.5) * 2.; // zoom from mid-point
+        _extrude -= _extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * _mdz;
 
         // Interpolate line offset between zooms
         // Scales from the larger value to the smaller one
-        float dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);
-        float sdwdz = sign(step(0., dwdz) - 0.5); // sign indicates "direction" of scaling
-        offset -= offset * abs(dwdz) * ((1.-step(0., sdwdz)) - (dz * -sdwdz)); // scale "up" or "down"
+        float _dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);
+        float _sdwdz = sign(step(0., _dwdz) - 0.5); // sign indicates "direction" of scaling
+        _offset -= _offset * abs(_dwdz) * ((1.-step(0., _sdwdz)) - (_dz * -_sdwdz)); // scale "up" or "down"
 
         // Scale line width and offset to be consistent in screen space
-        float ssz = exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
-        extrude *= ssz;
-        offset *= ssz;
+        float _ssz = exp2(-_dz - (u_tile_origin.z - u_tile_origin.w));
+        _extrude *= _ssz;
+        _offset *= _ssz;
 
         // Modify line width before extrusion
         #ifdef TANGRAM_BLOCK_WIDTH
             float width = 1.;
             #pragma tangram: width
-            extrude *= width;
+            _extrude *= width;
         #endif
 
-        position.xy += extrude + offset;
+        position.xy += _extrude + _offset;
     #endif
 
     // World coordinates for 3d procedural textures
