@@ -63,11 +63,11 @@ vec2 rotate2D(vec2 _st, float _angle) {
 
 #ifdef TANGRAM_CURVED_LABEL
     // Assumes stops are [0, 0.33, 0.66, 0.99];
-    float mix4linear(float a, float b, float c, float d, float x) {
+    float mix4linear(vec4 v, float x) {
         x = clamp(x, 0., 1.);
-        return mix(mix(a, b, 3. * x),
-                   mix(b,
-                       mix(c, d, 3. * (max(x, .66) - .66)),
+        return mix(mix(v[0], v[1], 3. * x),
+                   mix(v[1],
+                       mix(v[2], v[3], 3. * (max(x, .66) - .66)),
                        3. * (clamp(x, .33, .66) - .33)),
                    step(0.33, x)
                 );
@@ -128,9 +128,9 @@ void main() {
             vec4 pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;
             vec4 offsets_scaled = (1. / 64.) * a_offsets;
 
-            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);
-            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);
-            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
+            float pre_angle = mix4linear(pre_angles_scaled, zoom);
+            float angle = mix4linear(angles_scaled, zoom);
+            float offset_curve = mix4linear(offsets_scaled, zoom);
 
             shape = rotate2D(shape, pre_angle); // rotate in place
             shape.x += offset_curve;            // offset for curved label segment
