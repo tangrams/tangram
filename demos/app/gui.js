@@ -135,9 +135,9 @@
             }
         };
 
-        Object.keys(scenes).forEach(function (s) { scenes[s] = JSON.stringify(scenes[s]) }); // need to stringify JSON for dat.gui :(
+        Object.keys(scenes).forEach(function (s) { scenes[s] = JSON.stringify(scenes[s]); }); // need to stringify JSON for dat.gui :(
 
-        scene_key = Object.keys(scenes).filter(function (s) { return JSON.parse(scenes[s]) === scene.config_source })[0]; // find scene from sample list
+        scene_key = Object.keys(scenes).filter(function (s) { return scenes[s] === JSON.stringify(scene.config_source); })[0]; // find scene from sample list
         if (scene_key) {
             gui.scene = scenes[scene_key];
         }
