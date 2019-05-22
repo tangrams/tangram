@@ -1,16 +1,18 @@
-import Geo from './utils/geo';
+// camera-rotate.js
 
-export function init(scene) {
+import Geo from './geo';
+import { rotate } from 'gl-matrix/src/gl-matrix/mat4';
+
+export function init(scene, camera) {
     var view = scene.view;
-    var camera = view.camera;
     view.interactionLayer = this;
     var orbitSpeed = 0.1; // controls mouse-to-orbit speed
 
     // set event handlers
     scene.canvas.onmousedown = handleMouseDown;
     scene.canvas.onmouseup = handleMouseUp;
-    scene.canvas.onclick = handleClick;
-    scene.canvas.ondblclick = handleDoubleclick;
+
+
     scene.canvas.onmouseleave = handleMouseLeave;
     scene.canvas.onmousemove = handleMouseMove;
     scene.container.onwheel = handleScroll;
@@ -55,20 +57,9 @@ export function init(scene) {
         lastMouseX = event.clientX;
         lastMouseY = event.clientY;
         view.markUserInput();
-        // startingX = view.center ? view.center.meters.x : null;
-        // startingY = view.center ? view.center.meters.y : null;
-        startingLng = view.center.meters.x;
-        startingLat = view.center.meters.y;
-
-        // don't select UI text on a doubleclick
-        if (event.detail > 1) {
-            event.preventDefault();
-        }
     }
 
-    // TODO
-    // function handleMouseUp(event) {
-    function handleMouseUp() {
+    function handleMouseUp(event) {
         mouseDown = false;
         lastMouseX = null;
         lastMouseY = null;
@@ -81,34 +72,6 @@ export function init(scene) {
         deltaX = 0;
         deltaY = 0;
         view.setPanning(false);
-        scene.update();
-    }
-
-    function handleClick(event) {
-        console.log('handleclick')
-        if (view.panning) {
-            view.setPanning(false);
-            return;
-        }
-        event.lngLat = map.unproject([event.clientX, event.clientY]);
-        view.onClick(event);
-    }
-
-    function handleDoubleclick(event) {
-        var newX = event.clientX;
-        var newY = event.clientY;
-
-        let deltaX = newX - window.innerWidth / 2;
-        let deltaY = newY - window.innerHeight / 2;
-
-        let metersDeltaX = deltaX * Geo.metersPerPixel(view.zoom);
-        let metersDeltaY = deltaY * Geo.metersPerPixel(view.zoom);
-
-        let destination = Geo.metersToLatLng([view.center.meters.x + metersDeltaX, view.center.meters.y - metersDeltaY]);
-        view.flyTo({
-            start: { center: { lng: view.center.lng, lat: view.center.lat }, zoom: view.zoom },
-            end: { center: { lng: destination[0], lat: destination[1] }, zoom: view.zoom + 1 }
-        });
         scene.update();
     }
 
@@ -125,11 +88,9 @@ export function init(scene) {
 
     function handleMouseMove(event) {
         if (!mouseDown) {
-            if (view.panning) {
-                view.setPanning(false); // reset pan timer
-            }
             return;
         }
+        view.setPanning(false); // reset pan timer
         var newX = event.clientX;
         var newY = event.clientY;
 
@@ -184,12 +145,12 @@ export function init(scene) {
         // compensate for roll
         var cosRoll = Math.cos(view.roll);
         var adjustedOffset = [offset[0] * cosRoll + offset[1] * Math.sin(view.roll + Math.PI),
-            offset[1] * cosRoll + offset[0] * Math.sin(view.roll)];
+        offset[1] * cosRoll + offset[0] * Math.sin(view.roll)];
 
         var scrollTarget = [adjustedOffset[0] * Geo.metersPerPixel(view.zoom), adjustedOffset[1] * Geo.metersPerPixel(view.zoom)];
-        var panFactor = (targetZoom - view.zoom) * 0.666; // TODO: learn why 0.666 is needed here
+        var panFactor = (targetZoom - view.zoom) * 0.666; // I don't know why 0.666 is needed here
         var target = [view.center.meters.x + scrollTarget[0] * panFactor,
-            view.center.meters.y - scrollTarget[1] * panFactor];
+        view.center.meters.y - scrollTarget[1] * panFactor];
         target = Geo.metersToLatLng(target);
 
         view.setView({ lng: target[0], lat: target[1], zoom: targetZoom });

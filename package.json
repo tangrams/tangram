@@ -26,6 +26,7 @@
   "scripts": {
     "start": "npm run watch",
     "build": "npm run build:nomodule && npm run build:nomodule:minify && npm run build:module && npm run build:module:minify && npm run build:size",
+    "build:boil": "ESM=true ./node_modules/.bin/rollup -c boil.rollup.config.js --watch",
     "build:module": "ESM=true ./node_modules/.bin/rollup -c",
     "build:nomodule": "ESM=false ./node_modules/.bin/rollup -c",
     "build:module:minify": "ESM=true MINIFY=true ./node_modules/.bin/rollup -c",

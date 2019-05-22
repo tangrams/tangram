@@ -12,7 +12,7 @@
     });
 
     function injectAPIKey(config) {
-        var demo_key = '3XqXMjEdT2StnrIRJ4HYbg';
+        var demo_key = 'd161Q8KATMOhSOcVGNyQ8g';
         if (config.global.sdk_api_key) {
             config.global.sdk_api_key = demo_key;
         }
