@@ -300,7 +300,7 @@ export const TextLabels = {
 
         // Repeat rules - for text labels, defaults to tile size
         draw.repeat_distance = StyleParser.createPropertyCache(
-            draw.repeat_distance != null ? draw.repeat_distance : Geo.tile_size,
+            draw.repeat_distance,
             StyleParser.parsePositiveNumber
         );
 
@@ -313,6 +313,24 @@ export const TextLabels = {
 
         // common settings w/points
         layout = this.computeLayout(layout, feature, draw, context, tile);
+
+        // if draw group didn't specify repeat distance, override with text label-specific logic
+        if (draw.repeat_distance == null) {
+            // defaults: no limit on labels for point geometries,  tile size (256px) limit for other geometries
+            layout.repeat_distance = (context.geometry === 'point' ? 0 : Geo.tile_size);
+
+            if (layout.repeat_distance) {
+                layout.repeat_distance *= layout.units_per_pixel;
+                layout.repeat_scale = 1; // initial repeat pass in tile with full scale
+
+                if (typeof draw.repeat_group === 'function') {
+                    layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
+                }
+                else {
+                    layout.repeat_group = draw.repeat_group; // pre-computed repeat group
+                }
+            }
+        }
 
         // repeat rules include the text
         if (layout.repeat_distance) {
