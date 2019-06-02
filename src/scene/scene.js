@@ -248,7 +248,8 @@ export default class Scene {
             this.gl = Context.getContext(this.canvas, Object.assign({
                 alpha: true, premultipliedAlpha: true,
                 stencil: true,
-                device_pixel_ratio: Utils.device_pixel_ratio
+                device_pixel_ratio: Utils.device_pixel_ratio,
+                powerPreference: 'high-performance'
             }, this.contextOptions));
         }
         catch(e) {

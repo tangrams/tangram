@@ -20,6 +20,12 @@ Context.getContext = function getContext (canvas, options)
         fullscreen = true;
     }
 
+    // powerPreference context option spec requires listeners for context loss/restore,
+    // though it's not clear these are required in practice.
+    // https://www.khronos.org/registry/webgl/specs/latest/1.0/#5.2.1
+    canvas.addEventListener('webglcontextlost', () => {});
+    canvas.addEventListener('webglcontextrestored', () => {});
+
     var gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
     if (!gl) {
         throw new Error('Couldn\'t create WebGL context.');
