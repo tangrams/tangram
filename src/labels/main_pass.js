@@ -20,6 +20,26 @@ export default async function mainThreadLabelCollisionPass (tiles, view_zoom, hi
     // TODO: maybe rename tile and style to group/subgroup?
     Collision.startTile('main', { apply_repeat_groups: true, return_hidden: true });
     Collision.addStyle('main', 'main');
+
+    // Adaptive collision grid, using a heuristic based on the tile with the most labels
+    const max_tile_label_count =
+        Math.max(0, ...Object.values(tiles)
+            .flatMap(t => Object.values(t.meshes))
+            .map(m => m[0].labels && Object.keys(m[0].labels).length)
+            .filter(x => x)
+        );
+
+    const grid_divs = Math.floor(max_tile_label_count / Geo.tile_size); // heuristic of label density to tile size
+    if (grid_divs > 0) {
+        Collision.initGrid({
+            anchor: { x: Math.min(...tiles.map(t => t.min.x)), y: Math.min(...tiles.map(t => t.min.y)) },
+            span: tiles[0].span.x / grid_divs
+        });
+    }
+    else {
+        Collision.initGrid();
+    }
+
     const labels = await Collision.collide(containers, 'main', 'main');
 
     // Update label visiblity
@@ -105,7 +125,7 @@ function buildLabels (tiles, view_zoom) {
                         const params = mesh.labels[label_id].container.label;
                         const linked = mesh.labels[label_id].container.linked;
                         const ranges = mesh.labels[label_id].ranges;
-                        const debug = Object.assign({}, mesh.labels[label_id].debug, { tile, params, label_id });
+                        // const debug = Object.assign({}, mesh.labels[label_id].debug, { tile, params, label_id });
 
                         let label = labels[label_id] = {};
                         label.discard = discard.bind(label);
@@ -149,7 +169,7 @@ function buildLabels (tiles, view_zoom) {
                             linked,
                             ranges,
                             mesh,
-                            debug
+                            // debug
                         };
                     }
                 }
