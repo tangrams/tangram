@@ -31,6 +31,7 @@ StyleParser.wrapFunction = function (func) {
         var $source = context.source;
         var $geometry = context.geometry;
         var $meters_per_pixel = context.meters_per_pixel;
+        var $id = context.feature.id;
 
         var val = (function(){ ${func} }());
 
