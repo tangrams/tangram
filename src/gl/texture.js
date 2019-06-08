@@ -137,7 +137,19 @@ export default class Texture {
             let image = new Image();
             image.onload = () => {
                 try {
-                    this.setElement(image, options);
+                    // For data URL images, first draw the image to a separate canvas element. Workaround for
+                    // obscure bug seen with small (<28px) SVG images encoded as data URLs in Chrome and Safari.
+                    if (this.url.slice(0, 5) === 'data:') {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = image.width;
+                        canvas.height = image.height;
+                        ctx.drawImage(image, 0, 0);
+                        this.setElement(canvas, options);
+                    }
+                    else {
+                        this.setElement(image, options);
+                    }
                 }
                 catch (e) {
                     this.loaded = false;
