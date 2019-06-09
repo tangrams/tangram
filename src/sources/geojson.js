@@ -73,6 +73,7 @@ export class GeoJSONSource extends NetworkSource {
                 let f = {
                     type: 'Feature',
                     geometry: {},
+                    id: feature.id,
                     properties: feature.tags
                 };
 
@@ -155,7 +156,7 @@ export class GeoJSONSource extends NetworkSource {
                 let coordinates, centroid_feature;
                 if (feature.geometry.type === 'Polygon') {
                     coordinates = feature.geometry.coordinates;
-                    centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
+                    centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.id, feature.properties, centroid_properties);
                     features_centroid.push(centroid_feature);
                 }
                 else if (feature.geometry.type === 'MultiPolygon') {
@@ -170,7 +171,7 @@ export class GeoJSONSource extends NetworkSource {
                             max_area_index = index;
                         }
                     }
-                    centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
+                    centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.id, feature.properties, centroid_properties);
                     features_centroid.push(centroid_feature);
                 }
             });
@@ -252,7 +253,7 @@ DataSource.register('GeoJSON', source => {
 
 
 // Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
-function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
+function getCentroidFeatureForPolygon (coordinates, id, properties, newProperties) {
     let centroid = Geo.centroid(coordinates);
     if (!centroid) {
         return;
@@ -264,6 +265,7 @@ function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
 
     return {
         type: 'Feature',
+        id,
         properties: centroid_properties,
         geometry: {
             type: 'Point',
