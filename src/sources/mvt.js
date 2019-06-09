@@ -82,6 +82,7 @@ export class MVTSource extends NetworkTileSource {
                 var feature_geojson = {
                     type: 'Feature',
                     geometry: {},
+                    id: feature.id,
                     properties: feature.properties
                 };
 
