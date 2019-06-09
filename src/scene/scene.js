@@ -844,13 +844,15 @@ export default class Scene {
         // Optional uniqueify criteria
         // Valid values: true, false/null, single property name, or array of property names
         unique = (typeof unique === 'string') ? [unique] : unique;
+        const uniqueify_on_id = (unique === true || (Array.isArray(unique) && unique.indexOf('$id') > -1));
         const uniqueify = unique && (obj => {
-            const props = Array.isArray(unique) ? sliceObject(obj.properties, unique) : obj.properties;
+            const properties = Array.isArray(unique) ? sliceObject(obj.properties, unique) : obj.properties;
+            const id = uniqueify_on_id ? obj.id : null;
             if (geometry) {
                 // when `geometry` flag is set, we need to uniqueify based on *both* feature properties and geometry
-                return JSON.stringify({ geometry: obj.geometry, properties: props });
+                return JSON.stringify({ geometry: obj.geometry, properties, id });
             }
-            return JSON.stringify(props);
+            return JSON.stringify({ properties, id });
         });
 
         // Optional grouping criteria
