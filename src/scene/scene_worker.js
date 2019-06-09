@@ -302,6 +302,7 @@ const SceneWorker = Object.assign(self, {
                     // Info to return with each feature
                     let subset = {
                         type: feature.type,
+                        id: feature.id,
                         properties: Object.assign({}, feature.properties, {
                             $source: context.source,
                             $layer: context.layer,
