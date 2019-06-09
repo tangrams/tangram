@@ -277,6 +277,11 @@ const SceneWorker = Object.assign(self, {
         tiles.forEach(tile => {
             for (let layer in tile.source_data.layers) {
                 let data = tile.source_data.layers[layer];
+
+                if (data == null) {
+                    return;
+                }
+
                 data.features.forEach(feature => {
                     // Optionally check if feature is visible (e.g. was rendered for current generation)
                     const feature_visible = (feature.generation === this.generation);
