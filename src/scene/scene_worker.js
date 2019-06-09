@@ -294,6 +294,7 @@ const SceneWorker = Object.assign(self, {
                     let context = StyleParser.getFeatureParseContext(feature, tile, this.global);
                     context.source = tile.source;  // add data source name
                     context.layer = layer;         // add data source layer name
+                    context.id = feature.id;       // add feature id
 
                     if (!filter(context)) {
                         return;
