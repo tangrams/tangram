@@ -276,7 +276,7 @@ layers:
             draw:
                 lines:
                     color: [[5, '#F89595'], [7, '#D16768']]
-                    width: [[5, 1px], [8, 1.5px], [14, 2px], [15, 12]]
+                    width: [[5, 1.5px], [8, 2px], [14, 2.5px], [15, 12]]
                     outline:
                         width: [[14, 0], [15, 2]]
             link:
@@ -286,10 +286,10 @@ layers:
                         color: '#aaa'
                         width: [[13, 0], [14, 12]]
         major_road:
-            filter: { kind: major_road, $zoom: { min: 10 } }
+            filter: { kind: major_road }
             draw:
                 lines:
-                    width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
+                    width: [[7, 1px], [10, 1px], [12, 1.5px], [13, 2px], [14, 2px], [16, 12]]
                     outline:
                         width: [[16, 0], [17, 1]]
         minor_road:
