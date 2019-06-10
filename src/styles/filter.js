@@ -95,14 +95,14 @@ function includesMatch(key, value) {
     if (value.includes_any) {
         const vals = Array.isArray(value.includes_any) ? value.includes_any : [value.includes_any];
         const arr = '['+ vals.map(maybeQuote).join(',') + ']';
-        expressions.push(`${arr}.some(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
+        expressions.push(`${lookUp(key)} != null && ${arr}.some(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
     }
 
     // the array includes ALL of the provided values (a single value is converted to an array)
     if (value.includes_all) {
         const vals = Array.isArray(value.includes_all) ? value.includes_all : [value.includes_all];
         const arr = '[' + vals.map(maybeQuote).join(',') + ']';
-        expressions.push(`${arr}.every(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
+        expressions.push(`${lookUp(key)} != null && ${arr}.every(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
     }
 
     return wrap(expressions.join(' && '));
