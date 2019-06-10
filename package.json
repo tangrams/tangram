@@ -26,12 +26,12 @@
   "scripts": {
     "start": "npm run watch",
     "build": "npm run build:nomodule && npm run build:nomodule:minify && npm run build:module && npm run build:module:minify && npm run build:size",
-    "build:module": "ESM=true ./node_modules/.bin/rollup -c",
-    "build:nomodule": "ESM=false ./node_modules/.bin/rollup -c",
-    "build:module:minify": "ESM=true MINIFY=true ./node_modules/.bin/rollup -c",
-    "build:nomodule:minify": "ESM=false MINIFY=true ./node_modules/.bin/rollup -c",
+    "build:module": "ESM=true SLIM=\"${SLIM:=false}\" ./node_modules/.bin/rollup -c",
+    "build:nomodule": "ESM=false SLIM=\"${SLIM:=false}\" ./node_modules/.bin/rollup -c",
+    "build:module:minify": "ESM=true MINIFY=true SLIM=\"${SLIM:=false}\" ./node_modules/.bin/rollup -c",
+    "build:nomodule:minify": "ESM=false MINIFY=true SLIM=\"${SLIM:=false}\" ./node_modules/.bin/rollup -c",
     "build:size": "gzip dist/tangram.min.mjs -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='Module:\t\t%.0fk (min/gzip)' && gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='No module:\t%.0fk (min/gzip)'",
-    "watch": "ESM=\"${ESM:=true}\" SERVE=true ./node_modules/.bin/rollup -cw",
+    "watch": "ESM=\"${ESM:=true}\" SLIM=\"${SLIM:=false}\" SERVE=true ./node_modules/.bin/rollup -cw",
     "lint": "./node_modules/.bin/eslint src/",
     "test": "npm run lint && npm run test-run",
     "test-run": "npm run test-build-worker && ESM=false ./node_modules/karma/bin/karma start --browsers Chrome --single-run",
@@ -46,7 +46,9 @@
     "dist/tangram.min.mjs",
     "dist/tangram.debug.js",
     "dist/tangram.debug.js.map",
-    "dist/tangram.min.js"
+    "dist/tangram.min.js",
+    "dist/tangram.yaml.mjs",
+    "dist/tangram.zip.mjs"
   ],
   "author": {
     "name": "Tangram contributors"
@@ -87,6 +89,7 @@
   "dependencies": {
     "@mapbox/vector-tile": "1.3.0",
     "csscolorparser": "1.0.3",
+    "current-executing-script": "0.1.3",
     "earcut": "2.1.1",
     "fontfaceobserver": "2.0.7",
     "geojson-vt": "2.4.0",
@@ -111,7 +114,7 @@
     "karma-rollup-preprocessor": "7.0.0-rc.2",
     "karma-sinon": "1.0.5",
     "mocha": "5.2.0",
-    "rollup": "1.1.2",
+    "rollup": "1.14.5",
     "rollup-plugin-babel": "4.3.2",
     "rollup-plugin-commonjs": "9.2.0",
     "rollup-plugin-json": "3.1.0",
@@ -119,7 +122,7 @@
     "rollup-plugin-node-builtins": "2.1.2",
     "rollup-plugin-node-globals": "1.4.0",
     "rollup-plugin-node-resolve": "4.0.0",
-    "rollup-plugin-replace": "2.1.0",
+    "rollup-plugin-preprocess": "0.0.4",
     "rollup-plugin-serve": "1.0.1",
     "rollup-plugin-sourcemaps": "0.4.2",
     "rollup-plugin-string": "2.0.2",

@@ -1,8 +1,30 @@
 import Utils from '../utils/utils';
 import * as URLs from '../utils/urls';
 
-import JSZip from 'jszip';
-import yaml from 'js-yaml';
+/* @if SLIM !== true */
+import JSZipModule from 'jszip';
+import yamlModule from 'js-yaml';
+/* @endif */
+
+/* @if SLIM === true */
+import { importModule } from '../utils/importModule';
+import currentExecutingScript from 'current-executing-script';
+
+function getCurrentScriptPath() {
+    const script = currentExecutingScript() || {};
+    return URLs.pathForURL(script.src);
+}
+
+const TANGRAM_PATH = getCurrentScriptPath();
+/* @endif */
+
+let JSZip;
+let yaml;
+
+/* @if SLIM !== true */
+JSZip = JSZipModule;
+yaml = yamlModule;
+/* @endif */
 
 export class SceneBundle {
 
@@ -91,6 +113,11 @@ export class ZipSceneBundle extends SceneBundle {
     }
 
     async load() {
+        /* @if SLIM === true */
+        if (JSZip == null) {
+            JSZip = await importModule(TANGRAM_PATH + 'tangram.zip.mjs').then(m => m.default);
+        }
+        /* @endif */
         this.zip = new JSZip();
 
         if (typeof this.url === 'string') {
@@ -204,14 +231,34 @@ export function isGlobal (val) {
     return false;
 }
 
-function parseResource (body) {
+async function parseResource(body) {
     var data;
     try {
-        // jsyaml 'json' option allows duplicate keys
-        // Keeping this for backwards compatibility, but should consider migrating to requiring
-        // unique keys, as this is YAML spec. But Tangram ES currently accepts dupe keys as well,
-        // so should consider how best to unify.
-        data = yaml.safeLoad(body, { json: true });
+        // always try YAML parsing first if module is available
+        if (yaml != null) {
+            // jsyaml 'json' option allows duplicate keys
+            // Keeping this for backwards compatibility, but should consider migrating to requiring
+            // unique keys, as this is YAML spec. But Tangram ES currently accepts dupe keys as well,
+            // so should consider how best to unify.
+            data = yaml.safeLoad(body, { json: true });
+        }
+        /* @if SLIM === true */
+        else {
+            // in slim mode, try JSON parsing first if YAML module not available
+            try {
+                data = JSON.parse(body);
+            }
+            catch (e) {
+                // if JSON parsing failed, load YAML module and try again
+                data = null;
+                yaml = await importModule(TANGRAM_PATH + 'tangram.yaml.mjs').then(m => m.default);
+                if (yaml != null) {
+                    return parseResource(body);
+                }
+            }
+        }
+        /* @endif */
+
     } catch (e) {
         throw e;
     }
@@ -221,9 +268,9 @@ function parseResource (body) {
 function loadResource (source) {
     return new Promise((resolve, reject) => {
         if (typeof source === 'string') {
-            Utils.io(source).then((body) => {
+            Utils.io(source).then(async (body) => {
                 try {
-                    let data = parseResource(body);
+                    let data = await parseResource(body);
                     resolve(data);
                 }
                 catch(e) {
