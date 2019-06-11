@@ -31,7 +31,7 @@ StyleParser.wrapFunction = function (func) {
         var $source = context.source;
         var $geometry = context.geometry;
         var $meters_per_pixel = context.meters_per_pixel;
-        var $id = context.feature.id;
+        var $id = context.id;
 
         var val = (function(){ ${func} }());
 
@@ -91,6 +91,7 @@ StyleParser.macros = {
 StyleParser.getFeatureParseContext = function (feature, tile, global) {
     return {
         feature,
+        id: feature.id,
         tile,
         global,
         zoom: tile.style_z,
