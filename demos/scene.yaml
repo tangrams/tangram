@@ -674,7 +674,6 @@ layers:
                         priority: 1
                         font:
                             family: Helvetica
-                            size: 12px
                             fill: [0, 0, 0, .8]
                             stroke: { color: white, width: 4 }
                             transform: uppercase
