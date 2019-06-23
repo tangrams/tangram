@@ -519,7 +519,7 @@ var _iterDefine = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORC
       // Set @@toStringTag to native iterators
       _setToStringTag(IteratorPrototype, TAG, true);
       // fix for some old engines
-      if (!_library && typeof IteratorPrototype[ITERATOR] != 'function') _hide(IteratorPrototype, ITERATOR, returnThis);
+      if (typeof IteratorPrototype[ITERATOR] != 'function') _hide(IteratorPrototype, ITERATOR, returnThis);
     }
   }
   // fix Array#{values, @@iterator}.name in V8 / FF
@@ -528,7 +528,7 @@ var _iterDefine = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORC
     $default = function values() { return $native.call(this); };
   }
   // Define iterator
-  if ((!_library || FORCED) && (BUGGY || VALUES_BUG || !proto[ITERATOR])) {
+  if (BUGGY || VALUES_BUG || !proto[ITERATOR]) {
     _hide(proto, ITERATOR, $default);
   }
   // Plug for library
@@ -1477,6 +1477,8 @@ var SAFE_CLOSING = false;
 try {
   var riter = [7][ITERATOR$4]();
   riter['return'] = function () { SAFE_CLOSING = true; };
+  // eslint-disable-next-line no-throw-literal
+  Array.from(riter, function () { throw 2; });
 } catch (e) { /* empty */ }
 
 var _iterDetect = function (exec, skipClosing) {
@@ -1717,10 +1719,10 @@ _export(_export.S + _export.F * !USE_NATIVE, PROMISE, {
     return capability.promise;
   }
 });
-_export(_export.S + _export.F * (_library || !USE_NATIVE), PROMISE, {
+_export(_export.S + _export.F * (!USE_NATIVE), PROMISE, {
   // 25.4.4.6 Promise.resolve(x)
   resolve: function resolve(x) {
-    return _promiseResolve(_library && this === Wrapper ? $Promise : this, x);
+    return _promiseResolve(this, x);
   }
 });
 _export(_export.S + _export.F * !(USE_NATIVE && _iterDetect(function (iter) {
@@ -1912,7 +1914,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.18.2";
+var version = "0.19.0";
 
 var version$1 = 'v' + version;
 
@@ -1933,7 +1935,7 @@ var LAST_INDEX$1 = 'lastIndex';
 var MAX_UINT32 = 0xffffffff;
 
 // babel-minify transpiles RegExp('x', 'y') -> /x/y and it causes SyntaxError
-var SUPPORTS_Y = !_fails(function () { });
+var SUPPORTS_Y = !_fails(function () { RegExp(MAX_UINT32, 'y'); });
 
 // @@split logic
 _fixReWks('split', 2, function (defined, SPLIT, $split, maybeCallNative) {
@@ -4482,7 +4484,19 @@ function () {
 
       image.onload = function () {
         try {
-          _this2.setElement(image, options);
+          // For data URL images, first draw the image to a separate canvas element. Workaround for
+          // obscure bug seen with small (<28px) SVG images encoded as data URLs in Chrome and Safari.
+          if (_this2.url.slice(0, 5) === 'data:') {
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+
+            _this2.setElement(canvas, options);
+          } else {
+            _this2.setElement(image, options);
+          }
         } catch (e) {
           _this2.loaded = false;
           log('warn', "Texture '" + _this2.name + "': failed to load url: '" + _this2.url + "'", e, options);
@@ -6044,7 +6058,7 @@ var VertexArrayObject = {
       log('warn', 'Vertex Array Object extension force disabled');
     }
   },
-  getExtension: function getExtension$$1(gl, ext_name) {
+  getExtension: function getExtension$1(gl, ext_name) {
     if (this.disabled !== true) {
       return getExtension(gl, ext_name);
     }
@@ -6941,7 +6955,7 @@ Object.assign(StyleParser, {
 // - $meters_per_pixel: conversion for meters/pixels at current map zoom
 
 StyleParser.wrapFunction = function (func) {
-  var f = "\n        var feature = context.feature.properties;\n        var global = context.global;\n        var $zoom = context.zoom;\n        var $layer = context.layer;\n        var $source = context.source;\n        var $geometry = context.geometry;\n        var $meters_per_pixel = context.meters_per_pixel;\n\n        var val = (function(){ " + func + " }());\n\n        if (typeof val === 'number' && isNaN(val)) {\n            val = null; // convert NaNs to nulls\n        }\n\n        return val;\n    ";
+  var f = "\n        var feature = context.feature.properties;\n        var global = context.global;\n        var $zoom = context.zoom;\n        var $layer = context.layer;\n        var $source = context.source;\n        var $geometry = context.geometry;\n        var $meters_per_pixel = context.meters_per_pixel;\n        var $id = context.id;\n\n        var val = (function(){ " + func + " }());\n\n        if (typeof val === 'number' && isNaN(val)) {\n            val = null; // convert NaNs to nulls\n        }\n\n        return val;\n    ";
   return f;
 }; // Style parsing
 
@@ -6985,6 +6999,7 @@ StyleParser.macros = {
 StyleParser.getFeatureParseContext = function (feature, tile, global) {
   return {
     feature: feature,
+    id: feature.id,
     tile: tile,
     global: global,
     zoom: tile.style_z,
@@ -10593,7 +10608,7 @@ var Style = {
           }
         }, $Try_3_Catch);
       } catch (e) {
-        $Try_3_Catch(e);
+        $Try_3_Catch();
       }
     }.bind(this));
   },
@@ -12160,7 +12175,7 @@ Object.assign(Polygons, {
 
     return this.vertex_template;
   },
-  buildPolygons: function buildPolygons$$1(polygons, style, context) {
+  buildPolygons: function buildPolygons$1(polygons, style, context) {
     var mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
     var vertex_data = mesh.vertex_data;
     var vertex_layout = vertex_data.vertex_layout;
@@ -14133,8 +14148,65 @@ function () {
 }(); // Current set of repeat groups, grouped and keyed by tile
 RepeatGroup.groups = {};
 
+var CollisionGrid =
+/*#__PURE__*/
+function () {
+  function CollisionGrid(anchor, span) {
+    this.anchor = anchor;
+    this.span = span;
+    this.cells = {};
+  }
+
+  var _proto = CollisionGrid.prototype;
+
+  _proto.addLabel = function addLabel(label) {
+    var _this = this;
+
+    if (label.aabb) {
+      this.addLabelBboxes(label, label.aabb);
+    }
+
+    if (label.aabbs) {
+      label.aabbs.forEach(function (aabb) {
+        return _this.addLabelBboxes(label, aabb);
+      });
+    }
+  };
+
+  _proto.addLabelBboxes = function addLabelBboxes(label, aabb) {
+    // min/max cells that the label falls into
+    // keep grid coordinates at zero or above so any labels that go "below" the anchor are in the lowest grid cell
+    var cell_bounds = [Math.max(Math.floor((aabb[0] - this.anchor.x) / this.span), 0), Math.max(Math.floor(-(aabb[1] - this.anchor.y) / this.span), 0), Math.max(Math.floor((aabb[2] - this.anchor.x) / this.span), 0), Math.max(Math.floor(-(aabb[3] - this.anchor.y) / this.span), 0)];
+    label.cells = []; // label knows which cells it falls in
+    // initialize each grid cell as necessary, and add to label's list of cells
+
+    for (var gy = cell_bounds[1]; gy <= cell_bounds[3]; gy++) {
+      this.cells[gy] = this.cells[gy] || {};
+
+      for (var gx = cell_bounds[0]; gx <= cell_bounds[2]; gx++) {
+        this.cells[gy][gx] = this.cells[gy][gx] || {
+          aabb: [],
+          obb: []
+        };
+        label.cells.push(this.cells[gy][gx]);
+      }
+    }
+  };
+
+  return CollisionGrid;
+}();
+
 var Collision = {
   tiles: {},
+  grid: null,
+  // no collision grid by default
+  initGrid: function initGrid(options) {
+    if (options == null) {
+      this.grid = null;
+    } else {
+      this.grid = new CollisionGrid(options.anchor, options.span);
+    }
+  },
   startTile: function startTile(tile, _temp) {
     var _ref = _temp === void 0 ? {} : _temp,
         _ref$apply_repeat_gro = _ref.apply_repeat_groups,
@@ -14218,6 +14290,10 @@ var Collision = {
     var state = this.tiles[tile];
     var labels = state.labels;
 
+    if (this.grid) {
+      this.addLabelsToGrid(tile);
+    }
+
     if (state.repeat) {
       RepeatGroup.clear(tile);
     } // Process labels by priority, then by style
@@ -14252,7 +14328,7 @@ var Collision = {
             } // If object is dependent on a parent, only show if both can be placed
             else if (this.canBePlaced(object.linked, tile, object, state)) {
                 object.show = true; // If a label is breach, its linked label should be considered breach as well
-                // (this keeps linked labels from staying (in)visible in tandem)
+                // (this keeps linked labels (in)visible in tandem)
 
                 if (object.label.breach || object.linked.label.breach) {
                   object.label.breach = true;
@@ -14283,6 +14359,29 @@ var Collision = {
     delete this.tiles[tile];
     state.resolve();
   },
+  addLabelsToGrid: function addLabelsToGrid(tile_id) {
+    var _this = this;
+
+    // Process labels by priority, then by style
+    var tile = this.tiles[tile_id];
+
+    for (var priority in tile.objects) {
+      var style_objects = tile.objects[priority];
+
+      if (!style_objects) {
+        // no labels at this priority, skip to next
+        continue;
+      } // For each style
+
+
+      for (var style in style_objects) {
+        var objects = style_objects[style];
+        objects.forEach(function (object) {
+          return _this.grid.addLabel(object.label);
+        });
+      }
+    }
+  },
   // Run collision and repeat check to see if label can currently be placed
   canBePlaced: function canBePlaced(object, tile, exclude, _temp2) {
     if (exclude === void 0) {
@@ -14298,12 +14397,27 @@ var Collision = {
 
     if (label.placed != null) {
       return label.placed;
-    } // Test the label for intersections with other labels in the tile
+    }
 
+    var placeable = !layout.collide;
 
-    var bboxes = this.tiles[tile].bboxes;
+    if (!placeable) {
+      // Test the label for intersections with other labels
+      if (this.grid && label.cells) {
+        // test label candidate against labels placed in each grid cell
+        placeable = label.cells.reduce(function (keep, cell) {
+          if (keep && label.discard(cell, exclude && exclude.label)) {
+            keep = false;
+          }
 
-    if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
+          return keep;
+        }, true);
+      } else {
+        placeable = !label.discard(this.tiles[tile].bboxes, exclude && exclude.label);
+      }
+    }
+
+    if (placeable) {
       // repeat culling with nearby labels
       if (repeat && RepeatGroup.check(label, layout, tile)) {
         label.placed = false;
@@ -14333,7 +14447,13 @@ var Collision = {
       RepeatGroup.add(label, label.layout, tile);
     }
 
-    Label.add(label, this.tiles[tile].bboxes);
+    if (this.grid && label.cells) {
+      label.cells.forEach(function (cell) {
+        return Label.add(label, cell);
+      });
+    } else {
+      Label.add(label, this.tiles[tile].bboxes);
+    }
   }
 };
 
@@ -14828,7 +14948,7 @@ var FontManager = {
             }
           }, $Try_1_Catch);
         } catch (e) {
-          $Try_1_Catch(e);
+          $Try_1_Catch();
         }
       }
 
@@ -16101,7 +16221,7 @@ var TextLabels = {
           }
         }.bind(this), $Try_1_Catch);
       } catch (e) {
-        $Try_1_Catch(e);
+        $Try_1_Catch();
       }
     }.bind(this));
   },
@@ -16152,6 +16272,14 @@ var TextLabels = {
                   }
                 }
               }); // second call to main thread, for rasterizing the set of texts
+
+              var $Try_2_Post = function () {
+                try {
+                  return $return();
+                } catch ($boundEx) {
+                  return $error($boundEx);
+                }
+              };
 
               var $Try_2_Catch = function (e) {
                 try {
@@ -16279,14 +16407,31 @@ var TextLabels = {
       return (Array.isArray(v) ? v : [v, v]).map(StyleParser.parsePositiveNumber);
     }); // Repeat rules - for text labels, defaults to tile size
 
-    draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance != null ? draw.repeat_distance : Geo$1.tile_size, StyleParser.parsePositiveNumber);
+    draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, StyleParser.parsePositiveNumber);
     return draw;
   },
   // Additional text-specific layout settings
   computeTextLayout: function computeTextLayout(target, feature, draw, context, tile, text, text_settings, repeat_group_prefix, orientation) {
     var layout = target || {}; // common settings w/points
 
-    layout = this.computeLayout(layout, feature, draw, context, tile); // repeat rules include the text
+    layout = this.computeLayout(layout, feature, draw, context, tile); // if draw group didn't specify repeat distance, override with text label-specific logic
+
+    if (draw.repeat_distance == null) {
+      // defaults: no limit on labels for point geometries,  tile size (256px) limit for other geometries
+      layout.repeat_distance = context.geometry === 'point' ? 0 : Geo$1.tile_size;
+
+      if (layout.repeat_distance) {
+        layout.repeat_distance *= layout.units_per_pixel;
+        layout.repeat_scale = 1; // initial repeat pass in tile with full scale
+
+        if (typeof draw.repeat_group === 'function') {
+          layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
+        } else {
+          layout.repeat_group = draw.repeat_group; // pre-computed repeat group
+        }
+      }
+    } // repeat rules include the text
+
 
     if (layout.repeat_distance) {
       if (repeat_group_prefix) {
@@ -20035,8 +20180,28 @@ function maybeQuote(value) {
 
 function lookUp(key) {
   if (key[0] === '$') {
+    // keys prefixed with $ are special properties in the context object (not feature properties)
     return 'context[\'' + key.substring(1) + '\']';
-  }
+  } else if (key.indexOf('.') > -1) {
+    if (key.indexOf('\\.') === -1) {
+      // no escaped dot notation
+      // un-escaped dot notation indicates a nested feature property
+      return "context.feature.properties" + key.split('.').map(function (k) {
+        return '[\'' + k + '\']';
+      }).join('');
+    } else {
+      // mixed escaped/unescaped dot notation
+      // escaped dot notation will be interpreted as a single-level feature property with dots in the name
+      // this splits on unescaped dots, which requires a temporary swap of escaped and unescaped dots
+      var keys = key.replace(/\\\./g, '__TANGRAM_DELIMITER__').split('.').map(function (s) {
+        return s.replace(/__TANGRAM_DELIMITER__/g, '.');
+      });
+      return "context.feature.properties" + keys.map(function (k) {
+        return '[\'' + k + '\']';
+      }).join('');
+    }
+  } // single-level feature property
+
 
   return 'context.feature.properties[\'' + key + '\']';
 }
@@ -20086,18 +20251,39 @@ function propertyMatchesBoolean(key, value) {
   return wrap(lookUp(key) + (value ? ' != ' : ' == ') + 'null');
 }
 
-function rangeMatch(key, values, options) {
+function rangeMatch(key, value, options) {
   var expressions = [];
   var transform = options && typeof options.rangeTransform === 'function' && options.rangeTransform;
 
-  if (values.max) {
-    var max = transform ? transform(values.max) : values.max;
+  if (value.max) {
+    var max = transform ? transform(value.max) : value.max;
     expressions.push('' + lookUp(key) + ' < ' + max);
   }
 
-  if (values.min) {
-    var min = transform ? min = transform(values.min) : values.min;
+  if (value.min) {
+    var min = transform ? min = transform(value.min) : value.min;
     expressions.push('' + lookUp(key) + ' >= ' + min);
+  }
+
+  return wrap(expressions.join(' && '));
+}
+
+function includesMatch(key, value) {
+  var expressions = []; // the array includes ONE OE MORE of the provided values (a single value is converted to an array)
+
+  if (value.includes_any) {
+    var vals = Array.isArray(value.includes_any) ? value.includes_any : [value.includes_any];
+    var arr = '[' + vals.map(maybeQuote).join(',') + ']';
+    expressions.push(lookUp(key) + " != null && " + arr + ".some(function(v) { return " + lookUp(key) + ".indexOf(v) > -1 })");
+  } // the array includes ALL of the provided values (a single value is converted to an array)
+
+
+  if (value.includes_all) {
+    var _vals = Array.isArray(value.includes_all) ? value.includes_all : [value.includes_all];
+
+    var _arr = '[' + _vals.map(maybeQuote).join(',') + ']';
+
+    expressions.push(lookUp(key) + " != null && " + _arr + ".every(function(v) { return " + lookUp(key) + ".indexOf(v) > -1 })");
   }
 
   return wrap(expressions.join(' && '));
@@ -20141,9 +20327,11 @@ function parseFilter(filter, options) {
     } else if (type === 'object' && value != null) {
       if (value.max || value.min) {
         filterAST.push(rangeMatch(key, value, options));
+      } else if (value.includes_any || value.includes_all) {
+        filterAST.push(includesMatch(key, value));
       }
     } else if (value == null) {
-      filterAST.push(nullValue(key, value));
+      filterAST.push(nullValue());
     } else {
       throw new Error('Unknown Query syntax: ' + value);
     }
@@ -20301,7 +20489,7 @@ function () {
     this.calculatedDraw = calculateDraw(this);
   };
 
-  _proto.buildFilter = function buildFilter$$1() {
+  _proto.buildFilter = function buildFilter$1() {
     this.filter_original = this.filter;
     this.filter = compileFunctionStrings(this.filter, StyleParser.wrapFunction);
     var type = typeof this.filter;
@@ -20383,14 +20571,17 @@ function () {
           _this.context_prop_matches = _this.context_prop_matches || [];
 
           _this.context_prop_matches.push([key.substring(1), array ? val : [val]]);
-        } else {
-          // Feature property
+
+          delete _this.filter[key];
+        } else if (key.indexOf('.') === -1) {
+          // exclude nested feature properties
+          // Single-level feature property
           _this.feature_prop_matches = _this.feature_prop_matches || [];
 
           _this.feature_prop_matches.push([key, array ? val : [val]]);
-        }
 
-        delete _this.filter[key];
+          delete _this.filter[key];
+        }
       }
     });
   };
@@ -20745,7 +20936,7 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
   return matched;
 }
 
-var id$2 = 0; // unique tile id
+var id$1 = 0; // unique tile id
 
 var build_id = 0; // id tracking order in which tiles were build
 
@@ -20765,7 +20956,7 @@ function () {
         source = _ref.source,
         workers = _ref.workers,
         view = _ref.view;
-    this.id = id$2++;
+    this.id = id$1++;
     this.view = view;
     this.source = source;
     this.generation = null;
@@ -21171,38 +21362,57 @@ function () {
   */
   ;
 
-  Tile.getDataForSource = function getDataForSource(source_data, source_config, scene_layer) {
+  Tile.getDataForSource = function getDataForSource(source_data, source_config, scene_layer_name) {
     var layers = [];
 
     if (source_config != null && source_data != null && source_data.layers != null) {
-      // If no layer specified, and a default source layer exists
-      if (!source_config.layer && source_data.layers._default) {
-        layers.push({
-          geom: source_data.layers._default
-        });
-      } // If no layer specified, and a layer for the scene layer name exists
-      else if (!source_config.layer && scene_layer) {
-          layers.push({
-            layer: scene_layer,
-            geom: source_data.layers[scene_layer]
-          });
-        } // If a layer is specified by name, use it
-        else if (typeof source_config.layer === 'string') {
+      // If source wildcard is specified, combine all source layers
+      if (source_config.all_layers === true) {
+        // Wildcard takes precedence over explicit source layer(s)
+        if (source_config.layer != null) {
+          var msg = "Layer " + scene_layer_name + " includes both 'all_layers: true' and an explicit " + '\'layer\' keyword in its \'data\' block. \'all_layers: true\' takes precedence, \'layer\' ' + 'will be ignored.';
+          log({
+            level: 'warn',
+            once: true
+          }, msg);
+        }
+
+        for (var layer in source_data.layers) {
+          if (source_data.layers[layer].features) {
             layers.push({
-              layer: source_config.layer,
-              geom: source_data.layers[source_config.layer]
+              layer: layer,
+              geom: source_data.layers[layer]
             });
-          } // If multiple layers are specified by name, combine them
-          else if (Array.isArray(source_config.layer)) {
-              source_config.layer.forEach(function (layer) {
-                if (source_data.layers[layer] && source_data.layers[layer].features) {
-                  layers.push({
-                    layer: layer,
-                    geom: source_data.layers[layer]
-                  });
-                }
+          }
+        }
+      } // If no source layer specified, and a default data source layer exists
+      else if (!source_config.layer && source_data.layers._default) {
+          layers.push({
+            geom: source_data.layers._default
+          });
+        } // If no source layer is specified, and a layer for the scene layer name exists
+        else if (!source_config.layer && scene_layer_name) {
+            layers.push({
+              layer: scene_layer_name,
+              geom: source_data.layers[scene_layer_name]
+            });
+          } // If a source layer is specified by name, use it
+          else if (typeof source_config.layer === 'string') {
+              layers.push({
+                layer: source_config.layer,
+                geom: source_data.layers[source_config.layer]
               });
-            }
+            } // If multiple source layers are specified by name, combine them
+            else if (Array.isArray(source_config.layer)) {
+                source_config.layer.forEach(function (layer) {
+                  if (source_data.layers[layer] && source_data.layers[layer].features) {
+                    layers.push({
+                      layer: layer,
+                      geom: source_data.layers[layer]
+                    });
+                  }
+                });
+              }
     }
 
     return layers;
@@ -22823,6 +23033,13 @@ function readTile(tag, layers, pbf) {
 var VectorTile$1 = vectortile;
 var VectorTileFeature$1 = vectortilefeature;
 
+var PARSE_JSON_TYPE = {
+  NONE: 0,
+  ALL: 1,
+  SOME: 2
+};
+var PARSE_JSON_TEST = ['{', '[']; // one-time allocated array/strings
+
 /**
  Mapbox Vector Tile format
  @class MVTSource
@@ -22838,6 +23055,27 @@ function (_NetworkTileSource) {
 
     _this = _NetworkTileSource.call(this, source, sources) || this;
     _this.response_type = 'arraybuffer'; // binary data
+    // Optionally parse some or all properties from JSON strings
+
+    if (source.parse_json === true) {
+      // try to parse all properties (least efficient)
+      _this.parse_json_type = PARSE_JSON_TYPE.ALL;
+    } else if (Array.isArray(source.parse_json)) {
+      // try to parse a specific list of property names (more efficient)
+      _this.parse_json_type = PARSE_JSON_TYPE.SOME;
+      _this.parse_json_prop_list = source.parse_json;
+    } else {
+      if (source.parse_json != null) {
+        var msg = "Data source '" + _this.name + "': 'parse_json' parameter should be 'true', or an array of " + ("property names (was '" + JSON.stringify(source.parse_json) + "')");
+        log({
+          level: 'warn',
+          once: true
+        }, msg);
+      } // skip parsing entirely (default behavior)
+
+
+      _this.parse_json_type = PARSE_JSON_TYPE.NONE;
+    }
 
     return _this;
   }
@@ -22881,8 +23119,10 @@ function (_NetworkTileSource) {
         var feature_geojson = {
           type: 'Feature',
           geometry: {},
+          id: feature.id,
           properties: feature.properties
         };
+        this.parseJSONProperties(feature_geojson);
         var geometry = feature_geojson.geometry;
         var coordinates = feature.loadGeometry();
 
@@ -22917,6 +23157,33 @@ function (_NetworkTileSource) {
     }
 
     return layers;
+  } // Optionally parse some or all feature properties from JSON strings
+  ;
+
+  _proto.parseJSONProperties = function parseJSONProperties(feature) {
+    if (this.parse_json_type !== PARSE_JSON_TYPE.NONE) {
+      var props = feature.properties; // if specified, check list of explicit properties to parse
+
+      if (this.parse_json_type === PARSE_JSON_TYPE.SOME) {
+        this.parse_json_prop_list.forEach(function (p) {
+          try {
+            props[p] = JSON.parse(props[p]);
+          } catch (e) {// continue with original value if couldn't parse as JSON
+          }
+        });
+      } // otherwise try to parse all properties
+      else {
+          for (var p in props) {
+            // check if this property looks like JSON, and parse if so
+            if (PARSE_JSON_TEST.indexOf(props[p][0]) > -1) {
+              try {
+                props[p] = JSON.parse(props[p]);
+              } catch (e) {// continue with original value if couldn't parse as JSON
+              }
+            }
+          }
+        }
+    }
   };
 
   return MVTSource;
@@ -23881,6 +24148,7 @@ function (_NetworkSource) {
         var f = {
           type: 'Feature',
           geometry: {},
+          id: feature.id,
           properties: feature.tags
         };
 
@@ -23969,7 +24237,7 @@ function (_NetworkSource) {
 
         if (feature.geometry.type === 'Polygon') {
           coordinates = feature.geometry.coordinates;
-          centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
+          centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.id, feature.properties, centroid_properties);
           features_centroid.push(centroid_feature);
         } else if (feature.geometry.type === 'MultiPolygon') {
           // Add centroid feature for largest polygon
@@ -23986,7 +24254,7 @@ function (_NetworkSource) {
             }
           }
 
-          centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
+          centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.id, feature.properties, centroid_properties);
           features_centroid.push(centroid_feature);
         }
       }); // append centroid features to features array
@@ -24073,7 +24341,7 @@ DataSource.register('GeoJSON', function (source) {
   return GeoJSONTileSource.urlHasTilePattern(source.url) ? GeoJSONTileSource : GeoJSONSource;
 }); // Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
 
-function getCentroidFeatureForPolygon(coordinates, properties, newProperties) {
+function getCentroidFeatureForPolygon(coordinates, id, properties, newProperties) {
   var centroid = Geo$1.centroid(coordinates);
 
   if (!centroid) {
@@ -24085,6 +24353,7 @@ function getCentroidFeatureForPolygon(coordinates, properties, newProperties) {
   Object.assign(centroid_properties, properties, newProperties);
   return {
     type: 'Feature',
+    id: id,
     properties: centroid_properties,
     geometry: {
       type: 'Point',
@@ -24286,94 +24555,94 @@ DataSource.register('TopoJSON', function (source) {
 
 // add all data source types
 
-exports.require$$0 = _wks;
-exports.require$$1 = _core;
-exports.global = _global;
-exports.require$$1$1 = _objectDp;
-exports.getKeys = _objectKeys;
-exports.gOPS = _objectGops;
-exports.require$$0$1 = _objectPie;
-exports.toIObject = _toIobject;
-exports.require$$0$2 = _objectGopn;
-exports.require$$0$3 = _meta;
-exports.require$$0$4 = _shared;
-exports.DESCRIPTORS = _descriptors;
-exports.fails = _fails;
-exports.require$$22 = _objectCreate;
-exports.uid = _uid;
-exports.redefine = _redefine;
-exports.LIBRARY = _library;
 exports.$export = _export;
-exports.require$$17 = _has;
-exports.isObject = _isObject;
-exports.isArray = _isArray;
-exports.hide = _hide;
-exports.setToStringTag = _setToStringTag;
-exports.require$$1$2 = _objectGopd;
-exports.anObject = _anObject;
-exports.require$$16 = _toPrimitive;
-exports.require$$9 = _propertyDesc;
-exports.createCommonjsModule = createCommonjsModule;
-exports.commonjsRequire = commonjsRequire;
-exports.Utils = Utils;
-exports.isRelativeURL = isRelativeURL;
-exports.addBaseURL = addBaseURL;
-exports.pathForURL = pathForURL;
-exports.extensionForURL = extensionForURL;
-exports._inheritsLoose = _inheritsLoose;
-exports.flattenRelativeURL = flattenRelativeURL;
-exports.createObjectURL = createObjectURL;
-exports.isLocalURL = isLocalURL;
-exports.subscribeMixin = subscribeMixin;
-exports.log = log;
-exports.mergeObjects = mergeObjects;
-exports.isReserved = isReserved;
-exports.GLSL = GLSL;
-exports.TileID = TileID;
 exports.Collision = Collision;
-exports.Geo = Geo$1;
-exports.LabelPoint = LabelPoint;
-exports.LabelLineStraight = LabelLineStraight;
-exports.OBB = OBB;
-exports.Label = Label;
-exports.WorkerBroker = WorkerBroker$1;
-exports.Task = Task;
-exports.Tile = Tile;
-exports._createClass = _createClass;
-exports.require$$0$5 = _typedArray;
-exports.StyleParser = StyleParser;
-exports.Texture = Texture;
-exports.debugSettings = debugSettings$1;
-exports.debugSumLayerStats = debugSumLayerStats;
-exports.ShaderProgram = ShaderProgram;
-exports.VertexArrayObject = VertexArrayObject;
-exports.TextCanvas = TextCanvas;
 exports.DataSource = DataSource;
-exports.Light = Light;
-exports.FontManager = FontManager;
 exports.FeatureSelection = FeatureSelection;
-exports.View = View;
-exports.StyleManager = StyleManager;
-exports.Style = Style;
-exports.sliceObject = sliceObject;
-exports.Thread = Thread;
-exports.mergeDebugSettings = mergeDebugSettings;
-exports.version = version$1;
-exports.Vector = Vector$1;
-exports.VertexData = VertexData;
-exports.Material = Material;
-exports.VertexElements = VertexElements;
-exports.compileFunctionStrings = compileFunctionStrings;
-exports.parseLayers = parseLayers;
-exports.buildFilter = buildFilter;
 exports.FilterOptions = FilterOptions;
-exports.layerCache = layerCache;
+exports.FontManager = FontManager;
+exports.GLSL = GLSL;
+exports.Geo = Geo$1;
+exports.Label = Label;
+exports.LabelLineStraight = LabelLineStraight;
+exports.LabelPoint = LabelPoint;
+exports.Light = Light;
+exports.Material = Material;
+exports.OBB = OBB;
+exports.ShaderProgram = ShaderProgram;
+exports.Style = Style;
+exports.StyleManager = StyleManager;
+exports.StyleParser = StyleParser;
+exports.Task = Task;
+exports.TextCanvas = TextCanvas;
+exports.Texture = Texture;
+exports.Thread = Thread;
+exports.Tile = Tile;
+exports.TileID = TileID;
+exports.Utils = Utils;
+exports.Vector = Vector$1;
+exports.VertexArrayObject = VertexArrayObject;
+exports.VertexData = VertexData;
+exports.VertexElements = VertexElements;
+exports.View = View;
+exports.WorkerBroker = WorkerBroker$1;
+exports._createClass = _createClass;
+exports._inheritsLoose = _inheritsLoose;
+exports.addBaseURL = addBaseURL;
+exports.anObject = _anObject;
+exports.buildFilter = buildFilter;
 exports.cache = cache;
 exports.clearFunctionStringCache = clearFunctionStringCache;
+exports.commonjsRequire = commonjsRequire;
+exports.compileFunctionStrings = compileFunctionStrings;
+exports.core = _core;
+exports.createCommonjsModule = createCommonjsModule;
+exports.createObjectURL = createObjectURL;
+exports.debugSettings = debugSettings$1;
+exports.debugSumLayerStats = debugSumLayerStats;
+exports.extensionForURL = extensionForURL;
+exports.flattenRelativeURL = flattenRelativeURL;
+exports.getKeys = _objectKeys;
+exports.global = _global;
+exports.has = _has;
+exports.isArray = _isArray;
+exports.isLocalURL = isLocalURL;
+exports.isObject = _isObject;
+exports.isRelativeURL = isRelativeURL;
+exports.isReserved = isReserved;
+exports.layerCache = layerCache;
+exports.log = log;
+exports.mergeDebugSettings = mergeDebugSettings;
+exports.mergeObjects = mergeObjects;
+exports.parseLayers = parseLayers;
+exports.pathForURL = pathForURL;
+exports.require$$0 = _objectPie;
+exports.require$$0$1 = _objectGopn;
+exports.require$$0$2 = _meta;
+exports.require$$0$3 = _fails;
+exports.require$$0$4 = _typedArray;
+exports.require$$1 = _library;
+exports.require$$1$1 = _objectGopd;
+exports.require$$10 = _hide;
+exports.require$$2 = _objectDp;
+exports.require$$26 = _uid;
+exports.require$$27 = _wks;
+exports.require$$3 = _objectGops;
+exports.require$$4 = _objectCreate;
+exports.require$$5 = _descriptors;
+exports.require$$6 = _redefine;
+exports.require$$9 = _propertyDesc;
+exports.setToStringTag = _setToStringTag;
+exports.shared = _shared;
+exports.sliceObject = sliceObject;
+exports.subscribeMixin = subscribeMixin;
+exports.toIObject = _toIobject;
+exports.toPrimitive = _toPrimitive;
+exports.version = version$1;
 
 });
 
-define(['./shared.js'], function (__chunk_1) { 'use strict';
+define(['./shared'], function (__chunk_1) { 'use strict';
 
 var SceneWorker = Object.assign(self, {
   FeatureSelection: __chunk_1.FeatureSelection,
@@ -24626,6 +24895,13 @@ var SceneWorker = Object.assign(self, {
     tiles.forEach(function (tile) {
       var _loop = function _loop(layer) {
         var data = tile.source_data.layers[layer];
+
+        if (data == null) {
+          return {
+            v: void 0
+          };
+        }
+
         data.features.forEach(function (feature) {
           // Optionally check if feature is visible (e.g. was rendered for current generation)
           var feature_visible = feature.generation === _this4.generation;
@@ -24640,6 +24916,8 @@ var SceneWorker = Object.assign(self, {
 
           context.layer = layer; // add data source layer name
 
+          context.id = feature.id; // add feature id
+
           if (!filter(context)) {
             return;
           } // Info to return with each feature
@@ -24647,6 +24925,7 @@ var SceneWorker = Object.assign(self, {
 
           var subset = {
             type: feature.type,
+            id: feature.id,
             properties: Object.assign({}, feature.properties, {
               $source: context.source,
               $layer: context.layer,
@@ -24666,7 +24945,9 @@ var SceneWorker = Object.assign(self, {
       };
 
       for (var layer in tile.source_data.layers) {
-        _loop(layer);
+        var _ret = _loop(layer);
+
+        if (typeof _ret === "object") return _ret.v;
       }
     });
     return features;
@@ -24735,17 +25016,17 @@ __chunk_1.WorkerBroker.addTarget('self', SceneWorker);
 
 });
 
-define(['./shared.js'], function (__chunk_1) { 'use strict';
+define(['./shared'], function (__chunk_1) { 'use strict';
 
-var f = __chunk_1.require$$0;
+var f = __chunk_1.require$$27;
 
 var _wksExt = {
 	f: f
 };
 
-var defineProperty = __chunk_1.require$$1$1.f;
+var defineProperty = __chunk_1.require$$2.f;
 var _wksDefine = function (name) {
-  var $Symbol = __chunk_1.require$$1.Symbol || (__chunk_1.require$$1.Symbol = __chunk_1.global.Symbol || {});
+  var $Symbol = __chunk_1.core.Symbol || (__chunk_1.core.Symbol = __chunk_1.global.Symbol || {});
   if (name.charAt(0) != '_' && !(name in $Symbol)) defineProperty($Symbol, name, { value: _wksExt.f(name) });
 };
 
@@ -24757,10 +25038,10 @@ _wksDefine('asyncIterator');
 
 var _enumKeys = function (it) {
   var result = __chunk_1.getKeys(it);
-  var getSymbols = __chunk_1.gOPS.f;
+  var getSymbols = __chunk_1.require$$3.f;
   if (getSymbols) {
     var symbols = getSymbols(it);
-    var isEnum = __chunk_1.require$$0$1.f;
+    var isEnum = __chunk_1.require$$0.f;
     var i = 0;
     var key;
     while (symbols.length > i) if (isEnum.call(it, key = symbols[i++])) result.push(key);
@@ -24769,7 +25050,7 @@ var _enumKeys = function (it) {
 
 // fallback for IE11 buggy Object.getOwnPropertyNames with iframe and window
 
-var gOPN = __chunk_1.require$$0$2.f;
+var gOPN = __chunk_1.require$$0$1.f;
 var toString = {}.toString;
 
 var windowNames = typeof window == 'object' && window && Object.getOwnPropertyNames
@@ -24797,7 +25078,7 @@ var _objectGopnExt = {
 
 
 
-var META = __chunk_1.require$$0$3.KEY;
+var META = __chunk_1.require$$0$2.KEY;
 
 
 
@@ -24817,19 +25098,19 @@ var META = __chunk_1.require$$0$3.KEY;
 
 
 
-var gOPD = __chunk_1.require$$1$2.f;
-var dP = __chunk_1.require$$1$1.f;
+var gOPD = __chunk_1.require$$1$1.f;
+var dP = __chunk_1.require$$2.f;
 var gOPN$1 = _objectGopnExt.f;
 var $Symbol = __chunk_1.global.Symbol;
 var $JSON = __chunk_1.global.JSON;
 var _stringify = $JSON && $JSON.stringify;
 var PROTOTYPE = 'prototype';
-var HIDDEN = __chunk_1.require$$0('_hidden');
-var TO_PRIMITIVE = __chunk_1.require$$0('toPrimitive');
+var HIDDEN = __chunk_1.require$$27('_hidden');
+var TO_PRIMITIVE = __chunk_1.require$$27('toPrimitive');
 var isEnum = {}.propertyIsEnumerable;
-var SymbolRegistry = __chunk_1.require$$0$4('symbol-registry');
-var AllSymbols = __chunk_1.require$$0$4('symbols');
-var OPSymbols = __chunk_1.require$$0$4('op-symbols');
+var SymbolRegistry = __chunk_1.shared('symbol-registry');
+var AllSymbols = __chunk_1.shared('symbols');
+var OPSymbols = __chunk_1.shared('op-symbols');
 var ObjectProto = Object[PROTOTYPE];
 var USE_NATIVE = typeof $Symbol == 'function';
 var QObject = __chunk_1.global.QObject;
@@ -24837,8 +25118,8 @@ var QObject = __chunk_1.global.QObject;
 var setter = !QObject || !QObject[PROTOTYPE] || !QObject[PROTOTYPE].findChild;
 
 // fallback for old Android, https://code.google.com/p/v8/issues/detail?id=687
-var setSymbolDesc = __chunk_1.DESCRIPTORS && __chunk_1.fails(function () {
-  return __chunk_1.require$$22(dP({}, 'a', {
+var setSymbolDesc = __chunk_1.require$$5 && __chunk_1.require$$0$3(function () {
+  return __chunk_1.require$$4(dP({}, 'a', {
     get: function () { return dP(this, 'a', { value: 7 }).a; }
   })).a != 7;
 }) ? function (it, key, D) {
@@ -24849,7 +25130,7 @@ var setSymbolDesc = __chunk_1.DESCRIPTORS && __chunk_1.fails(function () {
 } : dP;
 
 var wrap = function (tag) {
-  var sym = AllSymbols[tag] = __chunk_1.require$$22($Symbol[PROTOTYPE]);
+  var sym = AllSymbols[tag] = __chunk_1.require$$4($Symbol[PROTOTYPE]);
   sym._k = tag;
   return sym;
 };
@@ -24863,15 +25144,15 @@ var isSymbol = USE_NATIVE && typeof $Symbol.iterator == 'symbol' ? function (it)
 var $defineProperty = function defineProperty(it, key, D) {
   if (it === ObjectProto) $defineProperty(OPSymbols, key, D);
   __chunk_1.anObject(it);
-  key = __chunk_1.require$$16(key, true);
+  key = __chunk_1.toPrimitive(key, true);
   __chunk_1.anObject(D);
-  if (__chunk_1.require$$17(AllSymbols, key)) {
+  if (__chunk_1.has(AllSymbols, key)) {
     if (!D.enumerable) {
-      if (!__chunk_1.require$$17(it, HIDDEN)) dP(it, HIDDEN, __chunk_1.require$$9(1, {}));
+      if (!__chunk_1.has(it, HIDDEN)) dP(it, HIDDEN, __chunk_1.require$$9(1, {}));
       it[HIDDEN][key] = true;
     } else {
-      if (__chunk_1.require$$17(it, HIDDEN) && it[HIDDEN][key]) it[HIDDEN][key] = false;
-      D = __chunk_1.require$$22(D, { enumerable: __chunk_1.require$$9(0, false) });
+      if (__chunk_1.has(it, HIDDEN) && it[HIDDEN][key]) it[HIDDEN][key] = false;
+      D = __chunk_1.require$$4(D, { enumerable: __chunk_1.require$$9(0, false) });
     } return setSymbolDesc(it, key, D);
   } return dP(it, key, D);
 };
@@ -24885,19 +25166,19 @@ var $defineProperties = function defineProperties(it, P) {
   return it;
 };
 var $create = function create(it, P) {
-  return P === undefined ? __chunk_1.require$$22(it) : $defineProperties(__chunk_1.require$$22(it), P);
+  return P === undefined ? __chunk_1.require$$4(it) : $defineProperties(__chunk_1.require$$4(it), P);
 };
 var $propertyIsEnumerable = function propertyIsEnumerable(key) {
-  var E = isEnum.call(this, key = __chunk_1.require$$16(key, true));
-  if (this === ObjectProto && __chunk_1.require$$17(AllSymbols, key) && !__chunk_1.require$$17(OPSymbols, key)) return false;
-  return E || !__chunk_1.require$$17(this, key) || !__chunk_1.require$$17(AllSymbols, key) || __chunk_1.require$$17(this, HIDDEN) && this[HIDDEN][key] ? E : true;
+  var E = isEnum.call(this, key = __chunk_1.toPrimitive(key, true));
+  if (this === ObjectProto && __chunk_1.has(AllSymbols, key) && !__chunk_1.has(OPSymbols, key)) return false;
+  return E || !__chunk_1.has(this, key) || !__chunk_1.has(AllSymbols, key) || __chunk_1.has(this, HIDDEN) && this[HIDDEN][key] ? E : true;
 };
 var $getOwnPropertyDescriptor = function getOwnPropertyDescriptor(it, key) {
   it = __chunk_1.toIObject(it);
-  key = __chunk_1.require$$16(key, true);
-  if (it === ObjectProto && __chunk_1.require$$17(AllSymbols, key) && !__chunk_1.require$$17(OPSymbols, key)) return;
+  key = __chunk_1.toPrimitive(key, true);
+  if (it === ObjectProto && __chunk_1.has(AllSymbols, key) && !__chunk_1.has(OPSymbols, key)) return;
   var D = gOPD(it, key);
-  if (D && __chunk_1.require$$17(AllSymbols, key) && !(__chunk_1.require$$17(it, HIDDEN) && it[HIDDEN][key])) D.enumerable = true;
+  if (D && __chunk_1.has(AllSymbols, key) && !(__chunk_1.has(it, HIDDEN) && it[HIDDEN][key])) D.enumerable = true;
   return D;
 };
 var $getOwnPropertyNames = function getOwnPropertyNames(it) {
@@ -24906,7 +25187,7 @@ var $getOwnPropertyNames = function getOwnPropertyNames(it) {
   var i = 0;
   var key;
   while (names.length > i) {
-    if (!__chunk_1.require$$17(AllSymbols, key = names[i++]) && key != HIDDEN && key != META) result.push(key);
+    if (!__chunk_1.has(AllSymbols, key = names[i++]) && key != HIDDEN && key != META) result.push(key);
   } return result;
 };
 var $getOwnPropertySymbols = function getOwnPropertySymbols(it) {
@@ -24916,7 +25197,7 @@ var $getOwnPropertySymbols = function getOwnPropertySymbols(it) {
   var i = 0;
   var key;
   while (names.length > i) {
-    if (__chunk_1.require$$17(AllSymbols, key = names[i++]) && (IS_OP ? __chunk_1.require$$17(ObjectProto, key) : true)) result.push(AllSymbols[key]);
+    if (__chunk_1.has(AllSymbols, key = names[i++]) && (IS_OP ? __chunk_1.has(ObjectProto, key) : true)) result.push(AllSymbols[key]);
   } return result;
 };
 
@@ -24924,31 +25205,31 @@ var $getOwnPropertySymbols = function getOwnPropertySymbols(it) {
 if (!USE_NATIVE) {
   $Symbol = function Symbol() {
     if (this instanceof $Symbol) throw TypeError('Symbol is not a constructor!');
-    var tag = __chunk_1.uid(arguments.length > 0 ? arguments[0] : undefined);
+    var tag = __chunk_1.require$$26(arguments.length > 0 ? arguments[0] : undefined);
     var $set = function (value) {
       if (this === ObjectProto) $set.call(OPSymbols, value);
-      if (__chunk_1.require$$17(this, HIDDEN) && __chunk_1.require$$17(this[HIDDEN], tag)) this[HIDDEN][tag] = false;
+      if (__chunk_1.has(this, HIDDEN) && __chunk_1.has(this[HIDDEN], tag)) this[HIDDEN][tag] = false;
       setSymbolDesc(this, tag, __chunk_1.require$$9(1, value));
     };
-    if (__chunk_1.DESCRIPTORS && setter) setSymbolDesc(ObjectProto, tag, { configurable: true, set: $set });
+    if (__chunk_1.require$$5 && setter) setSymbolDesc(ObjectProto, tag, { configurable: true, set: $set });
     return wrap(tag);
   };
-  __chunk_1.redefine($Symbol[PROTOTYPE], 'toString', function toString() {
+  __chunk_1.require$$6($Symbol[PROTOTYPE], 'toString', function toString() {
     return this._k;
   });
 
-  __chunk_1.require$$1$2.f = $getOwnPropertyDescriptor;
-  __chunk_1.require$$1$1.f = $defineProperty;
-  __chunk_1.require$$0$2.f = _objectGopnExt.f = $getOwnPropertyNames;
-  __chunk_1.require$$0$1.f = $propertyIsEnumerable;
-  __chunk_1.gOPS.f = $getOwnPropertySymbols;
+  __chunk_1.require$$1$1.f = $getOwnPropertyDescriptor;
+  __chunk_1.require$$2.f = $defineProperty;
+  __chunk_1.require$$0$1.f = _objectGopnExt.f = $getOwnPropertyNames;
+  __chunk_1.require$$0.f = $propertyIsEnumerable;
+  __chunk_1.require$$3.f = $getOwnPropertySymbols;
 
-  if (__chunk_1.DESCRIPTORS && !__chunk_1.LIBRARY) {
-    __chunk_1.redefine(ObjectProto, 'propertyIsEnumerable', $propertyIsEnumerable, true);
+  if (__chunk_1.require$$5 && !__chunk_1.require$$1) {
+    __chunk_1.require$$6(ObjectProto, 'propertyIsEnumerable', $propertyIsEnumerable, true);
   }
 
   _wksExt.f = function (name) {
-    return wrap(__chunk_1.require$$0(name));
+    return wrap(__chunk_1.require$$27(name));
   };
 }
 
@@ -24957,14 +25238,14 @@ __chunk_1.$export(__chunk_1.$export.G + __chunk_1.$export.W + __chunk_1.$export.
 for (var es6Symbols = (
   // 19.4.2.2, 19.4.2.3, 19.4.2.4, 19.4.2.6, 19.4.2.8, 19.4.2.9, 19.4.2.10, 19.4.2.11, 19.4.2.12, 19.4.2.13, 19.4.2.14
   'hasInstance,isConcatSpreadable,iterator,match,replace,search,species,split,toPrimitive,toStringTag,unscopables'
-).split(','), j = 0; es6Symbols.length > j;)__chunk_1.require$$0(es6Symbols[j++]);
+).split(','), j = 0; es6Symbols.length > j;)__chunk_1.require$$27(es6Symbols[j++]);
 
-for (var wellKnownSymbols = __chunk_1.getKeys(__chunk_1.require$$0.store), k = 0; wellKnownSymbols.length > k;) _wksDefine(wellKnownSymbols[k++]);
+for (var wellKnownSymbols = __chunk_1.getKeys(__chunk_1.require$$27.store), k = 0; wellKnownSymbols.length > k;) _wksDefine(wellKnownSymbols[k++]);
 
 __chunk_1.$export(__chunk_1.$export.S + __chunk_1.$export.F * !USE_NATIVE, 'Symbol', {
   // 19.4.2.1 Symbol.for(key)
   'for': function (key) {
-    return __chunk_1.require$$17(SymbolRegistry, key += '')
+    return __chunk_1.has(SymbolRegistry, key += '')
       ? SymbolRegistry[key]
       : SymbolRegistry[key] = $Symbol(key);
   },
@@ -24993,7 +25274,7 @@ __chunk_1.$export(__chunk_1.$export.S + __chunk_1.$export.F * !USE_NATIVE, 'Obje
 });
 
 // 24.3.2 JSON.stringify(value [, replacer [, space]])
-$JSON && __chunk_1.$export(__chunk_1.$export.S + __chunk_1.$export.F * (!USE_NATIVE || __chunk_1.fails(function () {
+$JSON && __chunk_1.$export(__chunk_1.$export.S + __chunk_1.$export.F * (!USE_NATIVE || __chunk_1.require$$0$3(function () {
   var S = $Symbol();
   // MS Edge converts symbol values to JSON as {}
   // WebKit converts symbol values to JSON as null
@@ -25017,7 +25298,7 @@ $JSON && __chunk_1.$export(__chunk_1.$export.S + __chunk_1.$export.F * (!USE_NAT
 });
 
 // 19.4.3.4 Symbol.prototype[@@toPrimitive](hint)
-$Symbol[PROTOTYPE][TO_PRIMITIVE] || __chunk_1.hide($Symbol[PROTOTYPE], TO_PRIMITIVE, $Symbol[PROTOTYPE].valueOf);
+$Symbol[PROTOTYPE][TO_PRIMITIVE] || __chunk_1.require$$10($Symbol[PROTOTYPE], TO_PRIMITIVE, $Symbol[PROTOTYPE].valueOf);
 // 19.4.3.5 Symbol.prototype[@@toStringTag]
 __chunk_1.setToStringTag($Symbol, 'Symbol');
 // 20.2.1.9 Math[@@toStringTag]
@@ -25042,8 +25323,13 @@ Context.getContext = function getContext(canvas, options) {
     canvas.style.zIndex = -1;
     document.body.appendChild(canvas);
     fullscreen = true;
-  }
+  } // powerPreference context option spec requires listeners for context loss/restore,
+  // though it's not clear these are required in practice.
+  // https://www.khronos.org/registry/webgl/specs/latest/1.0/#5.2.1
 
+
+  canvas.addEventListener('webglcontextlost', function () {});
+  canvas.addEventListener('webglcontextrestored', function () {});
   var gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
 
   if (!gl) {
@@ -25978,7 +26264,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
     }
   }
 
-  function read$$1 (buf, i) {
+  function read (buf, i) {
     if (indexSize === 1) {
       return buf[i]
     } else {
@@ -25990,7 +26276,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
   if (dir) {
     var foundIndex = -1;
     for (i = byteOffset; i < arrLength; i++) {
-      if (read$$1(arr, i) === read$$1(val, foundIndex === -1 ? 0 : i - foundIndex)) {
+      if (read(arr, i) === read(val, foundIndex === -1 ? 0 : i - foundIndex)) {
         if (foundIndex === -1) foundIndex = i;
         if (i - foundIndex + 1 === valLength) return foundIndex * indexSize
       } else {
@@ -26003,7 +26289,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
     for (i = byteOffset; i >= 0; i--) {
       var found = true;
       for (var j = 0; j < valLength; j++) {
-        if (read$$1(arr, i + j) !== read$$1(val, j)) {
+        if (read(arr, i + j) !== read(val, j)) {
           found = false;
           break
         }
@@ -26074,7 +26360,7 @@ function ucs2Write (buf, string, offset, length) {
   return blitBuffer(utf16leToBytes(string, buf.length - offset), buf, offset, length)
 }
 
-Buffer.prototype.write = function write$$1 (string, offset, length, encoding) {
+Buffer.prototype.write = function write (string, offset, length, encoding) {
   // Buffer#write(string)
   if (offset === undefined) {
     encoding = 'utf8';
@@ -26743,7 +27029,7 @@ function checkIEEE754 (buf, value, offset, ext, max, min) {
 
 function writeFloat (buf, value, offset, littleEndian, noAssert) {
   if (!noAssert) {
-    checkIEEE754(buf, value, offset, 4, 3.4028234663852886e+38, -3.4028234663852886e+38);
+    checkIEEE754(buf, value, offset, 4);
   }
   write(buf, value, offset, littleEndian, 23, 4);
   return offset + 4
@@ -26759,7 +27045,7 @@ Buffer.prototype.writeFloatBE = function writeFloatBE (value, offset, noAssert) 
 
 function writeDouble (buf, value, offset, littleEndian, noAssert) {
   if (!noAssert) {
-    checkIEEE754(buf, value, offset, 8, 1.7976931348623157E+308, -1.7976931348623157E+308);
+    checkIEEE754(buf, value, offset, 8);
   }
   write(buf, value, offset, littleEndian, 52, 8);
   return offset + 8
@@ -27688,19 +27974,19 @@ function chdir (dir) {
 }function umask() { return 0; }
 
 // from https://github.com/kumavis/browser-process-hrtime/blob/master/index.js
-var performance$1 = global$1.performance || {};
+var performance = global$1.performance || {};
 var performanceNow =
-  performance$1.now        ||
-  performance$1.mozNow     ||
-  performance$1.msNow      ||
-  performance$1.oNow       ||
-  performance$1.webkitNow  ||
+  performance.now        ||
+  performance.mozNow     ||
+  performance.msNow      ||
+  performance.oNow       ||
+  performance.webkitNow  ||
   function(){ return (new Date()).getTime() };
 
 // generate timestamp or delta
 // see http://nodejs.org/api/process.html#process_process_hrtime
 function hrtime(previousTimestamp){
-  var clocktime = performanceNow.call(performance$1)*1e-3;
+  var clocktime = performanceNow.call(performance)*1e-3;
   var seconds = Math.floor(clocktime);
   var nanoseconds = Math.floor((clocktime%1)*1e9);
   if (previousTimestamp) {
@@ -27872,7 +28158,7 @@ var debugs = {};
 var debugEnviron;
 exports.debuglog = function(set) {
   if (isUndefined(debugEnviron))
-    debugEnviron = process.env.NODE_DEBUG || '';
+    debugEnviron = '';
   set = set.toUpperCase();
   if (!debugs[set]) {
     if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
@@ -29397,7 +29683,7 @@ Readable.prototype.on = function (ev, fn) {
       if (!state.reading) {
         nextTick(nReadingNextTick, this);
       } else if (state.length) {
-        emitReadable(this, state);
+        emitReadable(this);
       }
     }
   }
@@ -40043,7 +40329,7 @@ var generateZipParts = function(streamInfo, streamedContent, streamingEnded, off
         extFileAttr |= generateUnixExternalFileAttr(file.unixPermissions, dir);
     } else { // DOS or other, fallback to DOS
         versionMadeBy = 0x0014; // DOS, version 2.0
-        extFileAttr |= generateDosExternalFileAttr(file.dosPermissions, dir);
+        extFileAttr |= generateDosExternalFileAttr(file.dosPermissions);
     }
 
     // date
@@ -41511,8 +41797,8 @@ ZipEntries.prototype = {
     checkSignature: function(expectedSignature) {
         if (!this.reader.readAndCheckSignature(expectedSignature)) {
             this.reader.index -= 4;
-            var signature$$1 = this.reader.readString(4);
-            throw new Error("Corrupted zip or bug: unexpected signature " + "(" + utils.pretty(signature$$1) + ", expected " + utils.pretty(expectedSignature) + ")");
+            var signature = this.reader.readString(4);
+            throw new Error("Corrupted zip or bug: unexpected signature " + "(" + utils.pretty(signature) + ", expected " + utils.pretty(expectedSignature) + ")");
         }
     },
     /**
@@ -41524,8 +41810,8 @@ ZipEntries.prototype = {
     isSignature: function(askedIndex, expectedSignature) {
         var currentIndex = this.reader.index;
         this.reader.setIndex(askedIndex);
-        var signature$$1 = this.reader.readString(4);
-        var result = signature$$1 === expectedSignature;
+        var signature = this.reader.readString(4);
+        var result = signature === expectedSignature;
         this.reader.setIndex(currentIndex);
         return result;
     },
@@ -41779,12 +42065,12 @@ var load = function(data, options) {
 
     return utils.prepareContent("the loaded zip file", data, true, options.optimizedBinaryString, options.base64)
     .then(function(data) {
-        var zipEntries$$1 = new zipEntries(options);
-        zipEntries$$1.load(data);
-        return zipEntries$$1;
-    }).then(function checkCRC32(zipEntries$$1) {
-        var promises = [external.Promise.resolve(zipEntries$$1)];
-        var files = zipEntries$$1.files;
+        var zipEntries$1 = new zipEntries(options);
+        zipEntries$1.load(data);
+        return zipEntries$1;
+    }).then(function checkCRC32(zipEntries) {
+        var promises = [external.Promise.resolve(zipEntries)];
+        var files = zipEntries.files;
         if (options.checkCRC32) {
             for (var i = 0; i < files.length; i++) {
                 promises.push(checkEntryCRC32(files[i]));
@@ -41792,8 +42078,8 @@ var load = function(data, options) {
         }
         return external.Promise.all(promises);
     }).then(function addFiles(results) {
-        var zipEntries$$1 = results.shift();
-        var files = zipEntries$$1.files;
+        var zipEntries = results.shift();
+        var files = zipEntries.files;
         for (var i = 0; i < files.length; i++) {
             var input = files[i];
             zip.file(input.fileNameStr, input.decompressed, {
@@ -41807,8 +42093,8 @@ var load = function(data, options) {
                 createFolders: options.createFolders
             });
         }
-        if (zipEntries$$1.zipComment.length) {
-            zip.comment = zipEntries$$1.zipComment;
+        if (zipEntries.zipComment.length) {
+            zip.comment = zipEntries.zipComment;
         }
 
         return zip;
@@ -42127,7 +42413,7 @@ function compileList(schema, name, result) {
     result.push(currentType);
   });
 
-  return result.filter(function (type$$1, index) {
+  return result.filter(function (type, index) {
     return exclude.indexOf(index) === -1;
   });
 }
@@ -42136,8 +42422,8 @@ function compileList(schema, name, result) {
 function compileMap(/* lists... */) {
   var result = {}, index, length;
 
-  function collectType(type$$1) {
-    result[type$$1.tag] = type$$1;
+  function collectType(type) {
+    result[type.tag] = type;
   }
 
   for (index = 0, length = arguments.length; index < length; index += 1) {
@@ -42153,8 +42439,8 @@ function Schema(definition) {
   this.implicit = definition.implicit || [];
   this.explicit = definition.explicit || [];
 
-  this.implicit.forEach(function (type$$1) {
-    if (type$$1.loadKind && type$$1.loadKind !== 'scalar') {
+  this.implicit.forEach(function (type) {
+    if (type.loadKind && type.loadKind !== 'scalar') {
       throw new exception('There is a non-scalar type in the implicit list of a schema. Implicit resolving of such types is not supported.');
     }
   });
@@ -42193,7 +42479,7 @@ Schema.create = function createSchema() {
     throw new exception('Specified list of super schemas (or a single Schema object) contains a non-Schema object.');
   }
 
-  if (!types.every(function (type$$1) { return type$$1 instanceof type; })) {
+  if (!types.every(function (type$1) { return type$1 instanceof type; })) {
     throw new exception('Specified list of YAML types (or a single Type object) contains a non-Type object.');
   }
 
@@ -45506,6 +45792,26 @@ var SceneLoader$1 = SceneLoader = {
       config.lights.default_light = {
         type: 'directional'
       };
+    } // Add default blend/base style pairs as needed
+
+
+    var blends = ['opaque', 'add', 'multiply', 'overlay', 'inlay', 'translucent'];
+    var bases = ['polygons', 'lines', 'points', 'text'];
+
+    for (var _i = 0; _i < blends.length; _i++) {
+      var blend = blends[_i];
+
+      for (var _i2 = 0; _i2 < bases.length; _i2++) {
+        var base = bases[_i2];
+        var style = blend + '_' + base;
+
+        if (config.styles[style] == null) {
+          config.styles[style] = {
+            base: base,
+            blend: blend
+          };
+        }
+      }
     }
 
     return {
@@ -45666,7 +45972,7 @@ var prev_visible = {}; // previously visible labels (in last collision run)
 
 function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
   return new Promise(function ($return, $error) {
-    var containers, labels, meshes;
+    var containers, max_tile_label_count, grid_divs, labels, meshes;
 
     if (hide_breach === void 0) {
       hide_breach = false;
@@ -45685,7 +45991,34 @@ function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
       apply_repeat_groups: true,
       return_hidden: true
     });
-    __chunk_1.Collision.addStyle('main', 'main');
+    __chunk_1.Collision.addStyle('main', 'main'); // Adaptive collision grid, using a heuristic based on the tile with the most labels
+
+    max_tile_label_count = Math.max.apply(Math, [0].concat(Object.values(tiles).flatMap(function (t) {
+      return Object.values(t.meshes);
+    }).map(function (m) {
+      return m[0].labels && Object.keys(m[0].labels).length;
+    }).filter(function (x) {
+      return x;
+    })));
+    grid_divs = Math.floor(max_tile_label_count / __chunk_1.Geo.tile_size);
+
+    // heuristic of label density to tile size
+    if (grid_divs > 0) {
+      __chunk_1.Collision.initGrid({
+        anchor: {
+          x: Math.min.apply(Math, tiles.map(function (t) {
+            return t.min.x;
+          })),
+          y: Math.min.apply(Math, tiles.map(function (t) {
+            return t.min.y;
+          }))
+        },
+        span: tiles[0].span.x / grid_divs
+      });
+    } else {
+      __chunk_1.Collision.initGrid();
+    }
+
     return Promise.resolve(__chunk_1.Collision.collide(containers, 'main', 'main')).then(function ($await_1) {
       try {
         labels = $await_1;
@@ -45785,12 +46118,8 @@ function buildLabels(tiles, view_zoom) {
 
             var params = mesh.labels[label_id].container.label;
             var linked = mesh.labels[label_id].container.linked;
-            var ranges = mesh.labels[label_id].ranges;
-            var debug = Object.assign({}, mesh.labels[label_id].debug, {
-              tile: tile,
-              params: params,
-              label_id: label_id
-            });
+            var ranges = mesh.labels[label_id].ranges; // const debug = Object.assign({}, mesh.labels[label_id].debug, { tile, params, label_id });
+
             var label = labels[label_id] = {};
             label.discard = discard.bind(label);
             label.build_id = tile.build_id; // original order in which tiles were built
@@ -45838,8 +46167,8 @@ function buildLabels(tiles, view_zoom) {
               label: label,
               linked: linked,
               ranges: ranges,
-              mesh: mesh,
-              debug: debug
+              mesh: mesh // debug
+
             };
           }
         }
@@ -46497,7 +46826,7 @@ var RenderStateManager = function RenderStateManager(gl) {
   });
 };
 
-__chunk_1.require$$0$5('Uint8', 1, function (init) {
+__chunk_1.require$$0$4('Uint8', 1, function (init) {
   return function Uint8ClampedArray(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
@@ -47116,7 +47445,8 @@ function () {
         alpha: true,
         premultipliedAlpha: true,
         stencil: true,
-        device_pixel_ratio: __chunk_1.Utils.device_pixel_ratio
+        device_pixel_ratio: __chunk_1.Utils.device_pixel_ratio,
+        powerPreference: 'high-performance'
       }, this.contextOptions));
     } catch (e) {
       throw new Error('Couldn\'t create WebGL context. ' + 'Your browser may not support WebGL, or it\'s turned off? ' + 'Visit http://webglreport.com/ for more info.');
@@ -47845,7 +48175,7 @@ function () {
 
   _proto.queryFeatures = function queryFeatures(_temp4) {
     return new Promise(function ($return, $error) {
-      var _ref10, filter, _ref10$unique, unique, _ref10$group_by, group_by, _ref10$visible, visible, _ref10$geometry, geometry, uniqueify, group, tile_keys, results, features, keys, groups;
+      var _ref10, filter, _ref10$unique, unique, _ref10$group_by, group_by, _ref10$visible, visible, _ref10$geometry, geometry, uniqueify_on_id, uniqueify, group, tile_keys, results, features, keys, groups;
 
       _ref10 = _temp4 === void 0 ? {} : _temp4, filter = _ref10.filter, _ref10$unique = _ref10.unique, unique = _ref10$unique === void 0 ? true : _ref10$unique, _ref10$group_by = _ref10.group_by, group_by = _ref10$group_by === void 0 ? null : _ref10$group_by, _ref10$visible = _ref10.visible, visible = _ref10$visible === void 0 ? null : _ref10$visible, _ref10$geometry = _ref10.geometry, geometry = _ref10$geometry === void 0 ? false : _ref10$geometry;
 
@@ -47857,19 +48187,25 @@ function () {
       // Valid values: true, false/null, single property name, or array of property names
 
       unique = typeof unique === 'string' ? [unique] : unique;
+      uniqueify_on_id = unique === true || Array.isArray(unique) && unique.indexOf('$id') > -1;
 
       uniqueify = unique && function (obj) {
-        var props = Array.isArray(unique) ? __chunk_1.sliceObject(obj.properties, unique) : obj.properties;
+        var properties = Array.isArray(unique) ? __chunk_1.sliceObject(obj.properties, unique) : obj.properties;
+        var id = uniqueify_on_id ? obj.id : null;
 
         if (geometry) {
           // when `geometry` flag is set, we need to uniqueify based on *both* feature properties and geometry
           return JSON.stringify({
             geometry: obj.geometry,
-            properties: props
+            properties: properties,
+            id: id
           });
         }
 
-        return JSON.stringify(props);
+        return JSON.stringify({
+          properties: properties,
+          id: id
+        });
       };
 
       // Optional grouping criteria
@@ -49230,7 +49566,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = 'a3ab5d42418cca14cac399281ff102e2ebad4b94';
+	Tangram.debug.SHA = 'f5fd3b6250b23ac8f4a7cec0292252d37e93b7f1';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
