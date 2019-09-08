@@ -19,7 +19,7 @@
         else {
             for (var name in config.sources) {
                 var source = config.sources[name];
-                if (typeof source.url === 'string' && source.url.search('nextzen.org')) {
+                if (typeof source.url === 'string' && source.url.indexOf('nextzen.org') > -1) {
                     source.url_params = source.url_params || {};
                     source.url_params.api_key = demo_key;
                 }
