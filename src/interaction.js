@@ -1,4 +1,4 @@
-import Geo from './geo';
+import Geo from './utils/geo';
 
 export function init(scene, camera) {
   var view = scene.view;

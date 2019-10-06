@@ -92,7 +92,7 @@ float angleForLabel (vec4 position, float theta) {
     // get screenspace angle of projected line
     vec2 pd = vec2(p2.x - p1.x, p2.y - p1.y);
     theta = -atan(pd.y, pd.x);
-    theta = mod(theta, PI * 2.);
+    theta = mod(theta, TANGRAM_PI * 2.);
     return theta;
 }
 
@@ -143,11 +143,11 @@ void main() {
 
     #ifdef TANGRAM_CURVED_LABEL
         // adjust label angle for view rotation
-        // theta = mod(theta - u_view_roll, PI * 2.);
-        // if (theta > PI * .5 && theta < PI * 1.5) theta += PI; // flip to keep upright
+        // theta = mod(theta - u_view_roll, TANGRAM_PI * 2.);
+        // if (theta > TANGRAM_PI * .5 && theta < TANGRAM_PI * 1.5) theta += TANGRAM_PI; // flip to keep upright
 
-        theta = angleForLabel(position, theta);
-        theta += step(PI * .5, theta) * step(theta, PI * 1.5) * PI; // flip to keep upright
+        _theta = angleForLabel(position, _theta);
+        _theta += step(TANGRAM_PI * .5, _theta) * step(_theta, TANGRAM_PI * 1.5) * TANGRAM_PI; // flip to keep upright
 
         //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
         if (a_offsets[0] != 0.){
@@ -161,9 +161,9 @@ void main() {
             float _offset_curve = mix4linear(_offsets_scaled, _zoom);
 
             // adjust label angle for view rotation
-            // angle = mod(angle - u_view_roll, PI * 2.);
-            // if (angle > PI * .5 && angle < PI * 1.5) angle += PI; // flip to keep upright - doesn't work for curved labels
-            angle = angleForLabel(position + vec4(offset_curve, 0., 0., 0.), angle);
+            // angle = mod(angle - u_view_roll, TANGRAM_PI * 2.);
+            // if (angle > TANGRAM_PI * .5 && angle < TANGRAM_PI * 1.5) angle += TANGRAM_PI; // flip to keep upright - doesn't work for curved labels
+            _angle = angleForLabel(position + vec4(_offset_curve, 0., 0., 0.), _angle);
 
             // curved label segment
             _shape = rotate2D(_shape, _pre_angle);  // rotate in place

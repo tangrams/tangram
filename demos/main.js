@@ -8,8 +8,6 @@
     var scene_url = 'demos/scene.yaml';
 
     /*** Map ***/
-    // Create Tangram map in the element called 'map'
-    var map = Tangram.tangramLayer('map');
 
     // optionally override scene URL
     // if ('URLSearchParams' in window) {
@@ -43,7 +41,8 @@
     //     keyboard: false
     // });
 
-    this.map = Tangram.tangramLayer('map', {
+    // Create Tangram map in the element called 'map'
+    var map = Tangram.tangramLayer('map', {
         scene: scene_url
     });
 
@@ -55,9 +54,9 @@
             zoomSnap: 0,
             keyboard: false,
         };
-        this.map.center = { lat: 40.70531887544228, lng: -74.00976419448853 };
-        this.map.zoom = 16.;
-        this.map.initialize(options);
+        map.center = { lat: 40.70531887544228, lng: -74.00976419448853 };
+        map.zoom = 16.;
+        map.initialize(options);
 
         window.scene = map.scene; // set by tangramLayer
     });

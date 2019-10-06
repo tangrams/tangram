@@ -8,10 +8,10 @@
 
 
 import Thread from './utils/thread';
-import Scene from './scene';
+import Scene from './scene/scene';
 import * as interaction from './interaction';
 
-var tangramLayer;
+// var tangramLayer;
 export function tangramLayer(id, options = {}) {
   if (Thread.is_main) {
     return {
@@ -50,7 +50,7 @@ export function tangramLayer(id, options = {}) {
             throw(error);
         });
       },
-      
+
       getCenter: function() {
         return this.view.center;
       },
