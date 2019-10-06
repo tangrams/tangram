@@ -1,9 +1,9 @@
-import Geo from './geo';
-import Tile from './tile';
+import Geo from '../utils/geo';
+import {TileID} from '../tile/tile_id';
 import Camera from './camera';
-import Utils from './utils/utils';
-import subscribeMixin from './utils/subscribe';
-import log from './utils/log';
+import Utils from '../utils/utils';
+import subscribeMixin from '../utils/subscribe';
+import log from '../utils/log';
 
 export const VIEW_PAN_SNAP_TIME = 0.5;
 
@@ -205,8 +205,8 @@ export default class View {
         };
 
         // Center of viewport in meters, and tile
-        let [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
-        this.center.meters = { x, y };
+        const m = Geo.latLngToMeters([this.center.lng, this.center.lat]);
+        this.center.meters = { x: m[0], y: m[1] };
 
         this.center.tile = Geo.tileForMeters([this.center.meters.x, this.center.meters.y], this.tile_zoom);
 
@@ -250,7 +250,7 @@ export default class View {
         let coords = [];
         for (let x = range[0]; x <= range[1]; x++) {
             for (let y = range[2]; y <= range[3]; y++) {
-                coords.push(Tile.coord({ x, y, z }));
+                coords.push(TileID.coord({ x, y, z }));
             }
         }
         return coords;
@@ -263,12 +263,6 @@ export default class View {
             return;
         }
 
-        // Remove tiles that are a specified # of tiles outside of the viewport border
-        let border_tiles = [
-            Math.ceil((Math.floor(this.size.css.width / Geo.tile_size) + 2) / 2),
-            Math.ceil((Math.floor(this.size.css.height / Geo.tile_size) + 2) / 2)
-        ];
-
         this.scene.tile_manager.removeTiles(tile => {
             // Ignore visible tiles
             if (tile.visible || tile.isProxy()) {
@@ -276,26 +270,42 @@ export default class View {
             }
 
             // Remove tiles outside given zoom that are still loading
-            if (tile.loading && tile.style_zoom !== this.tile_zoom) {
+            if (tile.loading && tile.style_z !== this.tile_zoom) {
                 return true;
             }
 
             // Discard if too far from current zoom
-            let zdiff = Math.abs(tile.style_zoom - this.tile_zoom);
-            if (zdiff > this.preserve_tiles_within_zoom) {
+            const zdiff = Math.abs(tile.style_z - this.tile_zoom);
+            const preserve_tiles_within_zoom = (tile.preserve_tiles_within_zoom != null ?
+                tile.preserve_tiles_within_zoom : this.preserve_tiles_within_zoom); // optionally tile source specific
+            if (zdiff > preserve_tiles_within_zoom) {
                 return true;
             }
 
-            // Handle tiles at different zooms
-            let coords = Tile.coordinateAtZoom(tile.coords, this.tile_zoom);
+            // Discard tiles outside an area surrounding the viewport, handling tiles at different zooms
+            // Get min and max tiles for the viewport, at the scale of the tile currently being evaluated
+            const view_buffer = this.meters_per_pixel * Geo.tile_size; // buffer area to keep tiles surrounding viewport
+            const view_tile_min = TileID.coordAtZoom(
+                Geo.tileForMeters(
+                    [
+                        this.center.meters.x - this.size.meters.x/2 - view_buffer,
+                        this.center.meters.y + this.size.meters.y/2 + view_buffer
+                    ],
+                    this.tile_zoom),
+                tile.coords.z);
+            const view_tile_max = TileID.coordAtZoom(
+                Geo.tileForMeters(
+                    [
+                        this.center.meters.x + this.size.meters.x/2 + view_buffer,
+                        this.center.meters.y - this.size.meters.y/2 - view_buffer
+                    ],
+                    this.tile_zoom),
+                tile.coords.z);
 
-            // Discard tiles outside an area surrounding the viewport
-            if (Math.abs(coords.x - this.center.tile.x) - border_tiles[0] > this.buffer) {
-                log('trace', `View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
-                return true;
-            }
-            else if (Math.abs(coords.y - this.center.tile.y) - border_tiles[1] > this.buffer) {
-                log('trace', `View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
+            if (tile.coords.x < view_tile_min.x || tile.coords.x > view_tile_max.x ||
+                tile.coords.y < view_tile_min.y || tile.coords.y > view_tile_max.y) {
+                log('trace', `View: remove tile ${tile.key} (as ${tile.coords.key}) ` +
+                    `for being too far out of visible area (${view_tile_min.key}, ${view_tile_max.key})`);
                 return true;
             }
             return false;

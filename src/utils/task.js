@@ -17,6 +17,7 @@ const Task = {
         });
         task.promise = promise;
 
+        task.elapsed = 0;
         task.total_elapsed = 0;
         task.stats = { calls: 0 };
         this.queue.push(task);
@@ -24,7 +25,7 @@ const Task = {
         // Run task immediately if under total frame time
         this.start_time = this.start_time || performance.now(); // start frame timer if necessary
         this.elapsed = performance.now() - this.start_time;
-        if (this.elapsed < Task.max_time) {
+        if (this.elapsed < Task.max_time || task.immediate) {
             this.process(task);
         }
 
@@ -99,7 +100,7 @@ const Task = {
             val = task.cancel(task); // optional cancel function
         }
 
-        task.resolve(val || {}); // resolve with result of cancel function, or empty object
+        task.resolve(val);
     },
 
     shouldContinue (task) {

@@ -62,10 +62,10 @@ export default class Texture {
         }
         this.gl.deleteTexture(this.texture);
         this.texture = null;
-        delete this.data;
-        this.data = null;
-        delete Texture.textures[this.name];
-        delete Texture.texture_configs[this.name];
+        if (Texture.textures[this.name] === this) {
+            delete Texture.textures[this.name];
+            delete Texture.texture_configs[this.name];
+        }
         this.valid = false;
         log('trace', `destroying Texture ${this.name}`);
     }
@@ -133,11 +133,23 @@ export default class Texture {
 
         this.url = url; // save URL reference (will be overwritten when element is loaded below)
 
-        this.loading = new Promise((resolve, reject) => {
+        this.loading = new Promise(resolve => {
             let image = new Image();
             image.onload = () => {
                 try {
-                    this.setElement(image, options);
+                    // For data URL images, first draw the image to a separate canvas element. Workaround for
+                    // obscure bug seen with small (<28px) SVG images encoded as data URLs in Chrome and Safari.
+                    if (this.url.slice(0, 5) === 'data:') {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = image.width;
+                        canvas.height = image.height;
+                        ctx.drawImage(image, 0, 0);
+                        this.setElement(canvas, options);
+                    }
+                    else {
+                        this.setElement(image, options);
+                    }
                 }
                 catch (e) {
                     this.loaded = false;
@@ -203,7 +215,7 @@ export default class Texture {
         else {
             this.loaded = false;
             let msg = `the 'element' parameter (\`element: ${JSON.stringify(el)}\`) must be a CSS `;
-            msg += `selector string, or a <canvas>, <image> or <video> object`;
+            msg += 'selector string, or a <canvas>, <image> or <video> object';
             log('warn', `Texture '${this.name}': ${msg}`, options);
             Texture.trigger('warning', { message: `Failed to load texture because ${msg}`, texture: options });
         }
@@ -220,8 +232,6 @@ export default class Texture {
         }
 
         this.bind();
-        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
-        this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
         // Image or Canvas element
         if (source instanceof HTMLCanvasElement || source instanceof HTMLVideoElement ||
@@ -229,10 +239,17 @@ export default class Texture {
 
             this.width = source.width;
             this.height = source.height;
+            this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
+            this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
             this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
         }
         // Raw image buffer
         else {
+            // these pixel store params are deprecated for non-DOM element uploads
+            // (e.g. when creating texture from raw data)
+            // setting them to null avoids a Firefox warning
+            this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, null);
+            this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, null);
             this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
         }
 
@@ -320,6 +337,12 @@ export default class Texture {
         }
     }
 
+    // Get the tetxure size in bytes
+    byteSize() {
+        // mipmaps use 33% additional memory
+        return Math.round(this.width * this.height * 4 * (this.filtering == 'mipmap' ? 1.33 : 1));
+    }
+
 }
 
 
@@ -382,6 +405,13 @@ Texture.createFromObject = function (gl, textures) {
     if (textures) {
         for (let texname in textures) {
             let config = textures[texname];
+
+            if (config.skip_create) {
+                // explicitly skip (re-)creating this texture
+                // used for dynamic canvas textures that we *know* haven't changed
+                // (internal raster tiles, vs. user-supplied canvas where pixels may have changed)
+                continue;
+            }
 
             // If texture already exists and definition hasn't changed, no need to re-create
             // Note: to avoid flicker when other textures/scene items change
@@ -493,9 +523,11 @@ Texture.getInfo = function (name) {
 Texture.syncTexturesToWorker = function (names) {
     return WorkerBroker.postMessage('Texture.getInfo', names).
         then(textures => {
-            textures.forEach(tex => {
-                Texture.textures[tex.name] = tex;
-            });
+            if (textures) {
+                textures
+                    .filter(x => x) // remove nulls
+                    .forEach(t => Texture.textures[t.name] = t);
+            }
             return Texture.textures;
         });
 };

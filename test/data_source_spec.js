@@ -1,10 +1,11 @@
 import chai from 'chai';
 let assert = chai.assert;
-import chaiAsPromised from 'chai-as-promised';
-chai.use(chaiAsPromised);
 
-import Geo from '../src/geo';
-import sampleTile from './fixtures/sample-tile';
+import Geo from '../src/utils/geo';
+import sampleTile from './fixtures/sample-tile.json';
+import sampleGeoJSONResponse from './fixtures/sample-json-response.json';
+import sampleTopoJSONResponse from './fixtures/sample-topojson-response.json';
+
 import DataSource from '../src/sources/data_source';
 import {
     GeoJSONTileSource,
@@ -19,15 +20,15 @@ import {MVTSource} from '../src/sources/mvt';
 import Utils from '../src/utils/utils';
 
 function getMockTile() {
-    return Object.assign({}, require('./fixtures/sample-tile.json'));
+    return Object.assign({}, sampleTile);
 }
 
 function getMockJSONResponse() {
-    return JSON.stringify(Object.assign({}, require('./fixtures/sample-json-response.json')));
+    return JSON.stringify(Object.assign({}, sampleGeoJSONResponse));
 }
 
 function getMockTopoResponse() {
-    return JSON.stringify(Object.assign({}, require('./fixtures/sample-topojson-response.json')));
+    return JSON.stringify(Object.assign({}, sampleTopoJSONResponse));
 }
 
 
@@ -162,9 +163,9 @@ describe('DataSource', () => {
                     subject = undefined;
                 });
 
-                it('calls back with the tile object', () => {
+                it('calls back with the tile object', async () => {
                     assert(!mockTile.source_data.error);
-                    assert.isFulfilled(subject.load(mockTile));
+                    assert(await subject.load(mockTile));
                 });
             });
 
@@ -230,8 +231,8 @@ describe('DataSource', () => {
 
                 subject.parseSourceData(tile, source, getMockTopoResponse());
                 assert.property(source, 'layers');
-                assert.deepProperty(source, 'layers.buildings');
-                assert.deepProperty(source, 'layers.water');
+                assert.isTrue(Object.keys(source.layers.buildings).length > 0);
+                assert.isTrue(Object.keys(source.layers.water).length > 0);
             });
         });
     });

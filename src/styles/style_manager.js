@@ -1,7 +1,8 @@
 // Manage rendering styles
 import ShaderProgram from '../gl/shader_program';
 import mergeObjects from '../utils/merge';
-import Geo from '../geo';
+import Geo from '../utils/geo';
+import WorkerBroker from '../utils/worker_broker';
 import log from '../utils/log';
 
 import {Polygons} from './polygons/polygons';
@@ -10,17 +11,17 @@ import {Points} from './points/points';
 import {TextStyle} from './text/text';
 import {RasterStyle} from './raster/raster';
 
-let fs = require('fs');
-const shaderSrc_accessors = fs.readFileSync(__dirname + '/../gl/shaders/accessors.glsl', 'utf8');
-const shaderSrc_layerOrder = fs.readFileSync(__dirname + '/../gl/shaders/layer_order.glsl', 'utf8');
-const shaderSrc_selectionGlobals = fs.readFileSync(__dirname + '/../gl/shaders/selection_globals.glsl', 'utf8');
-const shaderSrc_selectionVertex = fs.readFileSync(__dirname + '/../gl/shaders/selection_vertex.glsl', 'utf8');
+import style_globals_source from './style_globals.glsl';
+import selection_globals_source from '../selection/selection_globals.glsl';
+import selection_vertex_source from '../selection/selection_vertex.glsl';
 
 export class StyleManager {
 
     constructor () {
         this.styles = {};
         this.base_styles = {};
+        this.active_styles = [];
+        this.active_blend_orders = [];
 
         // Add built-in rendering styles
         this.register(Object.create(Polygons));
@@ -35,17 +36,14 @@ export class StyleManager {
         ShaderProgram.removeBlock('global');
         ShaderProgram.removeBlock('setup');
 
-        // Model and world position accessors
-        ShaderProgram.addBlock('global', shaderSrc_accessors);
-
-        // Layer re-ordering function
-        ShaderProgram.addBlock('global', shaderSrc_layerOrder);
+        // Model and world position accessors, layer re-ordering function
+        ShaderProgram.addBlock('global', style_globals_source);
 
         // Feature selection global
-        ShaderProgram.addBlock('global', shaderSrc_selectionGlobals);
+        ShaderProgram.addBlock('global', selection_globals_source);
 
         // Feature selection vertex shader support
-        ShaderProgram.replaceBlock('setup', shaderSrc_selectionVertex);
+        ShaderProgram.replaceBlock('setup', selection_vertex_source);
 
         // Minimum value for float comparisons
         ShaderProgram.defines.TANGRAM_EPSILON = 0.00001;
@@ -64,9 +62,6 @@ export class StyleManager {
 
         // Alpha discard threshold (substitute for alpha blending)
         ShaderProgram.defines.TANGRAM_ALPHA_TEST = 0.5;
-
-        // Reset dash texture cache
-        Lines.dash_textures = {};
     }
 
     // Destroy all styles for a given GL context
@@ -93,6 +88,48 @@ export class StyleManager {
     // Remove a style
     remove (name) {
         delete this.styles[name];
+    }
+
+    getActiveStyles () {
+        return this.active_styles;
+    }
+
+    // Get list of active styles based on a set of tiles
+    updateActiveStyles (tiles) {
+        this.active_styles = Object.keys(
+            tiles.reduce((active, tile) => {
+                Object.keys(tile.meshes).forEach(s => active[s] = true);
+                return active;
+            }, {})
+        );
+        return this.active_styles;
+    }
+
+    getActiveBlendOrders () {
+        return this.active_blend_orders;
+    }
+
+    updateActiveBlendOrders (tiles) {
+        const orders = [];
+        tiles.forEach(tile => {
+            Object.entries(tile.meshes)
+                .forEach(([style, style_meshes]) => { // for each tile's set of meshes, keyed by style name
+                    style_meshes.forEach(mesh => { // for each style's list of meshes
+                        // find entry for this mesh's blend order, insert if first entry
+                        const blend_order = mesh.variant.blend_order;
+                        let oi = orders.findIndex(x => x.blend_order === blend_order);
+                        oi = oi > -1 ? oi : orders.push({ blend_order, styles: [] }) - 1;
+
+                        // add style to list for this blend order
+                        if (orders[oi].styles.indexOf(style) === -1) {
+                            orders[oi].styles.push(style);
+                        }
+                    });
+                });
+        });
+
+        // sort ascending by blend order
+        this.active_blend_orders = orders.sort((a, b) => a.blend_order - b.blend_order);
     }
 
     mix (style, styles) {
@@ -183,11 +220,12 @@ export class StyleManager {
                                 return shaders._uniforms[u];
                             }
                             // Uniform was mixed from another style, forward request there
-                            // Identify check is needed to prevent infinite recursion if a previously defined uniform
+                            // Identity check is needed to prevent infinite recursion if a previously defined uniform
                             // is set to undefined
                             else if (styles[shaders._uniform_scopes[u]].shaders.uniforms !== shaders.uniforms) {
                                 return styles[shaders._uniform_scopes[u]].shaders.uniforms[u];
                             }
+                            return undefined;
                         },
                         set: function (v) {
                             shaders._uniforms[u] = v;
@@ -301,6 +339,12 @@ export class StyleManager {
 
     // Called to create and initialize styles
     build (styles) {
+        // Un-register existing styles from cross-thread communication
+        if (this.styles) {
+            Object.values(this.styles)
+                .forEach(s => WorkerBroker.removeTarget(s.main_thread_target));
+        }
+
         // Sort styles by dependency, then build them
         let style_deps = Object.keys(styles).sort(
             (a, b) => this.inheritanceDepth(a, styles) - this.inheritanceDepth(b, styles)
@@ -337,7 +381,7 @@ export class StyleManager {
     inheritanceDepth (key, styles) {
         let parents = 0;
 
-        while(true) {
+        for (;;) {
             let style = styles[key];
             if (!style) {
                 // this is a scene def error, trying to extend a style that doesn't exist

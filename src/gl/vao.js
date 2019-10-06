@@ -25,18 +25,24 @@ export default {
         }
     },
 
+    getExtension(gl, ext_name) {
+        if (this.disabled !== true) {
+            return getExtension(gl, ext_name);
+        }
+    },
+
     create (gl, setup, teardown) {
         let vao = {};
         vao.setup = setup;
         vao.teardown = teardown;
 
-        let ext = getExtension(gl, 'OES_vertex_array_object');
+        let ext = this.getExtension(gl, 'OES_vertex_array_object');
         if (ext != null) {
             vao._vao = ext.createVertexArrayOES();
             ext.bindVertexArrayOES(vao._vao);
         }
 
-        vao.setup(true);
+        vao.setup();
 
         return vao;
     },
@@ -58,14 +64,14 @@ export default {
     },
 
     bind (gl, vao) {
-        let ext = getExtension(gl, 'OES_vertex_array_object');
+        let ext = this.getExtension(gl, 'OES_vertex_array_object');
         if (vao != null) {
             if (ext != null && vao._vao != null) {
                 ext.bindVertexArrayOES(vao._vao);
                 this.setCurrentBinding(gl, vao);
             }
             else {
-                vao.setup(false);
+                vao.setup();
             }
         }
         else {
@@ -81,7 +87,7 @@ export default {
     },
 
     destroy (gl, vao) {
-        let ext = getExtension(gl, 'OES_vertex_array_object');
+        let ext = this.getExtension(gl, 'OES_vertex_array_object');
         if (ext != null && vao != null && vao._vao != null) {
             ext.deleteVertexArrayOES(vao._vao);
             vao._vao = null;

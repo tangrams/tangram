@@ -10,12 +10,29 @@ function maybeQuote(value) {
 
 function lookUp(key) {
     if (key[0] === '$') {
+        // keys prefixed with $ are special properties in the context object (not feature properties)
         return 'context[\'' + key.substring(1) + '\']';
     }
+    else if (key.indexOf('.') > -1) {
+        if (key.indexOf('\\.') === -1) { // no escaped dot notation
+            // un-escaped dot notation indicates a nested feature property
+            return `context.feature.properties${key.split('.').map(k => '[\'' + k + '\']').join('')}`;
+        }
+        else { // mixed escaped/unescaped dot notation
+            // escaped dot notation will be interpreted as a single-level feature property with dots in the name
+            // this splits on unescaped dots, which requires a temporary swap of escaped and unescaped dots
+            let keys = key
+                .replace(/\\\./g, '__TANGRAM_DELIMITER__')
+                .split('.')
+                .map(s => s.replace(/__TANGRAM_DELIMITER__/g, '.'));
+            return `context.feature.properties${keys.map(k => '[\'' + k + '\']').join('')}`;
+        }
+    }
+    // single-level feature property
     return 'context.feature.properties[\'' + key + '\']';
 }
 
-function nullValue(key, value) {
+function nullValue(/*key, value*/) {
     return ' true ';
 }
 
@@ -24,7 +41,8 @@ function propertyEqual(key, value) {
 }
 
 function propertyOr(key, values) {
-    return wrap(values.map(function (x) { return propertyEqual(key, x); }).join(' || '));
+    const arr = '[' + values.map(maybeQuote).join(',') + ']';
+    return wrap(`${arr}.indexOf(${lookUp(key)}) > -1`);
 }
 
 function printNested(values, joiner) {
@@ -53,18 +71,38 @@ function propertyMatchesBoolean(key, value) {
     return wrap(lookUp(key) + (value ? ' != ' : ' == ')  + 'null');
 }
 
-function rangeMatch(key, values, options) {
+function rangeMatch(key, value, options) {
     var expressions = [];
     var transform = options && (typeof options.rangeTransform === 'function') && options.rangeTransform;
 
-    if (values.max) {
-        var max = transform ? transform(values.max) : values.max;
+    if (value.max) {
+        var max = transform ? transform(value.max) : value.max;
         expressions.push('' + lookUp(key) + ' < ' + max);
     }
 
-    if (values.min) {
-        var min = transform ? min = transform(values.min) : values.min;
+    if (value.min) {
+        var min = transform ? min = transform(value.min) : value.min;
         expressions.push('' + lookUp(key) + ' >= ' + min);
+    }
+
+    return wrap(expressions.join(' && '));
+}
+
+function includesMatch(key, value) {
+    let expressions = [];
+
+    // the array includes ONE OE MORE of the provided values (a single value is converted to an array)
+    if (value.includes_any) {
+        const vals = Array.isArray(value.includes_any) ? value.includes_any : [value.includes_any];
+        const arr = '['+ vals.map(maybeQuote).join(',') + ']';
+        expressions.push(`${lookUp(key)} != null && ${arr}.some(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
+    }
+
+    // the array includes ALL of the provided values (a single value is converted to an array)
+    if (value.includes_all) {
+        const vals = Array.isArray(value.includes_all) ? value.includes_all : [value.includes_all];
+        const arr = '[' + vals.map(maybeQuote).join(',') + ']';
+        expressions.push(`${lookUp(key)} != null && ${arr}.every(function(v) { return ${lookUp(key)}.indexOf(v) > -1 })`);
     }
 
     return wrap(expressions.join(' && '));
@@ -110,6 +148,9 @@ function parseFilter(filter, options) {
         } else if (type === 'object' && value != null) {
             if (value.max || value.min) {
                 filterAST.push(rangeMatch(key, value, options));
+            }
+            else if (value.includes_any || value.includes_all) {
+                filterAST.push(includesMatch(key, value, options));
             }
         } else if (value == null) {
             filterAST.push(nullValue(key, value));

@@ -1,5 +1,7 @@
 import Utils from '../utils/utils';
-import Geo from '../geo';
+import {compileFunctionString} from '../utils/functions';
+import Geo from '../utils/geo';
+import log from '../utils/log';
 
 import parseCSSColor from 'csscolorparser';
 
@@ -29,6 +31,7 @@ StyleParser.wrapFunction = function (func) {
         var $source = context.source;
         var $geometry = context.geometry;
         var $meters_per_pixel = context.meters_per_pixel;
+        var $id = context.id;
 
         var val = (function(){ ${func} }());
 
@@ -71,9 +74,9 @@ StyleParser.macros = {
     // pseudo-random color by geometry id
     'Style.color.pseudoRandomColor': function() {
         return [
-            0.7 * (parseInt(feature.id, 16) / 100 % 1),     // jshint ignore:line
-            0.7 * (parseInt(feature.id, 16) / 10000 % 1),   // jshint ignore:line
-            0.7 * (parseInt(feature.id, 16) / 1000000 % 1), // jshint ignore:line
+            0.7 * (parseInt(feature.id, 16) / 100 % 1),     // eslint-disable-line no-undef
+            0.7 * (parseInt(feature.id, 16) / 10000 % 1),   // eslint-disable-line no-undef
+            0.7 * (parseInt(feature.id, 16) / 1000000 % 1), // eslint-disable-line no-undef
             1
         ];
     },
@@ -88,9 +91,10 @@ StyleParser.macros = {
 StyleParser.getFeatureParseContext = function (feature, tile, global) {
     return {
         feature,
+        id: feature.id,
         tile,
         global,
-        zoom: tile.style_zoom,
+        zoom: tile.style_z,
         geometry: Geo.geometryType(feature.geometry.type),
         meters_per_pixel: tile.meters_per_pixel,
         meters_per_pixel_sq: tile.meters_per_pixel_sq,
@@ -146,7 +150,7 @@ StyleParser.createPropertyCache = function (obj, transform = null) {
 StyleParser.createColorPropertyCache = function (obj) {
     return StyleParser.createPropertyCache(obj, v => {
         if (v === 'Style.color.pseudoRandomColor') {
-            return Utils.stringToFunction(StyleParser.wrapFunction(StyleParser.macros['Style.color.pseudoRandomColor']));
+            return compileFunctionString(StyleParser.wrapFunction(StyleParser.macros['Style.color.pseudoRandomColor']));
         }
         else if (v === 'Style.color.randomColor') {
             return StyleParser.macros['Style.color.randomColor'];
@@ -161,8 +165,8 @@ StyleParser.createColorPropertyCache = function (obj) {
 const isPercent = v => typeof v === 'string' && v[v.length-1] === '%'; // size computed by %
 const isRatio = v => v === 'auto'; // size derived from aspect ratio of one dimension
 const isComputed = v => isPercent(v) || isRatio(v);
-const dualRatioError = `'size' can specify either width or height as derived from aspect ratio, but not both`;
-StyleParser.createPointSizePropertyCache = function (obj) {
+const dualRatioError = '\'size\' can specify either width or height as derived from aspect ratio, but not both';
+StyleParser.createPointSizePropertyCache = function (obj, texture) {
     // obj is the value to be parsed eg "64px" "100%" "auto"
     // mimics the structure of the size value (at each zoom stop if applicable),
     // stores flags indicating if each element is a %-based size or not, or derived from aspect
@@ -191,16 +195,26 @@ StyleParser.createPointSizePropertyCache = function (obj) {
             }
         }
     }
-
-    if (!has_pct) { // no percentage-based calculation, one cache for all sprites
-        if (obj === "auto") { throw `this value only allowed as half of an array, eg [16px, auto]:`; }
-        obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
+    else if (isRatio(obj)) {
+        throw 'this value only allowed as half of an array, eg [16px, auto]:';
+        // TODO: add this error check for zoom stop parsing above
     }
-    else { // per-sprite based evaluation
+
+    if (has_pct || has_ratio) {
+        // texture is required when % or ratio sizes are used
+        if (!texture) {
+            throw '% or \'auto\' keywords can only be used to specify point size when a texture is defined';
+        }
+
+        // per-sprite based evaluation
         obj = { value: obj };
         obj.has_pct = has_pct;
         obj.has_ratio = has_ratio;
         obj.sprites = {}; // cache by sprite
+    }
+    else {
+        // no % or aspect ratio sizing, one cache for texture or all sprites
+        obj = StyleParser.createPropertyCache(obj, parsePositiveNumber);
     }
 
     return obj;
@@ -212,52 +226,51 @@ StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_in
         return StyleParser.evalCachedProperty(val, context);
     }
 
-    let the_image = sprite_info ? sprite_info : texture_info;
+    if (sprite_info) {
+        // per-sprite based evaluation, cache sizes per sprite
+        if (!val.sprites[sprite_info.sprite]) {
+            val.sprites[sprite_info.sprite] = createPointSizeCacheEntry(val, sprite_info);
+        }
+        return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
+    }
+    else {
+        // texture-based evaluation
+        // apply percentage or ratio sizing to a texture
+        val.texture = val.texture || createPointSizeCacheEntry(val, texture_info);
+        return StyleParser.evalCachedProperty(val.texture, context);
+    }
+};
 
-    // this function is passed to createPropertyCache as the transform function -
-    // when val.value is an array, it is used inside a map(), which is where i is used
-    function evalValue(v, i) {
+function createPointSizeCacheEntry (val, image_info) {
+    // the cache property transform function needs access to the image in `val`
+    // so it's accessed via a closure here
+    return StyleParser.createPropertyCache(val.value, (v, i) => {
         if (Array.isArray(v)) { // 2D size
             // either width or height or both could be a %
             v = v.
                 map((c, j) => val.has_ratio[i][j] ? c : parsePositiveNumber(c)). // convert non-ratio values to px
-                map((c, j) => val.has_pct[i][j] ? the_image.css_size[j] * c / 100 : c); // apply % scaling as needed
+                map((c, j) => val.has_pct[i][j] ? image_info.css_size[j] * c / 100 : c); // apply % scaling as needed
 
             // either width or height could be a ratio
             if (val.has_ratio[i][0]) {
-                v[0] = v[1] * the_image.aspect;
+                v[0] = v[1] * image_info.aspect;
             }
             else if (val.has_ratio[i][1]) {
-                v[1] = v[0] / the_image.aspect;
+                v[1] = v[0] / image_info.aspect;
             }
         }
         else { // 1D size
             v = parsePositiveNumber(v);
             if (val.has_pct[i]) {
-                v = the_image.css_size.map(c => c * v / 100); // set size as % of image
+                v = image_info.css_size.map(c => c * v / 100); // set size as % of image
             }
             else {
                 v = [v, v]; // expand 1D size to 2D
             }
         }
         return v;
-    }
-    // texture-based evaluation
-    if (!sprite_info) {
-        // apply percentage or ratio sizing to a texture
-        let textureSizeCache = StyleParser.createPropertyCache(val.value, evalValue);
-
-        return StyleParser.evalCachedProperty(textureSizeCache, context);
-
-    } else {
-    // per-sprite based evaluation
-        // cache sizes per sprite
-        if (!val.sprites[sprite_info.sprite]) {
-            val.sprites[sprite_info.sprite] = StyleParser.createPropertyCache(val.value, evalValue);
-        }
-        return StyleParser.evalCachedProperty(val.sprites[sprite_info.sprite], context);
-    }
-};
+    });
+}
 
 // Interpolation and caching for a generic property (not a color or distance)
 // { value: original, static: val, zoom: { 1: val1, 2: val2, ... }, dynamic: function(){...} }
@@ -266,8 +279,7 @@ StyleParser.evalCachedProperty = function(val, context) {
         return;
     }
     else if (val.dynamic) { // function, compute each time (no caching)
-        let v = val.dynamic(context);
-        return v;
+        return tryEval(val.dynamic, context);
     }
     else if (val.static) { // single static value
         return val.static;
@@ -279,8 +291,7 @@ StyleParser.evalCachedProperty = function(val, context) {
         // Dynamic function-based
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            let v = val.dynamic(context);
-            return v;
+            return tryEval(val.dynamic, context);
         }
         // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
         else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
@@ -342,9 +353,11 @@ StyleParser.parseUnits = function (val) {
 // (caching the result for future use)
 // { value: original, zoom: { z: meters }, dynamic: function(){...} }
 StyleParser.evalCachedDistanceProperty = function(val, context) {
-    if (val.dynamic) {
-        let v = val.dynamic(context);
-        return v;
+    if (val == null) {
+        return;
+    }
+    else if (val.dynamic) {
+        return tryEval(val.dynamic, context);
     }
     else if (val.zoom && val.zoom[context.zoom]) {
         return val.zoom[context.zoom];
@@ -353,8 +366,7 @@ StyleParser.evalCachedDistanceProperty = function(val, context) {
         // Dynamic function-based
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            let v = val.dynamic(context);
-            return v;
+            return tryEval(val.dynamic, context);
         }
         // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
         else if (val.zoom) {
@@ -398,7 +410,7 @@ StyleParser.colorForString = function(string) {
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
 StyleParser.evalCachedColorProperty = function(val, context = {}) {
     if (val.dynamic) {
-        let v = val.dynamic(context);
+        let v = tryEval(val.dynamic, context);
 
         if (typeof v === 'string') {
             v = StyleParser.colorForString(v);
@@ -419,7 +431,7 @@ StyleParser.evalCachedColorProperty = function(val, context = {}) {
         // Dynamic function-based color
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            let v = val.dynamic(context);
+            let v = tryEval(val.dynamic, context);
 
             if (typeof v === 'string') {
                 v = StyleParser.colorForString(v);
@@ -466,7 +478,7 @@ StyleParser.evalCachedColorProperty = function(val, context = {}) {
 
 StyleParser.parseColor = function(val, context = {}) {
     if (typeof val === 'function') {
-        val = val(context);
+        val = tryEval(val, context);
     }
 
     // Parse CSS-style colors
@@ -506,7 +518,7 @@ StyleParser.parseColor = function(val, context = {}) {
 StyleParser.calculateOrder = function(order, context) {
     // Computed order
     if (typeof order === 'function') {
-        order = order(context);
+        order = tryEval(order, context);
     }
     else if (typeof order === 'string') {
         // Order tied to feature property
@@ -525,7 +537,20 @@ StyleParser.calculateOrder = function(order, context) {
 // Evaluate a function-based property, or pass-through static value
 StyleParser.evalProperty = function(prop, context) {
     if (typeof prop === 'function') {
-        return prop(context);
+        return tryEval(prop, context);
     }
     return prop;
 };
+
+// eval property function with try/catch
+function tryEval (func, context) {
+    try {
+        return func(context);
+    } catch(e) {
+        log('warn',
+            `Property function in layer '${context.layers[context.layers.length-1]}' failed with\n`,
+            `error ${e.stack}\n`,
+            `function '${func.source}'\n`,
+            context.feature, context);
+    }
+}

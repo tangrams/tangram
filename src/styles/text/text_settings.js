@@ -1,10 +1,10 @@
 import Utils from '../../utils/utils';
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
 import StyleParser from '../style_parser';
 
-var TextSettings;
+export default TextSettings;
 
-export default TextSettings = {
+const TextSettings = {
 
     // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
     key (settings) {
@@ -68,9 +68,6 @@ export default TextSettings = {
         }
 
         style.transform = draw.font.transform;
-
-        // original size (not currently used, but useful for debugging)
-        style.size = draw.font.size || this.defaults.size;
 
         // calculated pixel size
         style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity

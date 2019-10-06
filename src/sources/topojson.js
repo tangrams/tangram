@@ -15,7 +15,7 @@ export class TopoJSONSource extends GeoJSONSource {
         data = this.toGeoJSON(data);
 
         let layers = this.getLayers(data);
-        super.preprocessLayers(layers);
+        super.preprocessLayers(layers, tile);
         source.layers = layers;
     }
 
@@ -61,11 +61,6 @@ export class TopoJSONTileSource extends GeoJSONTileSource {
 
     constructor(source, sources) {
         super(source, sources);
-
-        // Replace with non-tiled source if tiled source failed to instantiate
-        if (!this.urlHasTilePattern(this.url)) {
-            return new TopoJSONSource(source);
-        }
     }
 
     parseSourceData (tile, source, response) {
@@ -76,4 +71,7 @@ export class TopoJSONTileSource extends GeoJSONTileSource {
 
 }
 
-DataSource.register(TopoJSONTileSource, 'TopoJSON');        // prefered shorter name
+// Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
+DataSource.register('TopoJSON', source => {
+    return TopoJSONTileSource.urlHasTilePattern(source.url) ? TopoJSONTileSource : TopoJSONSource;
+});

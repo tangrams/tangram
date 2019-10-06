@@ -3,47 +3,41 @@
 import './utils/polyfills';
 
 // primary public API
-import {tangramLayer} from './tangramLayer';
+import { tangramLayer } from './tangramLayer';
+import { leafletLayer } from './leaflet_layer';
 
 // The scene worker is only activated when a worker thread is instantiated, but must always be loaded
 import Scene from './scene';
-import {SceneWorker} from './scene_worker';
 
 // Additional modules are exposed for debugging
 import version from './utils/version';
 import log from './utils/log';
-import Thread from './utils/thread';
 import Utils from './utils/utils';
-import Geo from './geo';
-import Vector from './vector';
+import Geo from './utils/geo';
+import Vector from './utils/vector';
 import DataSource from './sources/data_source';
-import './sources/geojson';
-import './sources/topojson';
-import './sources/mvt';
-import './sources/raster';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
 import VertexData from './gl/vertex_data';
 import Texture from './gl/texture';
-import Material from './material';
-import Light from './light';
+import Material from './lights/material';
+import Light from './lights/light';
 import WorkerBroker from './utils/worker_broker';
-import {layerCache} from './styles/layer';
+import Task from './utils/task';
 import {StyleManager} from './styles/style_manager';
 import StyleParser from './styles/style_parser';
+import {TileID} from './tile/tile_id';
 import Collision from './labels/collision';
-import FeatureSelection from './selection';
-import CanvasText from './styles/text/canvas_text';
+import FeatureSelection from './selection/selection';
+import TextCanvas from './styles/text/text_canvas';
 import debugSettings from './utils/debug_settings';
 
 import yaml from 'js-yaml';
-import JSZip from 'jszip';
 
 // Make some modules accessible for debugging
-var debug = {
+const debug = {
     log,
     yaml,
-    Thread,
     Utils,
     Geo,
     Vector,
@@ -55,30 +49,20 @@ var debug = {
     Material,
     Light,
     Scene,
-    SceneWorker,
     WorkerBroker,
-    layerCache,
+    Task,
     StyleManager,
     StyleParser,
+    TileID,
     Collision,
     FeatureSelection,
-    CanvasText,
+    TextCanvas,
     debugSettings
 };
 
-if (Thread.is_main) {
-    Utils.requestAnimationFramePolyfill();
-
-    // Attach Promise polyfill to window
-    // Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
-    if (window.Promise === undefined) {
-        window.Promise = Promise;
-        JSZip.external.Promise = Promise;
-    }
-}
-
-module.exports = {
+export default {
     tangramLayer,
+    leafletLayer,
     debug,
     version
 };

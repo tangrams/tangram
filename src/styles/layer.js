@@ -1,11 +1,12 @@
 import StyleParser from './style_parser';
-import Utils from '../utils/utils';
+import { compileFunctionStrings } from '../utils/functions';
 import log from '../utils/log';
 import mergeObjects from '../utils/merge';
-import {buildFilter} from './filter';
+import Geo from '../utils/geo';
+import { buildFilter } from './filter';
 
 // N.B.: 'visible' is legacy compatibility for 'enabled'
-const reserved = ['filter', 'draw', 'visible', 'enabled', 'data'];
+const reserved = ['filter', 'draw', 'visible', 'enabled', 'data', 'exclusive', 'priority'];
 
 let layer_cache = {};
 export function layerCache () {
@@ -58,16 +59,8 @@ export function mergeTrees(matchingTrees, group) {
             continue;
         }
 
-        // Sort by layer name before merging, so layers are applied deterministically
-        // when multiple layers modify the same properties
-        draws.sort((a, b) => (a && a.layer_name) > (b && b.layer_name) ? 1 : -1);
-
         // Merge draw objects
         mergeObjects(draw, ...draws);
-
-        // Remove layer names, they were only used transiently to sort and calculate final layer
-        // (final merged names will not be accurate since only one tree can win)
-        delete draw.layer_name;
     }
 
     // Short-circuit if not visible
@@ -82,7 +75,7 @@ const blacklist = ['any', 'all', 'not', 'none'];
 
 class Layer {
 
-    constructor({ layer, name, parent, draw, visible, enabled, filter, styles }) {
+    constructor({ layer, name, parent, draw, visible, enabled, filter, exclusive, priority, styles }) {
         this.id = Layer.id++;
         this.config_data = layer.data;
         this.parent = parent;
@@ -90,16 +83,13 @@ class Layer {
         this.full_name = this.parent ? (this.parent.full_name + ':' + this.name) : this.name;
         this.draw = draw;
         this.filter = filter;
+        this.exclusive = (exclusive === true);
+        this.priority = (priority != null ? priority : Number.MAX_SAFE_INTEGER);
         this.styles = styles;
         this.is_built = false;
 
         enabled = (enabled === undefined) ? visible : enabled; // `visible` property is backwards compatible for `enabled`
-        if (this.parent && this.parent.visible === false) {
-            this.enabled = false; // all descendants of disabled layer are also disabled
-        }
-        else {
-            this.enabled = (enabled !== false); // layer is enabled unless explicitly set to disabled
-        }
+        this.enabled = (enabled !== false); // layer is enabled unless explicitly set to disabled
 
         // Denormalize layer name to draw groups
         if (this.draw) {
@@ -113,9 +103,6 @@ class Layer {
 
                     delete this.draw[group];
                 }
-                else {
-                    this.draw[group].layer_name = this.full_name;
-                }
             }
         }
     }
@@ -128,13 +115,13 @@ class Layer {
     }
 
     buildDraw() {
-        this.draw = Utils.stringsToFunctions(this.draw, StyleParser.wrapFunction);
+        this.draw = compileFunctionStrings(this.draw, StyleParser.wrapFunction);
         this.calculatedDraw = calculateDraw(this);
     }
 
     buildFilter() {
         this.filter_original = this.filter;
-        this.filter = Utils.stringsToFunctions(this.filter, StyleParser.wrapFunction);
+        this.filter = compileFunctionStrings(this.filter, StyleParser.wrapFunction);
 
         let type = typeof this.filter;
         if (this.filter != null && type !== 'object' && type !== 'function') {
@@ -165,9 +152,9 @@ class Layer {
 
     // Zooms often cull large swaths of the layer tree, so they get special treatment and are checked first
     buildZooms() {
-        let zoom = this.filter && this.filter.$zoom;
+        let zoom = this.filter && this.filter.$zoom; // has an explicit zoom filter
         let ztype = typeof zoom;
-        if (zoom != null && ztype !== 'function') { // don't accelerate function-based filters
+        if (zoom != null) {
             this.zooms = {};
 
             if (ztype === 'number') {
@@ -180,7 +167,7 @@ class Layer {
             }
             else if (ztype === 'object' && (zoom.min != null || zoom.max != null)) {
                 let zmin = zoom.min || 0;
-                let zmax = zoom.max || 25; // TODO: replace constant for max possible zoom
+                let zmax = zoom.max || Geo.max_style_zoom;
                 for (let z=zmin; z < zmax; z++) {
                     this.zooms[z] = true;
                 }
@@ -209,14 +196,14 @@ class Layer {
                     // Context property
                     this.context_prop_matches = this.context_prop_matches || [];
                     this.context_prop_matches.push([key.substring(1), array ? val : [val]]);
+                    delete this.filter[key];
                 }
-                else {
-                    // Feature property
+                else if (key.indexOf('.') === -1) { // exclude nested feature properties
+                    // Single-level feature property
                     this.feature_prop_matches = this.feature_prop_matches || [];
                     this.feature_prop_matches.push([key, array ? val : [val]]);
+                    delete this.filter[key];
                 }
-
-                delete this.filter[key];
             }
         });
     }
@@ -458,11 +445,35 @@ function parseLayerChildren (parent, children, styles) {
                 if (parent.parent) {
                     msg += ` under '${parent.parent.name}'`;
                 }
-                msg += ` instead?`;
+                msg += ' instead?';
             }
             log('warn', msg); // TODO: fire external event that clients to subscribe to
         }
     }
+
+    // Sort sub-layers so they are applied deterministically when multiple layers modify the same properties
+    // Sort order is: exclusive layers first, then by explicit layer priority, then by layer name
+    parent.layers.sort((a, b) => {
+        // Exclusive layers come first
+        // If an exclusive layer matches, no further sibling layers are matched
+        if (a.exclusive < b.exclusive) return 1;
+        else if (a.exclusive > b.exclusive) return -1;
+
+        // When sub-sorting exclusive layers, sort the higher priority layers first, since only one exlcusive layer
+        // can match and the first one that matches should be the highest priority.
+        // When sub-sorting non-exclusive layers, sort the lower priority layers first, since multiple layers may
+        // match, and when they are merged in order, the later layers will overwrite the earlier ones -- so we want
+        // the higher priority ones to match last so that they "win".
+        const direction = (a.exclusive ? 1 : -1);
+
+        // Sub-sort by explicit priority
+        if (a.priority > b.priority) return direction;
+        else if (a.priority < b.priority) return -direction;
+
+        // Sub-sort by layer name as last resort
+        if (a.full_name < b.full_name) return direction;
+        else if (a.full_name > b.full_name) return -direction;
+    });
 }
 
 
@@ -482,9 +493,11 @@ export function parseLayers (layers, styles) {
 
 export function matchFeature(context, layers, collected_layers, collected_layers_ids) {
     let matched = false;
-    let childMatched = false;
+    let child_matched = false;
 
-    if (layers.length === 0) { return; }
+    if (layers.length === 0) {
+        return;
+    }
 
     for (let r=0; r < layers.length; r++) {
         let current = layers[r];
@@ -494,22 +507,30 @@ export function matchFeature(context, layers, collected_layers, collected_layers
                 matched = true;
                 collected_layers.push(current);
                 collected_layers_ids.push(current.id);
+
+                if (current.exclusive) {
+                    break; // only one exclusive layer can match, stop matching further sibling layers
+                }
             }
 
         } else if (current.is_tree) {
             if (current.doesMatch(context)) {
                 matched = true;
 
-                childMatched = matchFeature(
+                child_matched = matchFeature(
                     context,
                     current.layers,
                     collected_layers,
                     collected_layers_ids
                 );
 
-                if (!childMatched) {
+                if (!child_matched) {
                     collected_layers.push(current);
                     collected_layers_ids.push(current.id);
+                }
+
+                if (current.exclusive) {
+                    break; // only one exclusive layer can match, stop matching further sibling layers
                 }
             }
         }

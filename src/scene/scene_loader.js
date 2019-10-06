@@ -1,52 +1,49 @@
-import log from './utils/log';
-import GLSL from './gl/glsl';
-import * as URLs from './utils/urls';
-import mergeObjects from './utils/merge';
-import subscribeMixin from './utils/subscribe';
+import log from '../utils/log';
+import GLSL from '../gl/glsl';
+import * as URLs from '../utils/urls';
+import mergeObjects from '../utils/merge';
+import subscribeMixin from '../utils/subscribe';
 import {createSceneBundle, isGlobal} from './scene_bundle';
-import {isReserved} from './styles/layer';
+import {isReserved} from '../styles/layer';
 
 var SceneLoader;
 
 export default SceneLoader = {
 
     // Load scenes definitions from URL & proprocess
-    loadScene(url, { path, type } = {}) {
-        if (typeof url === 'undefined') {
-            return Promise.reject(Error('No scene url found'));
-        }
+    async loadScene(url, { path, type } = {}) {
         let errors = [];
-        return this.loadSceneRecursive({ url, path, type }, null, errors).
-            then(result => this.finalize(result)).
-            then(({ config, bundle }) => {
-                if (!config) {
-                    // root scene failed to load, reject with first error
-                    return Promise.reject(errors[0]);
-                }
-                else if (errors.length > 0) {
-                    // scene loaded, but some imports had errors
-                    errors.forEach(error => {
-                        let message = `Failed to import scene: ${error.url}`;
-                        log('error', message, error);
-                        this.trigger('error', { type: 'scene_import', message, error, url: error.url });
-                    });
-                }
-                return { config, bundle };
+        const scene = await this.loadSceneRecursive({ url, path, type }, null, errors);
+        const { config, bundle } = this.finalize(scene);
+        if (!config) {
+            // root scene failed to load, reject with first error
+            throw errors[0];
+        }
+        else if (errors.length > 0) {
+            // scene loaded, but some imports had errors
+            errors.forEach(error => {
+                let message = `Failed to import scene: ${error.url}`;
+                log('error', message, error);
+                this.trigger('error', { type: 'scene_import', message, error, url: error.url });
             });
+        }
+        return { config, bundle };
     },
 
     // Loads scene files from URL, recursively loading 'import' scenes
     // Optional *initial* path only (won't be passed to recursive 'import' calls)
     // Useful for loading resources in base scene file from a separate location
     // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
-    loadSceneRecursive({ url, path, type }, parent, errors = []) {
+    async loadSceneRecursive({ url, path, type }, parent, errors = []) {
         if (!url) {
-            return Promise.resolve({});
+            return {};
         }
 
         let bundle = createSceneBundle(url, path, parent, type);
 
-        return bundle.load().then(config => {
+        try {
+            let config = await bundle.load();
+            // debugger
             if (config.import == null) {
                 this.normalize(config, bundle);
                 return { config, bundle };
@@ -64,26 +61,26 @@ export default SceneLoader = {
                 if (typeof url === 'object') {
                     url = URLs.createObjectURL(new Blob([JSON.stringify(url)]));
                 }
-
                 imports.push(bundle.resourceFor(url));
             });
             delete config.import; // don't want to merge this property
 
-            return Promise.
-                all(imports.map(resource => this.loadSceneRecursive(resource, bundle, errors))).
-                    then(results => {
-                        results.forEach(r => this.normalize(r.config, r.bundle)); // first normalize imports
-                        let configs = results.map(r => r.config);
-                        config = mergeObjects(...configs, config);
-                        this.normalize(config, bundle); // last normalize parent, after merge
-                        return { config, bundle };
-                    });
-        }).catch(error => {
+            // load and normalize imports
+            const queue = imports.map(resource => this.loadSceneRecursive(resource, bundle, errors));
+            const configs = (await Promise.all(queue))
+                .map(r => this.normalize(r.config, r.bundle))
+                .map(r => r.config);
+
+            config = mergeObjects(...configs, config);
+            this.normalize(config, bundle); // last normalize parent, after merge
+            return { config, bundle };
+        }
+        catch (error) {
             // Collect scene load errors as we go
             error.url = url;
             errors.push(error);
             return {};
-        });
+        }
     },
 
     // Normalize properties that should be adjust within each local scene file (usually by path)
@@ -109,6 +106,12 @@ export default SceneLoader = {
     normalizeDataSource(source, bundle) {
         source.url = bundle.urlFor(source.url);
 
+        // composite untiled raster sources
+        if (Array.isArray(source.composite)) {
+            source.composite.forEach(c => c.url = bundle.urlFor(c.url));
+        }
+
+        // custom scripts
         if (source.scripts) {
             // convert legacy array-style scripts to object format (script URL is used as both key and value)
             if (Array.isArray(source.scripts)) {
@@ -270,70 +273,72 @@ export default SceneLoader = {
     // Substitutes global scene properties (those defined in the `config.global` object) for any style values
     // of the form `global.`, for example `color: global.park_color` would be replaced with the value (if any)
     // defined for the `park_color` property in `config.global.park_color`.
-    applyGlobalProperties(config, applied) {
+    applyGlobalProperties(config) {
         if (!config.global || Object.keys(config.global).length === 0) {
             return config; // no global properties to transform
         }
 
-        // Parse properties from globals
-        const separator = ':';
-        const props = flattenProperties(config.global, separator);
+        const globals = flattenProperties(config.global); // flatten nested globals for simpler string look-ups
 
-        // Re-apply previously applied properties
-        // NB: a current shortcoming here is that you cannot "un-link" a target property from a global
-        // at run-time. Once a global property substitution has been recorderd, it will always be re-applied
-        // on subsequent scene updates, even if the target property was updated to another literal value.
-        // This is unlikely to be a common occurrence an acceptable limitation for now.
-        applied.forEach(({ prop, target, key }) => {
-            if (target) {
-                target[key] = props[prop];
-                // log('info', `Re-applying ${prop} with value ${props[prop]} to key ${key} in`, target);
-            }
-        });
-
-        // Recursively look-up a global property name. Allows globals to refer to other globals, e.g.:
-        // global:
-        //    color: global.secret_color
-        //    secret_color: red
-        function lookupGlobalName (key, props, stack = []) {
-            if (stack.indexOf(key) > -1) {
-                log({ level: 'warn', once: true }, `Global properties: cyclical reference detected`, stack);
-                return;
-            }
-            stack.push(key);
-
-            const prop = (key.slice(0, 7) === 'global.') && (key.slice(7).replace(/\./g, separator));
-            if (prop && props[prop] !== undefined) {
-                if (typeof props[prop] === 'string' && props[prop].slice(0, 7) === 'global.') {
-                    return lookupGlobalName(props[prop], props, stack);
-                }
-                return prop;
-            }
-        }
-
-        // Find and apply new properties
+        // Find and apply new global properties (and re-apply old ones)
         function applyGlobals (obj, target, key) {
-            // Convert string
-            if (typeof obj === 'string') {
-                const prop = lookupGlobalName(obj, props);
-                const val = props[prop];
-                if (val !== undefined) {
-                    // Save record of where property is applied
-                    applied.push({ prop, target, key });
+            let prop;
 
-                    // Apply property
-                    obj = val;
+            // Check for previously applied global substitution
+            if (target != null && typeof target === 'object' && target._global_prop && target._global_prop[key]) {
+                prop = target._global_prop[key];
+            }
+            // Check string for new global substitution
+            else if (typeof obj === 'string' && obj.slice(0, 7) === 'global.') {
+                prop = obj;
+            }
+
+            // Found global property to substitute
+            if (prop) {
+                // Mark property as global substitution
+                if (target._global_prop == null) {
+                    Object.defineProperty(target, '_global_prop', { value: {} });
                 }
+                target._global_prop[key] = prop;
+
+                // Get current global value
+                let val = globals[prop];
+                let stack;
+                while (typeof val === 'string' && val.slice(0, 7) === 'global.') {
+                    // handle globals that refer to other globals, detecting any cyclical references
+                    stack = stack || [prop];
+                    if (stack.indexOf(val) > -1) {
+                        log({ level: 'warn', once: true }, 'Global properties: cyclical reference detected', stack);
+                        val = null;
+                        break;
+                    }
+                    stack.push(val);
+                    val = globals[val];
+                }
+
+                // Create getter/setter
+                Object.defineProperty(target, key, {
+                    enumerable: true,
+                    get: function () {
+                        return val; // return substituted value
+                    },
+                    set: function (v) {
+                        // clear the global substitution and remove the getter/setter
+                        delete target._global_prop[key];
+                        delete target[key];
+                        target[key] = v; // save the new value
+                    }
+                });
             }
             // Loop through object keys or array indices
             else if (Array.isArray(obj)) {
                 for (let p=0; p < obj.length; p++) {
-                    obj[p] = applyGlobals(obj[p], obj, p);
+                    applyGlobals(obj[p], obj, p);
                 }
             }
             else if (typeof obj === 'object') {
                 for (let p in obj) {
-                    obj[p] = applyGlobals(obj[p], obj, p);
+                    applyGlobals(obj[p], obj, p);
                 }
             }
             return obj;
@@ -374,26 +379,37 @@ export default SceneLoader = {
             };
         }
 
+        // Add default blend/base style pairs as needed
+        const blends = ['opaque', 'add', 'multiply', 'overlay', 'inlay', 'translucent'];
+        const bases = ['polygons', 'lines', 'points', 'text'];
+        for (const blend of blends) {
+            for (const base of bases) {
+                const style = blend + '_' + base;
+                if (config.styles[style] == null) {
+                    config.styles[style] = { base, blend };
+                }
+            }
+        }
+
         return { config, bundle };
     }
 
 };
 
 // Flatten nested properties for simpler string look-ups
-// e.g. global.background.color -> 'global:background:color'
-function flattenProperties (obj, separator = ':', prefix = null, props = {}) {
-    prefix = prefix ? (prefix + separator) : '';
+function flattenProperties (obj, prefix = null, globals = {}) {
+    prefix = prefix ? (prefix + '.') : 'global.';
 
-    for (let p in obj) {
-        let key = prefix + p;
-        let val = obj[p];
-        props[key] = val;
+    for (const p in obj) {
+        const key = prefix + p;
+        const val = obj[p];
+        globals[key] = val;
 
         if (typeof val === 'object' && !Array.isArray(val)) {
-            flattenProperties(val, separator, key, props);
+            flattenProperties(val, key, globals);
         }
     }
-    return props;
+    return globals;
 }
 
 subscribeMixin(SceneLoader);

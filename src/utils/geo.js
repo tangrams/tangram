@@ -6,6 +6,7 @@ export default Geo = {};
 // Projection constants
 Geo.default_source_max_zoom = 18;
 Geo.default_view_max_zoom = 20;
+Geo.max_style_zoom = 25; // max zoom at which styles will be evaluated
 Geo.tile_size = 256;
 Geo.half_circumference_meters = 20037508.342789244;
 Geo.circumference_meters = Geo.half_circumference_meters * 2;
@@ -67,34 +68,32 @@ Geo.wrapTile = function({ x, y, z }, mask = { x: true, y: false }) {
 };
 
 /**
-   Convert mercator meters to lat-lng
+   Convert mercator meters to lat-lng, in-place
 */
-Geo.metersToLatLng = function ([x, y]) {
+Geo.metersToLatLng = function (c) {
+    c[0] /= Geo.half_circumference_meters;
+    c[1] /= Geo.half_circumference_meters;
 
-    x /= Geo.half_circumference_meters;
-    y /= Geo.half_circumference_meters;
+    c[1] = (2 * Math.atan(Math.exp(c[1] * Math.PI)) - (Math.PI / 2)) / Math.PI;
 
-    y = (2 * Math.atan(Math.exp(y * Math.PI)) - (Math.PI / 2)) / Math.PI;
+    c[0] *= 180;
+    c[1] *= 180;
 
-    x *= 180;
-    y *= 180;
-
-    return [x, y];
+    return c;
 };
 
 /**
-  Convert lat-lng to mercator meters
+  Convert lat-lng to mercator meters, in-place
 */
-Geo.latLngToMeters = function([x, y]) {
-
+Geo.latLngToMeters = function (c) {
     // Latitude
-    y = Math.log(Math.tan(y*Math.PI/360 + Math.PI/4)) / Math.PI;
-    y *= Geo.half_circumference_meters;
+    c[1] = Math.log(Math.tan(c[1] * Math.PI / 360 + Math.PI / 4)) / Math.PI;
+    c[1] *= Geo.half_circumference_meters;
 
     // Longitude
-    x *= Geo.half_circumference_meters / 180;
+    c[0] *= Geo.half_circumference_meters / 180;
 
-    return [x, y];
+    return c;
 };
 
 // Transform from local tile coordinats to lat lng
@@ -103,10 +102,7 @@ Geo.tileSpaceToLatlng = function (geometry, z, min) {
     Geo.transformGeometry(geometry, coord => {
         coord[0] = (coord[0] / units_per_meter) + min.x;
         coord[1] = (coord[1] / units_per_meter) + min.y;
-
-        let [x, y] = Geo.metersToLatLng(coord);
-        coord[0] = x;
-        coord[1] = y;
+        Geo.metersToLatLng(coord);
     });
     return geometry;
 };
@@ -239,6 +235,10 @@ Geo.centroid = function (polygon, relative = true) {
         area += f * 3;
     }
 
+    if (!area) {
+        return; // skip degenerate polygons
+    }
+
     let c = [x / area, y / area];
     if (relative) {
         c[0] += origin[0];
@@ -248,19 +248,25 @@ Geo.centroid = function (polygon, relative = true) {
 };
 
 Geo.multiCentroid = function (polygons) {
-    let n = polygons.length;
-    let centroid = [0, 0];
+    let n = 0;
+    let centroid = null;
 
     for (let p=0; p < polygons.length; p++) {
         let c = Geo.centroid(polygons[p]);
-        centroid[0] += c[0];
-        centroid[1] += c[1];
+        if (c) { // skip degenerate polygons
+            centroid = centroid || [0, 0];
+            centroid[0] += c[0];
+            centroid[1] += c[1];
+            n++;
+        }
     }
 
-    centroid[0] /= n;
-    centroid[1] /= n;
+    if (n > 0) {
+        centroid[0] /= n;
+        centroid[1] /= n;
+    }
 
-    return centroid;
+    return centroid; // will return null if all polygons were degenerate
 };
 
 Geo.signedPolygonRingAreaSum = function (ring) {

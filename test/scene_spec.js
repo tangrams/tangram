@@ -1,32 +1,21 @@
 import chai from 'chai';
 let assert = chai.assert;
-import Scene from '../src/scene';
-import Utils from '../src/utils/utils';
-import sampleScene from './fixtures/sample-scene';
+import sampleScene from './fixtures/sample-scene.json';
 
 let nycLatLng = { lng: -73.97229, lat: 40.76456, zoom: 17 };
 
 describe('Scene', function () {
 
     let subject;
-
-    beforeEach(() => {
-        subject = makeScene({});
-        sinon.stub(subject.view, 'findVisibleTileCoordinates').returns([]);
-        subject.view.setView(nycLatLng);
-    });
-
-    afterEach(() => {
-        subject.destroy();
-        subject = null;
-    });
+    subject = makeScene({});
+    sinon.stub(subject.view, 'findVisibleTileCoordinates').returns([]);
+    subject.view.setView(nycLatLng);
 
     describe('.constructor()', () => {
 
         it('returns a new instance', () => {
-            assert.instanceOf(subject, Scene);
+            assert.isTrue(subject.constructor.name === 'Scene');
         });
-
 
     });
 
@@ -93,18 +82,22 @@ describe('Scene', function () {
     describe('.resizeMap()', () => {
         let height = 100;
         let width = 200;
-        let devicePixelRatio = 2;
+        let devicePixelRatio = window.devicePixelRatio;
         let computedHeight = Math.round(height * devicePixelRatio);
         let computedWidth  = Math.round(width * devicePixelRatio);
 
         beforeEach(() => {
-            subject.device_pixel_ratio = devicePixelRatio;
             return subject.load().then(() => {
                 sinon.spy(subject.gl, 'bindFramebuffer');
                 sinon.spy(subject.gl, 'viewport');
-                Utils.device_pixel_ratio = devicePixelRatio;
-                subject.resizeMap(width, height);
+                // Utils.device_pixel_ratio = devicePixelRatio;
+                subject.resizeMap(width, height, devicePixelRatio);
             });
+        });
+
+        afterEach(() => {
+            subject.gl.bindFramebuffer.restore();
+            subject.gl.viewport.restore();
         });
 
         it('marks the scene as dirty', () => {
@@ -170,7 +163,6 @@ describe('Scene', function () {
         });
     });
 
-    // TODO this method does a lot of stuff
     describe('.view.setZoom(zoom)', () => {
 
         beforeEach(() => {
@@ -183,49 +175,6 @@ describe('Scene', function () {
 
         it('updates the zoom level', () => {
             assert.equal(subject.view.zoom, 10);
-        });
-
-    });
-
-    describe('.update()', () => {
-
-        beforeEach(() => {
-            sinon.spy(subject, 'render');
-
-            subject.view.setView(nycLatLng);
-            return subject.load();
-        });
-
-        describe('when the scene is not dirty', () => {
-            it('returns false', () => {
-                subject.dirty = false;
-                assert.isFalse(subject.update());
-            });
-        });
-
-        describe('when the scene is not initialized', () => {
-            it('returns false', () => {
-                subject.initialized = false;
-                assert.isFalse(subject.update());
-            });
-        });
-
-        describe('when the scene is dirty', () => {
-            beforeEach(() => { subject.dirty = true; });
-            it('calls the render method', () => {
-                subject.update();
-                assert.isTrue(subject.render.called);
-            });
-        });
-
-        it('increments the frame property', () => {
-            let old = subject.frame;
-            subject.update();
-            assert.operator(subject.frame, '>', old);
-        });
-
-        it('returns true', () => {
-            assert.isTrue(subject.update());
         });
 
     });

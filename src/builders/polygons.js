@@ -1,69 +1,85 @@
 // Polygon builders
-import Geo from '../geo';
-import Vector from '../vector';
+import Geo from '../utils/geo';
+import Vector from '../utils/vector';
 import { default_uvs, outsideTile } from './common';
 
 import earcut from 'earcut';
 
 const up_vec3 = [0, 0, 1];
 
-// Tesselate a flat 2D polygon
-// x & y coordinates will be set as first two elements of provided vertex_template
-export function buildPolygons (
-    polygons,
-    vertex_data, vertex_template,
-    { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
-    var vertex_elements = vertex_data.vertex_elements;
+/**
+ * To tesselate flat 2D polygons.
+ * The x & y coordinates will be set as first two elements of provided vertex_template.
+ * @param {Array.<Array.<Array.<Array.<number>>>>} polygons The polygons to tesselate.
+ * @param {VertexData} vertex_data The VertexData were to store the results
+ * @param {Array.<number>} vertex_template The vertex template to use
+ * @param {Object} options The texture coordinate options to apply
+ * @return {number} the number of the resulting geometries (triangles)
+ */
+export function buildPolygons (
+    polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize }) {
+
+    let vertex_elements = vertex_data.vertex_elements,
+        num_polygons = polygons.length,
+        geom_count = 0,
+        min_u, min_v, max_u, max_v,
+        min_x, min_y, max_x, max_y,
+        span_x, span_y, scale_u, scale_v;
 
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
+        [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
-    var geom_count = 0;
-    var num_polygons = polygons.length;
-    for (var p=0; p < num_polygons; p++) {
-        var element_offset = vertex_data.vertex_count;
+    for (let p = 0; p < num_polygons; p++) {
 
-        var polygon = polygons[p];
+        let polygon = polygons[p],
+            element_offset = vertex_data.vertex_count,
+            indices = triangulatePolygon(earcut.flatten(polygon)),
+            num_indices = indices.length;
 
-        // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box
-        if (texcoord_index) {
-            var [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon);
-            var span_x = max_x - min_x;
-            var span_y = max_y - min_y;
-            var scale_u = (max_u - min_u) / span_x;
-            var scale_v = (max_v - min_v) / span_y;
-        }
+        // The vertices and vertex-elements must not be added if earcut returns no indices:
+        if (num_indices) {
 
-        for (var ring_index = 0; ring_index < polygon.length; ring_index++){
-            // Add vertex data
-            var polygon_ring = polygon[ring_index];
-            for (let i = 0; i < polygon_ring.length; i++) {
-                var vertex = polygon_ring[i];
-                vertex_template[0] = vertex[0];
-                vertex_template[1] = vertex[1];
-
-                // Add UVs
-                if (texcoord_index) {
-                    vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
-                    vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
-                }
-
-                vertex_data.addVertex(vertex_template);
+            // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box:
+            if (texcoord_index) {
+                [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon),
+                span_x = max_x - min_x,
+                span_y = max_y - min_y,
+                scale_u = (max_u - min_u) / span_x,
+                scale_v = (max_v - min_v) / span_y;
             }
-        }
 
-        // Add element indices
-        var indices = triangulatePolygon(earcut.flatten(polygon));
-        for (let i = 0; i < indices.length; i++){
-            vertex_elements.push(element_offset + indices[i]);
+            for (let ring_index = 0; ring_index < polygon.length; ring_index++) {
+                // Add vertex data:
+                let polygon_ring = polygon[ring_index];
+                for (let i = 0; i < polygon_ring.length; i++) {
+                    let vertex = polygon_ring[i];
+                    vertex_template[0] = vertex[0];
+                    vertex_template[1] = vertex[1];
+
+                    // Add UVs:
+                    if (texcoord_index) {
+                        vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
+                        vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
+                    }
+
+                    vertex_data.addVertex(vertex_template);
+                }
+            }
+
+            // Add element indices:
+            for (let i = 0; i < num_indices; i++) {
+                vertex_elements.push(element_offset + indices[i]);
+            }
+            geom_count += num_indices / 3;
+
         }
-        geom_count += indices.length/3;
     }
     return geom_count;
 }
+
 
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
 export function buildExtrudedPolygons (

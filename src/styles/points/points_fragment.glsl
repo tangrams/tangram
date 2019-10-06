@@ -61,22 +61,19 @@ void main (void) {
             color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
         }
         else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
-            float outline_edge = v_outline_edge;
-            vec4 outlineColor  = v_outline_color;
-            // Distance to this fragment from the center.
-            float l = length(v_texcoord);
-            // Mask of outermost circle, either outline or point boundary.
-            float outer_alpha  = _tangram_antialias(l, 1.);
-            float fill_alpha   = _tangram_antialias(l, 1.-v_outline_edge*0.5) * color.a;
-            float stroke_alpha = (outer_alpha - _tangram_antialias(l, 1.-v_outline_edge)) * outlineColor.a;
+            // Mask of outermost circle, either outline or point boundary
+            float _d = length(v_texcoord); // distance to this fragment from the point center
+            float _outer_alpha = _tangram_antialias(_d, 1.);
+            float _fill_alpha = _tangram_antialias(_d, 1. - (v_outline_edge * 0.5)) * color.a;
+            float _stroke_alpha = (_outer_alpha - _tangram_antialias(_d, 1. - v_outline_edge)) * v_outline_color.a;
 
             // Apply alpha compositing with stroke 'over' fill.
             #ifdef TANGRAM_BLEND_ADD
-                color.a = stroke_alpha + fill_alpha;
-                color.rgb = color.rgb * fill_alpha + outlineColor.rgb * stroke_alpha;
+                color.a = _stroke_alpha + _fill_alpha;
+                color.rgb = color.rgb * _fill_alpha + v_outline_color.rgb * _stroke_alpha;
             #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)
-                color.a = stroke_alpha + fill_alpha * (1. - stroke_alpha);
-                color.rgb = mix(color.rgb * fill_alpha, outlineColor.rgb, stroke_alpha) / max(color.a, 0.001); // avoid divide by zero
+                color.a = _stroke_alpha + _fill_alpha * (1. - _stroke_alpha);
+                color.rgb = mix(color.rgb * _fill_alpha, v_outline_color.rgb, _stroke_alpha) / max(color.a, 0.001); // avoid divide by zero
             #endif
         }
     #else
@@ -102,8 +99,10 @@ void main (void) {
         }
     #endif
 
-    // If blending is off, use alpha discard as a lower-quality substitute
-    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY) && !defined(TANGRAM_BLEND_ADD)
+    // Use alpha test as a lower-quality substitute
+    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath
+    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black
+    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)
         if (color.a < TANGRAM_ALPHA_TEST) {
             discard;
         }

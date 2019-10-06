@@ -1,5 +1,5 @@
 import Label, {textLayoutToJSON} from './label';
-import Vector from '../vector';
+import Vector from '../utils/vector';
 import OBB from '../utils/obb';
 
 const STOPS = [0, 0.33, 0.66, 0.99];        // zoom levels for curved label snapshot data (offsets and angles)
@@ -72,6 +72,7 @@ export class LabelLineBase {
             offset: this.offset,
             angle: this.angle,
             breach: this.breach,
+            may_repeat_across_tiles: this.may_repeat_across_tiles,
             layout: textLayoutToJSON(this.layout)
         };
     }
@@ -282,18 +283,6 @@ export class LabelLineStraight extends LabelLineBase {
                     // TODO: modify angle if line chosen within curve_angle_tolerance
                     // Currently line angle is the same as the starting angle, perhaps it should average across segments?
                     this.angle = -next_angle;
-                    let angle_offset = this.angle;
-
-                    // if line is flipped, or the orientation is "left" (-1), rotate the angle of the offset 180 deg
-                    if (typeof layout.orientation === 'number'){
-                        if (flipped){
-                            angle_offset += Math.PI;
-                        }
-
-                        if (layout.orientation === -1){
-                            angle_offset += Math.PI;
-                        }
-                    }
 
                     // ensure that all vertical labels point up (not down) by snapping angles close to pi/2 to -pi/2
                     if (Math.abs(this.angle - Math.PI/2) < VERTICAL_ANGLE_TOLERANCE) {
@@ -334,8 +323,13 @@ export class LabelLineStraight extends LabelLineBase {
 
         this.obbs.push(obb);
         this.aabbs.push(aabb);
+
         if (this.inTileBounds) {
             this.breach = !this.inTileBounds();
+        }
+
+        if (this.mayRepeatAcrossTiles) {
+            this.may_repeat_across_tiles = this.mayRepeatAcrossTiles();
         }
     }
 }
@@ -365,6 +359,7 @@ class LabelLineCurved extends LabelLineBase {
             obbs: this.obbs.map(o => o.toJSON()),
             position: this.position,
             breach: this.breach,
+            may_repeat_across_tiles: this.may_repeat_across_tiles,
             layout: textLayoutToJSON(this.layout)
         };
     }

@@ -85,7 +85,7 @@ GLSL.parseUniforms = function (uniforms) {
                     for (u=0; u < uniform.length; u++) {
                         parsed.push({
                             type: 'vec' + uniform[0].length,
-                            method: uniform[u].length + 'fv',
+                            method: uniform[0].length + 'fv',
                             name: name + '[' + u + ']',
                             value: uniform[u],
                             key: u,
@@ -153,6 +153,14 @@ GLSL.defineVariable = function (name, value) {
             type = 'sampler2D';
             array = value.length;
         }
+        // Array of arrays - but only arrays of vectors are allowed in this case
+        else if (Array.isArray(value[0]) && typeof value[0][0] === 'number') {
+            // float vectors (vec2, vec3, vec4)
+            if (value[0].length >= 2 && value[0].length <= 4) {
+                type = 'vec' + value[0].length;
+                array = value.length;
+            }
+        }
     }
     // Boolean
     else if (typeof value === 'boolean') {
@@ -186,38 +194,6 @@ GLSL.defineUniform = function (name, value) {
         return;
     }
     return 'uniform ' + def;
-};
-
-/**
-    Check for a uniform definition of 'name' in the provided GLSL source
-    Simple regex check for 'uniform' keyword and var name, does not attempt to parse/extract GLSL
-    NOTE: assumes comments have been stripped from source
-*/
-GLSL.isUniformDefined = function (name, source) {
-    // Match, in order:
-    // - the keyword 'uniform'
-    // - at least one character that is anything except a semicolon, ;
-    // - optionally, anything enclosed in curly braces, { ... } (an inline structure definition can go here)
-    // - optionally, any # of characters that is not a semicolon, ;
-    // - the name of the uniform
-
-    var re = new RegExp('uniform[^;]+(?:{[\\s\\S]*})?[^;]*\\b' + name + '\\b', 'g');
-    if (source.match(re)) {
-        return true;
-    }
-    return false;
-};
-
-/**
-    Check that a symbol is referenced in the GLSL source
-    NOTE: assumes comments have been stripped from source
-*/
-GLSL.isSymbolReferenced = function (name, source) {
-    var re = new RegExp('\\b' + name + '\\b', 'g');
-    if (source.search(re) >= 0) {
-        return true;
-    }
-    return false;
 };
 
 /**

@@ -1,12 +1,23 @@
 import Label from './label';
 import RepeatGroup from './repeat_group';
+import CollisionGrid from './collision_grid';
 import log from '../utils/log';
 
-var Collision;
+export default Collision;
 
-export default Collision = {
+const Collision = {
 
     tiles: {},
+    grid: null, // no collision grid by default
+
+    initGrid (options) {
+        if (options == null) {
+            this.grid = null;
+        }
+        else {
+            this.grid = new CollisionGrid(options.anchor, options.span);
+        }
+    },
 
     startTile (tile, { apply_repeat_groups = true, return_hidden = false } = {}) {
         let state = this.tiles[tile] = {
@@ -83,6 +94,10 @@ export default Collision = {
         let state = this.tiles[tile];
         let labels = state.labels;
 
+        if (this.grid) {
+            this.addLabelsToGrid(tile);
+        }
+
         if (state.repeat) {
             RepeatGroup.clear(tile);
         }
@@ -114,10 +129,16 @@ export default Collision = {
                             object.show = true;
 
                             // If a label is breach, its linked label should be considered breach as well
-                            // (this keeps linked labels from staying (in)visible in tandem)
+                            // (this keeps linked labels (in)visible in tandem)
                             if (object.label.breach || object.linked.label.breach) {
                                 object.label.breach = true;
                                 object.linked.label.breach = true;
+                            }
+
+                            // Similarly for labels that need main thread repeat culling, keep linked labels in sync
+                            if (object.label.may_repeat_across_tiles || object.linked.label.may_repeat_across_tiles) {
+                                object.label.may_repeat_across_tiles = true;
+                                object.linked.label.may_repeat_across_tiles = true;
                             }
 
                             labels[style].push(object);
@@ -141,6 +162,23 @@ export default Collision = {
         state.resolve();
     },
 
+    addLabelsToGrid (tile_id) {
+        // Process labels by priority, then by style
+        const tile = this.tiles[tile_id];
+        for (const priority in tile.objects) {
+            const style_objects = tile.objects[priority];
+            if (!style_objects) { // no labels at this priority, skip to next
+                continue;
+            }
+
+            // For each style
+            for (const style in style_objects) {
+                const objects = style_objects[style];
+                objects.forEach(object => this.grid.addLabel(object.label));
+            }
+        }
+    },
+
     // Run collision and repeat check to see if label can currently be placed
     canBePlaced (object, tile, exclude = null, { repeat = true } = {}) {
         let label = object.label;
@@ -151,13 +189,26 @@ export default Collision = {
             return label.placed;
         }
 
-        // Test the label for intersections with other labels in the tile
-        let bboxes = this.tiles[tile].bboxes;
-        if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
-            // check for repeats
-            let is_repeat = repeat && RepeatGroup.check(label, layout, tile);
-            if (is_repeat) {
-                // log('trace', `hide label '${label.text}', dist ${Math.sqrt(is_repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(is_repeat.repeat_dist_sq)/layout.units_per_pixel}`);
+        let placeable = !layout.collide;
+        if (!placeable) {
+            // Test the label for intersections with other labels
+            if (this.grid && label.cells) {
+                // test label candidate against labels placed in each grid cell
+                placeable = label.cells.reduce((keep, cell) => {
+                    if (keep && label.discard(cell, exclude && exclude.label)) {
+                        keep = false;
+                    }
+                    return keep;
+                }, true);
+            }
+            else {
+                placeable = !label.discard(this.tiles[tile].bboxes, exclude && exclude.label);
+            }
+        }
+
+        if (placeable) {
+            // repeat culling with nearby labels
+            if (repeat && RepeatGroup.check(label, layout, tile)) {
                 label.placed = false;
             }
             else {
@@ -182,7 +233,13 @@ export default Collision = {
         if (repeat) {
             RepeatGroup.add(label, label.layout, tile);
         }
-        Label.add(label, this.tiles[tile].bboxes);
+
+        if (this.grid && label.cells) {
+            label.cells.forEach(cell => Label.add(label, cell));
+        }
+        else {
+            Label.add(label, this.tiles[tile].bboxes);
+        }
     }
 
 };

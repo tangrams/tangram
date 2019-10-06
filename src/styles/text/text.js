@@ -1,6 +1,6 @@
 // Text rendering style
 
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
 import {Style} from '../style';
 import {Points} from '../points/points';
 import Collision from '../../labels/collision';
@@ -11,6 +11,8 @@ import VertexLayout from '../../gl/vertex_layout';
 
 export let TextStyle = Object.create(Points);
 
+TextStyle.vertex_layouts = {}; // vertex layouts by variant key
+
 Object.assign(TextStyle, {
     name: 'text',
     super: Points,
@@ -18,20 +20,6 @@ Object.assign(TextStyle, {
 
     init(options = {}) {
         Style.init.call(this, options);
-
-        var attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
-            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
-            { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
-        ];
-
-        this.vertex_layout = new VertexLayout(attribs);
 
         // Shader defines
         this.setupDefines();
@@ -52,10 +40,14 @@ Object.assign(TextStyle, {
     makeVertexTemplate(style, mesh) {
         this.super.makeVertexTemplate.apply(this, arguments);
         let vertex_layout = mesh.vertex_data.vertex_layout;
+        let i = vertex_layout.index.a_pre_angles;
 
-        this.fillVertexTemplate(vertex_layout, 'a_pre_angles', 0, { size: 4 });
-        this.fillVertexTemplate(vertex_layout, 'a_offsets', 0, { size: 4 });
-        this.fillVertexTemplate(vertex_layout, 'a_angles', 0, { size: 4 });
+        // a_pre_angles.xyzw - rotation of entire curved label
+        // a_angles.xyzw - angle of each curved label segment
+        // a_offsets.xyzw - offset of each curved label segment
+        for (let j=0; j < 12; j++) {
+            this.vertex_template[i++] = 0;
+        }
 
         return this.vertex_template;
     },
@@ -73,10 +65,10 @@ Object.assign(TextStyle, {
         }
 
         let type = feature.geometry.type;
-        draw.can_articulate = (type === "LineString" || type === "MultiLineString");
+        draw.can_articulate = (type === 'LineString' || type === 'MultiLineString');
 
         // supersample text rendering for angled labels, to improve clarity
-        draw.supersample_text = (type === "LineString" || type === "MultiLineString");
+        draw.supersample_text = (type === 'LineString' || type === 'MultiLineString');
 
         let q = this.parseTextFeature(feature, draw, context, tile);
         if (!q) {
@@ -105,75 +97,75 @@ Object.assign(TextStyle, {
     },
 
     // Override
-    endData (tile) {
+    async endData (tile) {
         let queue = this.queues[tile.id];
         delete this.queues[tile.id];
 
-        return this.collideAndRenderTextLabels(tile, this.name, queue).
-            then(({ labels, texts, textures }) => {
-                if (labels && texts) {
-                    this.texts[tile.id] = texts;
+        const { labels, texts, textures } = await this.collideAndRenderTextLabels(tile, this.name, queue);
 
-                    // Build queued features
-                    labels.forEach(q => {
-                        let text_settings_key = q.text_settings_key;
-                        let text_info =
-                            this.texts[tile.id][text_settings_key] &&
-                            this.texts[tile.id][text_settings_key][q.text];
+        if (labels && texts) {
+            this.texts[tile.id] = texts;
 
-                        // setup styling object expected by Style class
-                        let style = this.feature_style;
-                        style.label = q.label;
+            // Build queued features
+            labels.forEach(q => {
+                let text_settings_key = q.text_settings_key;
+                let text_info =
+                    this.texts[tile.id][text_settings_key] &&
+                    this.texts[tile.id][text_settings_key][q.text];
 
-                        if (text_info.text_settings.can_articulate){
-                            // unpack logical sizes of each segment into an array for the style
-                            style.size = {};
-                            style.texcoords = {};
+                // setup styling object expected by Style class
+                let style = this.feature_style;
+                style.label = q.label;
 
-                            if (q.label.type === 'straight'){
-                                style.size.straight = text_info.size.logical_size;
-                                style.texcoords.straight = text_info.texcoords.straight;
-                                style.label_texture = textures[text_info.texcoords.straight.texture_id];
-                            }
-                            else{
-                                style.size.curved = text_info.segment_sizes.map(function(size){ return size.logical_size; });
-                                style.texcoords_stroke = text_info.texcoords_stroke;
-                                style.texcoords.curved = text_info.texcoords.curved;
-                                style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
-                            }
-                        }
-                        else {
-                            style.size = text_info.size.logical_size;
-                            style.texcoords = text_info.align[q.label.align].texcoords;
-                            style.label_texture = textures[text_info.align[q.label.align].texture_id];
-                        }
+                if (text_info.text_settings.can_articulate){
+                    // unpack logical sizes of each segment into an array for the style
+                    style.size = {};
+                    style.texcoords = {};
 
-                        Style.addFeature.call(this, q.feature, q.draw, q.context);
-                    });
-                }
-                this.freeText(tile);
-
-                // Finish tile mesh
-                return Style.endData.call(this, tile).then(tile_data => {
-                    if (tile_data) {
-                        // Attach tile-specific label atlas to mesh as a texture uniform
-                        if (textures && textures.length) {
-                            tile_data.textures.push(...textures); // assign texture ownership to tile
-                        }
-
-                        // Always apply shader blocks to standalone text
-                        for (let m in tile_data.meshes) {
-                            tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
-                        }
+                    if (q.label.type === 'straight'){
+                        style.size.straight = text_info.size.logical_size;
+                        style.texcoords.straight = text_info.texcoords.straight;
+                        style.label_texture = textures[text_info.texcoords.straight.texture_id];
                     }
+                    else{
+                        style.size.curved = text_info.segment_sizes.map(function(size){ return size.logical_size; });
+                        style.texcoords_stroke = text_info.texcoords_stroke;
+                        style.texcoords.curved = text_info.texcoords.curved;
+                        style.label_textures = text_info.texcoords.curved.map(t => textures[t.texture_id]);
+                    }
+                }
+                else {
+                    style.size = text_info.size.logical_size;
+                    style.texcoords = text_info.align[q.label.align].texcoords;
+                    style.label_texture = textures[text_info.align[q.label.align].texture_id];
+                }
 
-                    return tile_data;
-                });
+                style.blend_order = q.draw.blend_order; // copy pre-computed blend order
+                Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
+        }
+        this.freeText(tile);
+
+        // Finish tile mesh
+        const tile_data = await Style.endData.call(this, tile);
+        if (tile_data) {
+            // Attach tile-specific label atlas to mesh as a texture uniform
+            if (textures && textures.length) {
+                tile_data.textures.push(...textures); // assign texture ownership to tile
+            }
+
+            // Always apply shader blocks to standalone text
+            for (let m in tile_data.meshes) {
+                tile_data.meshes[m].uniforms.u_apply_color_blocks = true;
+            }
+        }
+
+        return tile_data;
     },
 
     // Sets up caching for draw properties
     _preprocess (draw) {
+        draw.blend_order = this.getBlendOrderForDraw(draw); // from draw block, or fall back on default style blend order
         return this.preprocessText(draw);
     },
 
@@ -208,26 +200,30 @@ Object.assign(TextStyle, {
     buildLabels (size, geometry, layout, total_size) {
         let labels = [];
 
-        if (geometry.type === "LineString") {
+        if (geometry.type === 'LineString') {
             Array.prototype.push.apply(labels, this.buildLineLabels(geometry.coordinates, size, layout, total_size));
-        } else if (geometry.type === "MultiLineString") {
+        } else if (geometry.type === 'MultiLineString') {
             let lines = geometry.coordinates;
             for (let i = 0; i < lines.length; ++i) {
                 Array.prototype.push.apply(labels, this.buildLineLabels(lines[i], size, layout, total_size));
             }
-        } else if (geometry.type === "Point") {
+        } else if (geometry.type === 'Point') {
             labels.push(new LabelPoint(geometry.coordinates, size, layout));
-        } else if (geometry.type === "MultiPoint") {
+        } else if (geometry.type === 'MultiPoint') {
             let points = geometry.coordinates;
             for (let i = 0; i < points.length; ++i) {
                 labels.push(new LabelPoint(points[i], size, layout));
             }
-        } else if (geometry.type === "Polygon") {
+        } else if (geometry.type === 'Polygon') {
             let centroid = Geo.centroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, layout));
-        } else if (geometry.type === "MultiPolygon") {
+            if (centroid) { // skip degenerate polygons
+                labels.push(new LabelPoint(centroid, size, layout));
+            }
+        } else if (geometry.type === 'MultiPolygon') {
             let centroid = Geo.multiCentroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, layout));
+            if (centroid) { // skip degenerate polygons
+                labels.push(new LabelPoint(centroid, size, layout));
+            }
         }
 
         return labels;
@@ -265,10 +261,29 @@ Object.assign(TextStyle, {
         return labels;
     },
 
-    // Override to restore base class default implementations
-    vertexLayoutForMeshVariant: Style.vertexLayoutForMeshVariant,
-    meshVariantTypeForDraw: Style.meshVariantTypeForDraw
+    // Override
+    // Create or return vertex layout
+    vertexLayoutForMeshVariant(variant) {
+        // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
+        if (TextStyle.vertex_layouts[variant.shader_point] == null) {
+            // TODO: could make selection, offset, and curved label attribs optional, but may not be worth it
+            // since text points generally don't consume much memory anyway
+            const attribs = [
+                { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
+                { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) },
+                { name: 'a_pre_angles', size: 4, type: gl.BYTE, normalized: false },
+                { name: 'a_angles', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
+            ];
 
+            TextStyle.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
+        }
+        return TextStyle.vertex_layouts[variant.shader_point];
+    },
 });
 
 TextStyle.texture_id = 0; // namespaces per-tile label textures

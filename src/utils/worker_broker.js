@@ -97,13 +97,15 @@ var message_id = 0;
 var messages = {};
 
 // Register an object to receive calls from other thread
-var targets = {};
+WorkerBroker.targets = {};
 WorkerBroker.addTarget = function (name, target) {
-    targets[name] = target;
+    WorkerBroker.targets[name] = target;
 };
 
 WorkerBroker.removeTarget = function (name) {
-    delete targets[name];
+    if (name) {
+        delete WorkerBroker.targets[name];
+    }
 };
 
 // Given a dot-notation-style method name, e.g. 'Object.object.method',
@@ -115,7 +117,7 @@ function findTarget (method) {
         method = chain.pop();
     }
 
-    var target = targets;
+    var target = WorkerBroker.targets;
 
     for (let m=0; m < chain.length; m++) {
         if (target[chain[m]]) {
@@ -194,7 +196,7 @@ function setupMainThread () {
     // Add a worker to communicate with - each worker must be registered from the main thread
     WorkerBroker.addWorker = function (worker) {
         if (!(worker instanceof Worker)) {
-            throw Error(`Worker broker could not add non-Worker object`, worker);
+            throw Error('Worker broker could not add non-Worker object', worker);
         }
 
         worker.addEventListener('message', function WorkerBrokerMainThreadHandler(event) {
@@ -219,25 +221,25 @@ function setupMainThread () {
             // Unique id for this message & return call to main thread
             else if (data.type === 'worker_send' && id != null) {
                 // Call the requested method and save the return value
-                var [method_name, target] = findTarget(data.method);
-                if (!target) {
-                    throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
-                }
-
-                var method = (typeof target[method_name] === 'function') && target[method_name];
-                if (!method) {
-                    throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
-                }
-
-                var result, error;
+                let result, error, target, method_name, method;
                 try {
+                    [method_name, target] = findTarget(data.method);
+                    if (!target) {
+                        throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+                    }
+
+                    method = (typeof target[method_name] === 'function') && target[method_name];
+                    if (!method) {
+                        throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
+                    }
+
                     result = method.apply(target, data.message);
                 }
                 catch(e) {
                     // Thrown errors will be passed back (in string form) to worker
                     error = e;
-                }
 
+                }
                 // Send return value to worker
                 let payload, transferables = [];
 
@@ -328,7 +330,7 @@ function setupWorkerThread () {
             messages[message_id] = { method, message, resolve, reject };
         });
 
-       let payload, transferables = [];
+        let payload, transferables = [];
 
         if (message && message.length === 1 && message[0] instanceof WorkerBroker.withTransferables) {
             transferables = message[0].transferables;
@@ -377,19 +379,19 @@ function setupWorkerThread () {
         // Unique id for this message & return call to main thread
         else if (data.type === 'main_send' && id != null) {
             // Call the requested worker method and save the return value
-            var [method_name, target] = findTarget(data.method);
-            if (!target) {
-                throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
-            }
-
-            var method = (typeof target[method_name] === 'function') && target[method_name];
-
-            if (!method) {
-                throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
-            }
-
-            var result, error;
+            let result, error, target, method_name, method;
             try {
+                [method_name, target] = findTarget(data.method);
+                if (!target) {
+                    throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+                }
+
+                method = (typeof target[method_name] === 'function') && target[method_name];
+
+                if (!method) {
+                    throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
+                }
+
                 result = method.apply(target, data.message);
             }
             catch(e) {
@@ -468,7 +470,7 @@ WorkerBroker.withTransferables = function (...value) {
 // TODO: add option in case you DON'T want to transfer objects
 function findTransferables(source, parent = null, property = null, list = []) {
     if (!source) {
-         return list;
+        return list;
     }
 
     if (Array.isArray(source)) {

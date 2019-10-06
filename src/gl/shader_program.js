@@ -7,8 +7,7 @@ import Texture from './texture';
 import getExtension from './extensions';
 import hashString from '../utils/hash';
 
-import strip from 'strip-comments';
-import { default as parseShaderErrors } from 'gl-shader-errors';
+import parseShaderErrors from 'gl-shader-errors';
 
 // Regex patterns
 const re_pragma = /^\s*#pragma.*$/gm;   // for removing unused pragmas after shader block injection
@@ -35,8 +34,7 @@ export default class ShaderProgram {
         // list of extensions to activate
         this.extensions = options.extensions || [];
 
-        // JS-object uniforms that are expected by this program
-        // If they are not found in the existing shader source, their types will be inferred and definitions
+        // JS-object uniforms that are expected by this program, their types are inferred and definitions
         // for each will be injected.
         this.dependent_uniforms = options.uniforms;
 
@@ -141,7 +139,7 @@ export default class ShaderProgram {
         this.computed_vertex_source = this.computed_vertex_source.replace(re_pragma, '');
         this.computed_fragment_source = this.computed_fragment_source.replace(re_pragma, '');
 
-        // Detect uniform definitions, inject any missing ones
+        // Inject uniform definitions
         this.ensureUniforms(this.dependent_uniforms);
 
         // Build & inject extensions & defines
@@ -190,12 +188,17 @@ export default class ShaderProgram {
             this.error = error;
 
             // shader error info
+            this.error.vertex_shader_source = this.computed_vertex_source;
+            this.error.fragment_shader_source = this.computed_fragment_source;
+
             if (error.type === 'vertex' || error.type === 'fragment') {
                 this.shader_errors = error.errors;
                 this.shader_errors.forEach(e => {
                     e.type = error.type;
                     e.block = this.block(error.type, e.line);
+                    e.line = this.block(error.type, e.line);
                 });
+                this.error.shader_errors = this.shader_errors;
             }
             throw error;
         }
@@ -275,49 +278,22 @@ export default class ShaderProgram {
         return blocks;
     }
 
-    // Detect uniform definitions, inject any missing ones
+    // Inject uniform definitions
     ensureUniforms(uniforms) {
         if (!uniforms) {
             return;
         }
 
-        var vs = strip(this.computed_vertex_source);
-        var fs = strip(this.computed_fragment_source);
-        var inject, vs_injections = [], fs_injections = [];
+        // Get GLSL definitions
+        const inject = Object.entries(uniforms).
+            map(([name, uniform]) => GLSL.defineUniform(name, uniform)).
+            filter(x => x);
 
-        // Check for missing uniform definitions
-        for (var name in uniforms) {
-            let vs_defined = GLSL.isUniformDefined(name, vs); // check vertex shader
-            let fs_defined = GLSL.isUniformDefined(name, fs); // check fragment shader
-
-            if (!vs_defined || !fs_defined) {
-                inject = GLSL.defineUniform(name, uniforms[name]);
-                if (!inject) {
-                    continue;
-                }
-
-                if (!vs_defined) {
-                    log('trace', `Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
-                    vs_injections.push(inject);
-                }
-
-                if (!fs_defined) {
-                    log('trace', `Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
-                    fs_injections.push(inject);
-                }
-            }
-        }
-
-        // Inject missing uniforms
+        // Inject uniforms
         // NOTE: these are injected at the very top of the shaders, even before any #defines or #pragmas are added
         // this could cause some issues with certain #pragmas, or other functions that might expect #defines
-        if (vs_injections.length > 0) {
-            this.computed_vertex_source = vs_injections.join('\n') + this.computed_vertex_source;
-        }
-
-        if (fs_injections.length > 0) {
-            this.computed_fragment_source = fs_injections.join('\n') + this.computed_fragment_source;
-        }
+        this.computed_vertex_source = inject.join('\n') + this.computed_vertex_source;
+        this.computed_fragment_source = inject.join('\n') + this.computed_fragment_source;
     }
 
     // Set uniforms from a JS object, with inferred types
@@ -428,45 +404,45 @@ export default class ShaderProgram {
         let value = uniform.value;
 
         switch (uniform.method) {
-            case '1i':
-                this.gl.uniform1i(location, value);
-                break;
-            case '1f':
-                this.gl.uniform1f(location, value);
-                break;
-            case '2f':
-                this.gl.uniform2f(location, value[0], value[1]);
-                break;
-            case '3f':
-                this.gl.uniform3f(location, value[0], value[1], value[2]);
-                break;
-            case '4f':
-                this.gl.uniform4f(location, value[0], value[1], value[2], value[3]);
-                break;
-            case '1iv':
-                this.gl.uniform1iv(location, value);
-                break;
-            case '3iv':
-                this.gl.uniform3iv(location, value);
-                break;
-            case '1fv':
-                this.gl.uniform1fv(location, value);
-                break;
-            case '2fv':
-                this.gl.uniform2fv(location, value);
-                break;
-            case '3fv':
-                this.gl.uniform3fv(location, value);
-                break;
-            case '4fv':
-                this.gl.uniform4fv(location, value);
-                break;
-            case 'Matrix3fv':
-                this.gl.uniformMatrix3fv(location, false, value);
-                break;
-            case 'Matrix4fv':
-                this.gl.uniformMatrix4fv(location, false, value);
-                break;
+        case '1i':
+            this.gl.uniform1i(location, value);
+            break;
+        case '1f':
+            this.gl.uniform1f(location, value);
+            break;
+        case '2f':
+            this.gl.uniform2f(location, value[0], value[1]);
+            break;
+        case '3f':
+            this.gl.uniform3f(location, value[0], value[1], value[2]);
+            break;
+        case '4f':
+            this.gl.uniform4f(location, value[0], value[1], value[2], value[3]);
+            break;
+        case '1iv':
+            this.gl.uniform1iv(location, value);
+            break;
+        case '3iv':
+            this.gl.uniform3iv(location, value);
+            break;
+        case '1fv':
+            this.gl.uniform1fv(location, value);
+            break;
+        case '2fv':
+            this.gl.uniform2fv(location, value);
+            break;
+        case '3fv':
+            this.gl.uniform3fv(location, value);
+            break;
+        case '4fv':
+            this.gl.uniform4fv(location, value);
+            break;
+        case 'Matrix3fv':
+            this.gl.uniformMatrix3fv(location, false, value);
+            break;
+        case 'Matrix4fv':
+            this.gl.uniformMatrix4fv(location, false, value);
+            break;
         }
     }
 
@@ -621,19 +597,19 @@ ShaderProgram.reset();
 
 // Turn an object of key/value pairs into single string of #define statements
 ShaderProgram.buildDefineString = function (defines) {
-    var define_str = "";
+    var define_str = '';
     for (var d in defines) {
         if (defines[d] == null || defines[d] === false) {
             continue;
         }
         else if (typeof defines[d] === 'boolean' && defines[d] === true) { // booleans are simple defines with no value
-            define_str += "#define " + d + "\n";
+            define_str += '#define ' + d + '\n';
         }
         else if (typeof defines[d] === 'number' && Math.floor(defines[d]) === defines[d]) { // int to float conversion to satisfy GLSL floats
-            define_str += "#define " + d + " " + defines[d].toFixed(1) + "\n";
+            define_str += '#define ' + d + ' ' + defines[d].toFixed(1) + '\n';
         }
         else { // any other float or string value
-            define_str += "#define " + d + " " + defines[d] + "\n";
+            define_str += '#define ' + d + ' ' + defines[d] + '\n';
         }
     }
     return define_str;
@@ -642,7 +618,7 @@ ShaderProgram.buildDefineString = function (defines) {
 // Turn a list of extension names into single string of #extension statements
 ShaderProgram.buildExtensionString = function (extensions) {
     extensions = extensions || [];
-    let str = "";
+    let str = '';
     extensions.forEach(ext => {
         str += `#ifdef GL_${ext}\n#extension GL_${ext} : enable\n#endif\n`;
     });
@@ -693,6 +669,14 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
 
     gl.attachShader(program, vertex_shader);
     gl.attachShader(program, fragment_shader);
+
+    // Require position to be at attribute location 0
+    // Attribute 0 should never be disabled (per GL best practices). All of our shader programs have an `a_position`
+    // attribute, and it's customary for the vertex position to be the first attribute, so we enforce that here.
+    // This can avoid unexpected/undefined interaction between static and dynamic attributes in Safari, and
+    // possible warnings/errors in other browsers.
+    // See https://stackoverflow.com/questions/20305231/webgl-warning-attribute-0-is-disabled-this-has-significant-performance-penalt/20923946
+    gl.bindAttribLocation(program, 0, 'a_position');
 
     gl.linkProgram(program);
 

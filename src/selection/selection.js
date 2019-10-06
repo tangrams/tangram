@@ -1,6 +1,6 @@
-import log from './utils/log';
-import Texture from './gl/texture';
-import WorkerBroker from './utils/worker_broker';
+import log from '../utils/log';
+import Texture from '../gl/texture';
+import WorkerBroker from '../utils/worker_broker';
 
 export default class FeatureSelection {
 
@@ -26,7 +26,7 @@ export default class FeatureSelection {
         this.fbo_size = { width: 256, height: 256 }; // TODO: make configurable / adaptive based on canvas size
 
         // Texture for the FBO color attachment
-        var fbo_texture = Texture.create( this.gl, 'selection_fbo', { filtering: 'nearest' });
+        var fbo_texture = Texture.create( this.gl, '__selection_fbo', { filtering: 'nearest' });
         fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
         this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, fbo_texture.texture, 0);
 
@@ -206,9 +206,9 @@ export default class FeatureSelection {
                             this.workers[worker_id],
                             'self.getFeatureSelection',
                             { id: request.id, key: feature_key })
-                        .then(message => {
-                            this.finishRead(message);
-                        });
+                            .then(message => {
+                                this.finishRead(message);
+                            });
                     }
                 }
                 // No feature found, but still need to resolve promise
@@ -228,7 +228,7 @@ export default class FeatureSelection {
     finishRead (message) {
         var request = this.requests[message.id];
         if (!request) {
-            log('error', "FeatureSelection.finishRead(): could not find message", message);
+            log('error', 'FeatureSelection.finishRead(): could not find message', message);
             return; // request was cleared before it returned
         }
 
@@ -281,7 +281,7 @@ export default class FeatureSelection {
                 tile: {                             // subset of tile properties to pass back with feature
                     key: tile.key,
                     coords: tile.coords,
-                    style_zoom: tile.style_zoom,
+                    style_z: tile.style_z,
                     source: tile.source,
                     generation: tile.generation
                 }

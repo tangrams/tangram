@@ -8,31 +8,32 @@ import Texture from '../../gl/texture';
 import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
 import renderDashArray from './dasharray';
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
+
 import WorkerBroker from '../../utils/worker_broker';
 import hashString from '../../utils/hash';
-import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
+
+import polygons_vs from '../polygons/polygons_vertex.glsl';
+import polygons_fs from '../polygons/polygons_fragment.glsl';
 
 export const Lines = Object.create(Style);
 
-Lines.vertex_layouts = [[], []]; // first dimension is texcoords on/off, second is offsets on/off
 Lines.variants = {}; // mesh variants by variant key
-Lines.dash_textures = {}; // needs to be cleared on scene config update
+Lines.vertex_layouts = {}; // vertex layouts by variant key
 
 const DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
 
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
-    vertex_shader_src: shaderSrc_polygonsVertex,
-    fragment_shader_src: shaderSrc_polygonsFragment,
+    vertex_shader_src: polygons_vs,
+    fragment_shader_src: polygons_fs,
     selection: true, // enable feature selection
 
     init() {
         Style.init.apply(this, arguments);
 
         // Tell the shader we want a order in vertex attributes, and to extrude lines
-        this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
         this.defines.TANGRAM_TEXTURE_COORDS = true; // texcoords attribute is set to static when not needed
 
@@ -41,11 +42,13 @@ Object.assign(Lines, {
         // inline properties (outline call is made *within* the inline call)
         this.outline_feature_style = {};
         this.inline_feature_style = this.feature_style; // save reference to main computed style object
+
+        this.dash_textures = {}; // cache previously rendered line dash pattern textures
     },
 
     // Calculate width or offset at zoom given in `context`
     calcDistance (prop, context) {
-        return (prop && StyleParser.evalCachedDistanceProperty(prop, context)) || 0;
+        return StyleParser.evalCachedDistanceProperty(prop, context) || 0;
     },
 
     // Calculate width or offset at next zoom (used for zoom-based interpolation in shader)
@@ -175,7 +178,7 @@ Object.assign(Lines, {
         style.variant = draw.variant; // pre-calculated mesh variant
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z || 0, context)) || StyleParser.defaults.z;
+        style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
         style.extrude = StyleParser.evalProperty(draw.extrude, context);
         if (style.extrude) {
@@ -193,7 +196,6 @@ Object.assign(Lines, {
         }
 
         style.z *= Geo.height_scale;        // provide sub-meter precision of height values
-        style.height *= Geo.height_scale;
 
         style.cap = draw.cap;
         style.join = draw.join;
@@ -234,6 +236,7 @@ Object.assign(Lines, {
 
                 // Inherited properties
                 style.outline.color = draw.outline.color;
+                style.outline.interactive = draw.outline.interactive;
                 style.outline.cap = draw.outline.cap;
                 style.outline.join = draw.outline.join;
                 style.outline.miter_limit = draw.outline.miter_limit;
@@ -256,9 +259,6 @@ Object.assign(Lines, {
 
                 // Outlines are always at half-layer intervals to avoid conflicting with inner lines
                 style.outline.order -= 0.5;
-
-                // Ensure outlines in a separate mesh variant are drawn first
-                style.outline.variant_order = 0;
             }
         }
         else {
@@ -292,15 +292,17 @@ Object.assign(Lines, {
         this.computeVariant(draw);
 
         if (draw.outline) {
+            draw.outline.is_outline = true; // mark as outline (so mesh variant can be adjusted for render order, etc.)
             draw.outline.style = draw.outline.style || this.name;
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
             draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
 
+            draw.outline.interactive = (draw.outline.interactive != null) ? draw.outline.interactive : draw.interactive;
             draw.outline.cap = draw.outline.cap || draw.cap;
             draw.outline.join = draw.outline.join || draw.join;
-            draw.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
-            draw.outline.offset = draw.offset;
+            draw.outline.miter_limit = (draw.outline.miter_limit != null) ? draw.outline.miter_limit : draw.miter_limit;
+            draw.outline.offset = draw.offset; // always apply inline offset to outline
 
             // outline inhertits dash pattern, but NOT explicit texture
             let outline_style = this.styles[draw.outline.style];
@@ -329,12 +331,18 @@ Object.assign(Lines, {
                 draw.outline.dash_background_color = (draw.outline.dash_background_color !== undefined ? draw.outline.dash_background_color : draw.dash_background_color);
                 draw.outline.dash_background_color = draw.outline.dash_background_color && StyleParser.parseColor(draw.outline.dash_background_color);
                 draw.outline.texcoords = ((outline_style.texcoords || draw.outline.texture_merged) ? 1 : 0);
-                this.computeVariant(draw.outline);
+
+                // outline inherits draw blend order from parent inline, unless explicitly turned off with null
+                if (draw.outline.blend_order === undefined && draw.blend_order != null) {
+                    draw.outline.blend_order = draw.blend_order;
+                }
+
+                this.computeVariant(draw.outline, outline_style);
             }
             else {
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
+                log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
                     `line 'outline' specifies non-existent draw style '${draw.outline.style}' (or maybe the style is ` +
-                    `defined but is missing a 'base' or has another error), skipping outlines in layer`);
+                    'defined but is missing a \'base\' or has another error), skipping outlines for features matching this layer group');
                 draw.outline = null;
             }
         }
@@ -350,9 +358,8 @@ Object.assign(Lines, {
     getDashTexture (dash) {
         let dash_key = this.dashTextureKey(dash);
 
-        if (Lines.dash_textures[dash_key] == null) {
-            Lines.dash_textures[dash_key] = true;
-
+        if (this.dash_textures[dash_key] == null) {
+            this.dash_textures[dash_key] = true;
             // Render line pattern
             const dash_texture = renderDashArray(dash, { scale: DASH_SCALE });
             Texture.create(this.gl, dash_key, {
@@ -365,76 +372,93 @@ Object.assign(Lines, {
     },
 
     // Override
-    endData (tile) {
-        return Style.endData.call(this, tile).then(tile_data => {
-            if (tile_data) {
-                tile_data.uniforms.u_has_line_texture = false;
-                tile_data.uniforms.u_texture = Texture.default;
-                tile_data.uniforms.u_v_scale_adjust = Geo.tile_scale;
+    async endData (tile) {
+        const tile_data = await Style.endData.call(this, tile);
+        if (tile_data) {
+            tile_data.uniforms.u_has_line_texture = false;
+            tile_data.uniforms.u_texture = Texture.default;
+            tile_data.uniforms.u_v_scale_adjust = Geo.tile_scale;
 
-                let pending = [];
-                for (let m in tile_data.meshes) {
-                    let variant = tile_data.meshes[m].variant;
-                    if (variant.texture) {
-                        let uniforms = tile_data.meshes[m].uniforms = tile_data.meshes[m].uniforms || {};
-                        uniforms.u_has_line_texture = true;
-                        uniforms.u_texture = variant.texture;
-                        uniforms.u_texture_ratio = 1;
+            let pending = [];
+            for (let m in tile_data.meshes) {
+                let variant = tile_data.meshes[m].variant;
+                if (variant.texture) {
+                    let uniforms = tile_data.meshes[m].uniforms = tile_data.meshes[m].uniforms || {};
+                    uniforms.u_has_line_texture = true;
+                    uniforms.u_texture = variant.texture;
+                    uniforms.u_texture_ratio = 1;
 
-                        if (variant.dash) {
-                            uniforms.u_v_scale_adjust = Geo.tile_scale * DASH_SCALE;
-                            uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
+                    if (variant.dash) {
+                        uniforms.u_v_scale_adjust = Geo.tile_scale * DASH_SCALE;
+                        uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
+                    }
+
+                    if (variant.dash_key && this.dash_textures[variant.dash_key] == null) {
+                        this.dash_textures[variant.dash_key] = true;
+                        try {
+                            await WorkerBroker.postMessage(this.main_thread_target+'.getDashTexture', variant.dash);
                         }
-
-                        if (variant.dash_key && Lines.dash_textures[variant.dash_key] == null) {
-                            Lines.dash_textures[variant.dash_key] = true;
-                            WorkerBroker.postMessage(this.main_thread_target+'.getDashTexture', variant.dash);
-                        }
-
-                        if (Texture.textures[variant.texture] == null) {
-                            pending.push(
-                                Texture.syncTexturesToWorker([variant.texture]).then(textures => {
-                                    let texture = textures[variant.texture];
-                                    if (texture) {
-                                        uniforms.u_texture_ratio = texture.height / texture.width;
-                                    }
-                                })
-                            );
-                        }
-                        else {
-                            let texture = Texture.textures[variant.texture];
-                            uniforms.u_texture_ratio = texture.height / texture.width;
+                        catch (e) {
+                            log('trace', `${this.name}: line dash texture create failed because style no longer on main thread`);
                         }
                     }
+
+                    if (Texture.textures[variant.texture] == null) {
+                        pending.push(
+                            Texture.syncTexturesToWorker([variant.texture]).then(textures => {
+                                let texture = textures[variant.texture];
+                                if (texture) {
+                                    uniforms.u_texture_ratio = texture.height / texture.width;
+                                }
+                            })
+                        );
+                    }
+                    else {
+                        let texture = Texture.textures[variant.texture];
+                        uniforms.u_texture_ratio = texture.height / texture.width;
+                    }
                 }
-                return Promise.all(pending).then(() => tile_data);
             }
-            return tile_data;
-        });
+            await Promise.all(pending);
+        }
+        return tile_data;
     },
 
     // Calculate and store mesh variant (unique by draw group but not feature)
-    computeVariant (draw) {
-        let key = (draw.offset ? 1 : 0);
-        if (draw.dash_key) {
+    computeVariant (draw, style = this) {
+        // Factors that determine a unique mesh rendering variant
+        let key = (draw.offset ? 1 : 0); // whether feature has a line offset
+        key += '/' + draw.texcoords; // whether feature has texture UVs
+        key += '/' + (draw.interactive ? 1 : 0); // whether feature has interactivity
+        key += '/' + (draw.extrude || draw.z ? 1 : 0); // whether feature has a z coordinate
+        key += '/' + draw.is_outline; // whether this is an outline of a line feature
+
+        if (draw.dash_key) { // whether feature has a line dash pattern
             key += draw.dash_key;
             if (draw.dash_background_color) {
                 key += draw.dash_background_color;
             }
         }
 
-        if (draw.texture_merged) {
+        if (draw.texture_merged) { // whether feature has a line texture
             key += draw.texture_merged;
         }
-        key += '/' + draw.texcoords;
+
+        const blend_order = style.getBlendOrderForDraw(draw);
+        key += '/' + blend_order;
+
+        // Create unique key
         key = hashString(key);
         draw.variant = key;
 
         if (Lines.variants[key] == null) {
             Lines.variants[key] = {
                 key,
-                order: draw.variant_order,
+                blend_order,
+                mesh_order: (draw.is_outline ? 0 : 1), // outlines should be drawn first, so inline is on top
+                selection: (draw.interactive ? 1 : 0),
                 offset: (draw.offset ? 1 : 0),
+                z_or_offset: ((draw.offset || draw.extrude || draw.z) ? 1 : 0),
                 texcoords: draw.texcoords,
                 texture: draw.texture_merged,
                 dash: draw.dash,
@@ -448,16 +472,18 @@ Object.assign(Lines, {
     // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
         if (Lines.vertex_layouts[variant.key] == null) {
-            // Basic attributes, others can be added (see texture UVs below)
-            let attribs = [
+            // Attributes for this mesh variant
+            // Optional attributes have placeholder values assigned with `static` parameter
+            const attribs = [
                 { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
                 { name: 'a_extrude', size: 2, type: gl.SHORT, normalized: false },
                 { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false, static: (variant.offset ? null : [0, 0]) },
-                { name: 'a_scaling', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_z_and_offset_scale', size: 2, type: gl.SHORT, normalized: false, static: (variant.z_or_offset ? null : [0, 0]) },
                 { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.texcoords ? null : [0, 0]) },
                 { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) }
             ];
+
             Lines.vertex_layouts[variant.key] = new VertexLayout(attribs);
         }
         return Lines.vertex_layouts[variant.key];
@@ -475,14 +501,15 @@ Object.assign(Lines, {
     makeVertexTemplate(style, mesh) {
         let i = 0;
 
-        // a_position.xyz - vertex position
+        // a_position.xy - vertex position
+        // a_position.z - line width scaling factor
         // a_position.w - layer order
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = style.z || 0;
+        this.vertex_template[i++] = style.width_scale * 1024;
         this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // a_extrude.xy - extrusion vector
+        // a_extrude.xy - extrusion vector (vertex extrusion away from center of line)
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
 
@@ -493,26 +520,26 @@ Object.assign(Lines, {
             this.vertex_template[i++] = 0;
         }
 
-        // a_scaling.xy - scaling to previous and next zoom
-        this.vertex_template[i++] = style.width_scale * 1024;    // line width
-        this.vertex_template[i++] = style.offset_scale * 1024;   // line offset
+        // a_z_and_offset_scale.xy
+        if (mesh.variant.z_or_offset) {
+            this.vertex_template[i++] = style.z || 0; // feature z position
+            this.vertex_template[i++] = style.offset_scale * 1024; // line offset scaling factor
+        }
 
-        // Add texture UVs to template only if needed
+        // a_texcoord.uv - texture coordinates
         if (mesh.variant.texcoords) {
-            // a_texcoord.uv
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
         }
 
-        // a_color.rgba
+        // a_color.rgba - feature color
         this.vertex_template[i++] = style.color[0] * 255;
         this.vertex_template[i++] = style.color[1] * 255;
         this.vertex_template[i++] = style.color[2] * 255;
         this.vertex_template[i++] = style.color[3] * 255;
 
-        // selection color
-        if (this.selection) {
-            // a_selection_color.rgba
+        // a_selection_color.rgba - selection color
+        if (mesh.variant.selection) {
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
             this.vertex_template[i++] = style.selection_color[2] * 255;
@@ -522,7 +549,7 @@ Object.assign(Lines, {
         return this.vertex_template;
     },
 
-    buildLines(lines, style, mesh, context, options) {
+    buildLines(lines, style, context, options) {
         // Outline (build first so that blended geometry without a depth test is drawn first/under the inner line)
         this.feature_style = this.outline_feature_style; // swap in outline-specific style holder
         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
@@ -534,37 +561,28 @@ Object.assign(Lines, {
 
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
+        let mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
         let vertex_data = mesh.vertex_data;
         let vertex_layout = vertex_data.vertex_layout;
         let vertex_template = this.makeVertexTemplate(style, mesh);
         return buildPolylines(
             lines,
-            style.width,
+            style,
             vertex_data,
             vertex_template,
-            {
-                cap: style.cap,
-                join: style.join,
-                miter_limit: style.miter_limit,
-                extrude_index: vertex_layout.index.a_extrude,
-                offset_index: vertex_layout.index.a_offset,
-                texcoord_index: vertex_layout.index.a_texcoord,
-                texcoord_width: style.texcoord_width,
-                texcoord_normalize: 65535, // scale UVs to unsigned shorts
-                closed_polygon: options && options.closed_polygon,
-                remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
-                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 2,
-                offset: style.offset
-            }
+            vertex_layout.index,
+            (options && options.closed_polygon), // closed_polygon
+            (!style.tile_edges && options && options.remove_tile_edges), // remove_tile_edges
+            (Geo.tile_scale * context.tile.pad_scale * 2) // tile_edge_tolerance
         );
     },
 
-    buildPolygons(polygons, style, mesh, context) {
-         // Render polygons as individual lines
+    buildPolygons(polygons, style, context) {
+        // Render polygons as individual lines
         let geom_count = 0;
-         for (let p=0; p < polygons.length; p++) {
-            geom_count += this.buildLines(polygons[p], style, mesh, context, { closed_polygon: true, remove_tile_edges: true });
-         }
+        for (let p=0; p < polygons.length; p++) {
+            geom_count += this.buildLines(polygons[p], style, context, { closed_polygon: true, remove_tile_edges: true });
+        }
         return geom_count;
     }
 

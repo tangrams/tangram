@@ -1,5 +1,5 @@
-import Utils from './utils/utils';
-import * as URLs from './utils/urls';
+import Utils from '../utils/utils';
+import * as URLs from '../utils/urls';
 
 import JSZip from 'jszip';
 import yaml from 'js-yaml';
@@ -90,17 +90,16 @@ export class ZipSceneBundle extends SceneBundle {
         return true;
     }
 
-    load() {
+    async load() {
         this.zip = new JSZip();
 
         if (typeof this.url === 'string') {
-            return Utils.io(this.url, 60000, 'arraybuffer')
-                .then(body => this.zip.loadAsync(body))
-                .then(() => this.parseZipFiles())
-                .then(() => this.loadRoot())
-                .catch(e => Promise.reject(e));
+            const data = await Utils.io(this.url, 60000, 'arraybuffer');
+            await this.zip.loadAsync(data);
+            await this.parseZipFiles();
+            return this.loadRoot();
         } else {
-            return Promise.resolve(this);
+            return this;
         }
     }
 
@@ -123,8 +122,8 @@ export class ZipSceneBundle extends SceneBundle {
     }
 
     loadRoot() {
-        return this.findRoot()
-            .then(() => loadResource(this.urlForZipFile(this.root)));
+        this.findRoot();
+        return loadResource(this.urlForZipFile(this.root));
     }
 
     findRoot() {
@@ -140,19 +139,18 @@ export class ZipSceneBundle extends SceneBundle {
         // No root found
         if (!this.root) {
             let msg = `Could not find root scene for bundle '${this.url}': `;
-            msg += `The zip archive's root level must contain a single scene file with the '.yaml' extension. `;
+            msg += 'The zip archive\'s root level must contain a single scene file with the \'.yaml\' extension. ';
             if (yamls.length > 0) {
                 msg += `Found multiple YAML files at the root level: ${yamls.map(r => '\'' + r + '\'' ).join(', ')}.`;
             }
             else {
-                msg += `Found NO YAML files at the root level.`;
+                msg += 'Found NO YAML files at the root level.';
             }
-            return Promise.reject(Error(msg));
+            throw Error(msg);
         }
-        return Promise.resolve();
     }
 
-    parseZipFiles() {
+    async parseZipFiles() {
         let paths = [];
         let queue = [];
         this.zip.forEach((path, file) => {
@@ -162,17 +160,16 @@ export class ZipSceneBundle extends SceneBundle {
             }
         });
 
-        return Promise.all(queue).then(data => {
-            for (let i=0; i < data.length; i++) {
-                let path = paths[i];
-                let depth = path.split('/').length - 1;
-                this.files[path] = {
-                    data: data[i],
-                    type: URLs.extensionForURL(path),
-                    depth
-                };
-            }
-        });
+        const data = await Promise.all(queue);
+        for (let i = 0; i < data.length; i++) {
+            let path = paths[i];
+            let depth = path.split('/').length - 1;
+            this.files[path] = {
+                data: data[i],
+                type: URLs.extensionForURL(path),
+                depth
+            };
+        }
     }
 
     urlForZipFile(file) {

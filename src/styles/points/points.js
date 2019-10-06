@@ -5,31 +5,27 @@ import {Style} from '../style';
 import StyleParser from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
-import {buildQuadsForPoints} from '../../builders/points';
+import { buildQuadForPoint } from '../../builders/points';
 import Texture from '../../gl/texture';
-import Geo from '../../geo';
-import Vector from '../../vector';
+import Geo from '../../utils/geo';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import placePointsOnLine from '../../labels/point_placement';
 import {TextLabels} from '../text/text_labels';
-import {VIEW_PAN_SNAP_TIME} from '../../view';
+import {VIEW_PAN_SNAP_TIME} from '../../scene/view';
 import debugSettings from '../../utils/debug_settings';
 
-let fs = require('fs');
-const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
-const shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
+import points_vs from './points_vertex.glsl';
+import points_fs from './points_fragment.glsl';
 
 const PLACEMENT = LabelPoint.PLACEMENT;
-
-const pre_angles_normalize = 128 / Math.PI;
-const angles_normalize = 16384 / Math.PI;
-const offsets_normalize = 64;
-const texcoord_normalize = 65535;
 
 export const Points = Object.create(Style);
 
 Points.variants = {}; // mesh variants by variant key
+Points.vertex_layouts = {}; // vertex layouts by variant key
+
+const SHADER_POINT_VARIANT = '__shader_point';
 
 // texture types
 const TANGRAM_POINT_TYPE_TEXTURE = 1; // style texture/sprites (assigned by user)
@@ -45,38 +41,14 @@ Object.assign(Points, TextLabels);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
-    vertex_shader_src: shaderSrc_pointsVertex,
-    fragment_shader_src: shaderSrc_pointsFragment,
+    vertex_shader_src: points_vs,
+    fragment_shader_src: points_fs,
     selection: true,  // enable feature selection
     collision: true,  // style includes a collision pass
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init(options = {}) {
         Style.init.call(this, options);
-
-        // Vertex layout
-        let attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
-            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: [0, 0, 0, 0] },
-            { name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false, static: 0 },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
-        ];
-
-        this.vertex_layout = new VertexLayout(attribs);
-
-        // Modified vertex layout for shader-drawn points
-        attribs = attribs.map(x => Object.assign({}, x)); // copy attribs
-        attribs.forEach(attrib => {
-            // clear the static attribute value for shader points
-            if (attrib.name === 'a_outline_color' || attrib.name === 'a_outline_edge') {
-                attrib.static = null;
-            }
-        });
-        this.vertex_layout_shader_point = new VertexLayout(attribs);
 
         // Shader defines
         this.setupDefines();
@@ -92,6 +64,12 @@ Object.assign(Points, {
         this.collision_group_points = this.name+'-points';
         this.collision_group_text = this.name+'-text';
 
+        // Stenciling proxy tiles (to avoid compounding alpha artifacts) doesn't work well with
+        // points/text labels, which have pure transparent pixels that interfere with the stencil buffer,
+        // causing a "cut-out"/"x-ray" effect (preventing pixels that would usually be covered by proxy tiles
+        // underneath from being rendered).
+        this.stencil_proxy_tiles = false;
+
         this.reset();
     },
 
@@ -102,11 +80,7 @@ Object.assign(Points, {
             this.defines.TANGRAM_LAYER_ORDER = true;
         }
 
-        // Fade out when tile is zooming out, e.g. acting as proxy tiles
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
-        this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
-
-        // Fade in (depending on tile proxy status)
+        // Fade in labels
         if (debugSettings.suppress_label_fade_in === true) {
             this.fade_in_time = 0;
             this.defines.TANGRAM_FADE_IN_RATE = null;
@@ -145,6 +119,7 @@ Object.assign(Points, {
         style.color = this.parseColor(draw.color, context);
         style.texture = draw.texture;   // optional point texture, specified in `draw` or at style level
         style.label_texture = null;     // assigned by labelling code if needed
+        style.blend_order = draw.blend_order; // copy pre-computed blend order
 
         // require color or texture
         if (!style.color && !style.texture) {
@@ -162,36 +137,25 @@ Object.assign(Points, {
             }
             else {
                 // sprites are defined in the style's texture, but none are used in the current layer
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}' uses a texture '${style.texture}' with defined sprites, but no sprite is specified. Skipping features in layer`);
+                log({ level: 'debug', once: true }, `Layer group '${draw.layers.join(', ')}' ` +
+                    `uses a texture '${style.texture}', but doesn't specify which sprite to draw. ` +
+                    'Features that match this layer group won\'t be drawn without specifying the sprite with the ' +
+                    '\'sprite\' or \'sprite_default\' properties. The merged draw parameters for this layer group are:', draw).then(logged => {
+                    if (logged) {
+                        log('debug', `Example feature for layer group '${draw.layers.join(', ')}'`, feature);
+                    }
+                });
                 return;
             }
         } else if (draw.sprite) {
             // sprite specified in the draw layer but no sprites defined in the texture
-            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-            `a sprite '${draw.sprite}' is specified but no sprites are defined in texture '${draw.texture}', skipping features in layer`);
+            log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}' ` +
+                `specifies sprite '${draw.sprite}', but the texture '${draw.texture}' doesn't define any sprites. ` +
+                'Features that match this layer group won\'t be drawn. The merged draw parameters for this layer group are:', draw);
             return;
         }
 
-        // point size defined explicitly, or defaults to sprite size, or generic fallback
-        style.size = draw.size;
-        if (!style.size) {
-            // a 'size' property has not been set in the draw layer -
-            // use the sprite size if it exists and a generic fallback if it doesn't
-            style.size = (sprite_info && sprite_info.css_size) || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
-        }
-        else {
-            // check for a cached size, passing the texture and any sprite references
-            style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
-            if (style.size == null) {
-                // the StyleParser couldn't evaluate a sprite size
-                log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-                    `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, skipping features in layer`);
-                return;
-            }
-            else if (typeof style.size === 'number') {
-                style.size = [style.size, style.size]; // convert 1d size to 2d
-            }
-        }
+        this.calcSize(draw, style, sprite_info, context);
 
         // incorporate outline into size
         if (draw.outline) {
@@ -224,7 +188,7 @@ Object.assign(Points, {
         style.angle = StyleParser.evalProperty(draw.angle, context) || 0;
 
         // points can be placed off the ground
-        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
+        style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
 
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
@@ -238,8 +202,8 @@ Object.assign(Points, {
 
         if (Array.isArray(tf)) {
             tf = null; // NB: boundary labels not supported for point label attachments, should log warning
-            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-                `cannot use boundary labels (e.g. 'text_source: { left: ..., right: ... }') for 'text' labels attached to 'points'; ` +
+            log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
+                'cannot use boundary labels (e.g. \'text_source: { left: ..., right: ... }\') for \'text\' labels attached to \'points\'; ' +
                 `provided 'text_source' value was ${JSON.stringify(draw.text.text_source)}`);
         }
 
@@ -250,10 +214,6 @@ Object.assign(Points, {
             // This can be overriden, as long as it is less than or equal to the default
             tf.layout.priority = draw.text.priority ? Math.max(tf.layout.priority, style.priority + 0.5) : (style.priority + 0.5);
 
-            // Text labels attached to points should not be moved into tile
-            // (they should stay fixed relative to the point)
-            tf.layout.move_into_tile = false;
-
             Collision.addStyle(this.collision_group_text, tile.id);
         }
 
@@ -261,6 +221,31 @@ Object.assign(Points, {
 
         // Register with collision manager
         Collision.addStyle(this.collision_group_points, tile.id);
+    },
+
+    // Calcuate the size for the current point feature
+    calcSize (draw, style, sprite_info, context) {
+        // point size defined explicitly, or defaults to sprite size, or generic fallback
+        style.size = draw.size;
+        if (!style.size) {
+            // a 'size' property has not been set in the draw layer -
+            // use the sprite size if it exists and a generic fallback if it doesn't
+            style.size = (sprite_info && sprite_info.css_size) || [DEFAULT_POINT_SIZE, DEFAULT_POINT_SIZE];
+        }
+        else {
+            // check for a cached size, passing the texture and any sprite references
+            style.size = StyleParser.evalCachedPointSizeProperty(draw.size, sprite_info, Texture.textures[style.texture], context);
+            if (style.size == null) {
+                // the StyleParser couldn't evaluate a sprite size
+                log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
+                    `'size' (${JSON.stringify(draw.size.value)}) couldn't be interpreted, features that match ` +
+                    'this layer group won\'t be drawn');
+                return;
+            }
+            else if (typeof style.size === 'number') {
+                style.size = [style.size, style.size]; // convert 1d size to 2d
+            }
+        }
     },
 
     hasSprites (style) {
@@ -302,10 +287,10 @@ Object.assign(Points, {
     },
 
     // Override
-    endData (tile) {
+    async endData (tile) {
         if (tile.canceled) {
             log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}`);
-            return Promise.resolve();
+            return null;
         }
 
         let queue = this.queues[tile.id];
@@ -319,7 +304,6 @@ Object.assign(Points, {
             let style = q.style;
             let feature = q.feature;
             let geometry = feature.geometry;
-
             let feature_labels = this.buildLabels(style.size, geometry, style);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];
@@ -355,56 +339,55 @@ Object.assign(Points, {
         });
 
         // Collide both points and text, then build features
-        return Promise.
-            all([
-                // Points
-                Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
-                    point_objs.forEach(q => {
-                        this.feature_style = q.style;
-                        this.feature_style.label = q.label;
-                        this.feature_style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
-                        Style.addFeature.call(this, q.feature, q.draw, q.context);
-                    });
-                }),
-                // Labels
-                this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)
-            ]).then(([, { labels, texts, textures }]) => {
-                // Process labels
-                if (labels && texts) {
-                    // Build queued features
-                    labels.forEach(q => {
-                        let text_settings_key = q.text_settings_key;
-                        let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-
-                        // setup styling object expected by Style class
-                        let style = this.feature_style;
-                        style.label = q.label;
-                        style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
-                        style.size = text_info.size.logical_size;
-                        style.angle = 0; // text attached to point is always upright
-                        style.texcoords = text_info.align[q.label.align].texcoords;
-                        style.label_texture = textures[text_info.align[q.label.align].texture_id];
-
-                        Style.addFeature.call(this, q.feature, q.draw, q.context);
-                    });
-                }
-                this.freeText(tile);
-
-                // Finish tile mesh
-                return Style.endData.call(this, tile).then(tile_data => {
-                    // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (tile_data && textures && textures.length) {
-                        tile_data.textures = tile_data.textures || [];
-                        tile_data.textures.push(...textures); // assign texture ownership to tile
-                    }
-                    return tile_data;
+        const [, { labels, texts, textures }] = await Promise.all([
+            // Points
+            Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
+                point_objs.forEach(q => {
+                    this.feature_style = q.style;
+                    this.feature_style.label = q.label;
+                    this.feature_style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
+                    Style.addFeature.call(this, q.feature, q.draw, q.context);
                 });
+            }),
+            // Labels
+            this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)
+        ]);
+
+        // Process labels
+        if (labels && texts) {
+            // Build queued features
+            labels.forEach(q => {
+                let text_settings_key = q.text_settings_key;
+                let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+
+                // setup styling object expected by Style class
+                let style = this.feature_style;
+                style.label = q.label;
+                style.linked = q.linked; // TODO: move linked into label to avoid extra prop tracking?
+                style.size = text_info.size.logical_size;
+                style.texcoords = text_info.align[q.label.align].texcoords;
+                style.label_texture = textures[text_info.align[q.label.align].texture_id];
+                style.blend_order = q.draw.blend_order; // copy blend order from parent point
+
+                Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
+        }
+        this.freeText(tile);
+
+        // Finish tile mesh
+        const tile_data = await Style.endData.call(this, tile);
+        // Attach tile-specific label atlas to mesh as a texture uniform
+        if (tile_data && textures && textures.length) {
+            tile_data.textures = tile_data.textures || [];
+            tile_data.textures.push(...textures); // assign texture ownership to tile
+        }
+        return tile_data;
     },
 
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
         draw.texture = (draw.texture !== undefined ? draw.texture : this.texture); // optional or default texture
+        draw.blend_order = this.getBlendOrderForDraw(draw); // from draw block, or fall back on default style blend order
 
         if (draw.outline) {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
@@ -415,11 +398,11 @@ Object.assign(Points, {
 
         // Size (1d value or 2d array)
         try {
-            draw.size = StyleParser.createPointSizePropertyCache(draw.size);
+            draw.size = StyleParser.createPointSizePropertyCache(draw.size, draw.texture);
         }
         catch(e) {
-            log({ level: 'warn', once: true }, `Layer '${draw.layers[draw.layers.length-1]}': ` +
-                `${e} (${JSON.stringify(draw.size)}), skipping features in layer`);
+            log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
+                `${e} (${JSON.stringify(draw.size)}), features that match this layer group won't be drawn.`);
             return null;
         }
 
@@ -435,9 +418,6 @@ Object.assign(Points, {
 
         // Repeat rules - no repeat limitation for points by default
         draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance, StyleParser.parseNumber);
-        if (draw.repeat_group == null) {
-            draw.repeat_group = draw.layers.join('-');
-        }
 
         // Placement strategies
         draw.placement = PLACEMENT[draw.placement && draw.placement.toUpperCase()];
@@ -452,7 +432,12 @@ Object.assign(Points, {
         draw.placement_min_length_ratio = StyleParser.createPropertyCache(draw.placement_min_length_ratio, StyleParser.parsePositiveNumber);
 
         if (typeof draw.angle === 'number') {
-            draw.angle = draw.angle * Math.PI / 180;
+            draw.angle = draw.angle * Math.PI / 180; // convert static value to radians
+        }
+        else if (typeof draw.angle === 'function') {
+            // convert function return value to radians
+            const angle_func = draw.angle;
+            draw.angle = context => angle_func(context) * Math.PI / 180;
         }
         else {
             draw.angle = draw.angle || 0; // angle can be a string like "auto" (use angle of geometry)
@@ -465,7 +450,8 @@ Object.assign(Points, {
             draw.text.group = draw.group;
             draw.text.layers = draw.layers;
             draw.text.order = draw.order;
-            draw.text.repeat_group = draw.text.repeat_group || draw.repeat_group;
+            draw.text.blend_order = draw.blend_order;
+            draw.text.repeat_group = (draw.text.repeat_group != null ? draw.text.repeat_group : draw.repeat_group);
             draw.text.anchor = draw.text.anchor || this.default_anchor;
             draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
             draw.text.interactive = draw.text.interactive || draw.interactive; // inherits from point
@@ -505,7 +491,9 @@ Object.assign(Points, {
                 layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
             }
             else {
-                layout.repeat_group = draw.repeat_group; // pre-computer repeat group
+                // default to top-level layer name
+                // (e.g. all labels under `roads` layer, including sub-layers, are in one repeat group)
+                layout.repeat_group = draw.repeat_group || context.layer;
             }
         }
 
@@ -538,64 +526,68 @@ Object.assign(Points, {
     },
 
     // Builds one or more point labels for a geometry
-    buildLabels (size, geometry, options) {
+    buildLabels (size, geometry, layout) {
         let labels = [];
 
-        if (geometry.type === "Point") {
-            labels.push(new LabelPoint(geometry.coordinates, size, options));
+        if (geometry.type === 'Point') {
+            labels.push(new LabelPoint(geometry.coordinates, size, layout, layout.angle));
         }
-        else if (geometry.type === "MultiPoint") {
+        else if (geometry.type === 'MultiPoint') {
             let points = geometry.coordinates;
             for (let i = 0; i < points.length; ++i) {
                 let point = points[i];
-                labels.push(new LabelPoint(point, size, options));
+                labels.push(new LabelPoint(point, size, layout, layout.angle));
             }
         }
-        else if (geometry.type === "LineString") {
+        else if (geometry.type === 'LineString') {
             let line = geometry.coordinates;
-            let point_labels = placePointsOnLine(line, size, options);
+            let point_labels = placePointsOnLine(line, size, layout);
             for (let i = 0; i < point_labels.length; ++i) {
                 labels.push(point_labels[i]);
             }
         }
-        else if (geometry.type === "MultiLineString") {
+        else if (geometry.type === 'MultiLineString') {
             let lines = geometry.coordinates;
             for (let ln = 0; ln < lines.length; ln++) {
                 let line = lines[ln];
-                let point_labels = placePointsOnLine(line, size, options);
+                let point_labels = placePointsOnLine(line, size, layout);
                 for (let i = 0; i < point_labels.length; ++i) {
                     labels.push(point_labels[i]);
                 }
             }
         }
-        else if (geometry.type === "Polygon") {
+        else if (geometry.type === 'Polygon') {
             // Point at polygon centroid (of outer ring)
-            if (options.placement === PLACEMENT.CENTROID) {
+            if (layout.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.centroid(geometry.coordinates);
-                labels.push(new LabelPoint(centroid, size, options));
+                if (centroid) { // skip degenerate polygons
+                    labels.push(new LabelPoint(centroid, size, layout, layout.angle));
+                }
             }
             // Point at each polygon vertex (all rings)
             else {
                 let rings = geometry.coordinates;
                 for (let ln = 0; ln < rings.length; ln++) {
-                    let point_labels = placePointsOnLine(rings[ln], size, options);
+                    let point_labels = placePointsOnLine(rings[ln], size, layout);
                     for (let i = 0; i < point_labels.length; ++i) {
                         labels.push(point_labels[i]);
                     }
                 }
             }
         }
-        else if (geometry.type === "MultiPolygon") {
-            if (options.placement === PLACEMENT.CENTROID) {
+        else if (geometry.type === 'MultiPolygon') {
+            if (layout.placement === PLACEMENT.CENTROID) {
                 let centroid = Geo.multiCentroid(geometry.coordinates);
-                labels.push(new LabelPoint(centroid, size, options));
+                if (centroid) { // skip degenerate polygons
+                    labels.push(new LabelPoint(centroid, size, layout, layout.angle));
+                }
             }
             else {
                 let polys = geometry.coordinates;
                 for (let p = 0; p < polys.length; p++) {
                     let rings = polys[p];
                     for (let ln = 0; ln < rings.length; ln++) {
-                        let point_labels = placePointsOnLine(rings[ln], size, options);
+                        let point_labels = placePointsOnLine(rings[ln], size, layout);
                         for (let i = 0; i < point_labels.length; ++i) {
                             labels.push(point_labels[i]);
                         }
@@ -612,93 +604,99 @@ Object.assign(Points, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style, mesh) {
-        let color = style.color || StyleParser.defaults.color;
-        let vertex_layout = mesh.vertex_data.vertex_layout;
+        let i = 0;
 
-        // position - x & y coords will be filled in per-vertex below
-        this.fillVertexTemplate(vertex_layout, 'a_position', 0, { size: 2 });
-        this.fillVertexTemplate(vertex_layout, 'a_position', style.z || 0, { size: 1, offset: 2 });
-        // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.fillVertexTemplate(vertex_layout, 'a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
+        // a_position.xyz - vertex position
+        // a_position.w - layer order
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = style.z || 0;
+        this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // scaling vector - (x, y) components per pixel, z = angle, w = show/hide
-        this.fillVertexTemplate(vertex_layout, 'a_shape', 0, { size: 4 });
-        this.fillVertexTemplate(vertex_layout, 'a_shape', style.label.layout.collide ? 0 : 1, { size: 1, offset: 3 }); // set initial label hide/show state
+        // a_shape.xy - size of point in pixels (scaling vector)
+        // a_shape.z - angle of point
+        // a_shape.w - show/hide flag
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = style.label.layout.collide ? 0 : 1; // set initial label hide/show state
 
-        // texture coords
-        this.fillVertexTemplate(vertex_layout, 'a_texcoord', 0, { size: 2 });
-
-        // offsets
-        this.fillVertexTemplate(vertex_layout, 'a_offset', 0, { size: 2 });
-
-        // color
-        this.fillVertexTemplate(vertex_layout, 'a_color', Vector.mult(color, 255), { size: 4 });
-
-        // outline (can be static or dynamic depending on style)
-        if (this.defines.TANGRAM_HAS_SHADER_POINTS && mesh.variant.shader_point) {
-            let outline_color = style.outline_color || StyleParser.defaults.outline.color;
-            this.fillVertexTemplate(vertex_layout, 'a_outline_color', Vector.mult(outline_color, 255), { size: 4 });
-            this.fillVertexTemplate(vertex_layout, 'a_outline_edge', style.outline_edge_pct || StyleParser.defaults.outline.width, { size: 1 });
+        // a_texcoord.xy - texture coords
+        if (!mesh.variant.shader_point) {
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
         }
 
-        // selection color
-        if (this.selection) {
-            this.fillVertexTemplate(vertex_layout, 'a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
+        // a_offset.xy - offset of point from center, in pixels
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+
+        // a_color.rgba - feature color
+        const color = style.color || StyleParser.defaults.color;
+        this.vertex_template[i++] = color[0] * 255;
+        this.vertex_template[i++] = color[1] * 255;
+        this.vertex_template[i++] = color[2] * 255;
+        this.vertex_template[i++] = color[3] * 255;
+
+        // a_selection_color.rgba - selection color
+        if (mesh.variant.selection) {
+            this.vertex_template[i++] = style.selection_color[0] * 255;
+            this.vertex_template[i++] = style.selection_color[1] * 255;
+            this.vertex_template[i++] = style.selection_color[2] * 255;
+            this.vertex_template[i++] = style.selection_color[3] * 255;
+        }
+
+        // point outline
+        if (mesh.variant.shader_point) {
+            // a_outline_color.rgba - outline color
+            const outline_color = style.outline_color || StyleParser.defaults.outline.color;
+            this.vertex_template[i++] = outline_color[0] * 255;
+            this.vertex_template[i++] = outline_color[1] * 255;
+            this.vertex_template[i++] = outline_color[2] * 255;
+            this.vertex_template[i++] = outline_color[3] * 255;
+
+            // a_outline_edge - point outline edge (as % of point size where outline begins)
+            this.vertex_template[i++] = style.outline_edge_pct || StyleParser.defaults.outline.width;
         }
 
         return this.vertex_template;
     },
 
-    buildQuad(points, size, angle, angles, pre_angles, offset, offsets, texcoord_scale, curve, vertex_data, vertex_template) {
+    buildQuad(point, size, angle, angles, pre_angles, offset, offsets, texcoords, curve, vertex_data, vertex_template) {
         if (size[0] <= 0 || size[1] <= 0) {
             return 0; // size must be positive
         }
 
-        return buildQuadsForPoints(
-            points,
+        return buildQuadForPoint(
+            point,
             vertex_data,
             vertex_template,
-            {
-                texcoord_index: vertex_data.vertex_layout.index.a_texcoord,
-                position_index: vertex_data.vertex_layout.index.a_position,
-                shape_index: vertex_data.vertex_layout.index.a_shape,
-                offset_index: vertex_data.vertex_layout.index.a_offset,
-                offsets_index: vertex_data.vertex_layout.index.a_offsets,
-                pre_angles_index: vertex_data.vertex_layout.index.a_pre_angles,
-                angles_index: vertex_data.vertex_layout.index.a_angles
-            },
-            {
-                quad: size,
-                quad_normalize: 256,    // values have an 8-bit fraction
-                offset,
-                offsets,
-                pre_angles: pre_angles,
-                angle: angle * 4096,    // values have a 12-bit fraction
-                angles: angles,
-                curve,
-                texcoord_scale,
-                texcoord_normalize,
-                pre_angles_normalize,
-                angles_normalize,
-                offsets_normalize
-            }
+            vertex_data.vertex_layout.index,
+            size,
+            offset,
+            offsets,
+            pre_angles,
+            angle * 4096, // angle values have a 12-bit fraction
+            angles,
+            texcoords,
+            curve
         );
     },
 
     // Build quad for point sprite
-    build (style, mesh, context) {
+    build (style, context) {
         let label = style.label;
         if (label.type === 'curved') {
-            return this.buildCurvedLabel(label, style, mesh, context);
+            return this.buildCurvedLabel(label, style, context);
         }
         else {
-            return this.buildStraightLabel(label, style, mesh, context);
+            return this.buildStraightLabel(label, style, context);
         }
     },
 
-    buildStraightLabel (label, style, mesh, context) {
+    buildStraightLabel (label, style, context) {
+        let mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
         let vertex_template = this.makeVertexTemplate(style, mesh);
-        let angle = label.angle || style.angle;
 
         let size, texcoords;
         if (label.type !== 'point') {
@@ -733,9 +731,9 @@ Object.assign(Points, {
         // TODO: instead of passing null, pass arrays with fingerprintable values
         // This value is checked in the shader to determine whether to apply curving logic
         let geom_count = this.buildQuad(
-            [label.position],               // position
+            label.position,                 // position
             size,                           // size in pixels
-            angle,                          // angle in radians
+            label.angle,                    // angle in radians
             null,                           // placeholder for multiple angles
             null,                           // placeholder for multiple pre_angles
             offset,                         // offset from center in pixels
@@ -748,11 +746,12 @@ Object.assign(Points, {
         // track label mesh buffer data
         const linked = (style.linked && style.linked.label.id);
         this.trackLabel(label, linked, mesh, geom_count, context);
+
+        return geom_count;
     },
 
-    buildCurvedLabel (label, style, mesh, context) {
-        let vertex_template = this.makeVertexTemplate(style, mesh);
-        let angle = label.angle;
+    buildCurvedLabel (label, style, context) {
+        let mesh, vertex_template;
         let geom_count = 0;
 
         // two passes for stroke and fill, where stroke needs to be drawn first (painter's algorithm)
@@ -765,13 +764,14 @@ Object.assign(Points, {
 
             // re-point to correct label texture
             style.label_texture = style.label_textures[i];
-            let mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            vertex_template = this.makeVertexTemplate(style, mesh);
 
             // add label texture uniform if needed
-            mesh_data.uniforms = mesh_data.uniforms || {};
-            mesh_data.uniforms.u_texture = style.label_texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
-            mesh_data.uniforms.u_apply_color_blocks = false;
+            mesh.uniforms = mesh.uniforms || {};
+            mesh.uniforms.u_texture = style.label_texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh.uniforms.u_apply_color_blocks = false;
 
             let offset = label.offset || [0,0];
             let position = label.position;
@@ -781,16 +781,16 @@ Object.assign(Points, {
             let pre_angles = label.pre_angles[i];
 
             let seg_count = this.buildQuad(
-                [position],                     // position
+                position,                       // position
                 size,                           // size in pixels
-                angle,                          // angle in degrees
+                label.angle,                    // angle in degrees
                 angles,                         // angles per segment
                 pre_angles,                     // pre_angle array (rotation applied before offseting)
                 offset,                         // offset from center in pixels
                 offsets,                        // offsets per segment
                 texcoord_stroke,                // texture UVs for stroked text
                 true,                           // if curved
-                mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
+                mesh.vertex_data, vertex_template    // VBO and data for current vertex
             );
             geom_count += seg_count;
 
@@ -806,13 +806,14 @@ Object.assign(Points, {
 
             // re-point to correct label texture
             style.label_texture = style.label_textures[i];
-            let mesh_data = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+            vertex_template = this.makeVertexTemplate(style, mesh);
 
             // add label texture uniform if needed
-            mesh_data.uniforms = mesh_data.uniforms || {};
-            mesh_data.uniforms.u_texture = style.label_texture;
-            mesh_data.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
-            mesh_data.uniforms.u_apply_color_blocks = false;
+            mesh.uniforms = mesh.uniforms || {};
+            mesh.uniforms.u_texture = style.label_texture;
+            mesh.uniforms.u_point_type = TANGRAM_POINT_TYPE_LABEL;
+            mesh.uniforms.u_apply_color_blocks = false;
 
             let offset = label.offset || [0,0];
             let position = label.position;
@@ -822,16 +823,16 @@ Object.assign(Points, {
             let pre_angles = label.pre_angles[i];
 
             let seg_count = this.buildQuad(
-                [position],                     // position
+                position,                       // position
                 size,                           // size in pixels
-                angle,                          // angle in degrees
+                label.angle,                    // angle in degrees
                 angles,                         // angles per segment
                 pre_angles,                     // pre_angle array (rotation applied before offseting)
                 offset,                         // offset from center in pixels
                 offsets,                        // offsets per segment
                 texcoord,                       // texture UVs for fill text
                 true,                           // if curved
-                mesh_data.vertex_data, vertex_template    // VBO and data for current vertex
+                mesh.vertex_data, vertex_template    // VBO and data for current vertex
             );
             geom_count += seg_count;
 
@@ -843,9 +844,11 @@ Object.assign(Points, {
         return geom_count;
     },
 
-    // track mesh data for label (byte ranges occupied by label in VBO)
-    trackLabel (label, linked, mesh, geom_count, context) {
-        if (label.layout.collide) {
+    // track mesh data for label on main thread, for additional cross-tile collision/repeat passes
+    trackLabel (label, linked, mesh, geom_count/*, context*/) {
+        // track if collision is enabled, or if the label is near enough to the tile edge to
+        // necessitate further repeat checking
+        if (label.layout.collide || label.may_repeat_across_tiles) {
             mesh.labels = mesh.labels || {};
             mesh.labels[label.id] = mesh.labels[label.id] || {
                 container: {
@@ -861,6 +864,7 @@ Object.assign(Points, {
                 // }
             };
 
+            // store byte ranges occupied by label in VBO, so they can be updated on main thread
             const vertex_count = geom_count * 2; // geom count is triangles: 2 triangles = 1 quad = 4 vertices
             const start = mesh.vertex_data.offset - mesh.vertex_data.stride * vertex_count; // start offset of byte range
             mesh.labels[label.id].ranges.push([
@@ -871,39 +875,61 @@ Object.assign(Points, {
     },
 
     // Override to pass-through to generic point builder
-    buildLines (lines, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildLines (lines, style, context) {
+        return this.build(style, context);
     },
 
-    buildPoints (points, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildPoints (points, style, context) {
+        return this.build(style, context);
     },
 
-    buildPolygons (points, style, mesh, context) {
-        return this.build(style, mesh, context);
+    buildPolygons (points, style, context) {
+        return this.build(style, context);
     },
 
     // Override
+    // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
-        if (variant.shader_point) {
-            return this.vertex_layout_shader_point;
+        // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
+        if (Points.vertex_layouts[variant.shader_point] == null) {
+            // Attributes for this mesh variant
+            // Optional attributes have placeholder values assigned with `static` parameter
+            // TODO: could support optional attributes for selection and offset, but may not be worth it
+            // since points generally don't consume much memory anyway
+            const attribs = [
+                { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.shader_point ? [0, 0] : null) },
+                { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+                { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) },
+                { name: 'a_outline_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.shader_point ? null : [0, 0, 0, 0]) },
+                { name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false, static: (variant.shader_point ? null : 0) }
+            ];
+
+            Points.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
         }
-        return this.vertex_layout;
+        return Points.vertex_layouts[variant.shader_point];
+
     },
 
     // Override
     meshVariantTypeForDraw (draw) {
-        let key = draw.label_texture || draw.texture || this.default_mesh_variant.key; // unique key by texture name
+        const texture = draw.label_texture || draw.texture || SHADER_POINT_VARIANT; // unique key by texture name
+        const key = texture + '/' + draw.blend_order;
         if (Points.variants[key] == null) {
             Points.variants[key] = {
                 key,
-                shader_point: (key === this.default_mesh_variant.key), // is shader point
-                order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
+                selection: 1, // TODO: make this vary by draw params
+                shader_point: (texture === SHADER_POINT_VARIANT), // is shader point
+                blend_order: draw.blend_order,
+                mesh_order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
             };
         }
         return Points.variants[key]; // return pre-calculated mesh variant
     },
 
+    // Override
     makeMesh (vertex_data, vertex_elements, options = {}) {
         // Add label fade time
         options = Object.assign({}, options, { fade_in_time: this.fade_in_time });

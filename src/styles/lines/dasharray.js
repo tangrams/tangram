@@ -34,6 +34,7 @@ export default function renderDashArray (pattern, options = {}) {
         dash = !dash; // alternate between dashes and spaces
     }
 
+    pixels.reverse(); // flip Y (GL textures are upside down)
     pixels = new Uint8Array(pixels); // convert to typed array
     const length = pixels.length / 4; // one RGBA byte sequences to one pixel
 

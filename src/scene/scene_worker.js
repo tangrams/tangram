@@ -1,27 +1,24 @@
 /*jshint worker: true*/
-import Thread from './utils/thread';
-import Utils from './utils/utils';
-import {mergeDebugSettings} from './utils/debug_settings';
-import log from './utils/log';
-import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
-import Tile from './tile';
-import Geo from './geo';
-import DataSource from './sources/data_source';
-import FeatureSelection from './selection';
-import StyleParser from './styles/style_parser';
-import {StyleManager} from './styles/style_manager';
-import {parseLayers, FilterOptions} from './styles/layer';
-import {buildFilter} from './styles/filter';
-import Texture from './gl/texture';
-import VertexElements from './gl/vertex_elements';
-import Label from './labels/label';
 
-export var SceneWorker = self;
+import Utils from '../utils/utils';
+import {compileFunctionStrings, functionStringCache, clearFunctionStringCache} from '../utils/functions';
+import debugSettings, {mergeDebugSettings} from '../utils/debug_settings';
+import log from '../utils/log';
+import WorkerBroker from '../utils/worker_broker'; // jshint ignore:line
+import Tile from '../tile/tile';
+import Geo from '../utils/geo';
+import DataSource from '../sources/data_source';
+import '../sources/sources';
+import FeatureSelection from '../selection/selection';
+import StyleParser from '../styles/style_parser';
+import {StyleManager} from '../styles/style_manager';
+import {parseLayers, FilterOptions, layerCache} from '../styles/layer';
+import {buildFilter} from '../styles/filter';
+import Texture from '../gl/texture';
+import VertexElements from '../gl/vertex_elements';
+import Label from '../labels/label';
 
-// Worker functionality will only be defined in worker thread
-if (Thread.is_worker) {
-
-Object.assign(self, {
+const SceneWorker = Object.assign(self, {
 
     FeatureSelection,
 
@@ -32,16 +29,17 @@ Object.assign(self, {
 
     // Initialize worker
     init (scene_id, worker_id, num_workers, log_level, device_pixel_ratio, has_element_index_unit, external_scripts) {
-        self.scene_id = scene_id;
-        self._worker_id = worker_id;
-        self.num_workers = num_workers;
+        this.scene_id = scene_id;
+        this._worker_id = worker_id;
+        this.num_workers = num_workers;
         log.setLevel(log_level);
         Utils.device_pixel_ratio = device_pixel_ratio;
         VertexElements.setElementIndexUint(has_element_index_unit);
-        FeatureSelection.setPrefix(self._worker_id);
-        self.style_manager = new StyleManager();
-        self.importExternalScripts(external_scripts);
+        FeatureSelection.setPrefix(this._worker_id);
+        this.style_manager = new StyleManager();
+        this.importExternalScripts(external_scripts);
         Label.id_prefix = worker_id;
+        Label.id_multiplier = num_workers;
         return worker_id;
     },
 
@@ -61,7 +59,7 @@ Object.assign(self, {
 
         Object.getOwnPropertyNames(window).forEach(prop => {
             if (prev_names.indexOf(prop) === -1) {
-                self[prop] = window[prop]; // new property added to window, also add it to self
+                this[prop] = window[prop]; // new property added to window, also add it to self
             }
         });
     },
@@ -71,65 +69,61 @@ Object.assign(self, {
         config = JSON.parse(config);
         mergeDebugSettings(debug);
 
-        self.generation = generation;
-        self.introspection = introspection;
-
-        // Data block functions are not context wrapped like the rest of the style functions are
-        // TODO: probably want a cleaner way to exclude these
-        for (let layer in config.layers) {
-            if (config.layers[layer]) {
-                config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
-            }
-        }
+        this.generation = generation;
+        this.introspection = introspection;
 
         // Expand global properties
-        self.global = Utils.stringsToFunctions(config.global);
+        this.global = compileFunctionStrings(config.global);
 
         // Create data sources
-        self.createDataSources(config);
+        this.createDataSources(config);
 
         // Expand styles
-        config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
-        self.styles = self.style_manager.build(config.styles);
-        self.style_manager.initStyles({
-            generation: self.generation,
-            styles: self.styles,
-            sources: self.sources,
-            introspection: self.introspection
+        config.styles = compileFunctionStrings(config.styles, StyleParser.wrapFunction);
+        this.styles = this.style_manager.build(config.styles);
+        this.style_manager.initStyles({
+            generation: this.generation,
+            styles: this.styles,
+            sources: this.sources,
+            introspection: this.introspection
         });
 
         // Parse each top-level layer as a separate tree
-        self.layers = parseLayers(config.layers, self.style_manager.styles);
+        this.layers = parseLayers(config.layers, this.style_manager.styles);
 
         // Sync tetxure info from main thread
-        self.syncing_textures = self.syncTextures(config.textures);
+        this.syncing_textures = this.syncTextures(config.textures);
 
         // Return promise for when config refresh finishes
-        self.configuring = self.syncing_textures.then(() => {
-            log('debug', `updated config`);
+        this.configuring = this.syncing_textures.then(() => {
+            log('debug', 'updated config');
         });
+
+        return this.configuring;
     },
 
     // Create data sources and clear tile cache if necessary
     createDataSources (config) {
         // Save and compare previous sources
-        self.last_config_sources = self.config_sources || {};
-        self.config_sources = config.sources;
-        let last_sources = self.sources;
+        this.last_config_sources = this.config_sources || {};
+        this.config_sources = config.sources;
+        let last_sources = this.sources;
         let changed = [];
 
         // Parse new sources
-        config.sources = Utils.stringsToFunctions(config.sources);
-        self.sources = {}; // clear previous sources
+        this.sources = {}; // clear previous sources
         for (let name in config.sources) {
-            if (JSON.stringify(self.last_config_sources[name]) === JSON.stringify(config.sources[name])) {
-                self.sources[name] = last_sources[name];
+            if (JSON.stringify(this.last_config_sources[name]) === JSON.stringify(config.sources[name])) {
+                this.sources[name] = last_sources[name];
                 continue;
             }
 
+            // compile any user-defined JS functions
+            config.sources[name] = compileFunctionStrings(config.sources[name]);
+
             let source;
             try {
-                source = DataSource.create(Object.assign({}, config.sources[name], {name}), self.sources);
+                source = DataSource.create(Object.assign({}, config.sources[name], {name}), this.sources);
             }
             catch(e) {
                 continue;
@@ -138,15 +132,15 @@ Object.assign(self, {
             if (!source) {
                 continue;
             }
-            self.sources[name] = source;
+            this.sources[name] = source;
             changed.push(name);
         }
 
         // Clear tile cache for data sources that changed
         changed.forEach(source => {
-            for (let t in self.tiles) {
-                if (self.tiles[t].source === source) {
-                    delete self.tiles[t];
+            for (let t in this.tiles) {
+                if (this.tiles[t].source === source) {
+                    delete this.tiles[t];
                 }
             }
         });
@@ -154,24 +148,24 @@ Object.assign(self, {
 
     // Returns a promise that fulfills when config refresh is finished
     awaitConfiguration () {
-        return self.configuring;
+        return this.configuring;
     },
 
     // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
     buildTile ({ tile }) {
         // Tile cached?
-        if (self.getTile(tile.key) != null) {
+        if (this.getTile(tile.key) != null) {
             // Already loading?
-            if (self.getTile(tile.key).loading === true) {
+            if (this.getTile(tile.key).loading === true) {
                 return;
             }
         }
 
         // Update tile cache
-        tile = self.tiles[tile.key] = Object.assign(self.getTile(tile.key) || {}, tile);
+        tile = this.tiles[tile.key] = Object.assign(this.getTile(tile.key) || {}, tile);
 
         // Update config (styles, etc.), then build tile
-        return self.awaitConfiguration().then(() => {
+        return this.awaitConfiguration().then(() => {
             // First time building the tile
             if (tile.loaded !== true) {
 
@@ -179,8 +173,8 @@ Object.assign(self, {
                 tile.loaded = false;
                 tile.error = null;
 
-                self.loadTileSourceData(tile).then(() => {
-                    if (!self.getTile(tile.key)) {
+                this.loadTileSourceData(tile).then(() => {
+                    if (!this.getTile(tile.key)) {
                         log('trace', `stop tile build after data source load because tile was removed: ${tile.key}`);
                         return;
                     }
@@ -192,7 +186,7 @@ Object.assign(self, {
 
                     tile.loading = false;
                     tile.loaded = true;
-                    Tile.buildGeometry(tile, self);
+                    Tile.buildGeometry(tile, this);
                 }).catch((error) => {
                     tile.loading = false;
                     tile.loaded = false;
@@ -200,7 +194,7 @@ Object.assign(self, {
                     log('error', `tile load error for ${tile.key}: ${tile.error}`);
 
                     // Send error to main thread
-                    WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, Tile.slice(tile));
+                    WorkerBroker.postMessage(`TileManager_${this.scene_id}.buildTileError`, Tile.slice(tile));
                 });
             }
             // Tile already loaded, just rebuild
@@ -209,21 +203,33 @@ Object.assign(self, {
 
                 // Build geometry
                 try {
-                    Tile.buildGeometry(tile, self);
+                    Tile.buildGeometry(tile, this);
                 }
                 catch(error) {
                     // Send error to main thread
                     tile.error = error.toString();
-                    WorkerBroker.postMessage(`TileManager_${self.scene_id}.buildTileError`, Tile.slice(tile));
+                    WorkerBroker.postMessage(`TileManager_${this.scene_id}.buildTileError`, Tile.slice(tile));
                 }
             }
         });
     },
 
-    // Load this tile's data source
+    // Load this tile's data source, or copy from an existing tile's data
     loadTileSourceData (tile) {
-        if (self.sources[tile.source]) {
-            return self.sources[tile.source].load(tile);
+        const source = this.sources[tile.source];
+        if (source) {
+            // Search existing tiles to see if we can reuse existing source data for this coordinate
+            for (const t in this.tiles) {
+                const ref = this.tiles[t];
+                if (ref.source === tile.source &&
+                    ref.coords.key === tile.coords.key &&
+                    ref.loaded) {
+                    return Promise.resolve(source.copyTileData(ref, tile));
+                }
+            }
+
+            // Load new tile data (no existing data found)
+            return source.load(tile);
         }
         else {
             tile.source_data = {};
@@ -232,12 +238,12 @@ Object.assign(self, {
     },
 
     getTile(key) {
-        return self.tiles[key];
+        return this.tiles[key];
     },
 
     // Remove tile
     removeTile (key) {
-        var tile = self.tiles[key];
+        var tile = this.tiles[key];
 
         if (tile != null) {
             // Cancel if loading
@@ -249,7 +255,7 @@ Object.assign(self, {
 
             // Remove from cache
             FeatureSelection.clearTile(key);
-            delete self.tiles[key];
+            delete this.tiles[key];
             log('trace', `remove tile from cache for ${key}`);
         }
     },
@@ -257,38 +263,53 @@ Object.assign(self, {
     // Query features within visible tiles, with optional filter conditions
     queryFeatures ({ filter, visible, geometry, tile_keys }) {
         let features = [];
-        let tiles = tile_keys.map(t => self.tiles[t]).filter(t => t);
+        let tiles = tile_keys
+            .map(t => this.tiles[t])
+            .filter(t => t && t.loaded);
 
         // Compile feature filter
         if (filter != null) {
             filter = ['{', '['].indexOf(filter[0]) > -1 ? JSON.parse(filter) : filter; // de-serialize if looks like an object
-            filter = Utils.stringsToFunctions(filter, StyleParser.wrapFunction);
+            filter = compileFunctionStrings(filter, StyleParser.wrapFunction);
         }
         filter = buildFilter(filter, FilterOptions);
 
         tiles.forEach(tile => {
             for (let layer in tile.source_data.layers) {
                 let data = tile.source_data.layers[layer];
+
+                if (data == null) {
+                    return;
+                }
+
                 data.features.forEach(feature => {
                     // Optionally check if feature is visible (e.g. was rendered for current generation)
-                    if ((visible === true && feature.generation !== self.generation) ||
-                        (visible === false && feature.generation === self.generation)) {
+                    const feature_visible = (feature.generation === this.generation);
+                    if ((visible === true && !feature_visible) ||
+                        (visible === false && feature_visible)) {
                         return;
                     }
 
                     // Apply feature filter
-                    let context = StyleParser.getFeatureParseContext(feature, tile, self.global);
+                    let context = StyleParser.getFeatureParseContext(feature, tile, this.global);
                     context.source = tile.source;  // add data source name
                     context.layer = layer;         // add data source layer name
+                    context.id = feature.id;       // add feature id
 
                     if (!filter(context)) {
-                       return;
+                        return;
                     }
 
                     // Info to return with each feature
                     let subset = {
                         type: feature.type,
-                        properties: feature.properties
+                        id: feature.id,
+                        properties: Object.assign({}, feature.properties, {
+                            $source: context.source,
+                            $layer: context.layer,
+                            $geometry: context.geometry,
+                            $visible: feature_visible
+                        })
                     };
 
                     // Optionally include geometry in response
@@ -344,17 +365,25 @@ Object.assign(self, {
         Utils.device_pixel_ratio = device_pixel_ratio;
     },
 
+    clearFunctionStringCache () {
+        clearFunctionStringCache();
+    },
+
     // Profiling helpers
     profile (name) {
-        console.profile(`worker ${self._worker_id}: ${name}`);
+        console.profile(`worker ${this._worker_id}: ${name}`); // eslint-disable-line no-console
     },
 
     profileEnd (name) {
-        console.profileEnd(`worker ${self._worker_id}: ${name}`);
+        console.profileEnd(`worker ${this._worker_id}: ${name}`); // eslint-disable-line no-console
+    },
+
+    debug: {
+        debugSettings,
+        layerCache,
+        functionStringCache
     }
 
 });
 
-WorkerBroker.addTarget('self', self);
-
-}
+WorkerBroker.addTarget('self', SceneWorker);

@@ -40,103 +40,44 @@
             // Nextzen (nee Mapzen) basemaps
             'Bubble Wrap': {
                 import: [
-                    'https://www.nextzen.org/carto/bubble-wrap-style/8/bubble-wrap-style.zip',
-                    'https://www.nextzen.org/carto/bubble-wrap-style/8/themes/label-10.zip'
-                ],
-                sources: {
-                    mapzen: {
-                        type: 'MVT',
-                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
-                        url_subdomains: ['a', 'b', 'c', 'd'],
-                        tile_size: 512,
-                        max_zoom: 15
-                    }
-                }
+                    'https://www.nextzen.org/carto/bubble-wrap-style/10/bubble-wrap-style.zip',
+                    'https://www.nextzen.org/carto/bubble-wrap-style/10/themes/label-10.zip',
+                    'https://www.nextzen.org/carto/bubble-wrap-style/10/themes/bubble-wrap-road-shields-usa.zip',
+                    'https://www.nextzen.org/carto/bubble-wrap-style/10/themes/bubble-wrap-road-shields-international.zip'
+                ]
             },
 
             'Walkabout': {
                 import: [
-                    'https://www.nextzen.org/carto/walkabout-style/6/walkabout-style.zip',
-                    'https://www.nextzen.org/carto/walkabout-style/6/themes/label-10.zip'
-                ],
-                sources: {
-                    mapzen: {
-                        type: 'TopoJSON',
-                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson',
-                        url_subdomains: ['a', 'b', 'c', 'd'],
-                        tile_size: 512,
-                        max_zoom: 15
-                    },
-                    normals: {
-                        url: 'https://{s}.tile.nextzen.org/tilezen/terrain/v1/512/normal/{z}/{x}/{y}.png',
-                        url_subdomains: ['a', 'b', 'c', 'd'],
-                        tile_size: 512,
-                        max_zoom: 14
-                    }
-                }
+                  'https://www.nextzen.org/carto/walkabout-style/8/walkabout-style.zip',
+                  'https://www.nextzen.org/carto/walkabout-style/8/themes/label-10.zip',
+                  'https://www.nextzen.org/carto/walkabout-style/8/themes/walkabout-road-shields-usa.zip',
+                  'https://www.nextzen.org/carto/walkabout-style/8/themes/walkabout-road-shields-international.zip'
+                ]
             },
 
             'Refill': {
                 import: [
-                    'https://www.nextzen.org/carto/refill-style/10/refill-style.zip',
-                    'https://www.nextzen.org/carto/refill-style/10/themes/label-10.zip'
-                ],
-                sources: {
-                    mapzen: {
-                        type: 'MVT',
-                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
-                        url_subdomains: ['a', 'b', 'c', 'd'],
-                        tile_size: 512,
-                        max_zoom: 15
-                    }
-                }
+                  'https://www.nextzen.org/carto/refill-style/12/refill-style.zip',
+                  'https://www.nextzen.org/carto/refill-style/12/themes/label-10.zip',
+                ]
             },
 
             'Refill Blue Terrain': {
                 import: [
-                    'https://www.nextzen.org/carto/refill-style/10/refill-style.zip',
-                    'https://www.nextzen.org/carto/refill-style/10/themes/label-10.zip',
-                    'https://www.nextzen.org/carto/refill-style/10/themes/color-blue.zip',
-                    'https://www.nextzen.org/carto/refill-style/10/themes/no-texture.zip',
-                    'https://www.nextzen.org/carto/refill-style/10/themes/terrain-shading-dark.zip'
-                ],
-                sources: {
-                    mapzen: {
-                        type: 'TopoJSON',
-                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson',
-                        url_subdomains: ['a', 'b', 'c', 'd'],
-                        tile_size: 512,
-                        max_zoom: 15
-                    },
-                    normals: {
-                        url: 'https://{s}.tile.nextzen.org/tilezen/terrain/v1/512/normal/{z}/{x}/{y}.png',
-                        url_subdomains: ['a', 'b', 'c', 'd'],
-                        tile_size: 512,
-                        max_zoom: 14
-                    }
-                }
+                    'https://www.nextzen.org/carto/refill-style/12/refill-style.zip',
+                    'https://www.nextzen.org/carto/refill-style/12/themes/label-10.zip',
+                    'https://www.nextzen.org/carto/refill-style/12/themes/color-blue.zip',
+                    'https://www.nextzen.org/carto/refill-style/12/themes/no-texture.zip',
+                    'https://www.nextzen.org/carto/refill-style/12/themes/terrain-pattern-dark.zip'
+                ]
             },
 
             'Tron': {
                 import: [
-                    'https://www.nextzen.org/carto/tron-style/5/tron-style.zip',
-                    'https://www.nextzen.org/carto/tron-style/5/themes/label-10.zip'
-                ],
-                sources: {
-                    mapzen: {
-                        type: 'MVT',
-                        url: 'https://{s}.tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt',
-                        url_subdomains: ['a', 'b', 'c', 'd'],
-                        tile_size: 512,
-                        max_zoom: 15
-                    },
-                    'normals-elevation': {
-                        url: 'https://{s}.tile.nextzen.org/tilezen/terrain/v1/512/normal/{z}/{x}/{y}.png',
-                        url_subdomains: ['a', 'b', 'c', 'd'],
-                        tile_size: 512,
-                        max_zoom: 14
-                    }
-                }
+                    'https://www.nextzen.org/carto/tron-style/6/tron-style.zip',
+                    'https://www.nextzen.org/carto/tron-style/6/themes/label-10.zip'
+                ]
             },
 
             // Crosshatch style (texture/shader demos)
@@ -183,9 +124,17 @@
                 }
             }
         };
-        Object.keys(scenes).forEach(function(s){ scenes[s] = JSON.stringify(scenes[s]) }); // need to stringify JSON for dat.gui :(
 
-        gui.scene = scenes[scene_key];
+        Object.keys(scenes).forEach(function (s) { scenes[s] = JSON.stringify(scenes[s]); }); // need to stringify JSON for dat.gui :(
+
+        scene_key = Object.keys(scenes).filter(function (s) { return scenes[s] === JSON.stringify(scene.config_source); })[0]; // find scene from sample list
+        if (scene_key) {
+            gui.scene = scenes[scene_key];
+        }
+        else {
+            gui.scene = {};
+        }
+
         gui.add(gui, 'scene', scenes).onChange(function(value) {
             scene_key = Object.keys(scenes).filter(function(s){ return scenes[s] === value })[0]; // find scene from sample list
             value = JSON.parse(value); // need to stringify JSON for dat.gui :(
@@ -213,7 +162,7 @@
             scene.config.global.ux_language = gui.language;
             gui.add(gui, 'language', langs).onChange(function(value) {
                 scene.config.global.language = value;    // for bundled demos
-                scene.config.global.ux_language = value; // for Mapzen basemaps
+                scene.config.global.ux_language = value; // for Nextzen basemaps
                 scene.updateConfig();
             });
         }

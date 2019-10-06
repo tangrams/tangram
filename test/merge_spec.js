@@ -1,7 +1,5 @@
 import chai from 'chai';
 let assert = chai.assert;
-import chaiAsPromised from 'chai-as-promised';
-chai.use(chaiAsPromised);
 
 import mergeObjects from '../src/utils/merge';
 

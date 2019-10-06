@@ -1,4 +1,5 @@
-﻿global:
+global:
+    api_key: '' # put your nextzen API key here
     language: en # optional ISO 2-char code
     language_text_source: |
         function() {
@@ -40,7 +41,7 @@ scene:
 
 fonts:
     Montserrat:
-        url: https://fonts.gstatic.com/s/montserrat/v7/zhcz-_WihjSQC0oHJ9TCYL3hpw3pgy2gAi-Ip7WPMi0.woff
+        url: fonts/montserrat.woff
 
 textures:
     icons:
@@ -97,17 +98,23 @@ styles:
 
 sources:
     tilezen:
-        type: TopoJSON
-        url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
+        type: MVT
+        url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt
+        # type: TopoJSON
+        # url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
         tile_size: 512
-        max_zoom: 15
+        max_zoom: 16
+        # zooms: [0, 2, 4, 6, 8, 10, 12, 14, 16] # only load tiles every 2 zooms (overrides max_zoom)
         url_params:
-            api_key: NaqqS33fTUmyQcvbuIUCKA
-        # # Data filtering demo with 'scripts' and 'transform' properties:
-        # # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
-        # # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
-        # # That feature is then filtered on below in the 'roads' layer.
-        # scripts: ['https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js']
+            api_key: global.api_key
+        # request_headers: # send custom headers with tile requests
+        #     Authorization: Bearer xxxxxxxxx
+        # Data filtering demo with 'scripts' and 'transform' properties:
+        # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
+        # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
+        # That feature is then filtered on below in the 'roads' layer.
+        # scripts:
+        #     turf: https://npmcdn.com/@turf/turf/turf.min.js
         # transform: |
         #     function(data, extra_data) {
         #         if (data.roads &&
@@ -140,6 +147,7 @@ sources:
     # counties:
     #     type: TopoJSON
     #     url: https://gist.githubusercontent.com/mbostock/4090846/raw/c899e3d4f3353924e495667c842f54a07090cfab/us.json
+    #     zooms: [0, 4, 8, 10]
 
 layers:
 
@@ -272,7 +280,7 @@ layers:
             draw:
                 lines:
                     color: [[5, '#F89595'], [7, '#D16768']]
-                    width: [[5, 1px], [8, 1.5px], [14, 2px], [15, 12]]
+                    width: [[5, 1.5px], [8, 2px], [14, 2.5px], [15, 12]]
                     outline:
                         width: [[14, 0], [15, 2]]
             link:
@@ -282,10 +290,10 @@ layers:
                         color: '#aaa'
                         width: [[13, 0], [14, 12]]
         major_road:
-            filter: { kind: major_road, $zoom: { min: 10 } }
+            filter: { kind: major_road }
             draw:
                 lines:
-                    width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
+                    width: [[7, 1px], [10, 1px], [12, 1.5px], [13, 2px], [14, 2px], [16, 12]]
                     outline:
                         width: [[16, 0], [17, 1]]
         minor_road:
@@ -418,6 +426,7 @@ layers:
             filter:
                 network: 'US:I' # US interstates only in this demo
                 shield_text: true
+                $zoom: { min: 6 }
             draw:
                 points:
                     texture: icons
@@ -427,10 +436,13 @@ layers:
                     color: white
                     size: 24px
                     placement: midpoint
+                    placement_min_length_ratio:
+                        - [9, 0.1]
+                        - [10, 0.25]
+                        - [12, 1]
+                        - [14, 2.0]
                     repeat_group: shields
-                    cull_from_tile: true
                     text:
-                        repeat_distance: 150px
                         anchor: center
                         text_source: shield_text
                         font:
@@ -442,7 +454,7 @@ layers:
                 filter: { $zoom: { max: 11 } }
                 draw:
                     points:
-                        repeat_distance: 75px
+                        repeat_distance: 100px
 
     buildings:
         data: { source: tilezen }
@@ -590,7 +602,7 @@ layers:
                     draw: { points: { sprite: museum } }
                 station:
                     filter: { kind: [station] }
-                    draw: { points: { sprite: train, priority: 2, optional: true } }
+                    draw: { points: { sprite: train, priority: 2, text: { optional: true } } }
                 hospital:
                     filter: { kind: [hospital, pharmacy] }
                     draw: { points: { sprite: hospital } }
@@ -666,7 +678,6 @@ layers:
                         priority: 1
                         font:
                             family: Helvetica
-                            size: 12px
                             fill: [0, 0, 0, .8]
                             stroke: { color: white, width: 4 }
                             transform: uppercase
@@ -712,8 +723,7 @@ layers:
                         visible: true
                         buffer: 2px
                         font:
-                            # weight: bold
-                            size: [[6, 12px], [8, 16px]]
+                            size: [[6, 14px], [8, 16px]]
 
                 # use short name when available at low-zooms
                 short:

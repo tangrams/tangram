@@ -1,15 +1,16 @@
-import log from './utils/log';
-import Utils from './utils/utils';
-import mergeObjects from './utils/merge';
-import Geo from './geo';
-import {addLayerDebugEntry} from './styles/style';
-import StyleParser from './styles/style_parser';
-import Collision from './labels/collision';
-import WorkerBroker from './utils/worker_broker';
-import Task from './utils/task';
-import Texture from './gl/texture';
+import log from '../utils/log';
+import Utils from '../utils/utils';
+import mergeObjects from '../utils/merge';
+import Geo from '../utils/geo';
+import {TileID} from './tile_id';
+import {addLayerDebugEntry} from '../styles/style';
+import StyleParser from '../styles/style_parser';
+import Collision from '../labels/collision';
+import WorkerBroker from '../utils/worker_broker';
+import Task from '../utils/task';
+import Texture from '../gl/texture';
 
-import {mat4, vec3} from './utils/gl-matrix';
+import {mat4, vec3} from '../utils/gl-matrix';
 
 let id = 0; // unique tile id
 let build_id = 0; // id tracking order in which tiles were build
@@ -23,9 +24,8 @@ export default class Tile {
         coords: object with {x, y, z} properties identifying tile coordinate location
         worker: web worker to handle tile construction
     */
-    constructor({ coords, style_zoom, source, worker, view }) {
+    constructor({ coords, style_z, source, workers, view }) {
         this.id = id++;
-        this.worker = worker;
         this.view = view;
         this.source = source;
         this.generation = null;
@@ -33,8 +33,9 @@ export default class Tile {
 
         this.visible = false;
         this.proxy_for = null;
-        this.proxy_depth = 0;
         this.proxied_as = null;
+        this.proxy_level = 0;
+        this.proxy_order_offset = 0;
         this.fade_in = true;
         this.loading = false;
         this.loaded = false;
@@ -43,89 +44,27 @@ export default class Tile {
         this.error = null;
         this.debug = {};
 
-        this.style_zoom = style_zoom; // zoom level to be used for styling
-        this.coords = Tile.normalizedCoordinate(coords, this.source, this.style_zoom);
-        this.key = Tile.key(this.coords, this.source, this.style_zoom);
-        this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
+        this.style_z = style_z; // zoom level to be used for styling
+        this.coords = TileID.normalizedCoord(coords, this.source);
+        this.key = TileID.key(this.coords, this.source, this.style_z);
+        this.overzoom = Math.max(this.style_z - this.coords.z, 0); // number of levels of overzooming
         this.overzoom2 = Math.pow(2, this.overzoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
-        this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
+        this.span = { x: (this.max.x - this.min.x), y: -(this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
-        this.center_dist = 0;
 
-        this.meters_per_pixel = Geo.metersPerPixel(this.style_zoom);
+        this.meters_per_pixel = Geo.metersPerPixel(this.style_z);
         this.meters_per_pixel_sq = this.meters_per_pixel * this.meters_per_pixel;
         this.units_per_pixel = Geo.units_per_pixel / this.overzoom2; // adjusted for overzoom
         this.units_per_meter_overzoom = Geo.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
+        this.preserve_tiles_within_zoom = this.source.preserve_tiles_within_zoom; // source-specific tile retention policy
 
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.new_mesh_styles = []; // meshes that have been built so far in current build generation
         this.pending_label_meshes = null; // meshes that are pending collision (shouldn't be displayed yet)
-    }
 
-    static coord(c) {
-        return {x: c.x, y: c.y, z: c.z, key: Tile.coordKey(c)};
-    }
-
-    static coordKey({x, y, z}) {
-        return x + '/' + y + '/' + z;
-    }
-
-    static key (coords, source, style_zoom) {
-        if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
-            return; // cull tiles out of range (x will wrap)
-        }
-        return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
-    }
-
-    static normalizedKey (coords, source, style_zoom) {
-        return Tile.key(Tile.normalizedCoordinate(coords, source, style_zoom), source, style_zoom);
-    }
-
-    static normalizedCoordinate (coords, source, style_zoom) {
-        if (source.zoom_bias) {
-            coords = Tile.coordinateAtZoom(coords, Math.max(0, coords.z - source.zoom_bias)); // zoom can't go below zero
-        }
-        return Tile.coordinateWithMaxZoom(coords, source.max_zoom);
-    }
-
-    static coordinateAtZoom({x, y, z}, zoom) {
-        if (z !== zoom) {
-            let zscale = Math.pow(2, z - zoom);
-            x = Math.floor(x / zscale);
-            y = Math.floor(y / zscale);
-            z = zoom;
-        }
-        return Tile.coord({x, y, z});
-    }
-
-    static coordinateWithMaxZoom({x, y, z}, max_zoom) {
-        if (max_zoom !== undefined && z > max_zoom) {
-            return Tile.coordinateAtZoom({x, y, z}, max_zoom);
-        }
-        return Tile.coord({x, y, z});
-    }
-
-    static childrenForCoordinate({x, y, z, key}) {
-        if (!Tile.coord_children[key]) {
-            z++;
-            x *= 2;
-            y *= 2;
-            Tile.coord_children[key] = [
-                Tile.coord({x, y,      z}), Tile.coord({x: x+1, y,      z}),
-                Tile.coord({x, y: y+1, z}), Tile.coord({x: x+1, y: y+1, z})
-            ];
-        }
-        return Tile.coord_children[key];
-    }
-
-    static isDescendant(parent, descendant) {
-        if (descendant.z > parent.z) {
-            let {x, y} = Tile.coordinateAtZoom(descendant, parent.z);
-            return (parent.x === x && parent.y === y);
-        }
-        return false;
+        this.setWorker(workers);
     }
 
     // Free resources owned by tile
@@ -163,12 +102,27 @@ export default class Tile {
             meters_per_pixel: this.meters_per_pixel,
             meters_per_pixel_sq: this.meters_per_pixel_sq,
             units_per_meter_overzoom: this.units_per_meter_overzoom,
-            style_zoom: this.style_zoom,
+            style_z: this.style_z,
             overzoom: this.overzoom,
             overzoom2: this.overzoom2,
             generation: this.generation,
             debug: this.debug
         };
+    }
+
+    // Find the appropriate worker thread for this tile
+    setWorker (workers) {
+        if (this.source.tiled) {
+            // Pin tile to a worker thread based on its coordinates
+            this.worker_id = Math.abs(this.coords.x + this.coords.y + this.coords.z) % workers.length;
+        }
+        else {
+            // Pin all tiles from each non-tiled source to a single worker
+            // Prevents data for these sources from being loaded more than once
+            this.worker_id = this.source.id % workers.length;
+        }
+
+        this.worker = workers[this.worker_id];
     }
 
     workerMessage (...message) {
@@ -208,7 +162,7 @@ export default class Tile {
     static buildGeometry (tile, { scene_id, layers, styles, global }) {
         let data = tile.source_data;
 
-        tile.debug.rendering = +new Date();
+        tile.debug.building = +new Date();
         tile.debug.feature_count = 0;
         tile.debug.layers = null;
 
@@ -231,7 +185,7 @@ export default class Tile {
             // Get data for one or more layers from source
             let source_layers = Tile.getDataForSource(data, layer.config_data, layer_name);
 
-            // Render features in layer
+            // Build features in layer
             for (let s=0; s < source_layers.length; s++) {
                 let source_layer = source_layers[s];
                 let geom = source_layer.geom;
@@ -256,7 +210,7 @@ export default class Tile {
                         continue;
                     }
 
-                    // Render draw groups
+                    // Build draw groups
                     for (let group_name in draw_groups) {
                         let group = draw_groups[group_name];
 
@@ -283,13 +237,13 @@ export default class Tile {
                 }
             }
         }
-        tile.debug.rendering = +new Date() - tile.debug.rendering;
+        tile.debug.building = +new Date() - tile.debug.building;
 
         // Send styles back to main thread as they finish building, in two groups: collision vs. non-collision
         let tile_styles = this.stylesForTile(tile, styles).map(s => styles[s]);
-        Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.collision ? 'collision' : 'non-collision');
-        // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => style.name); // call for each style
-        // Tile.sendStyleGroups(tile, tile_styles, { scene_id }, style => 'styles'); // all styles in single call (previous behavior)
+        Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.collision ? 'collision' : 'non-collision');
+        // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => style.name); // call for each style
+        // Tile.buildStyleGroups(tile, tile_styles, scene_id, style => 'styles'); // all styles in single call (previous behavior)
     }
 
     static stylesForTile (tile, styles) {
@@ -302,64 +256,64 @@ export default class Tile {
         return tile_styles;
     }
 
-    // Send groups of styles back to main thread, asynchronously (as they finish building),
-    // grouped by the provided function
-    static sendStyleGroups(tile, styles, { scene_id }, group_by) {
-        // Group styles
-        let groups = {};
-        styles.forEach(s => {
-            let group_name = group_by(s);
-            groups[group_name] = groups[group_name] || [];
-            groups[group_name].push(s);
-        });
+    // Build styles (grouped by the provided function) and send back to main thread as they finish building
+    static buildStyleGroups(tile, styles, scene_id, group_by) {
+        // Group the styles; each group will be sent to the main thread when the styles in the group finish building.
+        const groups = styles.reduce((groups, style) => {
+            const group = group_by(style);
+            groups[group] = groups[group] || [];
+            groups[group].push(style);
+            return groups;
+        }, {});
 
-        if (Object.keys(groups).length > 0) {
-            let progress = { start: true };
-            tile.mesh_data = {};
-
-            for (let group_name in groups) {
-                let group = groups[group_name];
-
-                Promise.all(group.map(style => {
-                    return style.endData(tile).then(style_data => {
-                        if (style_data) {
-                            tile.mesh_data[style.name] = style_data;
-                        }
-                    });
-                }))
-                .then(() => {
-                    log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
-
-                    // Clear group and check if all groups finished
-                    groups[group_name] = [];
-                    if (Object.keys(groups).every(g => groups[g].length === 0)) {
-                        progress.done = true;
-                    }
-
-                    // Send meshes to main thread
-                    WorkerBroker.postMessage(
-                        `TileManager_${scene_id}.buildTileStylesCompleted`,
-                        WorkerBroker.withTransferables({ tile: Tile.slice(tile, ['mesh_data']), progress })
-                    );
-                    progress.start = null;
-                    tile.mesh_data = {}; // reset so each group sends separate set of style meshes
-
-                    if (progress.done) {
-                        Collision.resetTile(tile.id); // clear collision if we're done with the tile
-                    }
-                })
-                .catch((e) => {
-                    log('error', `Error for style group '${group_name}' for tile ${tile.key}`, e.stack);
-                });
-            }
-        }
-        else {
-            // Nothing to build, return empty tile to main thread
+        // If nothing to build, return empty tile to main thread
+        if (Object.keys(groups).length === 0) {
             WorkerBroker.postMessage(
                 `TileManager_${scene_id}.buildTileStylesCompleted`,
                 WorkerBroker.withTransferables({ tile: Tile.slice(tile), progress: { start: true, done: true } })
             );
             Collision.resetTile(tile.id); // clear collision if we're done with the tile
+            return;
+        }
+
+        // Build each group of styles
+        const progress = {};
+        for (const group_name in groups) {
+            Tile.buildStyleGroup({ group_name, groups, tile, progress, scene_id });
+        }
+    }
+
+    // Build a single group of styles
+    static async buildStyleGroup({ group_name, groups, tile, progress, scene_id }) {
+        const group = groups[group_name];
+        const mesh_data = {};
+        try {
+            // For each group, build all styles in the group
+            await Promise.all(group.map(async (style) => {
+                const style_data = await style.endData(tile);
+                if (style_data) {
+                    mesh_data[style.name] = style_data;
+                }
+            }));
+
+            // Mark the group as done, and check if all groups have finished
+            log('trace', `Finished style group '${group_name}' for tile ${tile.key}`);
+            groups[group_name] = null;
+            if (Object.keys(groups).every(g => groups[g] == null)) {
+                progress.done = true;
+            }
+
+            // Send meshes to main thread
+            WorkerBroker.postMessage(
+                `TileManager_${scene_id}.buildTileStylesCompleted`,
+                WorkerBroker.withTransferables({ tile: { ...Tile.slice(tile), mesh_data }, progress })
+            );
+            if (progress.done) {
+                Collision.resetTile(tile.id); // clear collision if we're done with the tile
+            }
+        }
+        catch (e) {
+            log('error', `Error for style group '${group_name}' for tile ${tile.key}`, (e && e.stack) || e);
         }
     }
 
@@ -369,31 +323,47 @@ export default class Tile {
             layer: source layer name
             geom: GeoJSON FeatureCollection
     */
-    static getDataForSource (source_data, source_config, default_layer = null) {
+    static getDataForSource (source_data, source_config, scene_layer_name) {
         var layers = [];
 
         if (source_config != null && source_data != null && source_data.layers != null) {
-            // If no layer specified, and a default source layer exists
-            if (!source_config.layer && source_data.layers._default) {
+            // If source wildcard is specified, combine all source layers
+            if (source_config.all_layers === true) {
+                // Wildcard takes precedence over explicit source layer(s)
+                if (source_config.layer != null) {
+                    const msg = `Layer ${scene_layer_name} includes both 'all_layers: true' and an explicit ` +
+                        '\'layer\' keyword in its \'data\' block. \'all_layers: true\' takes precedence, \'layer\' ' +
+                        'will be ignored.';
+                    log({ level: 'warn', once: true }, msg);
+                }
+
+                for (const layer in source_data.layers) {
+                    if (source_data.layers[layer].features) {
+                        layers.push({ layer, geom: source_data.layers[layer] });
+                    }
+                }
+            }
+            // If no source layer specified, and a default data source layer exists
+            else if (!source_config.layer && source_data.layers._default) {
                 layers.push({
                     geom: source_data.layers._default
                 });
             }
-            // If no layer specified, and a default requested layer exists
-            else if (!source_config.layer && default_layer) {
+            // If no source layer is specified, and a layer for the scene layer name exists
+            else if (!source_config.layer && scene_layer_name) {
                 layers.push({
-                    layer: default_layer,
-                    geom: source_data.layers[default_layer]
+                    layer: scene_layer_name,
+                    geom: source_data.layers[scene_layer_name]
                 });
             }
-            // If a layer is specified by name, use it
+            // If a source layer is specified by name, use it
             else if (typeof source_config.layer === 'string') {
                 layers.push({
                     layer: source_config.layer,
                     geom: source_data.layers[source_config.layer]
                 });
             }
-            // If multiple layers are specified by name, combine them
+            // If multiple source layers are specified by name, combine them
             else if (Array.isArray(source_config.layer)) {
                 source_config.layer.forEach(layer => {
                     if (source_data.layers[layer] && source_data.layers[layer].features) {
@@ -454,8 +424,8 @@ export default class Tile {
                         mesh.labels = mesh_variant.labels;
                         meshes[s] = meshes[s] || [];
                         meshes[s].push(mesh);
-                        if (mesh.variant.order == null) {
-                            mesh.variant.order = meshes[s].length - 1; // assign default variant render order
+                        if (mesh.variant.mesh_order == null) {
+                            mesh.variant.mesh_order = meshes[s].length - 1; // assign default variant render order
                         }
 
                         this.debug.buffer_size += mesh.buffer_size;
@@ -467,7 +437,7 @@ export default class Tile {
                 if (meshes[s]) {
                     meshes[s].sort((a, b) => {
                         // Sort variant order ascending if present, then all null values (where order is unspecified)
-                        let ao = a.variant.order, bo = b.variant.order;
+                        let ao = a.variant.mesh_order, bo = b.variant.mesh_order;
                         return (ao == null ? 1 : (bo == null ? -1 : (ao < bo ? -1 : 1)));
                     });
                 }
@@ -490,7 +460,7 @@ export default class Tile {
             else {
                 this.pending_label_meshes = this.pending_label_meshes || {};
                 this.pending_label_meshes[m] = meshes[m];
-              }
+            }
         }
 
         if (progress.done) {
@@ -504,8 +474,8 @@ export default class Tile {
             this.new_mesh_styles = [];
 
             this.debug.geometry_ratio = (this.debug.geometry_count / this.debug.feature_count).toFixed(1);
-            this.printDebug();
         }
+        this.printDebug(progress);
     }
 
     // How many styles are currently pending label collision
@@ -561,12 +531,14 @@ export default class Tile {
             this.visible = true;
             this.proxy_for = this.proxy_for || [];
             this.proxy_for.push(tile);
-            this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
-            tile.proxied_as = (tile.style_zoom > this.style_zoom ? 'child' : 'parent');
+            this.proxy_order_offset = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
+            tile.proxied_as = (tile.style_z > this.style_z ? 'child' : 'parent');
+            this.proxy_level = Math.abs(tile.style_z - this.style_z); // # of zoom levels proxy is above/below target tile
         }
         else {
             this.proxy_for = null;
-            this.proxy_depth = 0;
+            this.proxy_order_offset = 0;
+            this.proxy_level = 0;
         }
     }
 
@@ -584,13 +556,13 @@ export default class Tile {
     // Update model matrix and tile uniforms
     setupProgram ({ model, model32 }, program) {
         // Tile origin
-        program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_zoom, this.coords.z]);
-        program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth);
+        program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_z, this.coords.z]);
+        program.uniform('1f', 'u_tile_proxy_order_offset', this.proxy_order_offset);
 
         // Model - transform tile space into world space (meters, absolute mercator position)
         mat4.identity(model);
         mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
-        mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
+        mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
         mat4.copy(model32, model);
         program.uniform('Matrix4fv', 'u_model', model32);
 
@@ -637,7 +609,8 @@ export default class Tile {
         return this;
     }
 
-    printDebug (exclude = ['layers']) {
+    printDebug (progress) {
+        const exclude = ['layers'];
         let copy = {};
         for (let key in this.debug) {
             if (exclude.indexOf(key) === -1) {
@@ -645,30 +618,30 @@ export default class Tile {
             }
         }
 
-        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
-    }
-
-    // Sum up layer feature/geometry stats from a set of tiles
-    static debugSumLayerStats (tiles) {
-        let list = {}, tree = {};
-
-        tiles.filter(tile => tile.debug.layers).forEach(tile => {
-            // layer list
-            Object.keys(tile.debug.layers.list).forEach(layer => {
-                let counts = tile.debug.layers.list[layer];
-                addLayerDebugEntry(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
-            });
-
-            // layer tree
-            addDebugLayers(tile.debug.layers.tree, tree);
-        });
-
-        return { list, tree };
+        log('debug', `Tile ${progress.done ? '(done)' : ''}: debug for ${this.key}: [  ${JSON.stringify(copy)} ]`);
     }
 
 }
 
 Tile.coord_children = {}; // only allocate children coordinates once per coordinate
+
+// Sum up layer feature/geometry stats from a set of tiles
+export function debugSumLayerStats(tiles) {
+    let list = {}, tree = {};
+
+    tiles.filter(tile => tile.debug.layers).forEach(tile => {
+        // layer list
+        Object.keys(tile.debug.layers.list).forEach(layer => {
+            let counts = tile.debug.layers.list[layer];
+            addLayerDebugEntry(list, layer, counts.features, counts.geoms, counts.styles, counts.base);
+        });
+
+        // layer tree
+        addDebugLayers(tile.debug.layers.tree, tree);
+    });
+
+    return { list, tree };
+}
 
 // build debug stats layer tree
 function addDebugLayers (node, tree) {

@@ -19,10 +19,7 @@ export default class RepeatGroup {
 
             // Found an existing object within allowed distance
             if (dist_sq < this.repeat_dist_sq) {
-                return {
-                    dist_sq,
-                    repeat_dist_sq: this.repeat_dist_sq
-                };
+                return true;
             }
         }
     }

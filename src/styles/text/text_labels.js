@@ -1,13 +1,13 @@
 // Text label rendering methods, can be mixed into a rendering style
 
 import StyleParser from '../style_parser';
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
 import log from '../../utils/log';
 import Thread from '../../utils/thread';
 import WorkerBroker from '../../utils/worker_broker';
 import Collision from '../../labels/collision';
 import TextSettings from '../text/text_settings';
-import CanvasText from '../text/canvas_text';
+import TextCanvas from './text_canvas';
 
 // namespaces label textures (ensures new texture name when a tile is built multiple times)
 let text_texture_id = 0;
@@ -16,7 +16,7 @@ export const TextLabels = {
 
     resetText () {
         if (Thread.is_main) {
-            this.canvas = new CanvasText();
+            this.canvas = new TextCanvas();
         }
         else if (Thread.is_worker) {
             this.texts = {}; // unique texts, grouped by tile, by style
@@ -100,7 +100,7 @@ export const TextLabels = {
         let text;
         let source = draw.text_source || 'name';
 
-        if (source != null && typeof source === 'object') {
+        if (source != null && !Array.isArray(source) && typeof source === 'object') {
             // left/right boundary labels
             text = {};
             for (let key in source) {
@@ -140,13 +140,14 @@ export const TextLabels = {
         return text;
     },
 
-    prepareTextLabels (tile, collision_group, queue) {
+    async prepareTextLabels (tile, queue) {
         if (Object.keys(this.texts[tile.id]||{}).length === 0) {
-            return Promise.resolve([]);
+            return [];
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.id, this.texts[tile.id]).then(({ texts }) => {
+        try {
+            const texts = await WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.id, this.texts[tile.id]);
             if (tile.canceled) {
                 log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
                 return [];
@@ -159,60 +160,65 @@ export const TextLabels = {
             }
 
             return this.buildTextLabels(tile, queue);
-        });
+        }
+        catch (e) { // error thrown if style has been removed from main thread
+            Collision.abortTile(tile.id);
+            return [];
+        }
     },
 
-    collideAndRenderTextLabels (tile, collision_group, queue) {
-        return this.prepareTextLabels(tile, collision_group, queue).then(labels => {
-            if (labels.length === 0) {
-                Collision.collide([], collision_group, tile.id);
-                return Promise.resolve({});
+    async collideAndRenderTextLabels (tile, collision_group, queue) {
+        let labels = await this.prepareTextLabels(tile, queue);
+        if (labels.length === 0) {
+            Collision.collide([], collision_group, tile.id);
+            return {};
+        }
+
+        labels = await Collision.collide(labels, collision_group, tile.id);
+        if (tile.canceled) {
+            log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
+            return {};
+        }
+
+        let texts = this.texts[tile.id];
+        if (texts == null || labels.length === 0) {
+            return {};
+        }
+
+        this.cullTextStyles(texts, labels);
+
+        // set alignments
+        labels.forEach(q => {
+            let text_settings_key = q.text_settings_key;
+            let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+            if (!text_info.text_settings.can_articulate){
+                text_info.align = text_info.align || {};
+                text_info.align[q.label.align] = {};
             }
-
-            return Collision.collide(labels, collision_group, tile.id).then(labels => {
-                if (tile.canceled) {
-                    log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
-                    return {};
+            else {
+                // consider making it a set
+                if (!text_info.type) {
+                    text_info.type = [];
                 }
 
-                let texts = this.texts[tile.id];
-                if (texts == null || labels.length === 0) {
-                    return {};
+                if (text_info.type.indexOf(q.label.type) === -1){
+                    text_info.type.push(q.label.type);
                 }
-
-                this.cullTextStyles(texts, labels);
-
-                // set alignments
-                labels.forEach(q => {
-                    let text_settings_key = q.text_settings_key;
-                    let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
-                    if (!text_info.text_settings.can_articulate){
-                        text_info.align = text_info.align || {};
-                        text_info.align[q.label.align] = {};
-                    }
-                    else {
-                        // consider making it a set
-                        if (!text_info.type) {
-                            text_info.type = [];
-                        }
-
-                        if (text_info.type.indexOf(q.label.type) === -1){
-                            text_info.type.push(q.label.type);
-                        }
-                    }
-                });
-
-                // second call to main thread, for rasterizing the set of texts
-                return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.id, tile.key, texts).then(({ texts, textures }) => {
-                    if (tile.canceled) {
-                        log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
-                        return {};
-                    }
-
-                    return { labels, texts, textures };
-                });
-            });
+            }
         });
+
+        // second call to main thread, for rasterizing the set of texts
+        try {
+            const rasterized = await WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.id, tile.key, texts);
+            if (tile.canceled) {
+                log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
+                return {};
+            }
+            return { labels, ...rasterized };
+        }
+        catch (e) { // error thrown if style has been removed from main thread
+            return {};
+        }
     },
 
     // Remove unused text/style combinations to avoid unnecessary rasterization
@@ -249,25 +255,19 @@ export const TextLabels = {
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
-    rasterizeTexts (tile_id, tile_key, texts) {
-        let canvas = new CanvasText(); // one per style per tile (style may be rendering multiple tiles at once)
+    async rasterizeTexts (tile_id, tile_key, texts) {
+        let canvas = new TextCanvas(); // one per style per tile (style may be rendering multiple tiles at once)
         let max_texture_size = Math.min(this.max_texture_size, 2048); // cap each label texture at 2048x2048
 
-        return canvas.setTextureTextPositions(texts, max_texture_size).then(({ textures }) => {
-            if (!textures) {
-                return {};
-            }
+        let textures = canvas.setTextureTextPositions(texts, max_texture_size);
+        let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
+        text_texture_id++;
 
-            let texture_prefix = ['labels', this.name, tile_key, tile_id, text_texture_id, ''].join('-');
-            text_texture_id++;
-
-            return canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl).then(({ textures }) => {
-                if (!textures) {
-                    return {};
-                }
-                return { texts, textures };
-            });
-        });
+        textures = await canvas.rasterize(texts, textures, tile_id, texture_prefix, this.gl);
+        if (!textures) {
+            return {};
+        }
+        return { texts, textures };
     },
 
     preprocessText (draw) {
@@ -283,7 +283,7 @@ export const TextLabels = {
         }
 
         // Convert font and text stroke sizes
-        draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, CanvasText.fontPixelSize);
+        draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize);
         if (draw.font.stroke && draw.font.stroke.width != null) {
             draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
         }
@@ -299,7 +299,10 @@ export const TextLabels = {
         );
 
         // Repeat rules - for text labels, defaults to tile size
-        draw.repeat_distance = StyleParser.createPropertyCache(draw.repeat_distance || Geo.tile_size, StyleParser.parsePositiveNumber);
+        draw.repeat_distance = StyleParser.createPropertyCache(
+            draw.repeat_distance,
+            StyleParser.parsePositiveNumber
+        );
 
         return draw;
     },
@@ -310,6 +313,24 @@ export const TextLabels = {
 
         // common settings w/points
         layout = this.computeLayout(layout, feature, draw, context, tile);
+
+        // if draw group didn't specify repeat distance, override with text label-specific logic
+        if (draw.repeat_distance == null) {
+            // defaults: no limit on labels for point geometries,  tile size (256px) limit for other geometries
+            layout.repeat_distance = (context.geometry === 'point' ? 0 : Geo.tile_size);
+
+            if (layout.repeat_distance) {
+                layout.repeat_distance *= layout.units_per_pixel;
+                layout.repeat_scale = 1; // initial repeat pass in tile with full scale
+
+                if (typeof draw.repeat_group === 'function') {
+                    layout.repeat_group = draw.repeat_group(context); // dynamic repeat group
+                }
+                else {
+                    layout.repeat_group = draw.repeat_group; // pre-computed repeat group
+                }
+            }
+        }
 
         // repeat rules include the text
         if (layout.repeat_distance) {

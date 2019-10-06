@@ -1,7 +1,7 @@
 import PointAnchor from './point_anchor';
 import {boxIntersectsList} from './intersect';
-import Utils from '../utils/utils';
 import OBB from '../utils/obb';
+import Geo from '../utils/geo';
 // import log from '../utils/log';
 
 export default class Label {
@@ -12,6 +12,7 @@ export default class Label {
         this.size = size;
         this.layout = layout;
         this.position = null;
+        this.angle = 0;
         this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
         this.placed = null;
         this.offset = layout.offset;
@@ -29,9 +30,11 @@ export default class Label {
             type: this.type,
             obb: this.obb.toJSON(),
             position: this.position,
+            angle: this.angle,
             size: this.size,
             offset: this.offset,
             breach: this.breach,
+            may_repeat_across_tiles: this.may_repeat_across_tiles,
             layout: textLayoutToJSON(this.layout)
         };
     }
@@ -77,14 +80,27 @@ export default class Label {
 
     // checks whether the label is within the tile boundaries
     inTileBounds () {
-        let min = [ this.aabb[0], this.aabb[1] ];
-        let max = [ this.aabb[2], this.aabb[3] ];
+        if ((this.aabb[0] >= 0 && this.aabb[1] > -Geo.tile_scale && this.aabb[0] < Geo.tile_scale && this.aabb[1] <= 0) ||
+            (this.aabb[2] >= 0 && this.aabb[3] > -Geo.tile_scale && this.aabb[2] < Geo.tile_scale && this.aabb[3] <= 0)) {
+            return true;
+        }
+        return false;
+    }
 
-        if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
+    // some labels need further repeat culling checks on the main thread
+    // checks whether the label is within its repeat distance of the tile boundaries
+    mayRepeatAcrossTiles () {
+        if (this.layout.collide) {
+            return true; // additional collision pass will already apply, so skip further distance checks
+        }
+
+        const dist = this.layout.repeat_distance;
+        if (dist === 0) {
             return false;
         }
 
-        return true;
+        return (Math.abs(this.position[0]) < dist ||  Math.abs(this.position[0] - Geo.tile_scale) < dist) ||
+               (Math.abs(this.position[1]) < dist ||  Math.abs(-(this.position[1] - Geo.tile_scale)) < dist);
     }
 
     // Whether the label should be discarded
@@ -116,10 +132,11 @@ Label.add = function (label, bboxes) {
 };
 
 Label.id = 0;
-Label.id_prefix = ''; // id prefix scoped to worker thread
+Label.id_prefix = 0; // id prefix scoped to worker thread
+Label.id_multiplier = 0; // multiplier to keep label ids distinct across threads
 
 Label.nextLabelId = function () {
-    return Label.id_prefix + '/' + (Label.id++);
+    return Label.id_prefix + ((Label.id++) * Label.id_multiplier);
 };
 
 Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding

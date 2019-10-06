@@ -1,15 +1,13 @@
-import ShaderProgram from './gl/shader_program';
-import GLSL from './gl/glsl';
-import Geo from './geo';
-import Vector from './vector';
-import StyleParser from './styles/style_parser';
+import ShaderProgram from '../gl/shader_program';
+import GLSL from '../gl/glsl';
+import Geo from '../utils/geo';
+import Vector from '../utils/vector';
+import StyleParser from '../styles/style_parser';
 
-let fs = require('fs');
-
-const shaderSrc_ambientLight = fs.readFileSync(__dirname + '/gl/shaders/ambientLight.glsl', 'utf8');
-const shaderSrc_directionalLight = fs.readFileSync(__dirname + '/gl/shaders/directionalLight.glsl', 'utf8');
-const shaderSrc_pointLight = fs.readFileSync(__dirname + '/gl/shaders/pointLight.glsl', 'utf8');
-const shaderSrc_spotLight = fs.readFileSync(__dirname + '/gl/shaders/spotLight.glsl', 'utf8');
+import ambient_source from './ambient_light.glsl';
+import directional_source from './directional_light.glsl';
+import point_source from './point_light.glsl';
+import spot_source from './spot_light.glsl';
 
 // Abstract light
 export default class Light {
@@ -69,7 +67,7 @@ export default class Light {
         }
 
         // Construct code to calculate each light instance
-        let calculateLights = "";
+        let calculateLights = '';
         if (lights && Object.keys(lights).length > 0) {
             // Collect uniques types of lights
             let types = {};
@@ -183,7 +181,7 @@ class AmbientLight extends Light {
 
     // Inject struct and calculate function
     static inject() {
-        ShaderProgram.addBlock(Light.block, shaderSrc_ambientLight);
+        ShaderProgram.addBlock(Light.block, ambient_source);
     }
 
     setupProgram (_program) {
@@ -230,7 +228,7 @@ class DirectionalLight extends Light {
 
     // Inject struct and calculate function
     static inject() {
-        ShaderProgram.addBlock(Light.block, shaderSrc_directionalLight);
+        ShaderProgram.addBlock(Light.block, directional_source);
     }
 
     setupProgram (_program) {
@@ -269,7 +267,7 @@ class PointLight extends Light {
 
     // Inject struct and calculate function
     static inject () {
-        ShaderProgram.addBlock(Light.block, shaderSrc_pointLight);
+        ShaderProgram.addBlock(Light.block, point_source);
     }
 
     // Inject isntance-specific settings
@@ -290,9 +288,9 @@ class PointLight extends Light {
             // For world origin, format is: [longitude, latitude, meters (default) or pixels w/px units]
 
             // Move light's world position into camera space
-            let [x, y] = Geo.latLngToMeters(this.position);
-            this.position_eye[0] = x - this.view.camera.position_meters[0];
-            this.position_eye[1] = y - this.view.camera.position_meters[1];
+            const m = Geo.latLngToMeters([...this.position]);
+            this.position_eye[0] = m[0] - this.view.camera.position_meters[0];
+            this.position_eye[1] = m[1] - this.view.camera.position_meters[1];
 
             this.position_eye[2] = StyleParser.convertUnits(this.position[2],
                 { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) });
@@ -360,7 +358,7 @@ class SpotLight extends PointLight {
 
     // Inject struct and calculate function
     static inject () {
-        ShaderProgram.addBlock(Light.block, shaderSrc_spotLight);
+        ShaderProgram.addBlock(Light.block, spot_source);
     }
 
     setupProgram (_program) {

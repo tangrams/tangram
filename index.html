@@ -11,30 +11,39 @@ http://mapzen.com/tangram
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tangram: WebGL for maps</title>
     <link rel="stylesheet" href="demos/css/main.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geocoder-mapzen/1.9.4/leaflet-geocoder-mapzen.css">
+
+    <!-- 3rd party libraries -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geocoder-mapzen/1.9.4/leaflet-geocoder-mapzen.js"></script> <!-- leaflet plugin for pelias search UI -->
+    <script defer src="demos/lib/dat.gui.min.js"></script> <!-- lightweight GUI lib -->
+    <script defer src="demos/lib/FileSaver.js"></script> <!-- used in the demo to save screenshots -->
+    <script defer src="demos/lib/keymaster.js"></script> <!-- Keymaster handles keyboard input -->
+
+    <!-- Tangram library -->
+    <!-- modern browsers load the optimized .mjs file, older browsers (IE11) load the transpiled .js file -->
+    <script type="module" src="dist/tangram.debug.mjs"></script>
+    <script nomodule src="dist/tangram.debug.js"></script>
+
+    <!-- Tangram demo code -->
+    <script defer src="demos/main.js"></script>
+
+    <!-- Tangram demo extras -->
+    <script defer src="demos/app/url.js"></script> <!-- URL parsing -->
+    <script defer src="demos/app/key.js"></script> <!-- demo key setup -->
+    <script defer src="demos/app/gui.js"></script> <!-- UI for configuring map -->
+
+    <!-- Uncomment to enable WebGL stats for debugging -->
+    <!--
+    <script defer src="demos/lib/rStats.js"></script>
+    <script defer src="demos/lib/rStats.extras.js"></script>
+    <script defer src="demos/app/rStats.js"></script>
+    -->
   </head>
 
   <body>
     <div id="map"></div>
-
-    <!-- 3rd party libraries -->
-    <script src="demos/lib/dat.gui.min.js"></script> <!-- lightweight GUI lib -->
-    <script src="demos/lib/rStats.js"></script> <!-- rStats provides WebGL performance profiling-->
-    <script src="demos/lib/rStats.extras.js"></script>
-    <script src="demos/lib/FileSaver.js"></script> <!-- used in the demo to save screenshots -->
-    <script src="demos/lib/keymaster.js"></script> <!-- Keymaster handles keyboard input -->
-
-    <!-- Main tangram library -->
-    <script src="dist/tangram.debug.js"></script>
-
-    <!-- Tangram demo code -->
-    <script src="demos/main.js"></script>
-
-    <!-- Tangram demo extras -->
-    <script src="demos/app/url.js"></script> <!-- URL parsing -->
-    <script src="demos/app/key.js"></script> <!-- demo key setup -->
-    <script src="demos/app/gui.js"></script> <!-- UI for configuring map -->
-    <!-- <script src="demos/app/rStats.js"></script> --> <!-- WebGL stats for debugging -->
-
   </body>
 
 </html>

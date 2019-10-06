@@ -1,8 +1,17 @@
 import DataSource, {NetworkTileSource} from './data_source';
-import Geo from '../geo';
+import Geo from '../utils/geo';
+import log from '../utils/log';
 
 import Pbf from 'pbf';
 import {VectorTile, VectorTileFeature} from '@mapbox/vector-tile';
+
+const PARSE_JSON_TYPE = {
+    NONE: 0,
+    ALL: 1,
+    SOME: 2
+};
+
+const PARSE_JSON_TEST = ['{', '[']; // one-time allocated array/strings
 
 /**
  Mapbox Vector Tile format
@@ -12,7 +21,28 @@ export class MVTSource extends NetworkTileSource {
 
     constructor (source, sources) {
         super(source, sources);
-        this.response_type = "arraybuffer"; // binary data
+        this.response_type = 'arraybuffer'; // binary data
+
+        // Optionally parse some or all properties from JSON strings
+        if (source.parse_json === true) {
+            // try to parse all properties (least efficient)
+            this.parse_json_type = PARSE_JSON_TYPE.ALL;
+        }
+        else if (Array.isArray(source.parse_json)) {
+            // try to parse a specific list of property names (more efficient)
+            this.parse_json_type = PARSE_JSON_TYPE.SOME;
+            this.parse_json_prop_list = source.parse_json;
+        }
+        else {
+            if (source.parse_json != null) {
+                let msg = `Data source '${this.name}': 'parse_json' parameter should be 'true', or an array of ` +
+                    `property names (was '${JSON.stringify(source.parse_json)}')`;
+                log({ level: 'warn', once: true }, msg);
+            }
+
+            // skip parsing entirely (default behavior)
+            this.parse_json_type = PARSE_JSON_TYPE.NONE;
+        }
     }
 
     parseSourceData (tile, source, response) {
@@ -24,7 +54,12 @@ export class MVTSource extends NetworkTileSource {
 
         // Apply optional data transform
         if (typeof this.transform === 'function') {
-            source.layers = this.transform(source.layers, this.extra_data);
+            const tile_data = {
+                min: Object.assign({}, tile.min),
+                max: Object.assign({}, tile.max),
+                coords: Object.assign({}, tile.coords)
+            };
+            source.layers = this.transform(source.layers, this.extra_data, tile_data);
         }
 
         delete source.data; // comment out to save raw data for debugging
@@ -47,8 +82,11 @@ export class MVTSource extends NetworkTileSource {
                 var feature_geojson = {
                     type: 'Feature',
                     geometry: {},
+                    id: feature.id,
                     properties: feature.properties
                 };
+
+                this.parseJSONProperties(feature_geojson);
 
                 var geometry = feature_geojson.geometry;
                 var coordinates = feature.loadGeometry();
@@ -87,6 +125,36 @@ export class MVTSource extends NetworkTileSource {
         return layers;
     }
 
+    // Optionally parse some or all feature properties from JSON strings
+    parseJSONProperties (feature) {
+        if (this.parse_json_type !== PARSE_JSON_TYPE.NONE) {
+            const props = feature.properties;
+
+            // if specified, check list of explicit properties to parse
+            if (this.parse_json_type === PARSE_JSON_TYPE.SOME) {
+                this.parse_json_prop_list.forEach(p => {
+                    try {
+                        props[p] = JSON.parse(props[p]);
+                    } catch (e) {
+                        // continue with original value if couldn't parse as JSON
+                    }
+                });
+            }
+            // otherwise try to parse all properties
+            else {
+                for (const p in props) {
+                    // check if this property looks like JSON, and parse if so
+                    if (PARSE_JSON_TEST.indexOf(props[p][0]) > -1) {
+                        try {
+                            props[p] = JSON.parse(props[p]);
+                        } catch (e) {
+                            // continue with original value if couldn't parse as JSON
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // Decode multipolygons, which are encoded as a single set of rings
@@ -131,4 +199,4 @@ export function decodeMultiPolygon (geom) {
     return geom;
 }
 
-DataSource.register(MVTSource, 'MVT');
+DataSource.register('MVT', () => MVTSource);

@@ -5,45 +5,29 @@ import StyleParser from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import {buildPolygons, buildExtrudedPolygons} from '../../builders/polygons';
-import Geo from '../../geo';
+import Geo from '../../utils/geo';
 
-let fs = require('fs');
-export const shaderSrc_polygonsVertex = fs.readFileSync(__dirname + '/polygons_vertex.glsl', 'utf8');
-export const shaderSrc_polygonsFragment = fs.readFileSync(__dirname + '/polygons_fragment.glsl', 'utf8');
+import polygons_vs from './polygons_vertex.glsl';
+import polygons_fs from './polygons_fragment.glsl';
 
-export var Polygons = Object.create(Style);
+export const Polygons = Object.create(Style);
+
+Polygons.variants = {}; // mesh variants by variant key
+Polygons.vertex_layouts = {}; // vertex layouts by variant key
 
 Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,
-    vertex_shader_src: shaderSrc_polygonsVertex,
-    fragment_shader_src: shaderSrc_polygonsFragment,
+    vertex_shader_src: polygons_vs,
+    fragment_shader_src: polygons_fs,
     selection: true, // enable feature selection
 
     init() {
         Style.init.apply(this, arguments);
 
-        // Basic attributes, others can be added (see texture UVs below)
-        var attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
-            { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // gets padded to 4-bytes
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
-        ];
-
-        // Tell the shader we have a normal and order attributes
+        // Tell the shader about optional attributes (shader is shared with lines style, which has different config)
         this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
-        this.defines.TANGRAM_LAYER_ORDER = true;
-
-        // Optional texture UVs
-        if (this.texcoords) {
-            this.defines.TANGRAM_TEXTURE_COORDS = true;
-
-            // Add vertex attribute for UVs only when needed
-            attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
-        }
-
-        this.vertex_layout = new VertexLayout(attribs);
+        this.defines.TANGRAM_TEXTURE_COORDS = this.texcoords;
     },
 
     _parseFeature (feature, draw, context) {
@@ -54,7 +38,9 @@ Object.assign(Polygons, {
             return null;
         }
 
-        style.z = (draw.z && StyleParser.evalCachedDistanceProperty(draw.z, context)) || StyleParser.defaults.z;
+        style.variant = draw.variant; // pre-calculated mesh variant
+
+        style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
         style.z *= Geo.height_scale; // provide sub-meter precision of height values
 
         style.extrude = StyleParser.evalProperty(draw.extrude, context);
@@ -88,45 +74,94 @@ Object.assign(Polygons, {
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
+        this.computeVariant(draw);
         return draw;
+    },
+
+    // Calculate and store mesh variant (unique by draw group but not feature)
+    computeVariant (draw) {
+        // Factors that determine a unique mesh rendering variant
+        const selection = (draw.interactive ? 1 : 0); // whether feature has interactivity
+        const normal = (draw.extrude != null ? 1 : 0); // whether feature has extrusion (need per-vertex normals)
+        const texcoords = (this.texcoords ? 1 : 0); // whether feature has texture UVs
+        const blend_order = this.getBlendOrderForDraw(draw);
+        const key = [selection, normal, texcoords, blend_order].join('/');
+        draw.variant = key;
+
+        if (Polygons.variants[key] == null) {
+            Polygons.variants[key] = {
+                key,
+                blend_order,
+                mesh_order: 0,
+                selection,
+                normal,
+                texcoords
+            };
+        }
+    },
+
+    // Override
+    // Create or return desired vertex layout permutation based on flags
+    vertexLayoutForMeshVariant (variant) {
+        if (Polygons.vertex_layouts[variant.key] == null) {
+            // Attributes for this mesh variant
+            // Optional attributes have placeholder values assigned with `static` parameter
+            const attribs = [
+                { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+                { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true, static: (variant.normal ? null : [0, 0, 1]) }, // gets padded to 4-bytes
+                { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+                { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) },
+                { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.texcoords ? null : [0, 0]) }
+            ];
+
+            Polygons.vertex_layouts[variant.key] = new VertexLayout(attribs);
+        }
+        return Polygons.vertex_layouts[variant.key];
+    },
+
+    // Override
+    meshVariantTypeForDraw (draw) {
+        return this.variants[draw.variant]; // return pre-calculated mesh variant
     },
 
     /**
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate(style) {
+    makeVertexTemplate(style, mesh) {
         let i = 0;
 
-        // position - x & y coords will be filled in per-vertex below
+        // a_position.xyz - vertex position
+        // a_position.w - layer order
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = 0;
         this.vertex_template[i++] = style.z || 0;
-
-        // layer order - w coord of 'position' attribute (for packing efficiency)
         this.vertex_template[i++] = this.scaleOrder(style.order);
 
-        // normal
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 1 * 127;
+        // a_normal.xyz - surface normal
+        // only stored per-vertex for extruded features (hardcoded to 'up' for others)
+        if (mesh.variant.normal) {
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 1 * 127;
+        }
 
-        // color
+        // a_color.rgba - feature color
         this.vertex_template[i++] = style.color[0] * 255;
         this.vertex_template[i++] = style.color[1] * 255;
         this.vertex_template[i++] = style.color[2] * 255;
         this.vertex_template[i++] = style.color[3] * 255;
 
-        // selection color
-        if (this.selection) {
+        // a_selection_color.rgba - selection color
+        if (mesh.variant.selection) {
             this.vertex_template[i++] = style.selection_color[0] * 255;
             this.vertex_template[i++] = style.selection_color[1] * 255;
             this.vertex_template[i++] = style.selection_color[2] * 255;
             this.vertex_template[i++] = style.selection_color[3] * 255;
         }
 
-        // Add texture UVs to template only if needed
-        if (this.texcoords) {
+        // a_texcoord.uv - texture coordinates
+        if (mesh.variant.texcoords) {
             this.vertex_template[i++] = 0;
             this.vertex_template[i++] = 0;
         }
@@ -134,10 +169,13 @@ Object.assign(Polygons, {
         return this.vertex_template;
     },
 
-    buildPolygons(polygons, style, mesh, context) {
-        let vertex_template = this.makeVertexTemplate(style);
+    buildPolygons(polygons, style, context) {
+        let mesh = this.getTileMesh(context.tile, this.meshVariantTypeForDraw(style));
+        let vertex_data = mesh.vertex_data;
+        let vertex_layout = vertex_data.vertex_layout;
+        let vertex_template = this.makeVertexTemplate(style, mesh);
         let options = {
-            texcoord_index: this.vertex_layout.index.a_texcoord,
+            texcoord_index: vertex_layout.index.a_texcoord,
             texcoord_normalize: 65535, // scale UVs to unsigned shorts
             remove_tile_edges: !style.tile_edges,
             tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4,
@@ -149,8 +187,8 @@ Object.assign(Polygons, {
             return buildExtrudedPolygons(
                 polygons,
                 style.z, style.height, style.min_height,
-                mesh.vertex_data, vertex_template,
-                this.vertex_layout.index.a_normal,
+                vertex_data, vertex_template,
+                vertex_layout.index.a_normal,
                 127, // scale normals to signed bytes
                 options
             );
@@ -159,7 +197,7 @@ Object.assign(Polygons, {
         else {
             return buildPolygons(
                 polygons,
-                mesh.vertex_data, vertex_template,
+                vertex_data, vertex_template,
                 options
             );
         }

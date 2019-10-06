@@ -4,10 +4,10 @@
 import log from './log';
 import Thread from './thread';
 import WorkerBroker from './worker_broker';
-import Geo from '../geo';
 
-var Utils;
-export default Utils = {};
+export default Utils;
+
+const Utils = {};
 
 WorkerBroker.addTarget('Utils', Utils);
 
@@ -19,7 +19,7 @@ Utils.isSafari = function () {
 
 // Basic IE11 or Edge detection
 Utils.isMicrosoft = function () {
-    return /(Trident\/7.0|Edge[ /](\d+[\.\d]+))/i.test(navigator.userAgent);
+    return /(Trident\/7.0|Edge[ /](\d+[.\d]+))/i.test(navigator.userAgent);
 };
 
 Utils._requests = {};       // XHR requests on current thread
@@ -44,6 +44,14 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             request.open(method, url, true);
             request.timeout = timeout;
             request.responseType = responseType;
+
+            // Attach optional request headers
+            if (headers && typeof headers === 'object') {
+                for (let key in headers) {
+                    request.setRequestHeader(key, headers[key]);
+                }
+            }
+
             request.onload = () => {
                 if (request.status === 200) {
                     if (['text', 'json'].indexOf(request.responseType) > -1) {
@@ -102,20 +110,6 @@ Utils.cancelRequest = function (key) {
     }
 };
 
-// Needed for older browsers that still support WebGL (Safari 6 etc.)
-Utils.requestAnimationFramePolyfill = function () {
-    if (typeof window.requestAnimationFrame !== 'function') {
-        window.requestAnimationFrame =
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame    ||
-            window.oRequestAnimationFrame      ||
-            window.msRequestAnimationFrame     ||
-            function (cb) {
-                setTimeout(cb, 1000 /60);
-            };
-    }
-};
-
 // Stringify an object into JSON, but convert functions to strings
 Utils.serializeWithFunctions = function (obj) {
     if (typeof obj === 'function') {
@@ -131,49 +125,6 @@ Utils.serializeWithFunctions = function (obj) {
     });
 
     return serialized;
-};
-
-// Recursively parse an object, attempting to convert string properties that look like functions back into functions
-Utils.stringsToFunctions = function(obj, wrap) {
-    // Convert string
-    if (typeof obj === 'string') {
-        obj = Utils.stringToFunction(obj, wrap);
-    }
-    // Loop through object properties
-    else if (obj != null && typeof obj === 'object') {
-        for (let p in obj) {
-            obj[p] = Utils.stringsToFunctions(obj[p], wrap);
-        }
-    }
-    return obj;
-};
-
-// Convert string back into a function
-Utils.stringToFunction = function(val, wrap) {
-    // Parse function signature and body
-    let fmatch =
-        (typeof val === 'string') &&
-        val.match(/^\s*function[^(]*\(([^)]*)\)\s*?\{([\s\S]*)\}$/m);
-
-    if (fmatch && fmatch.length > 2) {
-        try {
-            let src = fmatch[2];
-            let args = fmatch[1].length > 0 && fmatch[1].split(',').map(x => x.trim()).filter(x => x);
-            args = args.length > 0 ? args : ['context']; // default to single 'context' argument
-
-            if (typeof wrap === 'function') {
-                return new Function(args.toString(), wrap(src)); // jshint ignore:line
-            }
-            else {
-                return new Function(args.toString(), src); // jshint ignore:line
-            }
-        }
-        catch (e) {
-            // fall-back to original value if parsing failed
-            return val;
-        }
-    }
-    return val;
 };
 
 // Default to allowing high pixel density
@@ -284,8 +235,4 @@ Utils.toCSSColor = function (color) {
     }
     // RGB is between [0, 255] opacity is between [0, 1]
     return `rgba(${color.map((c, i) => (i < 3 && Math.round(c * 255)) || c).join(', ')})`;
-};
-
-Utils.pointInTile = function (point) {
-    return point[0] >= 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] <= 0;
 };

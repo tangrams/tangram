@@ -2,7 +2,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_map_position;
 uniform vec4 u_tile_origin;
-uniform float u_tile_proxy_depth;
+uniform float u_tile_proxy_order_offset;
 uniform bool u_tile_fade_in;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
@@ -49,7 +49,7 @@ varying float v_alpha_factor;
     varying float v_label_hidden;
 #endif
 
-#define PI 3.14159265359
+#define TANGRAM_PI 3.14159265359
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
 #pragma tangram: camera
@@ -65,10 +65,11 @@ vec2 rotate2D(vec2 _st, float _angle) {
 
 #ifdef TANGRAM_CURVED_LABEL
     // Assumes stops are [0, 0.33, 0.66, 0.99];
-    float mix4linear(float a, float b, float c, float d, float x) {
-        return mix(mix(a, b, 3. * x),
-                   mix(b,
-                       mix(c, d, 3. * (max(x, .66) - .66)),
+    float mix4linear(vec4 v, float x) {
+        x = clamp(x, 0., 1.);
+        return mix(mix(v[0], v[1], 3. * x),
+                   mix(v[1],
+                       mix(v[2], v[3], 3. * (max(x, .66) - .66)),
                        3. * (clamp(x, .33, .66) - .33)),
                    step(0.33, x)
                 );
@@ -115,21 +116,20 @@ void main() {
         }
     #endif
 
-
     v_alpha_factor = 1.0;
     v_color = a_color;
-    v_texcoord = a_texcoord; // UV from vertex
+    v_texcoord = a_texcoord; // UV from vertex attribute
 
     #ifdef TANGRAM_HAS_SHADER_POINTS
         v_outline_color = a_outline_color;
         v_outline_edge = a_outline_edge;
+
         if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
-            v_outline_color = a_outline_color;
-            v_outline_edge = a_outline_edge;
-            float size = abs(a_shape.x/128.); // radius in pixels
-            v_texcoord = sign(a_shape.xy)*(size+1.)/(size);
-            size+=2.;
-            v_aa_offset=2./size;
+            // use point dimensions for UVs instead (ignore attribute), add antialiasing info for fragment shader
+            float _size = abs(a_shape.x / 128.); // radius in pixels
+            v_texcoord = sign(a_shape.xy) * (_size + 1.) / _size;
+            _size += 2.;
+            v_aa_offset = 2. / _size;
         }
     #endif
 
@@ -137,11 +137,9 @@ void main() {
     vec4 position = u_modelView * vec4(a_position.xyz, 1.);
 
     // Apply positioning and scaling in screen space
-    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
-    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
-
-    float zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);
-    float theta = a_shape.z / 4096.;
+    vec2 _shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
+    vec2 _offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
+    float _theta = a_shape.z / 4096.;
 
     #ifdef TANGRAM_CURVED_LABEL
         // adjust label angle for view rotation
@@ -153,13 +151,14 @@ void main() {
 
         //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0
         if (a_offsets[0] != 0.){
-            vec4 angles_scaled = (PI / 16384.) * a_angles;
-            vec4 pre_angles_scaled = (PI / 128.) * a_pre_angles;
-            vec4 offsets_scaled = (1. / 64.) * a_offsets;
+            vec4 _angles_scaled = (TANGRAM_PI / 16384.) * a_angles;
+            vec4 _pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;
+            vec4 _offsets_scaled = (1. / 64.) * a_offsets;
 
-            float pre_angle = mix4linear(pre_angles_scaled[0], pre_angles_scaled[1], pre_angles_scaled[2], pre_angles_scaled[3], zoom);
-            float angle = mix4linear(angles_scaled[0], angles_scaled[1], angles_scaled[2], angles_scaled[3], zoom);
-            float offset_curve = mix4linear(offsets_scaled[0], offsets_scaled[1], offsets_scaled[2], offsets_scaled[3], zoom);
+            float _zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);
+            float _pre_angle = mix4linear(_pre_angles_scaled, _zoom);
+            float _angle = mix4linear(_angles_scaled, _zoom);
+            float _offset_curve = mix4linear(_offsets_scaled, _zoom);
 
             // adjust label angle for view rotation
             // angle = mod(angle - u_view_roll, PI * 2.);
@@ -167,18 +166,16 @@ void main() {
             angle = angleForLabel(position + vec4(offset_curve, 0., 0., 0.), angle);
 
             // curved label segment
-            shape = rotate2D(shape, pre_angle); // rotate in place
-            shape.x += offset_curve;            // offset for curved label segment
-            shape = rotate2D(shape, angle);     // rotate relative to curved label anchor
-            shape += rotate2D(offset, theta);   // offset if specified in the scene file
+            _shape = rotate2D(_shape, _pre_angle);  // rotate in place
+            _shape.x += _offset_curve;              // offset for curved label segment
+            _shape = rotate2D(_shape, _angle);      // rotate relative to curved label anchor
+            _shape += rotate2D(_offset, _theta);    // offset if specified in the scene file
         }
         else {
-            // straight label
-            shape = rotate2D(shape + offset, theta);
+            _shape = rotate2D(_shape + _offset, _theta);
         }
     #else
-        // point label (always upright)
-        shape = rotate2D(shape + offset, theta);
+        _shape = rotate2D(_shape + _offset, _theta);
     #endif
 
     // Fade in (if requested) based on time mesh has been visible.
@@ -189,17 +186,9 @@ void main() {
         }
     #endif
 
-    // Fade out when tile is zooming out, e.g. acting as proxy tiles
-    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels
-    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.
-    // Value passed to fragment shader in the v_alpha_factor varying
-    #ifdef TANGRAM_FADE_ON_ZOOM_OUT
-        v_alpha_factor *= clamp(1. + TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_map_position.z - u_tile_origin.z), 0., 1.);
-    #endif
-
     // World coordinates for 3d procedural textures
     v_world_position = u_model * position;
-    v_world_position.xy += shape * u_meters_per_pixel;
+    v_world_position.xy += _shape * u_meters_per_pixel;
     v_world_position = wrapWorldPosition(v_world_position);
 
     // Modify position before camera projection
@@ -209,35 +198,35 @@ void main() {
 
     #ifdef TANGRAM_LAYER_ORDER
         // +1 is to keep all layers including proxies > 0
-        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);
+        applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);
     #endif
 
     // Apply pixel offset in screen-space
     // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)
     // Device pixel ratio adjustment is because shape is in logical pixels
-    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
+    position.xy += _shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
     #ifdef TANGRAM_HAS_SHADER_POINTS
         if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point
             // enlarge by 1px to catch missed MSAA fragments
-            position.xy += sign(shape) * position.w * u_device_pixel_ratio / u_resolution;
+            position.xy += sign(_shape) * position.w * u_device_pixel_ratio / u_resolution;
         }
     #endif
 
     // Snap to pixel grid
     // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active
     #ifdef TANGRAM_HAS_SHADER_POINTS
-    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {
+    if (!u_view_panning && (abs(_theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {
     #else
-    if (!u_view_panning && (abs(theta) < TANGRAM_EPSILON)) {
+    if (!u_view_panning && (abs(_theta) < TANGRAM_EPSILON)) {
     #endif
-        vec2 position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);
-        vec2 position_snap = position.xy + ((step(0.5, position_fract) - position_fract) * position.w * 2. / u_resolution);
+        vec2 _position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);
+        vec2 _position_snap = position.xy + ((step(0.5, _position_fract) - _position_fract) * position.w * 2. / u_resolution);
 
         // Animate the snapping to smooth the transition and make it less noticeable
         #ifdef TANGRAM_VIEW_PAN_SNAP_RATE
-            position.xy = mix(position.xy, position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));
+            position.xy = mix(position.xy, _position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));
         #else
-            position.xy = position_snap;
+            position.xy = _position_snap;
         #endif
     }
 
