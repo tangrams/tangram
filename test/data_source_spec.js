@@ -153,7 +153,10 @@ describe('DataSource', () => {
 
                 beforeEach(() => {
                     mockTile = getMockTile();
-                    sinon.stub(Utils, 'io').returns(Promise.resolve(getMockJSONResponse()));
+                    sinon.stub(Utils, 'io').returns(Promise.resolve({
+                        status: 200,
+                        body: getMockJSONResponse()
+                    }));
                     subject = new GeoJSONTileSource(options);
                     return subject.load(mockTile);
                 });
