@@ -94,8 +94,8 @@ export class ZipSceneBundle extends SceneBundle {
         this.zip = new JSZip();
 
         if (typeof this.url === 'string') {
-            const data = await Utils.io(this.url, 60000, 'arraybuffer');
-            await this.zip.loadAsync(data);
+            const { body } = await Utils.io(this.url, 60000, 'arraybuffer');
+            await this.zip.loadAsync(body);
             await this.parseZipFiles();
             return this.loadRoot();
         } else {
@@ -221,10 +221,9 @@ function parseResource (body) {
 function loadResource (source) {
     return new Promise((resolve, reject) => {
         if (typeof source === 'string') {
-            Utils.io(source).then((body) => {
+            Utils.io(source).then(({ body }) => {
                 try {
-                    let data = parseResource(body);
-                    resolve(data);
+                    resolve(parseResource(body));
                 }
                 catch(e) {
                     reject(e);

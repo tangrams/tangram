@@ -55,10 +55,10 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             request.onload = () => {
                 if (request.status === 200) {
                     if (['text', 'json'].indexOf(request.responseType) > -1) {
-                        resolve(request.responseText);
+                        resolve({ body: request.responseText, status: request.status });
                     }
                     else {
-                        resolve(request.response);
+                        resolve({ body: request.response, status: request.status });
                     }
                 } else {
                     reject(Error('Request error with a status of ' + request.statusText));
