@@ -60,7 +60,11 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
                     else {
                         resolve({ body: request.response, status: request.status });
                     }
-                } else {
+                }
+                else if (request.status === 204) { // No Content
+                    resolve({ body: null, status: request.status });
+                }
+                else {
                     reject(Error('Request error with a status of ' + request.statusText));
                 }
             };

@@ -309,19 +309,24 @@ export class NetworkSource extends DataSource {
             source_data.error = null;
 
             promise.then(({ body }) => {
-                dest.debug.response_size = body.length || body.byteLength;
+                dest.debug.response_size = body && (body.length || body.byteLength);
                 dest.debug.network = +new Date() - dest.debug.network;
                 dest.debug.parsing = +new Date();
 
                 // Apply optional data transform on raw network response
-                if (typeof this.preprocess === 'function') {
+                if (body != null && typeof this.preprocess === 'function') {
                     body = this.preprocess(body);
                 }
 
                 // Return data immediately, or after user-returned promise resolves
                 body = (body instanceof Promise) ? body : Promise.resolve(body);
                 body.then(body => {
-                    this.parseSourceData(dest, source_data, body);
+                    if (body != null) {
+                        this.parseSourceData(dest, source_data, body);
+                    }
+                    else {
+                        source_data.layers = {}; // for cases where server returned no content (e.g. 204 response)
+                    }
                     dest.debug.parsing = +new Date() - dest.debug.parsing;
                     resolve(dest);
                 });
