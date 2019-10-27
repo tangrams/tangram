@@ -87,7 +87,7 @@ const FontManager = {
         // Also see https://github.com/bramstein/fontloader/blob/598e9399117bdc946ff786fa2c5007a6bd7d3b9e/src/fontface.js#L145-L153
         let data = url;
         if (url.slice(0, 5) === 'blob:') {
-            data = await Utils.io(url, 60000, 'arraybuffer');
+            data = (await Utils.io(url, 60000, 'arraybuffer')).body;
             let bytes = new Uint8Array(data);
             if (this.supports_native_font_loading) {
                 data = bytes; // use raw binary data

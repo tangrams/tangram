@@ -308,7 +308,7 @@ export class NetworkSource extends DataSource {
             source_data.request_id = request_id;
             source_data.error = null;
 
-            promise.then((body) => {
+            promise.then(({ body }) => {
                 dest.debug.response_size = body.length || body.byteLength;
                 dest.debug.network = +new Date() - dest.debug.network;
                 dest.debug.parsing = +new Date();
