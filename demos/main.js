@@ -150,6 +150,16 @@
                     '<div class="featureCell">' + feature.properties[p] + '</div></div>';
             }
         });
+
+        // data source and tile info
+        info += '<div class="featureRow"><div class="featureCell"><b>tile</b></div>' +
+            '<div class="featureCell">' + feature.tile.coords.key + '</div></div>';
+        info += '<div class="featureRow"><div class="featureCell"><b>source name</b></div>' +
+            '<div class="featureCell">' + feature.source_name + '</div></div>';
+        info += '<div class="featureRow"><div class="featureCell"><b>source layer</b></div>' +
+            '<div class="featureCell">' + feature.source_layer + '</div></div>';
+
+        // scene layers
         info += '<div class="featureRow"><div class="featureCell"><b>scene layers</b></div>' +
                 '<div class="featureCell">' + feature.layers.join('<br>') + '</div></div>';
         info += '</div>';
