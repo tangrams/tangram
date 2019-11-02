@@ -109,29 +109,38 @@ sources:
         # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
         # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
         # That feature is then filtered on below in the 'roads' layer.
-        # scripts:
-        #     turf: https://npmcdn.com/@turf/turf/turf.min.js
+        scripts:
+            jsts: https://unpkg.com/jsts/dist/jsts.min.js
         # transform: |
         #     function(data, extra_data) {
         #         if (data.roads &&
         #             data.roads.features &&
         #             data.landuse &&
         #             data.landuse.features) {
+
+        #             // find all parks in the landuse layer
+        #             var parks = data.landuse.features.filter(function(f) {
+        #                 return f.properties.kind === 'park';
+        #             });
+
+        #             // prepare to use JSTS for geometry processing
+        #             var geojsonReader = new jsts.io.GeoJSONReader();
+
+        #             // for each road...
         #             data.roads.features.forEach(function(road) {
-        #                 for (var i=0; i < data.landuse.features.length; i++) {
-        #                     var land = data.landuse.features[i];
-        #                     if (land.properties.kind !== 'park') {
-        #                         continue;
-        #                     }
+        #                 // check to see if it intersects with any park polygons
+        #                 road.properties.intersects_park = parks.some(function(park) {
         #                     try {
-        #                         if (turf.intersect(road, land)) {
-        #                             road.properties.intersects_park = true;
-        #                         }
+        #                         // use JSTS to parse geometries and do an intersection
+        #                         var polyJsts = geojsonReader.read(park.geometry);
+        #                         var lineJsts = geojsonReader.read(road.geometry);
+        #                         var intersected = polyJsts.intersection(lineJsts);
+        #                         return intersected.getCoordinates().length;
         #                     }
-        #                     catch(e){
+        #                     catch(e) {
+        #                         console.log(e); // skip and log any errors
         #                     }
-        #                 }
-        #                 return true;
+        #                 });
         #             });
         #         }
         #         return data;
@@ -311,7 +320,8 @@ layers:
 
             # apply outline to roads intersecting parks - see data source transform example in `sources`
             land:
-                filter: { intersects_park: true }
+                # NOTE: using array form here to match exact `true` (rather than just any non-null) value
+                filter: { intersects_park: [true] }
                 draw:
                     lines:
                         outline:
