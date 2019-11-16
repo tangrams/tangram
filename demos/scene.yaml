@@ -109,8 +109,8 @@ sources:
         # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
         # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
         # That feature is then filtered on below in the 'roads' layer.
-        scripts:
-            jsts: https://unpkg.com/jsts/dist/jsts.min.js
+        # scripts:
+        #     jsts: https://unpkg.com/jsts/dist/jsts.min.js
         # transform: |
         #     function(data, extra_data) {
         #         if (data.roads &&
