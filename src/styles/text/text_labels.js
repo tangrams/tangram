@@ -283,7 +283,7 @@ export const TextLabels = {
         }
 
         // Convert font and text stroke sizes
-        draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize);
+        draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize, TextCanvas.fontPixelSize);
         if (draw.font.stroke && draw.font.stroke.width != null) {
             draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
         }
