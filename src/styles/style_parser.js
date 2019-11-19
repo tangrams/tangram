@@ -103,8 +103,9 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
 };
 
 // Build a style param cache object
-// `value` is raw value, cache methods will add other properties as needed
-// `transform` is optional transform function to run on values (except function values)
+// `value` is a raw value, cache methods will add other properties as needed
+// `transform` is an optional, one-time transform function to run on values during setup
+// `dynamic_transform` is an optional post-processing function applied to the result of function-based properties
 const CACHE_TYPE = {
     STATIC: 0,
     DYNAMIC: 1,
@@ -112,7 +113,7 @@ const CACHE_TYPE = {
 };
 StyleParser.CACHE_TYPE = CACHE_TYPE;
 
-StyleParser.createPropertyCache = function (obj, transform = null) {
+StyleParser.createPropertyCache = function (obj, transform = null, dynamic_transform = null) {
     if (obj == null) {
         return;
     }
@@ -130,6 +131,7 @@ StyleParser.createPropertyCache = function (obj, transform = null) {
     }
     else if (typeof c.value === 'function') {
         c.type = CACHE_TYPE.DYNAMIC;
+        c.dynamic_transform = (typeof dynamic_transform === 'function' ? dynamic_transform : null);
     }
 
     // apply optional transform function - usually a parsing function
@@ -290,7 +292,16 @@ StyleParser.evalCachedProperty = function(val, context) {
     else { // not yet evaulated for cache
         // Dynamic function-based
         if (typeof val.value === 'function') {
-            val.dynamic = val.value;
+            if (val.dynamic_transform) {
+                // apply an optional post-eval transform function
+                // e.g. apply device pixel ratio to font sizes, unit conversions, etc.
+                val.dynamic = function(context) {
+                    return val.dynamic_transform(val.value(context));
+                };
+            }
+            else {
+                val.dynamic = val.value;
+            }
             return tryEval(val.dynamic, context);
         }
         // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
