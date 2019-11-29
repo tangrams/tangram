@@ -1914,7 +1914,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.19.0";
+var version = "0.19.1";
 
 var version$1 = 'v' + version;
 
@@ -2733,10 +2733,22 @@ Utils.io = function (url, timeout, responseType, method, headers, request_key, p
       request.onload = function () {
         if (request.status === 200) {
           if (['text', 'json'].indexOf(request.responseType) > -1) {
-            resolve(request.responseText);
+            resolve({
+              body: request.responseText,
+              status: request.status
+            });
           } else {
-            resolve(request.response);
+            resolve({
+              body: request.response,
+              status: request.status
+            });
           }
+        } else if (request.status === 204) {
+          // No Content
+          resolve({
+            body: null,
+            status: request.status
+          });
         } else {
           reject(Error('Request error with a status of ' + request.statusText));
         }
@@ -7009,8 +7021,9 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
     units_per_meter_overzoom: tile.units_per_meter_overzoom
   };
 }; // Build a style param cache object
-// `value` is raw value, cache methods will add other properties as needed
-// `transform` is optional transform function to run on values (except function values)
+// `value` is a raw value, cache methods will add other properties as needed
+// `transform` is an optional, one-time transform function to run on values during setup
+// `dynamic_transform` is an optional post-processing function applied to the result of function-based properties
 
 
 var CACHE_TYPE = {
@@ -7020,9 +7033,13 @@ var CACHE_TYPE = {
 };
 StyleParser.CACHE_TYPE = CACHE_TYPE;
 
-StyleParser.createPropertyCache = function (obj, transform) {
+StyleParser.createPropertyCache = function (obj, transform, dynamic_transform) {
   if (transform === void 0) {
     transform = null;
+  }
+
+  if (dynamic_transform === void 0) {
+    dynamic_transform = null;
   }
 
   if (obj == null) {
@@ -7048,6 +7065,7 @@ StyleParser.createPropertyCache = function (obj, transform) {
     c.type = CACHE_TYPE.ZOOM;
   } else if (typeof c.value === 'function') {
     c.type = CACHE_TYPE.DYNAMIC;
+    c.dynamic_transform = typeof dynamic_transform === 'function' ? dynamic_transform : null;
   } // apply optional transform function - usually a parsing function
 
 
@@ -7249,7 +7267,16 @@ StyleParser.evalCachedProperty = function (val, context) {
     // not yet evaulated for cache
     // Dynamic function-based
     if (typeof val.value === 'function') {
-      val.dynamic = val.value;
+      if (val.dynamic_transform) {
+        // apply an optional post-eval transform function
+        // e.g. apply device pixel ratio to font sizes, unit conversions, etc.
+        val.dynamic = function (context) {
+          return val.dynamic_transform(val.value(context));
+        };
+      } else {
+        val.dynamic = val.value;
+      }
+
       return tryEval(val.dynamic, context);
     } // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
     else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
@@ -9191,19 +9218,24 @@ function (_DataSource) {
       var promise = Utils.io(url, 60 * 1000, _this4.response_type, 'GET', _this4.request_headers, request_id);
       source_data.request_id = request_id;
       source_data.error = null;
-      promise.then(function (body) {
-        dest.debug.response_size = body.length || body.byteLength;
+      promise.then(function (_ref4) {
+        var body = _ref4.body;
+        dest.debug.response_size = body && (body.length || body.byteLength);
         dest.debug.network = +new Date() - dest.debug.network;
         dest.debug.parsing = +new Date(); // Apply optional data transform on raw network response
 
-        if (typeof _this4.preprocess === 'function') {
+        if (body != null && typeof _this4.preprocess === 'function') {
           body = _this4.preprocess(body);
         } // Return data immediately, or after user-returned promise resolves
 
 
         body = body instanceof Promise ? body : Promise.resolve(body);
         body.then(function (body) {
-          _this4.parseSourceData(dest, source_data, body);
+          if (body != null) {
+            _this4.parseSourceData(dest, source_data, body);
+          } else {
+            source_data.layers = {}; // for cases where server returned no content (e.g. 204 response)
+          }
 
           dest.debug.parsing = +new Date() - dest.debug.parsing;
           resolve(dest);
@@ -9396,10 +9428,10 @@ function (_NetworkSource) {
     return ''; // for 1x (or less) displays, no URL modifier is used (following @2x URL convention)
   };
 
-  _proto3.toQuadKey = function toQuadKey(_ref4) {
-    var x = _ref4.x,
-        y = _ref4.y,
-        z = _ref4.z;
+  _proto3.toQuadKey = function toQuadKey(_ref5) {
+    var x = _ref5.x,
+        y = _ref5.y,
+        z = _ref5.z;
     var quadkey = '';
 
     for (var i = z; i > 0; i--) {
@@ -14982,7 +15014,7 @@ var FontManager = {
       if (url.slice(0, 5) === 'blob:') {
         return Promise.resolve(Utils.io(url, 60000, 'arraybuffer')).then(function ($await_7) {
           try {
-            data = $await_7;
+            data = $await_7.body;
             bytes = new Uint8Array(data);
 
             if (this.supports_native_font_loading) {
@@ -16392,7 +16424,7 @@ var TextLabels = {
     } // Convert font and text stroke sizes
 
 
-    draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize);
+    draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize, TextCanvas.fontPixelSize);
 
     if (draw.font.stroke && draw.font.stroke.width != null) {
       draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
@@ -45139,14 +45171,15 @@ function (_SceneBundle) {
 
   _proto2.load = function load() {
     return new Promise(function ($return, $error) {
-      var data;
+      var _ref, body;
+
       this.zip = new lib();
 
       if (typeof this.url === 'string') {
         return Promise.resolve(__chunk_1.Utils.io(this.url, 60000, 'arraybuffer')).then(function ($await_4) {
           try {
-            data = $await_4;
-            return Promise.resolve(this.zip.loadAsync(data)).then(function ($await_5) {
+            _ref = $await_4, body = _ref.body;
+            return Promise.resolve(this.zip.loadAsync(body)).then(function ($await_5) {
               try {
                 return Promise.resolve(this.parseZipFiles()).then(function ($await_6) {
                   try {
@@ -45317,10 +45350,11 @@ function parseResource(body) {
 function loadResource(source) {
   return new Promise(function (resolve, reject) {
     if (typeof source === 'string') {
-      __chunk_1.Utils.io(source).then(function (body) {
+      __chunk_1.Utils.io(source).then(function (_ref2) {
+        var body = _ref2.body;
+
         try {
-          var data = parseResource(body);
-          resolve(data);
+          resolve(parseResource(body));
         } catch (e) {
           reject(e);
         }
@@ -49566,7 +49600,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = 'f5fd3b6250b23ac8f4a7cec0292252d37e93b7f1';
+	Tangram.debug.SHA = '998cb95f28e17a511e2991fe6c08a9e0c044aceb';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}

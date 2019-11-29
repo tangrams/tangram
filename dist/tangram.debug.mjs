@@ -67,7 +67,7 @@ function _extends() {
   return _extends.apply(this, arguments);
 }
 
-var version = "0.19.0";
+var version = "0.19.1";
 
 var version$1 = 'v' + version;
 
@@ -705,10 +705,22 @@ Utils.io = function (url, timeout, responseType, method, headers, request_key, p
       request.onload = () => {
         if (request.status === 200) {
           if (['text', 'json'].indexOf(request.responseType) > -1) {
-            resolve(request.responseText);
+            resolve({
+              body: request.responseText,
+              status: request.status
+            });
           } else {
-            resolve(request.response);
+            resolve({
+              body: request.response,
+              status: request.status
+            });
           }
+        } else if (request.status === 204) {
+          // No Content
+          resolve({
+            body: null,
+            status: request.status
+          });
         } else {
           reject(Error('Request error with a status of ' + request.statusText));
         }
@@ -3748,8 +3760,9 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
     units_per_meter_overzoom: tile.units_per_meter_overzoom
   };
 }; // Build a style param cache object
-// `value` is raw value, cache methods will add other properties as needed
-// `transform` is optional transform function to run on values (except function values)
+// `value` is a raw value, cache methods will add other properties as needed
+// `transform` is an optional, one-time transform function to run on values during setup
+// `dynamic_transform` is an optional post-processing function applied to the result of function-based properties
 
 
 const CACHE_TYPE = {
@@ -3759,9 +3772,13 @@ const CACHE_TYPE = {
 };
 StyleParser.CACHE_TYPE = CACHE_TYPE;
 
-StyleParser.createPropertyCache = function (obj, transform) {
+StyleParser.createPropertyCache = function (obj, transform, dynamic_transform) {
   if (transform === void 0) {
     transform = null;
+  }
+
+  if (dynamic_transform === void 0) {
+    dynamic_transform = null;
   }
 
   if (obj == null) {
@@ -3787,6 +3804,7 @@ StyleParser.createPropertyCache = function (obj, transform) {
     c.type = CACHE_TYPE.ZOOM;
   } else if (typeof c.value === 'function') {
     c.type = CACHE_TYPE.DYNAMIC;
+    c.dynamic_transform = typeof dynamic_transform === 'function' ? dynamic_transform : null;
   } // apply optional transform function - usually a parsing function
 
 
@@ -3956,7 +3974,16 @@ StyleParser.evalCachedProperty = function (val, context) {
     // not yet evaulated for cache
     // Dynamic function-based
     if (typeof val.value === 'function') {
-      val.dynamic = val.value;
+      if (val.dynamic_transform) {
+        // apply an optional post-eval transform function
+        // e.g. apply device pixel ratio to font sizes, unit conversions, etc.
+        val.dynamic = function (context) {
+          return val.dynamic_transform(val.value(context));
+        };
+      } else {
+        val.dynamic = val.value;
+      }
+
       return tryEval(val.dynamic, context);
     } // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
     else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
@@ -5788,19 +5815,25 @@ class NetworkSource extends DataSource {
       let promise = Utils.io(url, 60 * 1000, this.response_type, 'GET', this.request_headers, request_id);
       source_data.request_id = request_id;
       source_data.error = null;
-      promise.then(body => {
-        dest.debug.response_size = body.length || body.byteLength;
+      promise.then((_ref4) => {
+        let body = _ref4.body;
+        dest.debug.response_size = body && (body.length || body.byteLength);
         dest.debug.network = +new Date() - dest.debug.network;
         dest.debug.parsing = +new Date(); // Apply optional data transform on raw network response
 
-        if (typeof this.preprocess === 'function') {
+        if (body != null && typeof this.preprocess === 'function') {
           body = this.preprocess(body);
         } // Return data immediately, or after user-returned promise resolves
 
 
         body = body instanceof Promise ? body : Promise.resolve(body);
         body.then(body => {
-          this.parseSourceData(dest, source_data, body);
+          if (body != null) {
+            this.parseSourceData(dest, source_data, body);
+          } else {
+            source_data.layers = {}; // for cases where server returned no content (e.g. 204 response)
+          }
+
           dest.debug.parsing = +new Date() - dest.debug.parsing;
           resolve(dest);
         });
@@ -5979,10 +6012,10 @@ class NetworkTileSource extends NetworkSource {
     return ''; // for 1x (or less) displays, no URL modifier is used (following @2x URL convention)
   }
 
-  toQuadKey(_ref4) {
-    let x = _ref4.x,
-        y = _ref4.y,
-        z = _ref4.z;
+  toQuadKey(_ref5) {
+    let x = _ref5.x,
+        y = _ref5.y,
+        z = _ref5.z;
     let quadkey = '';
 
     for (let i = z; i > 0; i--) {
@@ -11252,7 +11285,7 @@ const FontManager = {
     let data = url;
 
     if (url.slice(0, 5) === 'blob:') {
-      data = await Utils.io(url, 60000, 'arraybuffer');
+      data = (await Utils.io(url, 60000, 'arraybuffer')).body;
       let bytes = new Uint8Array(data);
 
       if (this.supports_native_font_loading) {
@@ -12583,7 +12616,7 @@ const TextLabels = {
     } // Convert font and text stroke sizes
 
 
-    draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize);
+    draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize, TextCanvas.fontPixelSize);
 
     if (draw.font.stroke && draw.font.stroke.width != null) {
       draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
@@ -40632,8 +40665,10 @@ class ZipSceneBundle extends SceneBundle {
     this.zip = new lib();
 
     if (typeof this.url === 'string') {
-      const data = await __chunk_1.Utils.io(this.url, 60000, 'arraybuffer');
-      await this.zip.loadAsync(data);
+      const _ref = await __chunk_1.Utils.io(this.url, 60000, 'arraybuffer'),
+            body = _ref.body;
+
+      await this.zip.loadAsync(body);
       await this.parseZipFiles();
       return this.loadRoot();
     } else {
@@ -40767,10 +40802,11 @@ function parseResource(body) {
 function loadResource(source) {
   return new Promise((resolve, reject) => {
     if (typeof source === 'string') {
-      __chunk_1.Utils.io(source).then(body => {
+      __chunk_1.Utils.io(source).then((_ref2) => {
+        let body = _ref2.body;
+
         try {
-          let data = parseResource(body);
-          resolve(data);
+          resolve(parseResource(body));
         } catch (e) {
           reject(e);
         }
@@ -44664,7 +44700,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = 'f5fd3b6250b23ac8f4a7cec0292252d37e93b7f1';
+	Tangram.debug.SHA = '998cb95f28e17a511e2991fe6c08a9e0c044aceb';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
