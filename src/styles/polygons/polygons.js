@@ -38,6 +38,8 @@ Object.assign(Polygons, {
             return null;
         }
 
+        style.alpha = StyleParser.evalCachedProperty(draw.alpha, context); // optional alpha override
+
         style.variant = draw.variant; // pre-calculated mesh variant
 
         style.z = StyleParser.evalCachedDistanceProperty(draw.z, context) || StyleParser.defaults.z;
@@ -73,6 +75,7 @@ Object.assign(Polygons, {
 
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
+        draw.alpha = StyleParser.createPropertyCache(draw.alpha);
         draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
         this.computeVariant(draw);
         return draw;
@@ -150,7 +153,7 @@ Object.assign(Polygons, {
         this.vertex_template[i++] = style.color[0] * 255;
         this.vertex_template[i++] = style.color[1] * 255;
         this.vertex_template[i++] = style.color[2] * 255;
-        this.vertex_template[i++] = style.color[3] * 255;
+        this.vertex_template[i++] = (style.alpha != null ? style.alpha : style.color[3]) * 255;
 
         // a_selection_color.rgba - selection color
         if (mesh.variant.selection) {

@@ -175,6 +175,8 @@ Object.assign(Lines, {
             return;
         }
 
+        style.alpha = StyleParser.evalCachedProperty(draw.alpha, context); // optional alpha override
+
         style.variant = draw.variant; // pre-calculated mesh variant
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
@@ -234,8 +236,8 @@ Object.assign(Lines, {
                 style.outline.offset_precalc = style.offset;
                 style.outline.offset_scale_precalc = style.offset_scale;
 
-                // Inherited properties
                 style.outline.color = draw.outline.color;
+                style.outline.alpha = draw.outline.alpha;
                 style.outline.interactive = draw.outline.interactive;
                 style.outline.cap = draw.outline.cap;
                 style.outline.join = draw.outline.join;
@@ -273,6 +275,7 @@ Object.assign(Lines, {
 
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
+        draw.alpha = StyleParser.createPropertyCache(draw.alpha);
         draw.width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits);
         if (draw.width && draw.width.type !== StyleParser.CACHE_TYPE.STATIC) {
             draw.next_width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits);
@@ -295,6 +298,7 @@ Object.assign(Lines, {
             draw.outline.is_outline = true; // mark as outline (so mesh variant can be adjusted for render order, etc.)
             draw.outline.style = draw.outline.style || this.name;
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
+            draw.outline.alpha = StyleParser.createPropertyCache(draw.outline.alpha);
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
             draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
 
@@ -536,7 +540,7 @@ Object.assign(Lines, {
         this.vertex_template[i++] = style.color[0] * 255;
         this.vertex_template[i++] = style.color[1] * 255;
         this.vertex_template[i++] = style.color[2] * 255;
-        this.vertex_template[i++] = style.color[3] * 255;
+        this.vertex_template[i++] = (style.alpha != null ? style.alpha : style.color[3]) * 255;
 
         // a_selection_color.rgba - selection color
         if (mesh.variant.selection) {
