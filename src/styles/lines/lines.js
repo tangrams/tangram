@@ -18,9 +18,6 @@ import polygons_fs from '../polygons/polygons_fragment.glsl';
 
 export const Lines = Object.create(Style);
 
-Lines.variants = {}; // mesh variants by variant key
-Lines.vertex_layouts = {}; // vertex layouts by variant key
-
 const DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
 
 Object.assign(Lines, {
@@ -455,8 +452,8 @@ Object.assign(Lines, {
         key = hashString(key);
         draw.variant = key;
 
-        if (Lines.variants[key] == null) {
-            Lines.variants[key] = {
+        if (this.variants[key] == null) {
+            this.variants[key] = {
                 key,
                 blend_order,
                 mesh_order: (draw.is_outline ? 0 : 1), // outlines should be drawn first, so inline is on top
@@ -475,7 +472,7 @@ Object.assign(Lines, {
     // Override
     // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
-        if (Lines.vertex_layouts[variant.key] == null) {
+        if (this.vertex_layouts[variant.key] == null) {
             // Attributes for this mesh variant
             // Optional attributes have placeholder values assigned with `static` parameter
             const attribs = [
@@ -488,14 +485,15 @@ Object.assign(Lines, {
                 { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true, static: (variant.selection ? null : [0, 0, 0, 0]) }
             ];
 
-            Lines.vertex_layouts[variant.key] = new VertexLayout(attribs);
+            this.addCustomAttributesToAttributeList(attribs);
+            this.vertex_layouts[variant.key] = new VertexLayout(attribs);
         }
-        return Lines.vertex_layouts[variant.key];
+        return this.vertex_layouts[variant.key];
     },
 
     // Override
     meshVariantTypeForDraw (draw) {
-        return Lines.variants[draw.variant]; // return pre-calculated mesh variant
+        return this.variants[draw.variant]; // return pre-calculated mesh variant
     },
 
     /**
@@ -550,6 +548,7 @@ Object.assign(Lines, {
             this.vertex_template[i++] = style.selection_color[3] * 255;
         }
 
+        this.addCustomAttributesToVertexTemplate(style, i);
         return this.vertex_template;
     },
 

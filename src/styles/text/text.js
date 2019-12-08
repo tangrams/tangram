@@ -11,8 +11,6 @@ import VertexLayout from '../../gl/vertex_layout';
 
 export let TextStyle = Object.create(Points);
 
-TextStyle.vertex_layouts = {}; // vertex layouts by variant key
-
 Object.assign(TextStyle, {
     name: 'text',
     super: Points,
@@ -38,7 +36,7 @@ Object.assign(TextStyle, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style, mesh) {
-        this.super.makeVertexTemplate.apply(this, arguments);
+        this.super.makeVertexTemplate.call(this, style, mesh, /* add_custom_attribs */ false);
         let vertex_layout = mesh.vertex_data.vertex_layout;
         let i = vertex_layout.index.a_pre_angles;
 
@@ -49,6 +47,7 @@ Object.assign(TextStyle, {
             this.vertex_template[i++] = 0;
         }
 
+        this.addCustomAttributesToVertexTemplate(style, i);
         return this.vertex_template;
     },
 
@@ -265,7 +264,7 @@ Object.assign(TextStyle, {
     // Create or return vertex layout
     vertexLayoutForMeshVariant(variant) {
         // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
-        if (TextStyle.vertex_layouts[variant.shader_point] == null) {
+        if (this.vertex_layouts[variant.shader_point] == null) {
             // TODO: could make selection, offset, and curved label attribs optional, but may not be worth it
             // since text points generally don't consume much memory anyway
             const attribs = [
@@ -280,9 +279,10 @@ Object.assign(TextStyle, {
                 { name: 'a_offsets', size: 4, type: gl.UNSIGNED_SHORT, normalized: false },
             ];
 
-            TextStyle.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
+            this.addCustomAttributesToAttributeList(attribs);
+            this.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
         }
-        return TextStyle.vertex_layouts[variant.shader_point];
+        return this.vertex_layouts[variant.shader_point];
     },
 });
 
