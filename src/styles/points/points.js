@@ -22,9 +22,6 @@ const PLACEMENT = LabelPoint.PLACEMENT;
 
 export const Points = Object.create(Style);
 
-Points.variants = {}; // mesh variants by variant key
-Points.vertex_layouts = {}; // vertex layouts by variant key
-
 const SHADER_POINT_VARIANT = '__shader_point';
 
 // texture types
@@ -603,7 +600,7 @@ Object.assign(Points, {
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
      * A plain JS array matching the order of the vertex layout.
      */
-    makeVertexTemplate(style, mesh) {
+    makeVertexTemplate(style, mesh, add_custom_attribs = true) {
         let i = 0;
 
         // a_position.xyz - vertex position
@@ -659,6 +656,9 @@ Object.assign(Points, {
             this.vertex_template[i++] = style.outline_edge_pct || StyleParser.defaults.outline.width;
         }
 
+        if (add_custom_attribs) {
+            this.addCustomAttributesToVertexTemplate(style, i);
+        }
         return this.vertex_template;
     },
 
@@ -891,7 +891,7 @@ Object.assign(Points, {
     // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
         // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
-        if (Points.vertex_layouts[variant.shader_point] == null) {
+        if (this.vertex_layouts[variant.shader_point] == null) {
             // Attributes for this mesh variant
             // Optional attributes have placeholder values assigned with `static` parameter
             // TODO: could support optional attributes for selection and offset, but may not be worth it
@@ -907,9 +907,10 @@ Object.assign(Points, {
                 { name: 'a_outline_edge', size: 1, type: gl.FLOAT, normalized: false, static: (variant.shader_point ? null : 0) }
             ];
 
-            Points.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
+            this.addCustomAttributesToAttributeList(attribs);
+            this.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
         }
-        return Points.vertex_layouts[variant.shader_point];
+        return this.vertex_layouts[variant.shader_point];
 
     },
 
@@ -917,8 +918,8 @@ Object.assign(Points, {
     meshVariantTypeForDraw (draw) {
         const texture = draw.label_texture || draw.texture || SHADER_POINT_VARIANT; // unique key by texture name
         const key = texture + '/' + draw.blend_order;
-        if (Points.variants[key] == null) {
-            Points.variants[key] = {
+        if (this.variants[key] == null) {
+            this.variants[key] = {
                 key,
                 selection: 1, // TODO: make this vary by draw params
                 shader_point: (texture === SHADER_POINT_VARIANT), // is shader point
@@ -926,7 +927,7 @@ Object.assign(Points, {
                 mesh_order: (draw.label_texture ? 1 : 0) // put text on top of points (e.g. for highway shields, etc.)
             };
         }
-        return Points.variants[key]; // return pre-calculated mesh variant
+        return this.variants[key]; // return pre-calculated mesh variant
     },
 
     // Override

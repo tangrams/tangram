@@ -2,6 +2,7 @@
 
 import StyleParser from './style_parser';
 import FeatureSelection from '../selection/selection';
+import gl from '../gl/constants'; // import GL constants since workers can't access GL context
 import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
 import Texture from '../gl/texture';
@@ -35,6 +36,9 @@ export var Style = {
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
         this.stencil_proxy_tiles = true;            // applied to proxy tiles w/non-opaque blend mode to avoid compounding alpha
+
+        this.variants = {}; // mesh variants by variant key
+        this.vertex_layouts = {}; // vertex layouts by variant key
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
@@ -72,6 +76,9 @@ export var Style = {
 
         // Setup raster samplers if needed
         this.setupRasters();
+
+        // Setup shader definitions for custom attributes
+        this.setupCustomAttributes();
 
         this.initialized = true;
     },
@@ -274,6 +281,15 @@ export var Style = {
                 return; // skip feature
             }
 
+            // Custom attributes
+            if (this.shaders.attributes) {
+                style.attributes = style.attributes || {};
+                for (const aname in this.shaders.attributes) {
+                    style.attributes[aname] = StyleParser.evalCachedProperty(
+                        draw.attributes && draw.attributes[aname], context);
+                }
+            }
+
             // Feature selection (only if feature is marked as interactive, and style supports it)
             if (this.selection) {
                 style.interactive = StyleParser.evalProperty(draw.interactive, context);
@@ -288,6 +304,9 @@ export var Style = {
             else {
                 style.selection_color = FeatureSelection.defaultColor;
             }
+
+            // Subclass implementation
+            style = this._parseFeature(feature, draw, context);
 
             return style;
         }
@@ -328,6 +347,16 @@ export var Style = {
             if (!draw) {
                 return;
             }
+
+            // Custom attributes
+            if (this.shaders.attributes) {
+                draw.attributes = draw.attributes || {};
+                for (const aname in this.shaders.attributes) {
+                    draw.attributes[aname] = StyleParser.createPropertyCache(
+                        draw.attributes[aname] != null ? draw.attributes[aname] : 0);
+                }
+            }
+
             draw.preprocessed = true;
         }
         return draw;
@@ -681,6 +710,42 @@ export var Style = {
             index: index[t.name],          // raster sampler index
             coords: configs[t.name].coords // tile coords of raster tile
         }));
+    },
+
+    // Setup shader definitions for custom attributes
+    setupCustomAttributes() {
+        if (this.shaders.attributes) {
+            for (const [aname, attrib] of Object.entries(this.shaders.attributes)) {
+                if (attrib.type === 'float') {
+                    this.addShaderBlock('attributes', `attribute float a_${aname};`);
+                    if (attrib.varying !== false) {
+                        this.addShaderBlock('varyings', `varying float v_${aname};`);
+                        this.addShaderBlock('setup', `#ifdef TANGRAM_VERTEX_SHADER\nv_${aname} = a_${aname};\n#endif`);
+                    }
+                }
+            }
+        }
+    },
+
+    // Add custom attributes to a list of attributes for initializing a vertex layout
+    addCustomAttributesToAttributeList(attribs) {
+        if (this.shaders.attributes) {
+            for (const [aname, attrib] of Object.entries(this.shaders.attributes)) {
+                if (attrib.type === 'float') {
+                    attribs.push({ name: `a_${aname}`, size: 1, type: gl.FLOAT, normalized: false });
+                }
+            }
+        }
+        return attribs;
+    },
+
+    // Add current feature values for custom attributes to vertex template
+    addCustomAttributesToVertexTemplate(draw, index) {
+        if (this.shaders.attributes) {
+            for (let aname in this.shaders.attributes) {
+                this.vertex_template[index++] = draw.attributes[aname] != null ? draw.attributes[aname] : 0;
+            }
+        }
     },
 
     // Setup any GL state for rendering

@@ -12,9 +12,6 @@ import polygons_fs from './polygons_fragment.glsl';
 
 export const Polygons = Object.create(Style);
 
-Polygons.variants = {}; // mesh variants by variant key
-Polygons.vertex_layouts = {}; // vertex layouts by variant key
-
 Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,
@@ -88,8 +85,8 @@ Object.assign(Polygons, {
         const key = [selection, normal, texcoords, blend_order].join('/');
         draw.variant = key;
 
-        if (Polygons.variants[key] == null) {
-            Polygons.variants[key] = {
+        if (this.variants[key] == null) {
+            this.variants[key] = {
                 key,
                 blend_order,
                 mesh_order: 0,
@@ -103,7 +100,7 @@ Object.assign(Polygons, {
     // Override
     // Create or return desired vertex layout permutation based on flags
     vertexLayoutForMeshVariant (variant) {
-        if (Polygons.vertex_layouts[variant.key] == null) {
+        if (this.vertex_layouts[variant.key] == null) {
             // Attributes for this mesh variant
             // Optional attributes have placeholder values assigned with `static` parameter
             const attribs = [
@@ -114,9 +111,10 @@ Object.assign(Polygons, {
                 { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true, static: (variant.texcoords ? null : [0, 0]) }
             ];
 
-            Polygons.vertex_layouts[variant.key] = new VertexLayout(attribs);
+            this.addCustomAttributesToAttributeList(attribs);
+            this.vertex_layouts[variant.key] = new VertexLayout(attribs);
         }
-        return Polygons.vertex_layouts[variant.key];
+        return this.vertex_layouts[variant.key];
     },
 
     // Override
@@ -166,6 +164,7 @@ Object.assign(Polygons, {
             this.vertex_template[i++] = 0;
         }
 
+        this.addCustomAttributesToVertexTemplate(style, i);
         return this.vertex_template;
     },
 

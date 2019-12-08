@@ -195,6 +195,9 @@ export class StyleManager {
         // Defines
         shaders.defines = Object.assign({}, ...shader_merges.map(x => x.defines).filter(x => x));
 
+        // Attributes
+        shaders.attributes = Object.assign({}, ...shader_merges.map(x => x.attributes).filter(x => x));
+
         // Uniforms
         shaders.uniforms = {};  // uniforms for this style, both explicitly defined, and mixed from other styles
         shaders._uniforms = (style.shaders && style.shaders.uniforms) || {}; // uniforms explicitly defined by *this* style
