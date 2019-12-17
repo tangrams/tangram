@@ -126,6 +126,8 @@ Object.assign(Points, {
             return;
         }
 
+        style.alpha = StyleParser.evalCachedProperty(draw.alpha, context); // optional alpha override
+
         // optional sprite and texture
         let sprite_info;
         if (this.hasSprites(style)) {
@@ -165,10 +167,12 @@ Object.assign(Points, {
 
         style.outline_edge_pct = 0;
         if (style.outline_width && style.outline_color) {
+            // adjust size and UVs for outline
             let outline_width = style.outline_width;
             style.size[0] += outline_width;
             style.size[1] += outline_width;
             style.outline_edge_pct = outline_width / Math.min(style.size[0], style.size[1]) * 2; // UV distance at which outline starts
+            style.outline_alpha = StyleParser.evalCachedProperty(draw.outline.alpha, context); // optional alpha override
         }
 
         // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
@@ -386,11 +390,13 @@ Object.assign(Points, {
 
     _preprocess (draw) {
         draw.color = StyleParser.createColorPropertyCache(draw.color);
+        draw.alpha = StyleParser.createPropertyCache(draw.alpha);
         draw.texture = (draw.texture !== undefined ? draw.texture : this.texture); // optional or default texture
         draw.blend_order = this.getBlendOrderForDraw(draw); // from draw block, or fall back on default style blend order
 
         if (draw.outline) {
             draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
+            draw.outline.alpha = StyleParser.createPropertyCache(draw.outline.alpha);
             draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parsePositiveNumber);
         }
 
@@ -636,7 +642,7 @@ Object.assign(Points, {
         this.vertex_template[i++] = color[0] * 255;
         this.vertex_template[i++] = color[1] * 255;
         this.vertex_template[i++] = color[2] * 255;
-        this.vertex_template[i++] = color[3] * 255;
+        this.vertex_template[i++] = (style.alpha != null ? style.alpha : color[3]) * 255;
 
         // a_selection_color.rgba - selection color
         if (mesh.variant.selection) {
@@ -653,7 +659,7 @@ Object.assign(Points, {
             this.vertex_template[i++] = outline_color[0] * 255;
             this.vertex_template[i++] = outline_color[1] * 255;
             this.vertex_template[i++] = outline_color[2] * 255;
-            this.vertex_template[i++] = outline_color[3] * 255;
+            this.vertex_template[i++] = (style.outline_alpha != null ? style.outline_alpha : outline_color[3]) * 255;
 
             // a_outline_edge - point outline edge (as % of point size where outline begins)
             this.vertex_template[i++] = style.outline_edge_pct || StyleParser.defaults.outline.width;
