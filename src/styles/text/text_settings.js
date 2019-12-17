@@ -31,11 +31,10 @@ const TextSettings = {
         px_size: 12,
         family: 'Helvetica',
         fill: 'white',
+        fill_array: [1, 1, 1, 1],
         text_wrap: 15,
         max_lines: 5,
-        align: 'center',
-        stroke: null,
-        stroke_width: 0
+        align: 'center'
     },
 
     compute (feature, draw, context) {
@@ -47,7 +46,15 @@ const TextSettings = {
         style.can_articulate = draw.can_articulate;
 
         // Use fill if specified, or default
-        style.fill = (draw.font.fill && Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.fill, context))) || this.defaults.fill;
+        style.fill = draw.font.fill && StyleParser.evalCachedColorProperty(draw.font.fill, context);
+
+        // optional alpha override
+        const alpha = StyleParser.evalCachedProperty(draw.font.alpha, context);
+        if (alpha != null) {
+            style.fill = [...(style.fill ? style.fill : this.defaults.fill_array)]; // copy to avoid modifying underlying object
+            style.fill[3] = alpha;
+        }
+        style.fill = (style.fill && Utils.toCSSColor(style.fill)) || this.defaults.fill; // convert to CSS for Canvas
 
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
@@ -75,8 +82,17 @@ const TextSettings = {
 
         // Use stroke if specified
         if (draw.font.stroke && draw.font.stroke.color) {
-            style.stroke = Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.stroke.color, context) || this.defaults.stroke);
-            style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
+            style.stroke = StyleParser.evalCachedColorProperty(draw.font.stroke.color, context);
+            if (style.stroke) {
+                // optional alpha override
+                const stroke_alpha = StyleParser.evalCachedProperty(draw.font.stroke.alpha, context);
+                if (stroke_alpha != null) {
+                    style.stroke = [...style.stroke]; // copy to avoid modifying underlying object
+                    style.stroke[3] = stroke_alpha;
+                }
+                style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
+            }
+            style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context);
         }
 
         style.font_css = this.fontCSS(style);

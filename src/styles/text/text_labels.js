@@ -278,8 +278,10 @@ export const TextLabels = {
 
         // Colors
         draw.font.fill = StyleParser.createPropertyCache(draw.font.fill);
+        draw.font.alpha = StyleParser.createPropertyCache(draw.font.alpha);
         if (draw.font.stroke) {
             draw.font.stroke.color = StyleParser.createPropertyCache(draw.font.stroke.color);
+            draw.font.stroke.alpha = StyleParser.createPropertyCache(draw.font.stroke.alpha);
         }
 
         // Convert font and text stroke sizes
