@@ -716,11 +716,29 @@ export var Style = {
     setupCustomAttributes() {
         if (this.shaders.attributes) {
             for (const [aname, attrib] of Object.entries(this.shaders.attributes)) {
+                // alias each custom attribute to the internal attribute name in vertex shader,
+                // and internal varying name in fragment shader (if varying is enabled)
                 if (attrib.type === 'float') {
-                    this.addShaderBlock('attributes', `attribute float a_${aname};`);
                     if (attrib.varying !== false) {
-                        this.addShaderBlock('varyings', `varying float v_${aname};`);
+                        this.addShaderBlock('attributes', `
+                            #ifdef TANGRAM_VERTEX_SHADER
+                                attribute float a_${aname};
+                                varying float v_${aname};
+                                #define ${aname} a_${aname}
+                            #else
+                                varying float v_${aname};
+                                #define ${aname} v_${aname}
+                            #endif
+                        `);
                         this.addShaderBlock('setup', `#ifdef TANGRAM_VERTEX_SHADER\nv_${aname} = a_${aname};\n#endif`);
+                    }
+                    else {
+                        this.addShaderBlock('attributes', `
+                            #ifdef TANGRAM_VERTEX_SHADER
+                                attribute float a_${aname};
+                                #define ${aname} a_${aname}
+                            #endif
+                        `);
                     }
                 }
             }

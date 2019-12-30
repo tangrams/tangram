@@ -34,7 +34,7 @@ varying vec4 v_world_position;
     varying vec4 v_lighting;
 #endif
 
-#pragma tangram: varyings
+#pragma tangram: attributes
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
