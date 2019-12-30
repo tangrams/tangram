@@ -287,6 +287,10 @@ export var Style = {
                 for (const aname in this.shaders.attributes) {
                     style.attributes[aname] = StyleParser.evalCachedProperty(
                         draw.attributes && draw.attributes[aname], context);
+                    // set attribute value to zero for null/undefined/non-numeric values
+                    if (typeof style.attributes[aname] !== 'number') {
+                        style.attributes[aname] = 0;
+                    }
                 }
             }
 
