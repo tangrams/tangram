@@ -51,7 +51,6 @@ varying float v_alpha_factor;
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
 #pragma tangram: attributes
-#pragma tangram: varyings
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting

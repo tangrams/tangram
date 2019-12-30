@@ -63,7 +63,6 @@ varying vec4 v_world_position;
 #define TANGRAM_UNPACK_SCALING(x) (x / 1024.)
 
 #pragma tangram: attributes
-#pragma tangram: varyings
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
