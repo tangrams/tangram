@@ -352,7 +352,7 @@ export class StyleManager {
 
         // Add default blend/base style pairs as needed
         const blends = ['opaque', 'add', 'multiply', 'overlay', 'inlay', 'translucent'];
-        const bases = ['polygons', 'lines', 'points', 'text'];
+        const bases = ['polygons', 'lines', 'points', 'text', 'raster'];
         for (const blend of blends) {
             for (const base of bases) {
                 const style = blend + '_' + base;
