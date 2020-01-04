@@ -1914,7 +1914,7 @@ function _wrapNativeSuper(Class) {
   return _wrapNativeSuper(Class);
 }
 
-var version = "0.19.1";
+var version = "0.20.0";
 
 var version$1 = 'v' + version;
 
@@ -7957,6 +7957,19 @@ FeatureSelection.map_prefix = 0; // set by worker to worker id #
 
 FeatureSelection.defaultColor = [0, 0, 0, 1];
 
+// WebGL constants - need to import these separately to make them available in the web worker
+var gl;
+var gl$1 = gl = {};
+/* DataType */
+
+gl.BYTE = 0x1400;
+gl.UNSIGNED_BYTE = 0x1401;
+gl.SHORT = 0x1402;
+gl.UNSIGNED_SHORT = 0x1403;
+gl.INT = 0x1404;
+gl.UNSIGNED_INT = 0x1405;
+gl.FLOAT = 0x1406;
+
 _typedArray('Uint16', 2, function (init) {
   return function Uint16Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
@@ -10002,6 +10015,10 @@ var Style = {
 
     this.tile_data = {};
     this.stencil_proxy_tiles = true; // applied to proxy tiles w/non-opaque blend mode to avoid compounding alpha
+
+    this.variants = {}; // mesh variants by variant key
+
+    this.vertex_layouts = {}; // vertex layouts by variant key
     // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
 
     this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000; // Blending
@@ -10036,7 +10053,9 @@ var Style = {
 
     Light.setMode(this.lighting, this); // Setup raster samplers if needed
 
-    this.setupRasters();
+    this.setupRasters(); // Setup shader definitions for custom attributes
+
+    this.setupCustomAttributes();
     this.initialized = true;
   },
   destroy: function destroy() {
@@ -10249,6 +10268,19 @@ var Style = {
 
       if (!style) {
         return; // skip feature
+      } // Custom attributes
+
+
+      if (this.shaders.attributes) {
+        style.attributes = style.attributes || {};
+
+        for (var aname in this.shaders.attributes) {
+          style.attributes[aname] = StyleParser.evalCachedProperty(draw.attributes && draw.attributes[aname], context); // set attribute value to zero for null/undefined/non-numeric values
+
+          if (typeof style.attributes[aname] !== 'number') {
+            style.attributes[aname] = 0;
+          }
+        }
       } // Feature selection (only if feature is marked as interactive, and style supports it)
 
 
@@ -10262,8 +10294,10 @@ var Style = {
         style.selection_color = FeatureSelection.makeColor(feature, context.tile, context);
       } else {
         style.selection_color = FeatureSelection.defaultColor;
-      }
+      } // Subclass implementation
 
+
+      style = this._parseFeature(feature, draw, context);
       return style;
     } catch (error) {
       log('error', 'Style.parseFeature: style parsing error', feature, style, error.stack);
@@ -10303,6 +10337,15 @@ var Style = {
 
       if (!draw) {
         return;
+      } // Custom attributes
+
+
+      if (this.shaders.attributes) {
+        draw.attributes = draw.attributes || {};
+
+        for (var aname in this.shaders.attributes) {
+          draw.attributes[aname] = StyleParser.createPropertyCache(draw.attributes[aname] != null ? draw.attributes[aname] : 0);
+        }
       }
 
       draw.preprocessed = true;
@@ -10383,6 +10426,7 @@ var Style = {
         program.compile();
       } catch (e) {
         log('error', "Style: error compiling program for style '" + this.name + "' (program key '" + key + "')", this, e.stack, e.type, e.shader_errors);
+        throw e; // re-throw so users can be notified via event subscriptions
       }
     }
 
@@ -10709,6 +10753,60 @@ var Style = {
       }.bind(this), $error);
     }.bind(this));
   },
+  // Setup shader definitions for custom attributes
+  setupCustomAttributes: function setupCustomAttributes() {
+    if (this.shaders.attributes) {
+      var _arr = Object.entries(this.shaders.attributes);
+
+      for (var _i = 0; _i < _arr.length; _i++) {
+        var _arr$_i = _arr[_i],
+            aname = _arr$_i[0],
+            attrib = _arr$_i[1];
+
+        // alias each custom attribute to the internal attribute name in vertex shader,
+        // and internal varying name in fragment shader (if varying is enabled)
+        if (attrib.type === 'float') {
+          if (attrib.varying !== false) {
+            this.addShaderBlock('attributes', "\n                            #ifdef TANGRAM_VERTEX_SHADER\n                                attribute float a_" + aname + ";\n                                varying float v_" + aname + ";\n                                #define " + aname + " a_" + aname + "\n                            #else\n                                varying float v_" + aname + ";\n                                #define " + aname + " v_" + aname + "\n                            #endif\n                        ");
+            this.addShaderBlock('setup', "#ifdef TANGRAM_VERTEX_SHADER\nv_" + aname + " = a_" + aname + ";\n#endif");
+          } else {
+            this.addShaderBlock('attributes', "\n                            #ifdef TANGRAM_VERTEX_SHADER\n                                attribute float a_" + aname + ";\n                                #define " + aname + " a_" + aname + "\n                            #endif\n                        ");
+          }
+        }
+      }
+    }
+  },
+  // Add custom attributes to a list of attributes for initializing a vertex layout
+  addCustomAttributesToAttributeList: function addCustomAttributesToAttributeList(attribs) {
+    if (this.shaders.attributes) {
+      var _arr2 = Object.entries(this.shaders.attributes);
+
+      for (var _i2 = 0; _i2 < _arr2.length; _i2++) {
+        var _arr2$_i = _arr2[_i2],
+            aname = _arr2$_i[0],
+            attrib = _arr2$_i[1];
+
+        if (attrib.type === 'float') {
+          attribs.push({
+            name: "a_" + aname,
+            size: 1,
+            type: gl$1.FLOAT,
+            normalized: false
+          });
+        }
+      }
+    }
+
+    return attribs;
+  },
+  // Add current feature values for custom attributes to vertex template
+  addCustomAttributesToVertexTemplate: function addCustomAttributesToVertexTemplate(draw, index) {
+    if (this.shaders.attributes) {
+      for (var aname in this.shaders.attributes) {
+        this.vertex_template[index++] = draw.attributes[aname] != null ? draw.attributes[aname] : 0;
+      }
+    }
+  },
   // Setup any GL state for rendering
   setup: function setup() {
     this.setUniforms();
@@ -10789,19 +10887,6 @@ function addLayerDebugEntry(target, layer, faeture_count, geom_count, styles, ba
     target[layer].base[_style] += bases[_style];
   }
 }
-
-// WebGL constants - need to import these separately to make them available in the web worker
-var gl;
-var gl$1 = gl = {};
-/* DataType */
-
-gl.BYTE = 0x1400;
-gl.UNSIGNED_BYTE = 0x1401;
-gl.SHORT = 0x1402;
-gl.UNSIGNED_SHORT = 0x1403;
-gl.INT = 0x1404;
-gl.UNSIGNED_INT = 0x1405;
-gl.FLOAT = 0x1406;
 
 _typedArray('Int16', 2, function (init) {
   return function Int16Array(data, byteOffset, length) {
@@ -12029,15 +12114,11 @@ function triangulatePolygon(data) {
   return earcut_1(data.vertices, data.holes, data.dimensions);
 }
 
-var polygons_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    attribute vec2 a_extrude; // extrusion direction in xy plane\n    attribute vec2 a_offset;  // offset direction in xy plane\n\n    // Polygon and line styles have slightly different VBO layouts, saving memory by optimizing vertex packing.\n    // All lines have a width scaling factor, but only some have a height (position.z) or offset.\n    // The vertex height is stored in different attributes to account for this.\n    attribute vec2 a_z_and_offset_scale; // stores vertex height in x, and offset scaling factor in y\n    #define TANGRAM_POSITION_Z a_z_and_offset_scale.x // vertex height is stored in separate line-specific attrib\n    #define TANGRAM_OFFSET_SCALING a_z_and_offset_scale.y // zoom scaling factor for line offset\n    #define TANGRAM_WIDTH_SCALING a_position.z // zoom scaling factor for line width (stored in position attrib)\n\n    uniform float u_v_scale_adjust; // scales texture UVs for line dash patterns w/fractional pixel width\n#else\n    #define TANGRAM_POSITION_Z a_position.z // vertex height\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#define TANGRAM_UNPACK_SCALING(x) (x / 1024.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= u_v_scale_adjust;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, TANGRAM_POSITION_Z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 _extrude = a_extrude.xy;\n        vec2 _offset = a_offset.xy;\n\n        // Adjust line width based on zoom level, to prevent proxied lines\n        // from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from\n        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines\n        // from becoming too small when far away).\n        float _dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        _dz += step(1., _dz) * (1. - _dz) + mix(0., 2., clamp((_dz - 2.) / 2., 0., 1.));\n\n        // Interpolate line width between zooms\n        float _mdz = (_dz - 0.5) * 2.; // zoom from mid-point\n        _extrude -= _extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * _mdz;\n\n        // Interpolate line offset between zooms\n        // Scales from the larger value to the smaller one\n        float _dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);\n        float _sdwdz = sign(step(0., _dwdz) - 0.5); // sign indicates \"direction\" of scaling\n        _offset -= _offset * abs(_dwdz) * ((1.-step(0., _sdwdz)) - (_dz * -_sdwdz)); // scale \"up\" or \"down\"\n\n        // Scale line width and offset to be consistent in screen space\n        float _ssz = exp2(-_dz - (u_tile_origin.z - u_tile_origin.w));\n        _extrude *= _ssz;\n        _offset *= _ssz;\n\n        // Modify line width before extrusion\n        #ifdef TANGRAM_BLOCK_WIDTH\n            float width = 1.;\n            #pragma tangram: width\n            _extrude *= width;\n        #endif\n\n        position.xy += _extrude + _offset;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n\n    gl_Position = position;\n}\n";
+var polygons_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    attribute vec2 a_extrude; // extrusion direction in xy plane\n    attribute vec2 a_offset;  // offset direction in xy plane\n\n    // Polygon and line styles have slightly different VBO layouts, saving memory by optimizing vertex packing.\n    // All lines have a width scaling factor, but only some have a height (position.z) or offset.\n    // The vertex height is stored in different attributes to account for this.\n    attribute vec2 a_z_and_offset_scale; // stores vertex height in x, and offset scaling factor in y\n    #define TANGRAM_POSITION_Z a_z_and_offset_scale.x // vertex height is stored in separate line-specific attrib\n    #define TANGRAM_OFFSET_SCALING a_z_and_offset_scale.y // zoom scaling factor for line offset\n    #define TANGRAM_WIDTH_SCALING a_position.z // zoom scaling factor for line width (stored in position attrib)\n\n    uniform float u_v_scale_adjust; // scales texture UVs for line dash patterns w/fractional pixel width\n#else\n    #define TANGRAM_POSITION_Z a_position.z // vertex height\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#define TANGRAM_UNPACK_SCALING(x) (x / 1024.)\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= u_v_scale_adjust;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, TANGRAM_POSITION_Z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 _extrude = a_extrude.xy;\n        vec2 _offset = a_offset.xy;\n\n        // Adjust line width based on zoom level, to prevent proxied lines\n        // from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from\n        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines\n        // from becoming too small when far away).\n        float _dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        _dz += step(1., _dz) * (1. - _dz) + mix(0., 2., clamp((_dz - 2.) / 2., 0., 1.));\n\n        // Interpolate line width between zooms\n        float _mdz = (_dz - 0.5) * 2.; // zoom from mid-point\n        _extrude -= _extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * _mdz;\n\n        // Interpolate line offset between zooms\n        // Scales from the larger value to the smaller one\n        float _dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);\n        float _sdwdz = sign(step(0., _dwdz) - 0.5); // sign indicates \"direction\" of scaling\n        _offset -= _offset * abs(_dwdz) * ((1.-step(0., _sdwdz)) - (_dz * -_sdwdz)); // scale \"up\" or \"down\"\n\n        // Scale line width and offset to be consistent in screen space\n        float _ssz = exp2(-_dz - (u_tile_origin.z - u_tile_origin.w));\n        _extrude *= _ssz;\n        _offset *= _ssz;\n\n        // Modify line width before extrusion\n        #ifdef TANGRAM_BLOCK_WIDTH\n            float width = 1.;\n            #pragma tangram: width\n            _extrude *= width;\n        #endif\n\n        position.xy += _extrude + _offset;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n\n    gl_Position = position;\n}\n";
 
-var polygons_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#ifdef TANGRAM_EXTRUDE_LINES\n    uniform bool u_has_line_texture;\n    uniform sampler2D u_texture;\n    uniform float u_texture_ratio;\n    uniform vec4 u_dash_background_color;\n#endif\n\n#define TANGRAM_NORMAL v_normal\n\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        vec4 _raster_color = sampleRaster(0);\n\n        #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n            // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.\n            // This is used for handling transparency outside the raster image in some blend modes,\n            // which either don't support alpha, or would cause transparent pixels to write to the depth buffer,\n            // obscuring geometry underneath.\n            #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources\n            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip conditional if *only* masked raster sources (always true)\n            if (u_raster_mask_alpha) {\n            #else\n            {\n            #endif\n                #if defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n                if (_raster_color.a < TANGRAM_EPSILON) {\n                    discard;\n                }\n                #else // TANGRAM_BLEND_OPAQUE\n                if (_raster_color.a < 1. - TANGRAM_EPSILON) {\n                    discard;\n                }\n                // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)\n                _raster_color.a = 1.;\n                #endif\n            }\n            #endif\n        #endif\n\n        color *= _raster_color; // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_EXTRUDE_LINES\n    { // enclose in scope to avoid leakage of internal variables\n        if (u_has_line_texture) {\n            vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n            vec4 _line_color = texture2D(u_texture, _line_st);\n\n            if (_line_color.a < TANGRAM_ALPHA_TEST) {\n                #if defined(TANGRAM_BLEND_OPAQUE)\n                    // use discard when alpha blending is unavailable\n                    if (u_dash_background_color.a < 1. - TANGRAM_EPSILON) {\n                        discard;\n                    }\n                    color = vec4(u_dash_background_color.rgb, 1.); // only allow full alpha in opaque blend mode\n                #else\n                    // use alpha channel when blending is available\n                    color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));\n                #endif\n            }\n            else {\n                color *= _line_color;\n            }\n        }\n    }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
+var polygons_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#ifdef TANGRAM_EXTRUDE_LINES\n    uniform bool u_has_line_texture;\n    uniform sampler2D u_texture;\n    uniform float u_texture_ratio;\n    uniform vec4 u_dash_background_color;\n#endif\n\n#define TANGRAM_NORMAL v_normal\n\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        vec4 _raster_color = sampleRaster(0);\n\n        #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n            // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.\n            // This is used for handling transparency outside the raster image in some blend modes,\n            // which either don't support alpha, or would cause transparent pixels to write to the depth buffer,\n            // obscuring geometry underneath.\n            #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources\n            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip conditional if *only* masked raster sources (always true)\n            if (u_raster_mask_alpha) {\n            #else\n            {\n            #endif\n                #if defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n                if (_raster_color.a < TANGRAM_EPSILON) {\n                    discard;\n                }\n                #else // TANGRAM_BLEND_OPAQUE\n                if (_raster_color.a < 1. - TANGRAM_EPSILON) {\n                    discard;\n                }\n                // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)\n                _raster_color.a = 1.;\n                #endif\n            }\n            #endif\n        #endif\n\n        color *= _raster_color; // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_EXTRUDE_LINES\n    { // enclose in scope to avoid leakage of internal variables\n        if (u_has_line_texture) {\n            vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n            vec4 _line_color = texture2D(u_texture, _line_st);\n\n            if (_line_color.a < TANGRAM_ALPHA_TEST) {\n                #if defined(TANGRAM_BLEND_OPAQUE)\n                    // use discard when alpha blending is unavailable\n                    if (u_dash_background_color.a < 1. - TANGRAM_EPSILON) {\n                        discard;\n                    }\n                    color = vec4(u_dash_background_color.rgb, 1.); // only allow full alpha in opaque blend mode\n                #else\n                    // use alpha channel when blending is available\n                    color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));\n                #endif\n            }\n            else {\n                color *= _line_color;\n            }\n        }\n    }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
 
 var Polygons = Object.create(Style);
-Polygons.variants = {}; // mesh variants by variant key
-
-Polygons.vertex_layouts = {}; // vertex layouts by variant key
-
 Object.assign(Polygons, {
   name: 'polygons',
   built_in: true,
@@ -12058,6 +12139,8 @@ Object.assign(Polygons, {
     if (!style.color) {
       return null;
     }
+
+    style.alpha = StyleParser.evalCachedProperty(draw.alpha, context); // optional alpha override
 
     style.variant = draw.variant; // pre-calculated mesh variant
 
@@ -12092,6 +12175,7 @@ Object.assign(Polygons, {
   },
   _preprocess: function _preprocess(draw) {
     draw.color = StyleParser.createColorPropertyCache(draw.color);
+    draw.alpha = StyleParser.createPropertyCache(draw.alpha);
     draw.z = StyleParser.createPropertyCache(draw.z, StyleParser.parseUnits);
     this.computeVariant(draw);
     return draw;
@@ -12109,8 +12193,8 @@ Object.assign(Polygons, {
     var key = [selection, normal, texcoords, blend_order].join('/');
     draw.variant = key;
 
-    if (Polygons.variants[key] == null) {
-      Polygons.variants[key] = {
+    if (this.variants[key] == null) {
+      this.variants[key] = {
         key: key,
         blend_order: blend_order,
         mesh_order: 0,
@@ -12123,7 +12207,7 @@ Object.assign(Polygons, {
   // Override
   // Create or return desired vertex layout permutation based on flags
   vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
-    if (Polygons.vertex_layouts[variant.key] == null) {
+    if (this.vertex_layouts[variant.key] == null) {
       // Attributes for this mesh variant
       // Optional attributes have placeholder values assigned with `static` parameter
       var attribs = [{
@@ -12156,10 +12240,11 @@ Object.assign(Polygons, {
         normalized: true,
         static: variant.texcoords ? null : [0, 0]
       }];
-      Polygons.vertex_layouts[variant.key] = new VertexLayout(attribs);
+      this.addCustomAttributesToAttributeList(attribs);
+      this.vertex_layouts[variant.key] = new VertexLayout(attribs);
     }
 
-    return Polygons.vertex_layouts[variant.key];
+    return this.vertex_layouts[variant.key];
   },
   // Override
   meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
@@ -12190,7 +12275,7 @@ Object.assign(Polygons, {
     this.vertex_template[i++] = style.color[0] * 255;
     this.vertex_template[i++] = style.color[1] * 255;
     this.vertex_template[i++] = style.color[2] * 255;
-    this.vertex_template[i++] = style.color[3] * 255; // a_selection_color.rgba - selection color
+    this.vertex_template[i++] = (style.alpha != null ? style.alpha : style.color[3]) * 255; // a_selection_color.rgba - selection color
 
     if (mesh.variant.selection) {
       this.vertex_template[i++] = style.selection_color[0] * 255;
@@ -12205,6 +12290,7 @@ Object.assign(Polygons, {
       this.vertex_template[i++] = 0;
     }
 
+    this.addCustomAttributesToVertexTemplate(style, i);
     return this.vertex_template;
   },
   buildPolygons: function buildPolygons$1(polygons, style, context) {
@@ -12926,10 +13012,6 @@ function renderDashArray(pattern, options) {
 }
 
 var Lines = Object.create(Style);
-Lines.variants = {}; // mesh variants by variant key
-
-Lines.vertex_layouts = {}; // vertex layouts by variant key
-
 var DASH_SCALE = 20; // adjustment factor for UV scale to for line dash patterns w/fractional pixel width
 
 Object.assign(Lines, {
@@ -13073,6 +13155,8 @@ Object.assign(Lines, {
       return;
     }
 
+    style.alpha = StyleParser.evalCachedProperty(draw.alpha, context); // optional alpha override
+
     style.variant = draw.variant; // pre-calculated mesh variant
     // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
 
@@ -13128,9 +13212,9 @@ Object.assign(Lines, {
         style.outline.inline_texcoord_width = style.texcoord_width; // Offset is directly copied from fill to outline, no need to re-calculate it
 
         style.outline.offset_precalc = style.offset;
-        style.outline.offset_scale_precalc = style.offset_scale; // Inherited properties
-
+        style.outline.offset_scale_precalc = style.offset_scale;
         style.outline.color = draw.outline.color;
+        style.outline.alpha = draw.outline.alpha;
         style.outline.interactive = draw.outline.interactive;
         style.outline.cap = draw.outline.cap;
         style.outline.join = draw.outline.join;
@@ -13164,6 +13248,7 @@ Object.assign(Lines, {
   },
   _preprocess: function _preprocess(draw) {
     draw.color = StyleParser.createColorPropertyCache(draw.color);
+    draw.alpha = StyleParser.createPropertyCache(draw.alpha);
     draw.width = StyleParser.createPropertyCache(draw.width, StyleParser.parseUnits);
 
     if (draw.width && draw.width.type !== StyleParser.CACHE_TYPE.STATIC) {
@@ -13190,6 +13275,7 @@ Object.assign(Lines, {
 
       draw.outline.style = draw.outline.style || this.name;
       draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
+      draw.outline.alpha = StyleParser.createPropertyCache(draw.outline.alpha);
       draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits);
       draw.outline.next_width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parseUnits); // width re-computed for next zoom
 
@@ -13235,7 +13321,7 @@ Object.assign(Lines, {
           draw.outline.blend_order = draw.blend_order;
         }
 
-        this.computeVariant(draw.outline, outline_style);
+        outline_style.computeVariant(draw.outline);
       } else {
         log({
           level: 'warn',
@@ -13420,11 +13506,7 @@ Object.assign(Lines, {
     }.bind(this));
   },
   // Calculate and store mesh variant (unique by draw group but not feature)
-  computeVariant: function computeVariant(draw, style) {
-    if (style === void 0) {
-      style = this;
-    }
-
+  computeVariant: function computeVariant(draw) {
     // Factors that determine a unique mesh rendering variant
     var key = draw.offset ? 1 : 0; // whether feature has a line offset
 
@@ -13450,14 +13532,14 @@ Object.assign(Lines, {
       key += draw.texture_merged;
     }
 
-    var blend_order = style.getBlendOrderForDraw(draw);
+    var blend_order = this.getBlendOrderForDraw(draw);
     key += '/' + blend_order; // Create unique key
 
     key = hashString(key);
     draw.variant = key;
 
-    if (Lines.variants[key] == null) {
-      Lines.variants[key] = {
+    if (this.variants[key] == null) {
+      this.variants[key] = {
         key: key,
         blend_order: blend_order,
         mesh_order: draw.is_outline ? 0 : 1,
@@ -13476,7 +13558,7 @@ Object.assign(Lines, {
   // Override
   // Create or return desired vertex layout permutation based on flags
   vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
-    if (Lines.vertex_layouts[variant.key] == null) {
+    if (this.vertex_layouts[variant.key] == null) {
       // Attributes for this mesh variant
       // Optional attributes have placeholder values assigned with `static` parameter
       var attribs = [{
@@ -13519,14 +13601,15 @@ Object.assign(Lines, {
         normalized: true,
         static: variant.selection ? null : [0, 0, 0, 0]
       }];
-      Lines.vertex_layouts[variant.key] = new VertexLayout(attribs);
+      this.addCustomAttributesToAttributeList(attribs);
+      this.vertex_layouts[variant.key] = new VertexLayout(attribs);
     }
 
-    return Lines.vertex_layouts[variant.key];
+    return this.vertex_layouts[variant.key];
   },
   // Override
   meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
-    return Lines.variants[draw.variant]; // return pre-calculated mesh variant
+    return this.variants[draw.variant]; // return pre-calculated mesh variant
   },
 
   /**
@@ -13569,7 +13652,7 @@ Object.assign(Lines, {
     this.vertex_template[i++] = style.color[0] * 255;
     this.vertex_template[i++] = style.color[1] * 255;
     this.vertex_template[i++] = style.color[2] * 255;
-    this.vertex_template[i++] = style.color[3] * 255; // a_selection_color.rgba - selection color
+    this.vertex_template[i++] = (style.alpha != null ? style.alpha : style.color[3]) * 255; // a_selection_color.rgba - selection color
 
     if (mesh.variant.selection) {
       this.vertex_template[i++] = style.selection_color[0] * 255;
@@ -13578,6 +13661,7 @@ Object.assign(Lines, {
       this.vertex_template[i++] = style.selection_color[3] * 255;
     }
 
+    this.addCustomAttributesToVertexTemplate(style, i);
     return this.vertex_template;
   },
   buildLines: function buildLines(lines, style, context, options) {
@@ -14781,11 +14865,10 @@ var TextSettings = {
     px_size: 12,
     family: 'Helvetica',
     fill: 'white',
+    fill_array: [1, 1, 1, 1],
     text_wrap: 15,
     max_lines: 5,
-    align: 'center',
-    stroke: null,
-    stroke_width: 0
+    align: 'center'
   },
   compute: function compute(feature, draw, context) {
     var style = {};
@@ -14793,7 +14876,18 @@ var TextSettings = {
 
     style.can_articulate = draw.can_articulate; // Use fill if specified, or default
 
-    style.fill = draw.font.fill && Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.fill, context)) || this.defaults.fill; // Font properties are modeled after CSS names:
+    style.fill = draw.font.fill && StyleParser.evalCachedColorProperty(draw.font.fill, context); // optional alpha override
+
+    var alpha = StyleParser.evalCachedProperty(draw.font.alpha, context);
+
+    if (alpha != null) {
+      style.fill = [].concat(style.fill ? style.fill : this.defaults.fill_array); // copy to avoid modifying underlying object
+
+      style.fill[3] = alpha;
+    }
+
+    style.fill = style.fill && Utils.toCSSColor(style.fill) || this.defaults.fill; // convert to CSS for Canvas
+    // Font properties are modeled after CSS names:
     // - family: Helvetica, Futura, etc.
     // - size: in pt, px, or em
     // - style: normal, italic, oblique
@@ -14820,8 +14914,22 @@ var TextSettings = {
     style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample; // Use stroke if specified
 
     if (draw.font.stroke && draw.font.stroke.color) {
-      style.stroke = Utils.toCSSColor(StyleParser.evalCachedColorProperty(draw.font.stroke.color, context) || this.defaults.stroke);
-      style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context) || this.defaults.stroke_width;
+      style.stroke = StyleParser.evalCachedColorProperty(draw.font.stroke.color, context);
+
+      if (style.stroke) {
+        // optional alpha override
+        var stroke_alpha = StyleParser.evalCachedProperty(draw.font.stroke.alpha, context);
+
+        if (stroke_alpha != null) {
+          style.stroke = [].concat(style.stroke); // copy to avoid modifying underlying object
+
+          style.stroke[3] = stroke_alpha;
+        }
+
+        style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
+      }
+
+      style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context);
     }
 
     style.font_css = this.fontCSS(style); // Word wrap and text alignment
@@ -16418,9 +16526,11 @@ var TextLabels = {
 
 
     draw.font.fill = StyleParser.createPropertyCache(draw.font.fill);
+    draw.font.alpha = StyleParser.createPropertyCache(draw.font.alpha);
 
     if (draw.font.stroke) {
       draw.font.stroke.color = StyleParser.createPropertyCache(draw.font.stroke.color);
+      draw.font.stroke.alpha = StyleParser.createPropertyCache(draw.font.stroke.alpha);
     } // Convert font and text stroke sizes
 
 
@@ -17569,16 +17679,12 @@ function () {
   return View;
 }();
 
-var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(vec4 v, float x) {\n        x = clamp(x, 0., 1.);\n        return mix(mix(v[0], v[1], 3. * x),\n                   mix(v[1],\n                       mix(v[2], v[3], 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex attribute\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // use point dimensions for UVs instead (ignore attribute), add antialiasing info for fragment shader\n            float _size = abs(a_shape.x / 128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy) * (_size + 1.) / _size;\n            _size += 2.;\n            v_aa_offset = 2. / _size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 _shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 _offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n    float _theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 _angles_scaled = (TANGRAM_PI / 16384.) * a_angles;\n            vec4 _pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;\n            vec4 _offsets_scaled = (1. / 64.) * a_offsets;\n\n            float _zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n            float _pre_angle = mix4linear(_pre_angles_scaled, _zoom);\n            float _angle = mix4linear(_angles_scaled, _zoom);\n            float _offset_curve = mix4linear(_offsets_scaled, _zoom);\n\n            _shape = rotate2D(_shape, _pre_angle); // rotate in place\n            _shape.x += _offset_curve;            // offset for curved label segment\n            _shape = rotate2D(_shape, _angle);     // rotate relative to curved label anchor\n            _shape += rotate2D(_offset, _theta);   // offset if specified in the scene file\n        }\n        else {\n            _shape = rotate2D(_shape + _offset, _theta);\n        }\n    #else\n        _shape = rotate2D(_shape + _offset, _theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += _shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += _shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(_shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(_theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(_theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 _position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 _position_snap = position.xy + ((step(0.5, _position_fract) - _position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, _position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = _position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
+var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(vec4 v, float x) {\n        x = clamp(x, 0., 1.);\n        return mix(mix(v[0], v[1], 3. * x),\n                   mix(v[1],\n                       mix(v[2], v[3], 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex attribute\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // use point dimensions for UVs instead (ignore attribute), add antialiasing info for fragment shader\n            float _size = abs(a_shape.x / 128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy) * (_size + 1.) / _size;\n            _size += 2.;\n            v_aa_offset = 2. / _size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 _shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 _offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n    float _theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 _angles_scaled = (TANGRAM_PI / 16384.) * a_angles;\n            vec4 _pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;\n            vec4 _offsets_scaled = (1. / 64.) * a_offsets;\n\n            float _zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n            float _pre_angle = mix4linear(_pre_angles_scaled, _zoom);\n            float _angle = mix4linear(_angles_scaled, _zoom);\n            float _offset_curve = mix4linear(_offsets_scaled, _zoom);\n\n            _shape = rotate2D(_shape, _pre_angle); // rotate in place\n            _shape.x += _offset_curve;            // offset for curved label segment\n            _shape = rotate2D(_shape, _angle);     // rotate relative to curved label anchor\n            _shape += rotate2D(_offset, _theta);   // offset if specified in the scene file\n        }\n        else {\n            _shape = rotate2D(_shape + _offset, _theta);\n        }\n    #else\n        _shape = rotate2D(_shape + _offset, _theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += _shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += _shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(_shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(_theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(_theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 _position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 _position_snap = position.xy + ((step(0.5, _position_fract) - _position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, _position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = _position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
 
-var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // Mask of outermost circle, either outline or point boundary\n            float _d = length(v_texcoord); // distance to this fragment from the point center\n            float _outer_alpha = _tangram_antialias(_d, 1.);\n            float _fill_alpha = _tangram_antialias(_d, 1. - (v_outline_edge * 0.5)) * color.a;\n            float _stroke_alpha = (_outer_alpha - _tangram_antialias(_d, 1. - v_outline_edge)) * v_outline_color.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = _stroke_alpha + _fill_alpha;\n                color.rgb = color.rgb * _fill_alpha + v_outline_color.rgb * _stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = _stroke_alpha + _fill_alpha * (1. - _stroke_alpha);\n                color.rgb = mix(color.rgb * _fill_alpha, v_outline_color.rgb, _stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // Use alpha test as a lower-quality substitute\n    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath\n    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black\n    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // Mask of outermost circle, either outline or point boundary\n            float _d = length(v_texcoord); // distance to this fragment from the point center\n            float _outer_alpha = _tangram_antialias(_d, 1.);\n            float _fill_alpha = _tangram_antialias(_d, 1. - (v_outline_edge * 0.5)) * color.a;\n            float _stroke_alpha = (_outer_alpha - _tangram_antialias(_d, 1. - v_outline_edge)) * v_outline_color.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = _stroke_alpha + _fill_alpha;\n                color.rgb = color.rgb * _fill_alpha + v_outline_color.rgb * _stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = _stroke_alpha + _fill_alpha * (1. - _stroke_alpha);\n                color.rgb = mix(color.rgb * _fill_alpha, v_outline_color.rgb, _stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // Use alpha test as a lower-quality substitute\n    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath\n    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black\n    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 var PLACEMENT$1 = LabelPoint.PLACEMENT;
 var Points = Object.create(Style);
-Points.variants = {}; // mesh variants by variant key
-
-Points.vertex_layouts = {}; // vertex layouts by variant key
-
 var SHADER_POINT_VARIANT = '__shader_point'; // texture types
 
 var TANGRAM_POINT_TYPE_TEXTURE = 1; // style texture/sprites (assigned by user)
@@ -17677,8 +17783,10 @@ Object.assign(Points, {
 
     if (!style.color && !style.texture) {
       return;
-    } // optional sprite and texture
+    }
 
+    style.alpha = StyleParser.evalCachedProperty(draw.alpha, context); // optional alpha override
+    // optional sprite and texture
 
     var sprite_info;
 
@@ -17719,10 +17827,13 @@ Object.assign(Points, {
     style.outline_edge_pct = 0;
 
     if (style.outline_width && style.outline_color) {
+      // adjust size and UVs for outline
       var outline_width = style.outline_width;
       style.size[0] += outline_width;
       style.size[1] += outline_width;
       style.outline_edge_pct = outline_width / Math.min(style.size[0], style.size[1]) * 2; // UV distance at which outline starts
+
+      style.outline_alpha = StyleParser.evalCachedProperty(draw.outline.alpha, context); // optional alpha override
     } // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
 
 
@@ -17957,12 +18068,14 @@ Object.assign(Points, {
   },
   _preprocess: function _preprocess(draw) {
     draw.color = StyleParser.createColorPropertyCache(draw.color);
+    draw.alpha = StyleParser.createPropertyCache(draw.alpha);
     draw.texture = draw.texture !== undefined ? draw.texture : this.texture; // optional or default texture
 
     draw.blend_order = this.getBlendOrderForDraw(draw); // from draw block, or fall back on default style blend order
 
     if (draw.outline) {
       draw.outline.color = StyleParser.createColorPropertyCache(draw.outline.color);
+      draw.outline.alpha = StyleParser.createPropertyCache(draw.outline.alpha);
       draw.outline.width = StyleParser.createPropertyCache(draw.outline.width, StyleParser.parsePositiveNumber);
     }
 
@@ -18178,7 +18291,11 @@ Object.assign(Points, {
    * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
    * A plain JS array matching the order of the vertex layout.
    */
-  makeVertexTemplate: function makeVertexTemplate(style, mesh) {
+  makeVertexTemplate: function makeVertexTemplate(style, mesh, add_custom_attribs) {
+    if (add_custom_attribs === void 0) {
+      add_custom_attribs = true;
+    }
+
     var i = 0; // a_position.xyz - vertex position
     // a_position.w - layer order
 
@@ -18208,7 +18325,7 @@ Object.assign(Points, {
     this.vertex_template[i++] = color[0] * 255;
     this.vertex_template[i++] = color[1] * 255;
     this.vertex_template[i++] = color[2] * 255;
-    this.vertex_template[i++] = color[3] * 255; // a_selection_color.rgba - selection color
+    this.vertex_template[i++] = (style.alpha != null ? style.alpha : color[3]) * 255; // a_selection_color.rgba - selection color
 
     if (mesh.variant.selection) {
       this.vertex_template[i++] = style.selection_color[0] * 255;
@@ -18224,9 +18341,13 @@ Object.assign(Points, {
       this.vertex_template[i++] = outline_color[0] * 255;
       this.vertex_template[i++] = outline_color[1] * 255;
       this.vertex_template[i++] = outline_color[2] * 255;
-      this.vertex_template[i++] = outline_color[3] * 255; // a_outline_edge - point outline edge (as % of point size where outline begins)
+      this.vertex_template[i++] = (style.outline_alpha != null ? style.outline_alpha : outline_color[3]) * 255; // a_outline_edge - point outline edge (as % of point size where outline begins)
 
       this.vertex_template[i++] = style.outline_edge_pct || StyleParser.defaults.outline.width;
+    }
+
+    if (add_custom_attribs) {
+      this.addCustomAttributesToVertexTemplate(style, i);
     }
 
     return this.vertex_template;
@@ -18424,7 +18545,7 @@ Object.assign(Points, {
   // Create or return desired vertex layout permutation based on flags
   vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
     // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
-    if (Points.vertex_layouts[variant.shader_point] == null) {
+    if (this.vertex_layouts[variant.shader_point] == null) {
       // Attributes for this mesh variant
       // Optional attributes have placeholder values assigned with `static` parameter
       // TODO: could support optional attributes for selection and offset, but may not be worth it
@@ -18474,10 +18595,11 @@ Object.assign(Points, {
         normalized: false,
         static: variant.shader_point ? null : 0
       }];
-      Points.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
+      this.addCustomAttributesToAttributeList(attribs);
+      this.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
     }
 
-    return Points.vertex_layouts[variant.shader_point];
+    return this.vertex_layouts[variant.shader_point];
   },
   // Override
   meshVariantTypeForDraw: function meshVariantTypeForDraw(draw) {
@@ -18485,8 +18607,8 @@ Object.assign(Points, {
 
     var key = texture + '/' + draw.blend_order;
 
-    if (Points.variants[key] == null) {
-      Points.variants[key] = {
+    if (this.variants[key] == null) {
+      this.variants[key] = {
         key: key,
         selection: 1,
         // TODO: make this vary by draw params
@@ -18498,7 +18620,7 @@ Object.assign(Points, {
       };
     }
 
-    return Points.variants[key]; // return pre-calculated mesh variant
+    return this.variants[key]; // return pre-calculated mesh variant
   },
   // Override
   makeMesh: function makeMesh(vertex_data, vertex_elements, options) {
@@ -19328,8 +19450,6 @@ function getAbsAngleDiff(angle1, angle2) {
 }
 
 var TextStyle = Object.create(Points);
-TextStyle.vertex_layouts = {}; // vertex layouts by variant key
-
 Object.assign(TextStyle, {
   name: 'text',
   super: Points,
@@ -19354,7 +19474,9 @@ Object.assign(TextStyle, {
    * A plain JS array matching the order of the vertex layout.
    */
   makeVertexTemplate: function makeVertexTemplate(style, mesh) {
-    this.super.makeVertexTemplate.apply(this, arguments);
+    this.super.makeVertexTemplate.call(this, style, mesh,
+    /* add_custom_attribs */
+    false);
     var vertex_layout = mesh.vertex_data.vertex_layout;
     var i = vertex_layout.index.a_pre_angles; // a_pre_angles.xyzw - rotation of entire curved label
     // a_angles.xyzw - angle of each curved label segment
@@ -19364,6 +19486,7 @@ Object.assign(TextStyle, {
       this.vertex_template[i++] = 0;
     }
 
+    this.addCustomAttributesToVertexTemplate(style, i);
     return this.vertex_template;
   },
   reset: function reset() {
@@ -19607,7 +19730,7 @@ Object.assign(TextStyle, {
   // Create or return vertex layout
   vertexLayoutForMeshVariant: function vertexLayoutForMeshVariant(variant) {
     // Vertex layout only depends on shader point flag, so using it as layout key to avoid duplicate layouts
-    if (TextStyle.vertex_layouts[variant.shader_point] == null) {
+    if (this.vertex_layouts[variant.shader_point] == null) {
       // TODO: could make selection, offset, and curved label attribs optional, but may not be worth it
       // since text points generally don't consume much memory anyway
       var attribs = [{
@@ -19657,10 +19780,11 @@ Object.assign(TextStyle, {
         type: gl$1.UNSIGNED_SHORT,
         normalized: false
       }];
-      TextStyle.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
+      this.addCustomAttributesToAttributeList(attribs);
+      this.vertex_layouts[variant.shader_point] = new VertexLayout(attribs);
     }
 
-    return TextStyle.vertex_layouts[variant.shader_point];
+    return this.vertex_layouts[variant.shader_point];
   }
 });
 TextStyle.texture_id = 0; // namespaces per-tile label textures
@@ -19941,6 +20065,12 @@ function () {
       return x.defines;
     }).filter(function (x) {
       return x;
+    }))); // Attributes
+
+    shaders.attributes = Object.assign.apply(Object, [{}].concat(shader_merges.map(function (x) {
+      return x.attributes;
+    }).filter(function (x) {
+      return x;
     }))); // Uniforms
 
     shaders.uniforms = {}; // uniforms for this style, both explicitly defined, and mixed from other styles
@@ -20096,14 +20226,36 @@ function () {
   } // Called to create and initialize styles
   ;
 
-  _proto.build = function build(styles) {
+  _proto.build = function build(styles_defs) {
     var _this2 = this;
 
+    var styles = Object.assign({}, styles_defs); // copy to avoid modifying underlying object
     // Un-register existing styles from cross-thread communication
+
     if (this.styles) {
       Object.values(this.styles).forEach(function (s) {
         return WorkerBroker$1.removeTarget(s.main_thread_target);
       });
+    } // Add default blend/base style pairs as needed
+
+
+    var blends = ['opaque', 'add', 'multiply', 'overlay', 'inlay', 'translucent'];
+    var bases = ['polygons', 'lines', 'points', 'text', 'raster'];
+
+    for (var _i = 0; _i < blends.length; _i++) {
+      var blend = blends[_i];
+
+      for (var _i2 = 0; _i2 < bases.length; _i2++) {
+        var base = bases[_i2];
+        var style = blend + '_' + base;
+
+        if (styles[style] == null) {
+          styles[style] = {
+            base: base,
+            blend: blend
+          };
+        }
+      }
     } // Sort styles by dependency, then build them
 
 
@@ -45826,26 +45978,6 @@ var SceneLoader$1 = SceneLoader = {
       config.lights.default_light = {
         type: 'directional'
       };
-    } // Add default blend/base style pairs as needed
-
-
-    var blends = ['opaque', 'add', 'multiply', 'overlay', 'inlay', 'translucent'];
-    var bases = ['polygons', 'lines', 'points', 'text'];
-
-    for (var _i = 0; _i < blends.length; _i++) {
-      var blend = blends[_i];
-
-      for (var _i2 = 0; _i2 < bases.length; _i2++) {
-        var base = bases[_i2];
-        var style = blend + '_' + base;
-
-        if (config.styles[style] == null) {
-          config.styles[style] = {
-            base: base,
-            blend: blend
-          };
-        }
-      }
     }
 
     return {
@@ -49600,7 +49732,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '998cb95f28e17a511e2991fe6c08a9e0c044aceb';
+	Tangram.debug.SHA = 'e76e4fd4278c18dccb19ec07d7550bbb76bdd8f7';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
