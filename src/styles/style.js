@@ -435,6 +435,7 @@ export var Style = {
             catch (e) {
                 log('error', `Style: error compiling program for style '${this.name}' (program key '${key}')`,
                     this, e.stack, e.type, e.shader_errors);
+                throw e; // re-throw so users can be notified via event subscriptions
             }
         }
         return program;
