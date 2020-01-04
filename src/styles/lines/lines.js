@@ -338,7 +338,7 @@ Object.assign(Lines, {
                     draw.outline.blend_order = draw.blend_order;
                 }
 
-                this.computeVariant(draw.outline, outline_style);
+                outline_style.computeVariant(draw.outline);
             }
             else {
                 log({ level: 'warn', once: true }, `Layer group '${draw.layers.join(', ')}': ` +
@@ -426,7 +426,7 @@ Object.assign(Lines, {
     },
 
     // Calculate and store mesh variant (unique by draw group but not feature)
-    computeVariant (draw, style = this) {
+    computeVariant (draw) {
         // Factors that determine a unique mesh rendering variant
         let key = (draw.offset ? 1 : 0); // whether feature has a line offset
         key += '/' + draw.texcoords; // whether feature has texture UVs
@@ -445,7 +445,7 @@ Object.assign(Lines, {
             key += draw.texture_merged;
         }
 
-        const blend_order = style.getBlendOrderForDraw(draw);
+        const blend_order = this.getBlendOrderForDraw(draw);
         key += '/' + blend_order;
 
         // Create unique key
