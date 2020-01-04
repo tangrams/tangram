@@ -341,11 +341,25 @@ export class StyleManager {
     }
 
     // Called to create and initialize styles
-    build (styles) {
+    build (styles_defs) {
+        const styles = { ...styles_defs }; // copy to avoid modifying underlying object
+
         // Un-register existing styles from cross-thread communication
         if (this.styles) {
             Object.values(this.styles)
                 .forEach(s => WorkerBroker.removeTarget(s.main_thread_target));
+        }
+
+        // Add default blend/base style pairs as needed
+        const blends = ['opaque', 'add', 'multiply', 'overlay', 'inlay', 'translucent'];
+        const bases = ['polygons', 'lines', 'points', 'text'];
+        for (const blend of blends) {
+            for (const base of bases) {
+                const style = blend + '_' + base;
+                if (styles[style] == null) {
+                    styles[style] = { base, blend };
+                }
+            }
         }
 
         // Sort styles by dependency, then build them

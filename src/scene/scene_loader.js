@@ -379,18 +379,6 @@ export default SceneLoader = {
             };
         }
 
-        // Add default blend/base style pairs as needed
-        const blends = ['opaque', 'add', 'multiply', 'overlay', 'inlay', 'translucent'];
-        const bases = ['polygons', 'lines', 'points', 'text'];
-        for (const blend of blends) {
-            for (const base of bases) {
-                const style = blend + '_' + base;
-                if (config.styles[style] == null) {
-                    config.styles[style] = { base, blend };
-                }
-            }
-        }
-
         return { config, bundle };
     }
 
