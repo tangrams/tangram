@@ -58,7 +58,7 @@ void main (void) {
             // which either don't support alpha, or would cause transparent pixels to write to the depth buffer,
             // obscuring geometry underneath.
             #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources
-            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip conditional if *only* masked raster sources (always true)
+            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip source check for masking if *all* raster sources are masked
             if (u_raster_mask_alpha) {
             #else
             {
