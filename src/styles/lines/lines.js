@@ -391,6 +391,7 @@ Object.assign(Lines, {
 
                     if (variant.dash) {
                         uniforms.u_v_scale_adjust = Geo.tile_scale * DASH_SCALE;
+                        uniforms.u_has_dash = (variant.dash_background_color != null ? 1 : 0);
                         uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
                     }
 
