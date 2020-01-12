@@ -18,6 +18,7 @@ varying vec4 v_world_position;
     uniform sampler2D u_texture;
     uniform float u_texture_ratio;
     uniform vec4 u_dash_background_color;
+    uniform float u_has_dash;
 #endif
 
 #define TANGRAM_NORMAL v_normal
@@ -88,21 +89,21 @@ void main (void) {
             vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));
             vec4 _line_color = texture2D(u_texture, _line_st);
 
-            if (_line_color.a < TANGRAM_ALPHA_TEST) {
-                #if defined(TANGRAM_BLEND_OPAQUE)
-                    // use discard when alpha blending is unavailable
-                    if (u_dash_background_color.a < 1. - TANGRAM_EPSILON) {
-                        discard;
-                    }
-                    color = vec4(u_dash_background_color.rgb, 1.); // only allow full alpha in opaque blend mode
-                #else
-                    // use alpha channel when blending is available
-                    color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));
-                #endif
-            }
-            else {
-                color *= _line_color;
-            }
+            // If the line has a dash pattern, the line texture indicates if the current fragment should be
+            // the dash foreground or background color. If the line doesn't have a dash pattern,
+            // the line texture color is used directly (but also tinted by the vertex color).
+            color = mix(
+                color * _line_color, // no dash: tint the line texture with the vertex color
+                mix(u_dash_background_color, color, _line_color.a), // choose dash foreground or background color
+                u_has_dash // 0 if no dash, 1 if has dash
+            );
+
+            // Use alpha discard test as a lower-quality substitute for blending
+            #if defined(TANGRAM_BLEND_OPAQUE)
+                if (color.a < TANGRAM_ALPHA_TEST) {
+                    discard;
+                }
+            #endif
         }
     }
     #endif
