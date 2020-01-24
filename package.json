@@ -89,7 +89,7 @@
     "csscolorparser": "1.0.3",
     "earcut": "2.1.1",
     "fontfaceobserver": "2.0.7",
-    "geojson-vt": "2.4.0",
+    "geojson-vt": "^3.2.1",
     "gl-mat3": "1.0.0",
     "gl-mat4": "1.1.4",
     "gl-shader-errors": "1.0.3",
