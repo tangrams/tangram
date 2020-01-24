@@ -15,7 +15,8 @@ import string from 'rollup-plugin-string';
 import serve from 'rollup-plugin-serve';
 import livereload from 'rollup-plugin-livereload';
 
-const ESM = (process.env.ESM !== 'false'); // default to ESM on
+// const ESM = (process.env.ESM !== 'false'); // default to ESM on
+const ESM = false; // default to ESM off
 const MINIFY = (process.env.MINIFY === 'true');
 const SERVE = (process.env.SERVE === 'true');
 

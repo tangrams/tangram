@@ -4,6 +4,7 @@ import Vector from '../utils/vector';
 import { default_uvs, outsideTile } from './common';
 
 import earcut from 'earcut';
+import Delaunator from 'delaunator';
 
 const up_vec3 = [0, 0, 1];
 
@@ -32,12 +33,18 @@ export function buildPolygons (
         [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
+    // console.log('!')
     for (let p = 0; p < num_polygons; p++) {
 
         let polygon = polygons[p],
             element_offset = vertex_data.vertex_count,
-            indices = triangulatePolygon(earcut.flatten(polygon)),
+            // oldindices = triangulatePolygon(earcut.flatten(polygon)),
+            // indices = Array.from(Delaunator.from(polygon[0]).triangles).map(x => x+1),
+            // indices = Array.from(Delaunator.from(polygon[0]).triangles).map(x => x+1).reverse(),
+            // indices = Array.from(Delaunator.from(polygon[0]).triangles),
+            indices = Array.from(Delaunator.from(polygon[0]).triangles).reverse(),
             num_indices = indices.length;
+            // debugger
 
         // The vertices and vertex-elements must not be added if earcut returns no indices:
         if (num_indices) {

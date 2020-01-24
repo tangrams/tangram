@@ -16,6 +16,7 @@ export default class VBOMesh  {
         this.vertex_buffer = this.gl.createBuffer();
         this.buffer_size = this.vertex_data.byteLength;
         this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
+        // this.draw_mode = options.draw_mode || this.gl.LINES;
         this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
         this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
         this.uniforms = options.uniforms;
