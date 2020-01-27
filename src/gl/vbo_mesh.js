@@ -15,7 +15,8 @@ export default class VBOMesh  {
         this.vertex_layout = vertex_layout;
         this.vertex_buffer = this.gl.createBuffer();
         this.buffer_size = this.vertex_data.byteLength;
-        this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
+        // this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
+        this.draw_mode = options.draw_mode || this.gl.LINES;
         this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
         this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
         this.uniforms = options.uniforms;
@@ -30,14 +31,35 @@ export default class VBOMesh  {
 
         this.toggle_element_array = false;
         if (this.element_data) {
+            var wireframe_data = new Uint16Array(this.element_data.length * 2);
+            // To draw triangles as lines:
+            // Make a copy of element_data, and for every group of three vertices, duplicate
+            // each vertex according to the following pattern:
+            // [1, 2, 3] => [1, 2, 2, 3, 3, 1]
+            // This takes three vertices which would have been interpreted as a triangle,
+            // and converts them into three 2-vertex line segments.
+            for (var i = 0; i < this.element_data.length; i += 3) {
+                wireframe_data.set(
+                    [this.element_data[i],
+                    this.element_data[i+1],
+                    this.element_data[i+1],
+                    this.element_data[i+2],
+                    this.element_data[i+2],
+                    this.element_data[i]],
+                    i * 2
+                    );
+            }
             this.toggle_element_array = true;
-            this.element_count = this.element_data.length;
+            // this.element_count = this.element_data.length;
+            this.element_count = wireframe_data.length;
             this.geometry_count = this.element_count / this.vertices_per_geometry;
             this.element_type = (this.element_data.constructor === Uint16Array) ? this.gl.UNSIGNED_SHORT: this.gl.UNSIGNED_INT;
             this.element_buffer = this.gl.createBuffer();
-            this.buffer_size += this.element_data.byteLength;
+            // this.buffer_size += this.element_data.byteLength;
+            this.buffer_size += wireframe_data.byteLength;
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
-            this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, this.element_data, this.data_usage);
+            // this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, this.element_data, this.data_usage);
+            this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, wireframe_data, this.data_usage);
         }
         else {
             this.geometry_count = this.vertex_count / this.vertices_per_geometry;
