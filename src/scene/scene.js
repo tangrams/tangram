@@ -723,8 +723,11 @@ export default class Scene {
 
         program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
         this.view.setupProgram(program);
-        for (let i in this.lights) {
-            this.lights[i].setupProgram(program);
+
+        if (!debugSettings.wireframe) { // don't calculate lights if in wireframe mode
+            for (let i in this.lights) {
+                this.lights[i].setupProgram(program);
+            }
         }
 
         return program;
