@@ -2,6 +2,7 @@
 import ShaderProgram from './shader_program';
 import VertexArrayObject from './vao';
 import Texture from './texture';
+import debugSettings from '../utils/debug_settings';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
 export default class VBOMesh  {
@@ -15,8 +16,7 @@ export default class VBOMesh  {
         this.vertex_layout = vertex_layout;
         this.vertex_buffer = this.gl.createBuffer();
         this.buffer_size = this.vertex_data.byteLength;
-        this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
-        // this.draw_mode = options.draw_mode || this.gl.LINES;
+        this.draw_mode = debugSettings.wireframe ? this.gl.LINES : (options.draw_mode || this.gl.TRIANGLES);
         this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
         this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
         this.uniforms = options.uniforms;
@@ -31,6 +31,27 @@ export default class VBOMesh  {
 
         this.toggle_element_array = false;
         if (this.element_data) {
+            if (debugSettings.wireframe) {
+                var wireframe_data = new Uint16Array(this.element_data.length * 2);
+                // Draw triangles as lines:
+                // Make a copy of element_data, and for every group of three vertices, duplicate
+                // each vertex according to the following pattern:
+                // [1, 2, 3] => [1, 2, 2, 3, 3, 1]
+                // This takes three vertices which would have been interpreted as a triangle,
+                // and converts them into three 2-vertex line segments.
+                for (var i = 0; i < this.element_data.length; i += 3) {
+                    wireframe_data.set([
+                        this.element_data[i],
+                        this.element_data[i+1],
+                        this.element_data[i+1],
+                        this.element_data[i+2],
+                        this.element_data[i+2],
+                        this.element_data[i]
+                    ], i * 2
+                    );
+                }
+                this.element_data = wireframe_data;
+            }
             this.toggle_element_array = true;
             this.element_count = this.element_data.length;
             this.geometry_count = this.element_count / this.vertices_per_geometry;
