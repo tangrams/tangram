@@ -17,7 +17,10 @@ export default debugSettings = {
     show_hidden_labels: false,
 
     // collect feature/geometry stats on styling layers
-    layer_stats: false
+    layer_stats: false,
+
+    // draw scene in wireframe mode
+    wireframe: false
 };
 
 export function mergeDebugSettings (settings) {
