@@ -5,6 +5,7 @@ import { default_uvs, outsideTile } from './common';
 
 import earcut from 'earcut';
 import Delaunator from 'delaunator';
+import cdt2d from 'cdt2d';
 
 const up_vec3 = [0, 0, 1];
 
@@ -44,6 +45,7 @@ export function buildPolygons (
             // indices = Array.from(Delaunator.from(polygon[0]).triangles),
             indices = Array.from(Delaunator.from(polygon[0]).triangles).reverse(),
             num_indices = indices.length;
+            // var cells = cdt2d(polygon[0], indices, {'exterior':false});
             // debugger
 
         // The vertices and vertex-elements must not be added if earcut returns no indices:
