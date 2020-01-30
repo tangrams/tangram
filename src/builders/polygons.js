@@ -34,9 +34,7 @@ export function buildPolygons (
         [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
-    // console.log('!')
     for (let p = 0; p < num_polygons; p++) {
-
         let polygon = polygons[p],
             element_offset = vertex_data.vertex_count,
             // oldindices = triangulatePolygon(earcut.flatten(polygon)),
@@ -44,6 +42,10 @@ export function buildPolygons (
             // indices = Array.from(Delaunator.from(polygon[0]).triangles).map(x => x+1).reverse(),
             // indices = Array.from(Delaunator.from(polygon[0]).triangles),
             indices = Array.from(Delaunator.from(polygon[0]).triangles).reverse(),
+
+            // indices = Array.from(new Delaunator(earcut.flatten(polygon).vertices).triangles),
+            // indices = Array.from(new Delaunator(earcut.flatten(polygon).vertices).triangles).reverse(),
+
             num_indices = indices.length;
             // var cells = cdt2d(polygon[0], indices, {'exterior':false});
             // debugger

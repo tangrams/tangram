@@ -20,7 +20,8 @@ export default debugSettings = {
     layer_stats: false,
 
     // draw scene in wireframe mode
-    wireframe: false
+    wireframe: true
+    // wireframe: false
 };
 
 export function mergeDebugSettings (settings) {
