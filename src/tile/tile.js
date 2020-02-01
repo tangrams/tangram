@@ -339,7 +339,7 @@ export default class Tile {
 
                 for (const layer in source_data.layers) {
                     if (typeof source_data.layers[layer] == 'undefined') { // skip missing data
-                        log('warn', `No data found for ${source_config.source} layer '${layer}', skipping.`);
+                        log('warn', `No data found forlayer '${scene_layer_name}', skipping.`);
                         continue;
                     }
                     if (source_data.layers[layer].features) {
