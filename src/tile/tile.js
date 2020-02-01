@@ -338,6 +338,10 @@ export default class Tile {
                 }
 
                 for (const layer in source_data.layers) {
+                    if (typeof source_data.layers[layer] == 'undefined') { // skip missing data
+                        log('warn', `No data found for ${source_config.source} layer '${layer}', skipping.`);
+                        continue;
+                    }
                     if (source_data.layers[layer].features) {
                         layers.push({ layer, geom: source_data.layers[layer] });
                     }
