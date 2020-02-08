@@ -25,9 +25,10 @@
             hover: onHover,     // hover event (defined below)
             click: onClick      // click event (defined below)
         },
-        // debug: {
-        //     layer_stats: true // enable to collect detailed layer stats, access w/`scene.debug.layerStats()`
-        // },
+        debug: {
+            // layer_stats: true // enable to collect detailed layer stats, access w/`scene.debug.layerStats()`
+            // wireframe: true // enable for wireframe rendering mode
+        },
         logLevel: 'debug',
         attribution: '<a href="https://github.com/tangrams/tangram" target="_blank">Tangram</a> | &copy; OSM contributors | <a href="https://nextzen.org/" target="_blank">Nextzen</a>'
     });
