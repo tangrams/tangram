@@ -338,9 +338,7 @@ export default class Tile {
                 }
 
                 for (const layer in source_data.layers) {
-                    if (source_data.layers[layer].features) {
-                        layers.push({ layer, geom: source_data.layers[layer] });
-                    }
+                    layers.push({ layer, geom: source_data.layers[layer] });
                 }
             }
             // If no source layer specified, and a default data source layer exists
@@ -366,12 +364,7 @@ export default class Tile {
             // If multiple source layers are specified by name, combine them
             else if (Array.isArray(source_config.layer)) {
                 source_config.layer.forEach(layer => {
-                    if (source_data.layers[layer] && source_data.layers[layer].features) {
-                        layers.push({
-                            layer,
-                            geom: source_data.layers[layer]
-                        });
-                    }
+                    layers.push({ layer, geom: source_data.layers[layer] });
                 });
             }
         }
