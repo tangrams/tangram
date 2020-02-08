@@ -1153,14 +1153,11 @@ export default class Scene {
     // Create lighting
     createLights() {
         this.lights = {};
-        if (debugSettings.wireframe) { // use a default ambient light
-            this.config.lights = {
-                'light1': {
-                    'type': 'ambient',
-                    'ambient': 1
-                }
-            };
+
+        if (debugSettings.wireframe) {
+            Light.enabled = false; // disable lighting for wireframe mode
         }
+
         for (let i in this.config.lights) {
             if (!this.config.lights[i] || typeof this.config.lights[i] !== 'object') {
                 continue;
