@@ -411,7 +411,10 @@ export var Style = {
 
     makeMesh (vertex_data, vertex_elements, options = {}) {
         let vertex_layout = this.vertexLayoutForMeshVariant(options.variant);
-        return new VBOMesh(this.gl, vertex_data, vertex_elements, vertex_layout, options);
+        return new VBOMesh(this.gl,
+            vertex_data, vertex_elements, vertex_layout,
+            { ...options, wireframe: debugSettings.wireframe }
+        );
     },
 
     render (mesh) {
