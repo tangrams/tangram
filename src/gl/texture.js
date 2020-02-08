@@ -3,7 +3,6 @@ import log from '../utils/log';
 import Utils from '../utils/utils';
 import subscribeMixin from '../utils/subscribe';
 import WorkerBroker from '../utils/worker_broker';
-import debugSettings from '../utils/debug_settings';
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by a unique user-defined name
 export default class Texture {
@@ -87,7 +86,7 @@ export default class Texture {
     }
 
     bind(unit = 0) {
-        if (!this.valid || debugSettings.wireframe) {
+        if (!this.valid) {
             return;
         }
 
