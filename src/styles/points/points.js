@@ -96,6 +96,11 @@ Object.assign(Points, {
         if (debugSettings.show_hidden_labels === true) {
             this.defines.TANGRAM_SHOW_HIDDEN_LABELS = true;
         }
+
+        // Enable wireframe for debugging
+        if (debugSettings.wireframe === true) {
+            this.defines.TANGRAM_WIREFRAME = true;
+        }
     },
 
     reset () {
