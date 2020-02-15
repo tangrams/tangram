@@ -13,6 +13,7 @@ import log from '../utils/log';
 import mergeObjects from '../utils/merge';
 import Thread from '../utils/thread';
 import WorkerBroker from '../utils/worker_broker';
+import makeWireframeForTriangleElementData from '../builders/wireframe';
 import debugSettings from '../utils/debug_settings';
 
 import selection_fragment_source from '../selection/selection_fragment.glsl';
@@ -411,10 +412,15 @@ export var Style = {
 
     makeMesh (vertex_data, vertex_elements, options = {}) {
         let vertex_layout = this.vertexLayoutForMeshVariant(options.variant);
-        return new VBOMesh(this.gl,
-            vertex_data, vertex_elements, vertex_layout,
-            { ...options, wireframe: debugSettings.wireframe }
-        );
+
+        if (debugSettings.wireframe) {
+            // In wireframe debug mode, transform mesh into lines
+            vertex_elements = makeWireframeForTriangleElementData(vertex_elements);
+            return new VBOMesh(this.gl, vertex_data, vertex_elements, vertex_layout,
+                { ...options, draw_mode: this.gl.LINES });
+        }
+
+        return new VBOMesh(this.gl, vertex_data, vertex_elements, vertex_layout, options);
     },
 
     render (mesh) {
