@@ -67,7 +67,7 @@ function _extends() {
   return _extends.apply(this, arguments);
 }
 
-var version = "0.20.0";
+var version = "0.20.1";
 
 var version$1 = 'v' + version;
 
@@ -916,7 +916,9 @@ var debugSettings$1 = debugSettings = {
   // show hidden labels for debugging
   show_hidden_labels: false,
   // collect feature/geometry stats on styling layers
-  layer_stats: false
+  layer_stats: false,
+  // draw scene in wireframe mode
+  wireframe: false
 };
 function mergeDebugSettings(settings) {
   Object.assign(debugSettings, settings);
@@ -6515,11 +6517,26 @@ DataSource.register('Raster', source => {
   return RasterTileSource.urlHasTilePattern(source.url) ? RasterTileSource : RasterSource;
 });
 
+// Rearranges element array for triangles into a new element array that draws a wireframe
+// Used for debugging
+function makeWireframeForTriangleElementData(element_data) {
+  const wireframe_data = new Uint16Array(element_data.length * 2); // Draw triangles as lines:
+  // Make a copy of element_data, and for every group of three vertices, duplicate
+  // each vertex according to the following pattern:
+  // [1, 2, 3] => [1, 2, 2, 3, 3, 1]
+  // This takes three vertices which would have been interpreted as a triangle,
+  // and converts them into three 2-vertex line segments.
+
+  for (let i = 0; i < element_data.length; i += 3) {
+    wireframe_data.set([element_data[i], element_data[i + 1], element_data[i + 1], element_data[i + 2], element_data[i + 2], element_data[i]], i * 2);
+  }
+
+  return wireframe_data;
+}
+
 var selection_fragment_source = "// Fragment shader for feature selection passes\n// Renders in silhouette according to selection (picking) color, or black if none defined\n\n#ifdef TANGRAM_FEATURE_SELECTION\n    varying vec4 v_selection_color;\n#endif\n\nvoid main (void) {\n    #ifdef TANGRAM_FEATURE_SELECTION\n        gl_FragColor = v_selection_color;\n    #else\n        gl_FragColor = vec4(0., 0., 0., 1.);\n    #endif\n}\n";
 
 var rasters_source = "// Uniforms defining raster textures and macros for accessing them\n\n#ifdef TANGRAM_FRAGMENT_SHADER\nuniform sampler2D u_rasters[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture samplers\nuniform vec2 u_raster_sizes[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture sizes (width/height in pixels)\nuniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile texture UV starting offset for tile\n\n// Raster sources can optionally mask by the alpha channel (render with only full or no alpha, based on a threshold),\n// which is used for handling transparency outside the raster image when rendering with opaque blending\n#if defined(TANGRAM_HAS_MASKED_RASTERS) && !defined(TANGRAM_ALL_MASKED_RASTERS) // only add uniform if we need it\nuniform bool u_raster_mask_alpha;\n#endif\n\n// Note: the raster accessors below are #defines rather than functions to\n// avoid issues with constant integer expressions for array indices\n\n// Adjusts UVs in model space to account for raster tile texture overzooming\n// (applies scale and offset adjustments)\n#define adjustRasterUV(raster_index, uv) \\\n    ((uv) * u_raster_offsets[raster_index].z + u_raster_offsets[raster_index].xy)\n\n// Returns the UVs of the current model position for a raster sampler\n#define currentRasterUV(raster_index) \\\n    (adjustRasterUV(raster_index, v_modelpos_base_zoom.xy))\n\n// Returns pixel location in raster tile texture at current model position\n#define currentRasterPixel(raster_index) \\\n    (currentRasterUV(raster_index) * rasterPixelSize(raster_index))\n\n// Samples a raster tile texture for the current model position\n#define sampleRaster(raster_index) \\\n    (texture2D(u_rasters[raster_index], currentRasterUV(raster_index)))\n\n// Samples a raster tile texture for a given pixel\n#define sampleRasterAtPixel(raster_index, pixel) \\\n    (texture2D(u_rasters[raster_index], (pixel) / rasterPixelSize(raster_index)))\n\n// Returns size of raster sampler in pixels\n#define rasterPixelSize(raster_index) \\\n    (u_raster_sizes[raster_index])\n\n#endif\n";
-
-// Rendering styles
 
 var Style = {
   init(_temp) {
@@ -6960,6 +6977,15 @@ var Style = {
     }
 
     let vertex_layout = this.vertexLayoutForMeshVariant(options.variant);
+
+    if (debugSettings$1.wireframe) {
+      // In wireframe debug mode, transform mesh into lines
+      vertex_elements = makeWireframeForTriangleElementData(vertex_elements);
+      return new VBOMesh(this.gl, vertex_data, vertex_elements, vertex_layout, _extends({}, options, {
+        draw_mode: this.gl.LINES
+      }));
+    }
+
     return new VBOMesh(this.gl, vertex_data, vertex_elements, vertex_layout, options);
   },
 
@@ -8591,7 +8617,7 @@ function triangulatePolygon(data) {
 
 var polygons_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_color;\n\n// Optional normal attribute, otherwise default to up\n#ifdef TANGRAM_NORMAL_ATTRIBUTE\n    attribute vec3 a_normal;\n    #define TANGRAM_NORMAL a_normal\n#else\n    #define TANGRAM_NORMAL vec3(0., 0., 1.)\n#endif\n\n// Optional dynamic line extrusion\n#ifdef TANGRAM_EXTRUDE_LINES\n    attribute vec2 a_extrude; // extrusion direction in xy plane\n    attribute vec2 a_offset;  // offset direction in xy plane\n\n    // Polygon and line styles have slightly different VBO layouts, saving memory by optimizing vertex packing.\n    // All lines have a width scaling factor, but only some have a height (position.z) or offset.\n    // The vertex height is stored in different attributes to account for this.\n    attribute vec2 a_z_and_offset_scale; // stores vertex height in x, and offset scaling factor in y\n    #define TANGRAM_POSITION_Z a_z_and_offset_scale.x // vertex height is stored in separate line-specific attrib\n    #define TANGRAM_OFFSET_SCALING a_z_and_offset_scale.y // zoom scaling factor for line offset\n    #define TANGRAM_WIDTH_SCALING a_position.z // zoom scaling factor for line width (stored in position attrib)\n\n    uniform float u_v_scale_adjust; // scales texture UVs for line dash patterns w/fractional pixel width\n#else\n    #define TANGRAM_POSITION_Z a_position.z // vertex height\n#endif\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n// Optional texture UVs\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    attribute vec2 a_texcoord;\n    varying vec2 v_texcoord;\n#endif\n\n// Optional model position varying for tile coordinate zoom\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#define TANGRAM_UNPACK_SCALING(x) (x / 1024.)\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // Texture UVs\n    #ifdef TANGRAM_TEXTURE_COORDS\n        v_texcoord = a_texcoord;\n        #ifdef TANGRAM_EXTRUDE_LINES\n            v_texcoord.y *= u_v_scale_adjust;\n        #endif\n    #endif\n\n    // Pass model position to fragment shader\n    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n        v_modelpos_base_zoom = modelPositionBaseZoom();\n    #endif\n\n    // Position\n    vec4 position = vec4(a_position.xy, TANGRAM_POSITION_Z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters\n\n    #ifdef TANGRAM_EXTRUDE_LINES\n        vec2 _extrude = a_extrude.xy;\n        vec2 _offset = a_offset.xy;\n\n        // Adjust line width based on zoom level, to prevent proxied lines\n        // from being either too small or too big.\n        // \"Flattens\" the zoom between 1-2 to peg it to 1 (keeps lines from\n        // prematurely shrinking), then interpolate and clamp to 4 (keeps lines\n        // from becoming too small when far away).\n        float _dz = clamp(u_map_position.z - u_tile_origin.z, 0., 4.);\n        _dz += step(1., _dz) * (1. - _dz) + mix(0., 2., clamp((_dz - 2.) / 2., 0., 1.));\n\n        // Interpolate line width between zooms\n        float _mdz = (_dz - 0.5) * 2.; // zoom from mid-point\n        _extrude -= _extrude * TANGRAM_UNPACK_SCALING(TANGRAM_WIDTH_SCALING) * _mdz;\n\n        // Interpolate line offset between zooms\n        // Scales from the larger value to the smaller one\n        float _dwdz = TANGRAM_UNPACK_SCALING(TANGRAM_OFFSET_SCALING);\n        float _sdwdz = sign(step(0., _dwdz) - 0.5); // sign indicates \"direction\" of scaling\n        _offset -= _offset * abs(_dwdz) * ((1.-step(0., _sdwdz)) - (_dz * -_sdwdz)); // scale \"up\" or \"down\"\n\n        // Scale line width and offset to be consistent in screen space\n        float _ssz = exp2(-_dz - (u_tile_origin.z - u_tile_origin.w));\n        _extrude *= _ssz;\n        _offset *= _ssz;\n\n        // Modify line width before extrusion\n        #ifdef TANGRAM_BLOCK_WIDTH\n            float width = 1.;\n            #pragma tangram: width\n            _extrude *= width;\n        #endif\n\n        position.xy += _extrude + _offset;\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = wrapWorldPosition(u_model * position);\n\n    // Adjust for tile and view position\n    position = u_modelView * position;\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    // Setup varyings\n    v_position = position;\n    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);\n    v_color = a_color;\n\n    #if defined(TANGRAM_LIGHTING_VERTEX)\n        // Vertex lighting\n        vec3 normal = v_normal;\n\n        // Modify normal before lighting\n        #pragma tangram: normal\n\n        // Pass lighting intensity to fragment shader\n        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));\n    #endif\n\n    // Camera\n    cameraProjection(position);\n\n    // +1 is to keep all layers including proxies > 0\n    applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n\n    gl_Position = position;\n}\n";
 
-var polygons_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#ifdef TANGRAM_EXTRUDE_LINES\n    uniform bool u_has_line_texture;\n    uniform sampler2D u_texture;\n    uniform float u_texture_ratio;\n    uniform vec4 u_dash_background_color;\n#endif\n\n#define TANGRAM_NORMAL v_normal\n\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        vec4 _raster_color = sampleRaster(0);\n\n        #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n            // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.\n            // This is used for handling transparency outside the raster image in some blend modes,\n            // which either don't support alpha, or would cause transparent pixels to write to the depth buffer,\n            // obscuring geometry underneath.\n            #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources\n            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip conditional if *only* masked raster sources (always true)\n            if (u_raster_mask_alpha) {\n            #else\n            {\n            #endif\n                #if defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n                if (_raster_color.a < TANGRAM_EPSILON) {\n                    discard;\n                }\n                #else // TANGRAM_BLEND_OPAQUE\n                if (_raster_color.a < 1. - TANGRAM_EPSILON) {\n                    discard;\n                }\n                // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)\n                _raster_color.a = 1.;\n                #endif\n            }\n            #endif\n        #endif\n\n        color *= _raster_color; // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_EXTRUDE_LINES\n    { // enclose in scope to avoid leakage of internal variables\n        if (u_has_line_texture) {\n            vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n            vec4 _line_color = texture2D(u_texture, _line_st);\n\n            if (_line_color.a < TANGRAM_ALPHA_TEST) {\n                #if defined(TANGRAM_BLEND_OPAQUE)\n                    // use discard when alpha blending is unavailable\n                    if (u_dash_background_color.a < 1. - TANGRAM_EPSILON) {\n                        discard;\n                    }\n                    color = vec4(u_dash_background_color.rgb, 1.); // only allow full alpha in opaque blend mode\n                #else\n                    // use alpha channel when blending is available\n                    color = vec4(u_dash_background_color.rgb, color.a * step(TANGRAM_EPSILON, u_dash_background_color.a));\n                #endif\n            }\n            else {\n                color *= _line_color;\n            }\n        }\n    }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
+var polygons_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nvarying vec4 v_position;\nvarying vec3 v_normal;\nvarying vec4 v_color;\nvarying vec4 v_world_position;\n\n#ifdef TANGRAM_EXTRUDE_LINES\n    uniform bool u_has_line_texture;\n    uniform sampler2D u_texture;\n    uniform float u_texture_ratio;\n    uniform vec4 u_dash_background_color;\n    uniform float u_has_dash;\n#endif\n\n#define TANGRAM_NORMAL v_normal\n\n#if defined(TANGRAM_TEXTURE_COORDS) || defined(TANGRAM_EXTRUDE_LINES)\n    varying vec2 v_texcoord;\n#endif\n\n#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING\n    varying vec4 v_modelpos_base_zoom;\n#endif\n\n#if defined(TANGRAM_LIGHTING_VERTEX)\n    varying vec4 v_lighting;\n#endif\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n    vec3 normal = TANGRAM_NORMAL;\n\n    // Apply raster to vertex color\n    #ifdef TANGRAM_RASTER_TEXTURE_COLOR\n        vec4 _raster_color = sampleRaster(0);\n\n        #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n            // Raster sources can optionally mask by the alpha channel, which will render with only full or no alpha.\n            // This is used for handling transparency outside the raster image in some blend modes,\n            // which either don't support alpha, or would cause transparent pixels to write to the depth buffer,\n            // obscuring geometry underneath.\n            #ifdef TANGRAM_HAS_MASKED_RASTERS   // skip masking logic if no masked raster sources\n            #ifndef TANGRAM_ALL_MASKED_RASTERS  // skip source check for masking if *all* raster sources are masked\n            if (u_raster_mask_alpha) {\n            #else\n            {\n            #endif\n                #if defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n                if (_raster_color.a < TANGRAM_EPSILON) {\n                    discard;\n                }\n                #else // TANGRAM_BLEND_OPAQUE\n                if (_raster_color.a < 1. - TANGRAM_EPSILON) {\n                    discard;\n                }\n                // only allow full alpha in opaque blend mode (avoids artifacts blending w/canvas tile background)\n                _raster_color.a = 1.;\n                #endif\n            }\n            #endif\n        #endif\n\n        color *= _raster_color; // multiplied to tint texture color\n    #endif\n\n    // Apply line texture\n    #ifdef TANGRAM_EXTRUDE_LINES\n    { // enclose in scope to avoid leakage of internal variables\n        if (u_has_line_texture) {\n            vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));\n            vec4 _line_color = texture2D(u_texture, _line_st);\n\n            // If the line has a dash pattern, the line texture indicates if the current fragment should be\n            // the dash foreground or background color. If the line doesn't have a dash pattern,\n            // the line texture color is used directly (but also tinted by the vertex color).\n            color = mix(\n                color * _line_color, // no dash: tint the line texture with the vertex color\n                mix(u_dash_background_color, color, _line_color.a), // choose dash foreground or background color\n                u_has_dash // 0 if no dash, 1 if has dash\n            );\n\n            // Use alpha discard test as a lower-quality substitute for blending\n            #if defined(TANGRAM_BLEND_OPAQUE)\n                if (color.a < TANGRAM_ALPHA_TEST) {\n                    discard;\n                }\n            #endif\n        }\n    }\n    #endif\n\n    // First, get normal from raster tile (if applicable)\n    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL\n        normal = normalize(sampleRaster(0).rgb * 2. - 1.);\n    #endif\n\n    // Second, alter normal with normal map texture (if applicable)\n    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)\n        calculateNormal(normal);\n    #endif\n\n    // Normal modification applied here for fragment lighting or no lighting,\n    // and in vertex shader for vertex lighting\n    #if !defined(TANGRAM_LIGHTING_VERTEX)\n        #pragma tangram: normal\n    #endif\n\n    // Color modification before lighting is applied\n    #pragma tangram: color\n\n    #if defined(TANGRAM_LIGHTING_FRAGMENT)\n        // Calculate per-fragment lighting\n        color = calculateLighting(v_position.xyz - u_eye, normal, color);\n    #elif defined(TANGRAM_LIGHTING_VERTEX)\n        // Apply lighting intensity interpolated from vertex shader\n        color *= v_lighting;\n    #endif\n\n    // Post-processing effects (modify color after lighting)\n    #pragma tangram: filter\n\n    gl_FragColor = color;\n}\n";
 
 // Polygon rendering style
 const Polygons = Object.create(Style);
@@ -9848,6 +9874,7 @@ Object.assign(Lines, {
 
           if (variant.dash) {
             uniforms.u_v_scale_adjust = Geo$1.tile_scale * DASH_SCALE;
+            uniforms.u_has_dash = variant.dash_background_color != null ? 1 : 0;
             uniforms.u_dash_background_color = variant.dash_background_color || [0, 0, 0, 0];
           }
 
@@ -13864,7 +13891,7 @@ class View {
 
 var points_vs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_tile_proxy_order_offset;\nuniform bool u_tile_fade_in;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\nuniform bool u_view_panning;\nuniform float u_view_pan_snap_timer;\n\nuniform mat4 u_model;\nuniform mat4 u_modelView;\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nattribute vec4 a_position;\nattribute vec4 a_shape;\nattribute vec4 a_color;\nattribute vec2 a_texcoord;\nattribute vec2 a_offset;\n\nuniform float u_point_type;\n\n#ifdef TANGRAM_CURVED_LABEL\n    attribute vec4 a_offsets;\n    attribute vec4 a_pre_angles;\n    attribute vec4 a_angles;\n#endif\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    attribute float a_outline_edge;\n    attribute vec4 a_outline_color;\n\n    varying float v_outline_edge;\n    varying vec4 v_outline_color;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_PI 3.14159265359\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\nvec2 rotate2D(vec2 _st, float _angle) {\n    return mat2(cos(_angle),-sin(_angle),\n                sin(_angle),cos(_angle)) * _st;\n}\n\n#ifdef TANGRAM_CURVED_LABEL\n    // Assumes stops are [0, 0.33, 0.66, 0.99];\n    float mix4linear(vec4 v, float x) {\n        x = clamp(x, 0., 1.);\n        return mix(mix(v[0], v[1], 3. * x),\n                   mix(v[1],\n                       mix(v[2], v[3], 3. * (max(x, .66) - .66)),\n                       3. * (clamp(x, .33, .66) - .33)),\n                   step(0.33, x)\n                );\n    }\n#endif\n\nvoid main() {\n    // Initialize globals\n    #pragma tangram: setup\n\n    // discard hidden labels by collapsing into degenerate triangle\n    #ifndef TANGRAM_SHOW_HIDDEN_LABELS\n        if (a_shape.w == 0.) {\n            gl_Position = vec4(0., 0., 0., 1.);\n            return;\n        }\n    #else\n        // highlight hidden label in fragment shader for debugging\n        if (a_shape.w == 0.) {\n            v_label_hidden = 1.; // label debug testing\n        }\n        else {\n            v_label_hidden = 0.;\n        }\n    #endif\n\n    v_alpha_factor = 1.0;\n    v_color = a_color;\n    v_texcoord = a_texcoord; // UV from vertex attribute\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        v_outline_color = a_outline_color;\n        v_outline_edge = a_outline_edge;\n\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // use point dimensions for UVs instead (ignore attribute), add antialiasing info for fragment shader\n            float _size = abs(a_shape.x / 128.); // radius in pixels\n            v_texcoord = sign(a_shape.xy) * (_size + 1.) / _size;\n            _size += 2.;\n            v_aa_offset = 2. / _size;\n        }\n    #endif\n\n    // Position\n    vec4 position = u_modelView * vec4(a_position.xyz, 1.);\n\n    // Apply positioning and scaling in screen space\n    vec2 _shape = a_shape.xy / 256.;                 // values have an 8-bit fraction\n    vec2 _offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down\n    float _theta = a_shape.z / 4096.;\n\n    #ifdef TANGRAM_CURVED_LABEL\n        //TODO: potential bug? null is passed in for non-curved labels, otherwise the first offset will be 0\n        if (a_offsets[0] != 0.){\n            vec4 _angles_scaled = (TANGRAM_PI / 16384.) * a_angles;\n            vec4 _pre_angles_scaled = (TANGRAM_PI / 128.) * a_pre_angles;\n            vec4 _offsets_scaled = (1. / 64.) * a_offsets;\n\n            float _zoom = clamp(u_map_position.z - u_tile_origin.z, 0., 1.); //fract(u_map_position.z);\n            float _pre_angle = mix4linear(_pre_angles_scaled, _zoom);\n            float _angle = mix4linear(_angles_scaled, _zoom);\n            float _offset_curve = mix4linear(_offsets_scaled, _zoom);\n\n            _shape = rotate2D(_shape, _pre_angle); // rotate in place\n            _shape.x += _offset_curve;            // offset for curved label segment\n            _shape = rotate2D(_shape, _angle);     // rotate relative to curved label anchor\n            _shape += rotate2D(_offset, _theta);   // offset if specified in the scene file\n        }\n        else {\n            _shape = rotate2D(_shape + _offset, _theta);\n        }\n    #else\n        _shape = rotate2D(_shape + _offset, _theta);\n    #endif\n\n    // Fade in (if requested) based on time mesh has been visible.\n    // Value passed to fragment shader in the v_alpha_factor varying\n    #ifdef TANGRAM_FADE_IN_RATE\n        if (u_tile_fade_in) {\n            v_alpha_factor *= clamp(u_visible_time * TANGRAM_FADE_IN_RATE, 0., 1.);\n        }\n    #endif\n\n    // World coordinates for 3d procedural textures\n    v_world_position = u_model * position;\n    v_world_position.xy += _shape * u_meters_per_pixel;\n    v_world_position = wrapWorldPosition(v_world_position);\n\n    // Modify position before camera projection\n    #pragma tangram: position\n\n    cameraProjection(position);\n\n    #ifdef TANGRAM_LAYER_ORDER\n        // +1 is to keep all layers including proxies > 0\n        applyLayerOrder(a_position.w + u_tile_proxy_order_offset + 1., position);\n    #endif\n\n    // Apply pixel offset in screen-space\n    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)\n    // Device pixel ratio adjustment is because shape is in logical pixels\n    position.xy += _shape * position.w * 2. * u_device_pixel_ratio / u_resolution;\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // enlarge by 1px to catch missed MSAA fragments\n            position.xy += sign(_shape) * position.w * u_device_pixel_ratio / u_resolution;\n        }\n    #endif\n\n    // Snap to pixel grid\n    // Only applied to fully upright sprites/labels (not shader-drawn points), while panning is not active\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n    if (!u_view_panning && (abs(_theta) < TANGRAM_EPSILON) && u_point_type != TANGRAM_POINT_TYPE_SHADER) {\n    #else\n    if (!u_view_panning && (abs(_theta) < TANGRAM_EPSILON)) {\n    #endif\n        vec2 _position_fract = fract((((position.xy / position.w) + 1.) * .5) * u_resolution);\n        vec2 _position_snap = position.xy + ((step(0.5, _position_fract) - _position_fract) * position.w * 2. / u_resolution);\n\n        // Animate the snapping to smooth the transition and make it less noticeable\n        #ifdef TANGRAM_VIEW_PAN_SNAP_RATE\n            position.xy = mix(position.xy, _position_snap, clamp(u_view_pan_snap_timer * TANGRAM_VIEW_PAN_SNAP_RATE, 0., 1.));\n        #else\n            position.xy = _position_snap;\n        #endif\n    }\n\n    gl_Position = position;\n}\n";
 
-var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // Mask of outermost circle, either outline or point boundary\n            float _d = length(v_texcoord); // distance to this fragment from the point center\n            float _outer_alpha = _tangram_antialias(_d, 1.);\n            float _fill_alpha = _tangram_antialias(_d, 1. - (v_outline_edge * 0.5)) * color.a;\n            float _stroke_alpha = (_outer_alpha - _tangram_antialias(_d, 1. - v_outline_edge)) * v_outline_color.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = _stroke_alpha + _fill_alpha;\n                color.rgb = color.rgb * _fill_alpha + v_outline_color.rgb * _stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = _stroke_alpha + _fill_alpha * (1. - _stroke_alpha);\n                color.rgb = mix(color.rgb * _fill_alpha, v_outline_color.rgb, _stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // Use alpha test as a lower-quality substitute\n    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath\n    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black\n    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    gl_FragColor = color;\n}\n";
+var points_fs = "uniform vec2 u_resolution;\nuniform float u_time;\nuniform vec3 u_map_position;\nuniform vec4 u_tile_origin;\nuniform float u_meters_per_pixel;\nuniform float u_device_pixel_ratio;\nuniform float u_visible_time;\n\nuniform mat3 u_normalMatrix;\nuniform mat3 u_inverseNormalMatrix;\n\nuniform sampler2D u_texture;\nuniform float u_point_type;\nuniform bool u_apply_color_blocks;\n\nvarying vec4 v_color;\nvarying vec2 v_texcoord;\nvarying vec4 v_world_position;\nvarying float v_alpha_factor;\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    varying vec4 v_outline_color;\n    varying float v_outline_edge;\n    varying float v_aa_offset;\n#endif\n\n#ifdef TANGRAM_SHOW_HIDDEN_LABELS\n    varying float v_label_hidden;\n#endif\n\n#define TANGRAM_NORMAL vec3(0., 0., 1.)\n\n#pragma tangram: attributes\n#pragma tangram: camera\n#pragma tangram: material\n#pragma tangram: lighting\n#pragma tangram: raster\n#pragma tangram: global\n\n#ifdef TANGRAM_HAS_SHADER_POINTS\n    //l is the distance from the center to the fragment, R is the radius of the drawn point\n    float _tangram_antialias(float l, float R){\n        float low  = R - v_aa_offset;\n        float high = R + v_aa_offset;\n        return 1. - smoothstep(low, high, l);\n    }\n#endif\n\nvoid main (void) {\n    // Initialize globals\n    #pragma tangram: setup\n\n    vec4 color = v_color;\n\n    #ifdef TANGRAM_HAS_SHADER_POINTS\n        // Only apply shader blocks to point, not to attached text (N.B.: for compatibility with ES)\n        if (u_point_type == TANGRAM_POINT_TYPE_TEXTURE) { // sprite texture\n            color *= texture2D(u_texture, v_texcoord);\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_LABEL) { // label texture\n            color = texture2D(u_texture, v_texcoord);\n            color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n        }\n        else if (u_point_type == TANGRAM_POINT_TYPE_SHADER) { // shader point\n            // Mask of outermost circle, either outline or point boundary\n            float _d = length(v_texcoord); // distance to this fragment from the point center\n            float _outer_alpha = _tangram_antialias(_d, 1.);\n            float _fill_alpha = _tangram_antialias(_d, 1. - (v_outline_edge * 0.5)) * color.a;\n            float _stroke_alpha = (_outer_alpha - _tangram_antialias(_d, 1. - v_outline_edge)) * v_outline_color.a;\n\n            // Apply alpha compositing with stroke 'over' fill.\n            #ifdef TANGRAM_BLEND_ADD\n                color.a = _stroke_alpha + _fill_alpha;\n                color.rgb = color.rgb * _fill_alpha + v_outline_color.rgb * _stroke_alpha;\n            #else // TANGRAM_BLEND_OVERLAY (and fallback for not implemented blending modes)\n                color.a = _stroke_alpha + _fill_alpha * (1. - _stroke_alpha);\n                color.rgb = mix(color.rgb * _fill_alpha, v_outline_color.rgb, _stroke_alpha) / max(color.a, 0.001); // avoid divide by zero\n            #endif\n        }\n    #else\n        // If shader points not supported, assume label texture\n        color = texture2D(u_texture, v_texcoord);\n        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture\n    #endif\n\n    // Shader blocks for color/filter are only applied for sprites, shader points, and standalone text,\n    // NOT for text attached to a point (N.B.: for compatibility with ES)\n    if (u_apply_color_blocks) {\n        #pragma tangram: color\n        #pragma tangram: filter\n    }\n\n    color.a *= v_alpha_factor;\n\n    // highlight hidden label in fragment shader for debugging\n    #ifdef TANGRAM_SHOW_HIDDEN_LABELS\n        if (v_label_hidden > 0.) {\n            color.a *= 0.5;\n            color.rgb = vec3(1., 0., 0.);\n        }\n    #endif\n\n    // Use alpha test as a lower-quality substitute\n    // For opaque and translucent: avoid transparent pixels writing to depth buffer, obscuring geometry underneath\n    // For multiply: avoid transparent pixels multiplying geometry underneath to zero/full black\n    #if defined(TANGRAM_BLEND_OPAQUE) || defined(TANGRAM_BLEND_TRANSLUCENT) || defined(TANGRAM_BLEND_MULTIPLY)\n        if (color.a < TANGRAM_ALPHA_TEST) {\n            discard;\n        }\n    #endif\n\n    // Make points more visible in wireframe debug mode\n    #ifdef TANGRAM_WIREFRAME\n        color = vec4(vec3(0.5), 1.); // use gray outline for textured points\n        #ifdef TANGRAM_HAS_SHADER_POINTS\n            if (u_point_type == TANGRAM_POINT_TYPE_SHADER) {\n                color = vec4(v_color.rgb, 1.); // use original vertex color outline for shader points\n            }\n        #endif\n    #endif\n\n    gl_FragColor = color;\n}\n";
 
 // Point + text label rendering style
 const PLACEMENT$1 = LabelPoint.PLACEMENT;
@@ -13942,6 +13969,11 @@ Object.assign(Points, {
 
     if (debugSettings$1.show_hidden_labels === true) {
       this.defines.TANGRAM_SHOW_HIDDEN_LABELS = true;
+    } // Enable wireframe for debugging
+
+
+    if (debugSettings$1.wireframe === true) {
+      this.defines.TANGRAM_WIREFRAME = true;
     }
   },
 
@@ -16502,10 +16534,10 @@ function parseFilter(filter, options) {
       if (value.max || value.min) {
         filterAST.push(rangeMatch(key, value, options));
       } else if (value.includes_any || value.includes_all) {
-        filterAST.push(includesMatch(key, value));
+        filterAST.push(includesMatch(key, value, options));
       }
     } else if (value == null) {
-      filterAST.push(nullValue());
+      filterAST.push(nullValue(key, value));
     } else {
       throw new Error('Unknown Query syntax: ' + value);
     }
@@ -17071,7 +17103,7 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
   return matched;
 }
 
-let id = 0; // unique tile id
+let id$1 = 0; // unique tile id
 
 let build_id = 0; // id tracking order in which tiles were build
 
@@ -17089,7 +17121,7 @@ class Tile {
         source = _ref.source,
         workers = _ref.workers,
         view = _ref.view;
-    this.id = id++;
+    this.id = id$1++;
     this.view = view;
     this.source = source;
     this.generation = null;
@@ -17466,12 +17498,10 @@ class Tile {
         }
 
         for (const layer in source_data.layers) {
-          if (source_data.layers[layer].features) {
-            layers.push({
-              layer,
-              geom: source_data.layers[layer]
-            });
-          }
+          layers.push({
+            layer,
+            geom: source_data.layers[layer]
+          });
         }
       } // If no source layer specified, and a default data source layer exists
       else if (!source_config.layer && source_data.layers._default) {
@@ -17493,12 +17523,10 @@ class Tile {
             } // If multiple source layers are specified by name, combine them
             else if (Array.isArray(source_config.layer)) {
                 source_config.layer.forEach(layer => {
-                  if (source_data.layers[layer] && source_data.layers[layer].features) {
-                    layers.push({
-                      layer,
-                      geom: source_data.layers[layer]
-                    });
-                  }
+                  layers.push({
+                    layer,
+                    geom: source_data.layers[layer]
+                  });
                 });
               }
     }
@@ -19298,58 +19326,50 @@ function decodeMultiPolygon(geom) {
 }
 DataSource.register('MVT', () => MVTSource);
 
-var simplify_1 = simplify;
-
 // calculate simplification data using optimized Douglas-Peucker algorithm
 
-function simplify(points, tolerance) {
+function simplify(coords, first, last, sqTolerance) {
+    var maxSqDist = sqTolerance;
+    var mid = (last - first) >> 1;
+    var minPosToMid = last - first;
+    var index;
 
-    var sqTolerance = tolerance * tolerance,
-        len = points.length,
-        first = 0,
-        last = len - 1,
-        stack = [],
-        i, maxSqDist, sqDist, index;
+    var ax = coords[first];
+    var ay = coords[first + 1];
+    var bx = coords[last];
+    var by = coords[last + 1];
 
-    // always retain the endpoints (1 is the max value)
-    points[first][2] = 1;
-    points[last][2] = 1;
+    for (var i = first + 3; i < last; i += 3) {
+        var d = getSqSegDist(coords[i], coords[i + 1], ax, ay, bx, by);
 
-    // avoid recursion by using a stack
-    while (last) {
+        if (d > maxSqDist) {
+            index = i;
+            maxSqDist = d;
 
-        maxSqDist = 0;
-
-        for (i = first + 1; i < last; i++) {
-            sqDist = getSqSegDist(points[i], points[first], points[last]);
-
-            if (sqDist > maxSqDist) {
+        } else if (d === maxSqDist) {
+            // a workaround to ensure we choose a pivot close to the middle of the list,
+            // reducing recursion depth, for certain degenerate inputs
+            // https://github.com/mapbox/geojson-vt/issues/104
+            var posToMid = Math.abs(i - mid);
+            if (posToMid < minPosToMid) {
                 index = i;
-                maxSqDist = sqDist;
+                minPosToMid = posToMid;
             }
         }
+    }
 
-        if (maxSqDist > sqTolerance) {
-            points[index][2] = maxSqDist; // save the point importance in squared pixels as a z coordinate
-            stack.push(first);
-            stack.push(index);
-            first = index;
-
-        } else {
-            last = stack.pop();
-            first = stack.pop();
-        }
+    if (maxSqDist > sqTolerance) {
+        if (index - first > 3) simplify(coords, first, index, sqTolerance);
+        coords[index + 2] = maxSqDist;
+        if (last - index > 3) simplify(coords, index, last, sqTolerance);
     }
 }
 
 // square distance from a point to a segment
-function getSqSegDist(p, a, b) {
+function getSqSegDist(px, py, x, y, bx, by) {
 
-    var x = a[0], y = a[1],
-        bx = b[0], by = b[1],
-        px = p[0], py = p[1],
-        dx = bx - x,
-        dy = by - y;
+    var dx = bx - x;
+    var dy = by - y;
 
     if (dx !== 0 || dy !== 0) {
 
@@ -19371,216 +19391,189 @@ function getSqSegDist(p, a, b) {
     return dx * dx + dy * dy;
 }
 
-var feature$1 = createFeature;
-
-function createFeature(tags, type, geom, id) {
+function createFeature(id, type, geom, tags) {
     var feature = {
-        id: id || null,
+        id: typeof id === 'undefined' ? null : id,
         type: type,
         geometry: geom,
-        tags: tags || null,
-        min: [Infinity, Infinity], // initial bbox values
-        max: [-Infinity, -Infinity]
+        tags: tags,
+        minX: Infinity,
+        minY: Infinity,
+        maxX: -Infinity,
+        maxY: -Infinity
     };
     calcBBox(feature);
     return feature;
 }
 
-// calculate the feature bounding box for faster clipping later
 function calcBBox(feature) {
-    var geometry = feature.geometry,
-        min = feature.min,
-        max = feature.max;
+    var geom = feature.geometry;
+    var type = feature.type;
 
-    if (feature.type === 1) {
-        calcRingBBox(min, max, geometry);
-    } else {
-        for (var i = 0; i < geometry.length; i++) {
-            calcRingBBox(min, max, geometry[i]);
+    if (type === 'Point' || type === 'MultiPoint' || type === 'LineString') {
+        calcLineBBox(feature, geom);
+
+    } else if (type === 'Polygon' || type === 'MultiLineString') {
+        for (var i = 0; i < geom.length; i++) {
+            calcLineBBox(feature, geom[i]);
+        }
+
+    } else if (type === 'MultiPolygon') {
+        for (i = 0; i < geom.length; i++) {
+            for (var j = 0; j < geom[i].length; j++) {
+                calcLineBBox(feature, geom[i][j]);
+            }
         }
     }
-
-    return feature;
 }
 
-function calcRingBBox(min, max, points) {
-    for (var i = 0, p; i < points.length; i++) {
-        p = points[i];
-        min[0] = Math.min(p[0], min[0]);
-        max[0] = Math.max(p[0], max[0]);
-        min[1] = Math.min(p[1], min[1]);
-        max[1] = Math.max(p[1], max[1]);
+function calcLineBBox(feature, geom) {
+    for (var i = 0; i < geom.length; i += 3) {
+        feature.minX = Math.min(feature.minX, geom[i]);
+        feature.minY = Math.min(feature.minY, geom[i + 1]);
+        feature.maxX = Math.max(feature.maxX, geom[i]);
+        feature.maxY = Math.max(feature.maxY, geom[i + 1]);
     }
 }
-
-var convert_1 = convert;
-
-
-
 
 // converts GeoJSON feature into an intermediate projected JSON vector format with simplification data
 
-function convert(data, tolerance) {
+function convert(data, options) {
     var features = [];
-
     if (data.type === 'FeatureCollection') {
         for (var i = 0; i < data.features.length; i++) {
-            convertFeature(features, data.features[i], tolerance);
+            convertFeature(features, data.features[i], options, i);
         }
+
     } else if (data.type === 'Feature') {
-        convertFeature(features, data, tolerance);
+        convertFeature(features, data, options);
 
     } else {
         // single geometry or a geometry collection
-        convertFeature(features, {geometry: data}, tolerance);
+        convertFeature(features, {geometry: data}, options);
     }
+
     return features;
 }
 
-function convertFeature(features, feature, tolerance) {
-    if (feature.geometry === null) {
-        // ignore features with null geometry
-        return;
+function convertFeature(features, geojson, options, index) {
+    if (!geojson.geometry) return;
+
+    var coords = geojson.geometry.coordinates;
+    var type = geojson.geometry.type;
+    var tolerance = Math.pow(options.tolerance / ((1 << options.maxZoom) * options.extent), 2);
+    var geometry = [];
+    var id = geojson.id;
+    if (options.promoteId) {
+        id = geojson.properties[options.promoteId];
+    } else if (options.generateId) {
+        id = index || 0;
     }
-
-    var geom = feature.geometry,
-        type = geom.type,
-        coords = geom.coordinates,
-        tags = feature.properties,
-        id = feature.id,
-        i, j, rings, projectedRing;
-
     if (type === 'Point') {
-        features.push(feature$1(tags, 1, [projectPoint(coords)], id));
+        convertPoint(coords, geometry);
 
     } else if (type === 'MultiPoint') {
-        features.push(feature$1(tags, 1, project(coords), id));
+        for (var i = 0; i < coords.length; i++) {
+            convertPoint(coords[i], geometry);
+        }
 
     } else if (type === 'LineString') {
-        features.push(feature$1(tags, 2, [project(coords, tolerance)], id));
+        convertLine(coords, geometry, tolerance, false);
 
-    } else if (type === 'MultiLineString' || type === 'Polygon') {
-        rings = [];
-        for (i = 0; i < coords.length; i++) {
-            projectedRing = project(coords[i], tolerance);
-            if (type === 'Polygon') projectedRing.outer = (i === 0);
-            rings.push(projectedRing);
+    } else if (type === 'MultiLineString') {
+        if (options.lineMetrics) {
+            // explode into linestrings to be able to track metrics
+            for (i = 0; i < coords.length; i++) {
+                geometry = [];
+                convertLine(coords[i], geometry, tolerance, false);
+                features.push(createFeature(id, 'LineString', geometry, geojson.properties));
+            }
+            return;
+        } else {
+            convertLines(coords, geometry, tolerance, false);
         }
-        features.push(feature$1(tags, type === 'Polygon' ? 3 : 2, rings, id));
+
+    } else if (type === 'Polygon') {
+        convertLines(coords, geometry, tolerance, true);
 
     } else if (type === 'MultiPolygon') {
-        rings = [];
         for (i = 0; i < coords.length; i++) {
-            for (j = 0; j < coords[i].length; j++) {
-                projectedRing = project(coords[i][j], tolerance);
-                projectedRing.outer = (j === 0);
-                rings.push(projectedRing);
-            }
+            var polygon = [];
+            convertLines(coords[i], polygon, tolerance, true);
+            geometry.push(polygon);
         }
-        features.push(feature$1(tags, 3, rings, id));
-
     } else if (type === 'GeometryCollection') {
-        for (i = 0; i < geom.geometries.length; i++) {
+        for (i = 0; i < geojson.geometry.geometries.length; i++) {
             convertFeature(features, {
-                geometry: geom.geometries[i],
-                properties: tags
-            }, tolerance);
+                id: id,
+                geometry: geojson.geometry.geometries[i],
+                properties: geojson.properties
+            }, options, index);
         }
-
+        return;
     } else {
         throw new Error('Input data is not a valid GeoJSON object.');
     }
+
+    features.push(createFeature(id, type, geometry, geojson.properties));
 }
 
-function project(lonlats, tolerance) {
-    var projected = [];
-    for (var i = 0; i < lonlats.length; i++) {
-        projected.push(projectPoint(lonlats[i]));
-    }
-    if (tolerance) {
-        simplify_1(projected, tolerance);
-        calcSize(projected);
-    }
-    return projected;
+function convertPoint(coords, out) {
+    out.push(projectX(coords[0]));
+    out.push(projectY(coords[1]));
+    out.push(0);
 }
 
-function projectPoint(p) {
-    var sin = Math.sin(p[1] * Math.PI / 180),
-        x = (p[0] / 360 + 0.5),
-        y = (0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI);
+function convertLine(ring, out, tolerance, isPolygon) {
+    var x0, y0;
+    var size = 0;
 
-    y = y < 0 ? 0 :
-        y > 1 ? 1 : y;
+    for (var j = 0; j < ring.length; j++) {
+        var x = projectX(ring[j][0]);
+        var y = projectY(ring[j][1]);
 
-    return [x, y, 0];
-}
+        out.push(x);
+        out.push(y);
+        out.push(0);
 
-// calculate area and length of the poly
-function calcSize(points) {
-    var area = 0,
-        dist = 0;
-
-    for (var i = 0, a, b; i < points.length - 1; i++) {
-        a = b || points[i];
-        b = points[i + 1];
-
-        area += a[0] * b[1] - b[0] * a[1];
-
-        // use Manhattan distance instead of Euclidian one to avoid expensive square root computation
-        dist += Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]);
-    }
-    points.area = Math.abs(area / 2);
-    points.dist = dist;
-}
-
-var tile = transformTile;
-var point = transformPoint;
-
-// Transforms the coordinates of each feature in the given tile from
-// mercator-projected space into (extent x extent) tile space.
-function transformTile(tile, extent) {
-    if (tile.transformed) return tile;
-
-    var z2 = tile.z2,
-        tx = tile.x,
-        ty = tile.y,
-        i, j, k;
-
-    for (i = 0; i < tile.features.length; i++) {
-        var feature = tile.features[i],
-            geom = feature.geometry,
-            type = feature.type;
-
-        if (type === 1) {
-            for (j = 0; j < geom.length; j++) geom[j] = transformPoint(geom[j], extent, z2, tx, ty);
-
-        } else {
-            for (j = 0; j < geom.length; j++) {
-                var ring = geom[j];
-                for (k = 0; k < ring.length; k++) ring[k] = transformPoint(ring[k], extent, z2, tx, ty);
+        if (j > 0) {
+            if (isPolygon) {
+                size += (x0 * y - x * y0) / 2; // area
+            } else {
+                size += Math.sqrt(Math.pow(x - x0, 2) + Math.pow(y - y0, 2)); // length
             }
         }
+        x0 = x;
+        y0 = y;
     }
 
-    tile.transformed = true;
+    var last = out.length - 3;
+    out[2] = 1;
+    simplify(out, 0, last, tolerance);
+    out[last + 2] = 1;
 
-    return tile;
+    out.size = Math.abs(size);
+    out.start = 0;
+    out.end = out.size;
 }
 
-function transformPoint(p, extent, z2, tx, ty) {
-    var x = Math.round(extent * (p[0] * z2 - tx)),
-        y = Math.round(extent * (p[1] * z2 - ty));
-    return [x, y];
+function convertLines(rings, out, tolerance, isPolygon) {
+    for (var i = 0; i < rings.length; i++) {
+        var geom = [];
+        convertLine(rings[i], geom, tolerance, isPolygon);
+        out.push(geom);
+    }
 }
 
-var transform = {
-	tile: tile,
-	point: point
-};
+function projectX(x) {
+    return x / 360 + 0.5;
+}
 
-var clip_1 = clip;
-
-
+function projectY(y) {
+    var sin = Math.sin(y * Math.PI / 180);
+    var y2 = 0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI;
+    return y2 < 0 ? 0 : y2 > 1 ? 1 : y2;
+}
 
 /* clip features between two axis-parallel lines:
  *     |        |
@@ -19589,152 +19582,213 @@ var clip_1 = clip;
  *     |        |
  */
 
-function clip(features, scale, k1, k2, axis, intersect, minAll, maxAll) {
+function clip(features, scale, k1, k2, axis, minAll, maxAll, options) {
 
     k1 /= scale;
     k2 /= scale;
 
-    if (minAll >= k1 && maxAll <= k2) return features; // trivial accept
-    else if (minAll > k2 || maxAll < k1) return null; // trivial reject
+    if (minAll >= k1 && maxAll < k2) return features; // trivial accept
+    else if (maxAll < k1 || minAll >= k2) return null; // trivial reject
 
     var clipped = [];
 
     for (var i = 0; i < features.length; i++) {
 
-        var feature = features[i],
-            geometry = feature.geometry,
-            type = feature.type,
-            min, max;
+        var feature = features[i];
+        var geometry = feature.geometry;
+        var type = feature.type;
 
-        min = feature.min[axis];
-        max = feature.max[axis];
+        var min = axis === 0 ? feature.minX : feature.minY;
+        var max = axis === 0 ? feature.maxX : feature.maxY;
 
-        if (min >= k1 && max <= k2) { // trivial accept
+        if (min >= k1 && max < k2) { // trivial accept
             clipped.push(feature);
             continue;
-        } else if (min > k2 || max < k1) continue; // trivial reject
+        } else if (max < k1 || min >= k2) { // trivial reject
+            continue;
+        }
 
-        var slices = type === 1 ?
-                clipPoints(geometry, k1, k2, axis) :
-                clipGeometry(geometry, k1, k2, axis, intersect, type === 3);
+        var newGeometry = [];
 
-        if (slices.length) {
-            // if a feature got clipped, it will likely get clipped on the next zoom level as well,
-            // so there's no need to recalculate bboxes
-            clipped.push(feature$1(feature.tags, type, slices, feature.id));
+        if (type === 'Point' || type === 'MultiPoint') {
+            clipPoints(geometry, newGeometry, k1, k2, axis);
+
+        } else if (type === 'LineString') {
+            clipLine(geometry, newGeometry, k1, k2, axis, false, options.lineMetrics);
+
+        } else if (type === 'MultiLineString') {
+            clipLines(geometry, newGeometry, k1, k2, axis, false);
+
+        } else if (type === 'Polygon') {
+            clipLines(geometry, newGeometry, k1, k2, axis, true);
+
+        } else if (type === 'MultiPolygon') {
+            for (var j = 0; j < geometry.length; j++) {
+                var polygon = [];
+                clipLines(geometry[j], polygon, k1, k2, axis, true);
+                if (polygon.length) {
+                    newGeometry.push(polygon);
+                }
+            }
+        }
+
+        if (newGeometry.length) {
+            if (options.lineMetrics && type === 'LineString') {
+                for (j = 0; j < newGeometry.length; j++) {
+                    clipped.push(createFeature(feature.id, type, newGeometry[j], feature.tags));
+                }
+                continue;
+            }
+
+            if (type === 'LineString' || type === 'MultiLineString') {
+                if (newGeometry.length === 1) {
+                    type = 'LineString';
+                    newGeometry = newGeometry[0];
+                } else {
+                    type = 'MultiLineString';
+                }
+            }
+            if (type === 'Point' || type === 'MultiPoint') {
+                type = newGeometry.length === 3 ? 'Point' : 'MultiPoint';
+            }
+
+            clipped.push(createFeature(feature.id, type, newGeometry, feature.tags));
         }
     }
 
     return clipped.length ? clipped : null;
 }
 
-function clipPoints(geometry, k1, k2, axis) {
-    var slice = [];
+function clipPoints(geom, newGeom, k1, k2, axis) {
+    for (var i = 0; i < geom.length; i += 3) {
+        var a = geom[i + axis];
 
-    for (var i = 0; i < geometry.length; i++) {
-        var a = geometry[i],
-            ak = a[axis];
-
-        if (ak >= k1 && ak <= k2) slice.push(a);
+        if (a >= k1 && a <= k2) {
+            newGeom.push(geom[i]);
+            newGeom.push(geom[i + 1]);
+            newGeom.push(geom[i + 2]);
+        }
     }
+}
+
+function clipLine(geom, newGeom, k1, k2, axis, isPolygon, trackMetrics) {
+
+    var slice = newSlice(geom);
+    var intersect = axis === 0 ? intersectX : intersectY;
+    var len = geom.start;
+    var segLen, t;
+
+    for (var i = 0; i < geom.length - 3; i += 3) {
+        var ax = geom[i];
+        var ay = geom[i + 1];
+        var az = geom[i + 2];
+        var bx = geom[i + 3];
+        var by = geom[i + 4];
+        var a = axis === 0 ? ax : ay;
+        var b = axis === 0 ? bx : by;
+        var exited = false;
+
+        if (trackMetrics) segLen = Math.sqrt(Math.pow(ax - bx, 2) + Math.pow(ay - by, 2));
+
+        if (a < k1) {
+            // ---|-->  | (line enters the clip region from the left)
+            if (b > k1) {
+                t = intersect(slice, ax, ay, bx, by, k1);
+                if (trackMetrics) slice.start = len + segLen * t;
+            }
+        } else if (a > k2) {
+            // |  <--|--- (line enters the clip region from the right)
+            if (b < k2) {
+                t = intersect(slice, ax, ay, bx, by, k2);
+                if (trackMetrics) slice.start = len + segLen * t;
+            }
+        } else {
+            addPoint(slice, ax, ay, az);
+        }
+        if (b < k1 && a >= k1) {
+            // <--|---  | or <--|-----|--- (line exits the clip region on the left)
+            t = intersect(slice, ax, ay, bx, by, k1);
+            exited = true;
+        }
+        if (b > k2 && a <= k2) {
+            // |  ---|--> or ---|-----|--> (line exits the clip region on the right)
+            t = intersect(slice, ax, ay, bx, by, k2);
+            exited = true;
+        }
+
+        if (!isPolygon && exited) {
+            if (trackMetrics) slice.end = len + segLen * t;
+            newGeom.push(slice);
+            slice = newSlice(geom);
+        }
+
+        if (trackMetrics) len += segLen;
+    }
+
+    // add the last point
+    var last = geom.length - 3;
+    ax = geom[last];
+    ay = geom[last + 1];
+    az = geom[last + 2];
+    a = axis === 0 ? ax : ay;
+    if (a >= k1 && a <= k2) addPoint(slice, ax, ay, az);
+
+    // close the polygon if its endpoints are not the same after clipping
+    last = slice.length - 3;
+    if (isPolygon && last >= 3 && (slice[last] !== slice[0] || slice[last + 1] !== slice[1])) {
+        addPoint(slice, slice[0], slice[1], slice[2]);
+    }
+
+    // add the final slice
+    if (slice.length) {
+        newGeom.push(slice);
+    }
+}
+
+function newSlice(line) {
+    var slice = [];
+    slice.size = line.size;
+    slice.start = line.start;
+    slice.end = line.end;
     return slice;
 }
 
-function clipGeometry(geometry, k1, k2, axis, intersect, closed) {
-
-    var slices = [];
-
-    for (var i = 0; i < geometry.length; i++) {
-
-        var ak = 0,
-            bk = 0,
-            b = null,
-            points = geometry[i],
-            area = points.area,
-            dist = points.dist,
-            outer = points.outer,
-            len = points.length,
-            a, j, last;
-
-        var slice = [];
-
-        for (j = 0; j < len - 1; j++) {
-            a = b || points[j];
-            b = points[j + 1];
-            ak = bk || a[axis];
-            bk = b[axis];
-
-            if (ak < k1) {
-
-                if ((bk > k2)) { // ---|-----|-->
-                    slice.push(intersect(a, b, k1), intersect(a, b, k2));
-                    if (!closed) slice = newSlice(slices, slice, area, dist, outer);
-
-                } else if (bk >= k1) slice.push(intersect(a, b, k1)); // ---|-->  |
-
-            } else if (ak > k2) {
-
-                if ((bk < k1)) { // <--|-----|---
-                    slice.push(intersect(a, b, k2), intersect(a, b, k1));
-                    if (!closed) slice = newSlice(slices, slice, area, dist, outer);
-
-                } else if (bk <= k2) slice.push(intersect(a, b, k2)); // |  <--|---
-
-            } else {
-
-                slice.push(a);
-
-                if (bk < k1) { // <--|---  |
-                    slice.push(intersect(a, b, k1));
-                    if (!closed) slice = newSlice(slices, slice, area, dist, outer);
-
-                } else if (bk > k2) { // |  ---|-->
-                    slice.push(intersect(a, b, k2));
-                    if (!closed) slice = newSlice(slices, slice, area, dist, outer);
-                }
-                // | --> |
-            }
-        }
-
-        // add the last point
-        a = points[len - 1];
-        ak = a[axis];
-        if (ak >= k1 && ak <= k2) slice.push(a);
-
-        // close the polygon if its endpoints are not the same after clipping
-
-        last = slice[slice.length - 1];
-        if (closed && last && (slice[0][0] !== last[0] || slice[0][1] !== last[1])) slice.push(slice[0]);
-
-        // add the final slice
-        newSlice(slices, slice, area, dist, outer);
+function clipLines(geom, newGeom, k1, k2, axis, isPolygon) {
+    for (var i = 0; i < geom.length; i++) {
+        clipLine(geom[i], newGeom, k1, k2, axis, isPolygon, false);
     }
-
-    return slices;
 }
 
-function newSlice(slices, slice, area, dist, outer) {
-    if (slice.length) {
-        // we don't recalculate the area/length of the unclipped geometry because the case where it goes
-        // below the visibility threshold as a result of clipping is rare, so we avoid doing unnecessary work
-        slice.area = area;
-        slice.dist = dist;
-        if (outer !== undefined) slice.outer = outer;
-
-        slices.push(slice);
-    }
-    return [];
+function addPoint(out, x, y, z) {
+    out.push(x);
+    out.push(y);
+    out.push(z);
 }
 
-var wrap_1 = wrap$1;
+function intersectX(out, ax, ay, bx, by, x) {
+    var t = (x - ax) / (bx - ax);
+    out.push(x);
+    out.push(ay + (by - ay) * t);
+    out.push(1);
+    return t;
+}
 
-function wrap$1(features, buffer, intersectX) {
-    var merged = features,
-        left  = clip_1(features, 1, -1 - buffer, buffer,     0, intersectX, -1, 2), // left world copy
-        right = clip_1(features, 1,  1 - buffer, 2 + buffer, 0, intersectX, -1, 2); // right world copy
+function intersectY(out, ax, ay, bx, by, y) {
+    var t = (y - ay) / (by - ay);
+    out.push(ax + (bx - ax) * t);
+    out.push(y);
+    out.push(1);
+    return t;
+}
+
+function wrap$1(features, options) {
+    var buffer = options.buffer / options.extent;
+    var merged = features;
+    var left  = clip(features, 1, -1 - buffer, buffer,     0, -1, 2, options); // left world copy
+    var right = clip(features, 1,  1 - buffer, 2 + buffer, 0, -1, 2, options); // right world copy
 
     if (left || right) {
-        merged = clip_1(features, 1, -buffer, 1 + buffer, 0, intersectX, -1, 2) || []; // center world copy
+        merged = clip(features, 1, -buffer, 1 + buffer, 0, -1, 2, options) || []; // center world copy
 
         if (left) merged = shiftFeatureCoords(left, 1).concat(merged); // merge left into center
         if (right) merged = merged.concat(shiftFeatureCoords(right, -1)); // merge right into center
@@ -19752,16 +19806,26 @@ function shiftFeatureCoords(features, offset) {
 
         var newGeometry;
 
-        if (type === 1) {
+        if (type === 'Point' || type === 'MultiPoint' || type === 'LineString') {
             newGeometry = shiftCoords(feature.geometry, offset);
-        } else {
+
+        } else if (type === 'MultiLineString' || type === 'Polygon') {
             newGeometry = [];
             for (var j = 0; j < feature.geometry.length; j++) {
                 newGeometry.push(shiftCoords(feature.geometry[j], offset));
             }
+        } else if (type === 'MultiPolygon') {
+            newGeometry = [];
+            for (j = 0; j < feature.geometry.length; j++) {
+                var newPolygon = [];
+                for (var k = 0; k < feature.geometry[j].length; k++) {
+                    newPolygon.push(shiftCoords(feature.geometry[j][k], offset));
+                }
+                newGeometry.push(newPolygon);
+            }
         }
 
-        newFeatures.push(feature$1(feature.tags, type, newGeometry, feature.id));
+        newFeatures.push(createFeature(feature.id, type, newGeometry, feature.tags));
     }
 
     return newFeatures;
@@ -19769,18 +19833,64 @@ function shiftFeatureCoords(features, offset) {
 
 function shiftCoords(points, offset) {
     var newPoints = [];
-    newPoints.area = points.area;
-    newPoints.dist = points.dist;
+    newPoints.size = points.size;
 
-    for (var i = 0; i < points.length; i++) {
-        newPoints.push([points[i][0] + offset, points[i][1], points[i][2]]);
+    if (points.start !== undefined) {
+        newPoints.start = points.start;
+        newPoints.end = points.end;
+    }
+
+    for (var i = 0; i < points.length; i += 3) {
+        newPoints.push(points[i] + offset, points[i + 1], points[i + 2]);
     }
     return newPoints;
 }
 
-var tile$1 = createTile;
+// Transforms the coordinates of each feature in the given tile from
+// mercator-projected space into (extent x extent) tile space.
+function transformTile(tile, extent) {
+    if (tile.transformed) return tile;
 
-function createTile(features, z2, tx, ty, tolerance, noSimplify) {
+    var z2 = 1 << tile.z,
+        tx = tile.x,
+        ty = tile.y,
+        i, j, k;
+
+    for (i = 0; i < tile.features.length; i++) {
+        var feature = tile.features[i],
+            geom = feature.geometry,
+            type = feature.type;
+
+        feature.geometry = [];
+
+        if (type === 1) {
+            for (j = 0; j < geom.length; j += 2) {
+                feature.geometry.push(transformPoint(geom[j], geom[j + 1], extent, z2, tx, ty));
+            }
+        } else {
+            for (j = 0; j < geom.length; j++) {
+                var ring = [];
+                for (k = 0; k < geom[j].length; k += 2) {
+                    ring.push(transformPoint(geom[j][k], geom[j][k + 1], extent, z2, tx, ty));
+                }
+                feature.geometry.push(ring);
+            }
+        }
+    }
+
+    tile.transformed = true;
+
+    return tile;
+}
+
+function transformPoint(x, y, extent, z2, tx, ty) {
+    return [
+        Math.round(extent * (x * z2 - tx)),
+        Math.round(extent * (y * z2 - ty))];
+}
+
+function createTile(features, z, tx, ty, options) {
+    var tolerance = z === options.maxZoom ? 0 : options.tolerance / ((1 << z) * options.extent);
     var tile = {
         features: [],
         numPoints: 0,
@@ -19789,77 +19899,75 @@ function createTile(features, z2, tx, ty, tolerance, noSimplify) {
         source: null,
         x: tx,
         y: ty,
-        z2: z2,
+        z: z,
         transformed: false,
-        min: [2, 1],
-        max: [-1, 0]
+        minX: 2,
+        minY: 1,
+        maxX: -1,
+        maxY: 0
     };
     for (var i = 0; i < features.length; i++) {
         tile.numFeatures++;
-        addFeature(tile, features[i], tolerance, noSimplify);
+        addFeature(tile, features[i], tolerance, options);
 
-        var min = features[i].min,
-            max = features[i].max;
+        var minX = features[i].minX;
+        var minY = features[i].minY;
+        var maxX = features[i].maxX;
+        var maxY = features[i].maxY;
 
-        if (min[0] < tile.min[0]) tile.min[0] = min[0];
-        if (min[1] < tile.min[1]) tile.min[1] = min[1];
-        if (max[0] > tile.max[0]) tile.max[0] = max[0];
-        if (max[1] > tile.max[1]) tile.max[1] = max[1];
+        if (minX < tile.minX) tile.minX = minX;
+        if (minY < tile.minY) tile.minY = minY;
+        if (maxX > tile.maxX) tile.maxX = maxX;
+        if (maxY > tile.maxY) tile.maxY = maxY;
     }
     return tile;
 }
 
-function addFeature(tile, feature, tolerance, noSimplify) {
+function addFeature(tile, feature, tolerance, options) {
 
     var geom = feature.geometry,
         type = feature.type,
-        simplified = [],
-        sqTolerance = tolerance * tolerance,
-        i, j, ring, p;
+        simplified = [];
 
-    if (type === 1) {
-        for (i = 0; i < geom.length; i++) {
+    if (type === 'Point' || type === 'MultiPoint') {
+        for (var i = 0; i < geom.length; i += 3) {
             simplified.push(geom[i]);
+            simplified.push(geom[i + 1]);
             tile.numPoints++;
             tile.numSimplified++;
         }
 
-    } else {
+    } else if (type === 'LineString') {
+        addLine(simplified, geom, tile, tolerance, false, false);
 
-        // simplify and transform projected coordinates for tile geometry
+    } else if (type === 'MultiLineString' || type === 'Polygon') {
         for (i = 0; i < geom.length; i++) {
-            ring = geom[i];
+            addLine(simplified, geom[i], tile, tolerance, type === 'Polygon', i === 0);
+        }
 
-            // filter out tiny polylines & polygons
-            if (!noSimplify && ((type === 2 && ring.dist < tolerance) ||
-                                (type === 3 && ring.area < sqTolerance))) {
-                tile.numPoints += ring.length;
-                continue;
+    } else if (type === 'MultiPolygon') {
+
+        for (var k = 0; k < geom.length; k++) {
+            var polygon = geom[k];
+            for (i = 0; i < polygon.length; i++) {
+                addLine(simplified, polygon[i], tile, tolerance, true, i === 0);
             }
-
-            var simplifiedRing = [];
-
-            for (j = 0; j < ring.length; j++) {
-                p = ring[j];
-                // keep points with importance > tolerance
-                if (noSimplify || p[2] > sqTolerance) {
-                    simplifiedRing.push(p);
-                    tile.numSimplified++;
-                }
-                tile.numPoints++;
-            }
-
-            if (type === 3) rewind(simplifiedRing, ring.outer);
-
-            simplified.push(simplifiedRing);
         }
     }
 
     if (simplified.length) {
+        var tags = feature.tags || null;
+        if (type === 'LineString' && options.lineMetrics) {
+            tags = {};
+            for (var key in feature.tags) tags[key] = feature.tags[key];
+            tags['mapbox_clip_start'] = geom.start / geom.size;
+            tags['mapbox_clip_end'] = geom.end / geom.size;
+        }
         var tileFeature = {
             geometry: simplified,
-            type: type,
-            tags: feature.tags || null
+            type: type === 'Polygon' || type === 'MultiPolygon' ? 3 :
+                type === 'LineString' || type === 'MultiLineString' ? 2 : 1,
+            tags: tags
         };
         if (feature.id !== null) {
             tileFeature.id = feature.id;
@@ -19868,25 +19976,46 @@ function addFeature(tile, feature, tolerance, noSimplify) {
     }
 }
 
-function rewind(ring, clockwise) {
-    var area = signedArea$2(ring);
-    if (area < 0 === clockwise) ring.reverse();
-}
+function addLine(result, geom, tile, tolerance, isPolygon, isOuter) {
+    var sqTolerance = tolerance * tolerance;
 
-function signedArea$2(ring) {
-    var sum = 0;
-    for (var i = 0, len = ring.length, j = len - 1, p1, p2; i < len; j = i++) {
-        p1 = ring[i];
-        p2 = ring[j];
-        sum += (p2[0] - p1[0]) * (p1[1] + p2[1]);
+    if (tolerance > 0 && (geom.size < (isPolygon ? sqTolerance : tolerance))) {
+        tile.numPoints += geom.length / 3;
+        return;
     }
-    return sum;
+
+    var ring = [];
+
+    for (var i = 0; i < geom.length; i += 3) {
+        if (tolerance === 0 || geom[i + 2] > sqTolerance) {
+            tile.numSimplified++;
+            ring.push(geom[i]);
+            ring.push(geom[i + 1]);
+        }
+        tile.numPoints++;
+    }
+
+    if (isPolygon) rewind(ring, isOuter);
+
+    result.push(ring);
 }
 
-var src = geojsonvt;
-
-     // final simplified tile generation
-
+function rewind(ring, clockwise) {
+    var area = 0;
+    for (var i = 0, len = ring.length, j = len - 2; i < len; j = i, i += 2) {
+        area += (ring[i] - ring[j]) * (ring[i + 1] + ring[j + 1]);
+    }
+    if (area > 0 === clockwise) {
+        for (i = 0, len = ring.length; i < len / 2; i += 2) {
+            var x = ring[i];
+            var y = ring[i + 1];
+            ring[i] = ring[len - 2 - i];
+            ring[i + 1] = ring[len - 1 - i];
+            ring[len - 2 - i] = x;
+            ring[len - 1 - i] = y;
+        }
+    }
+}
 
 function geojsonvt(data, options) {
     return new GeoJSONVT(data, options);
@@ -19899,8 +20028,10 @@ function GeoJSONVT(data, options) {
 
     if (debug) console.time('preprocess data');
 
-    var z2 = 1 << options.maxZoom, // 2^z
-        features = convert_1(data, options.tolerance / (z2 * options.extent));
+    if (options.maxZoom < 0 || options.maxZoom > 24) throw new Error('maxZoom should be in the 0-24 range');
+    if (options.promoteId && options.generateId) throw new Error('promoteId and generateId cannot be used together.');
+
+    var features = convert(data, options);
 
     this.tiles = {};
     this.tileCoords = [];
@@ -19913,7 +20044,7 @@ function GeoJSONVT(data, options) {
         this.total = 0;
     }
 
-    features = wrap_1(features, options.buffer / options.extent, intersectX);
+    features = wrap$1(features, options);
 
     // start slicing from the top tile down
     if (features.length) this.splitTile(features, 0, 0, 0);
@@ -19929,10 +20060,12 @@ GeoJSONVT.prototype.options = {
     maxZoom: 14,            // max zoom to preserve detail on
     indexMaxZoom: 5,        // max zoom in the tile index
     indexMaxPoints: 100000, // max number of points per tile in the tile index
-    solidChildren: false,   // whether to tile solid square tiles further
     tolerance: 3,           // simplification tolerance (higher means simpler)
     extent: 4096,           // tile extent
     buffer: 64,             // tile buffer on each side
+    lineMetrics: false,     // whether to calculate line metrics
+    promoteId: null,        // name of a feature property to be promoted to feature.id
+    generateId: false,      // whether to generate feature ids. Cannot be used with promoteId
     debug: 0                // logging level (0, 1 or 2)
 };
 
@@ -19940,8 +20073,7 @@ GeoJSONVT.prototype.splitTile = function (features, z, x, y, cz, cx, cy) {
 
     var stack = [features, z, x, y],
         options = this.options,
-        debug = options.debug,
-        solid = null;
+        debug = options.debug;
 
     // avoid recursion by using a processing queue
     while (stack.length) {
@@ -19952,13 +20084,12 @@ GeoJSONVT.prototype.splitTile = function (features, z, x, y, cz, cx, cy) {
 
         var z2 = 1 << z,
             id = toID(z, x, y),
-            tile = this.tiles[id],
-            tileTolerance = z === options.maxZoom ? 0 : options.tolerance / (z2 * options.extent);
+            tile = this.tiles[id];
 
         if (!tile) {
             if (debug > 1) console.time('creation');
 
-            tile = this.tiles[id] = tile$1(features, z2, x, y, tileTolerance, z === options.maxZoom);
+            tile = this.tiles[id] = createTile(features, z, x, y, options);
             this.tileCoords.push({z: z, x: x, y: y});
 
             if (debug) {
@@ -19991,14 +20122,10 @@ GeoJSONVT.prototype.splitTile = function (features, z, x, y, cz, cx, cy) {
             if (x !== Math.floor(cx / m) || y !== Math.floor(cy / m)) continue;
         }
 
-        // stop tiling if the tile is solid clipped square
-        if (!options.solidChildren && isClippedSquare(tile, options.extent, options.buffer)) {
-            if (cz) solid = z; // and remember the zoom if we're drilling down
-            continue;
-        }
-
         // if we slice further down, no need to keep source geometry
         tile.source = null;
+
+        if (features.length === 0) continue;
 
         if (debug > 1) console.time('clipping');
 
@@ -20011,30 +20138,29 @@ GeoJSONVT.prototype.splitTile = function (features, z, x, y, cz, cx, cy) {
 
         tl = bl = tr = br = null;
 
-        left  = clip_1(features, z2, x - k1, x + k3, 0, intersectX, tile.min[0], tile.max[0]);
-        right = clip_1(features, z2, x + k2, x + k4, 0, intersectX, tile.min[0], tile.max[0]);
+        left  = clip(features, z2, x - k1, x + k3, 0, tile.minX, tile.maxX, options);
+        right = clip(features, z2, x + k2, x + k4, 0, tile.minX, tile.maxX, options);
+        features = null;
 
         if (left) {
-            tl = clip_1(left, z2, y - k1, y + k3, 1, intersectY, tile.min[1], tile.max[1]);
-            bl = clip_1(left, z2, y + k2, y + k4, 1, intersectY, tile.min[1], tile.max[1]);
+            tl = clip(left, z2, y - k1, y + k3, 1, tile.minY, tile.maxY, options);
+            bl = clip(left, z2, y + k2, y + k4, 1, tile.minY, tile.maxY, options);
+            left = null;
         }
 
         if (right) {
-            tr = clip_1(right, z2, y - k1, y + k3, 1, intersectY, tile.min[1], tile.max[1]);
-            br = clip_1(right, z2, y + k2, y + k4, 1, intersectY, tile.min[1], tile.max[1]);
+            tr = clip(right, z2, y - k1, y + k3, 1, tile.minY, tile.maxY, options);
+            br = clip(right, z2, y + k2, y + k4, 1, tile.minY, tile.maxY, options);
+            right = null;
         }
 
         if (debug > 1) console.timeEnd('clipping');
 
-        if (features.length) {
-            stack.push(tl || [], z + 1, x * 2,     y * 2);
-            stack.push(bl || [], z + 1, x * 2,     y * 2 + 1);
-            stack.push(tr || [], z + 1, x * 2 + 1, y * 2);
-            stack.push(br || [], z + 1, x * 2 + 1, y * 2 + 1);
-        }
+        stack.push(tl || [], z + 1, x * 2,     y * 2);
+        stack.push(bl || [], z + 1, x * 2,     y * 2 + 1);
+        stack.push(tr || [], z + 1, x * 2 + 1, y * 2);
+        stack.push(br || [], z + 1, x * 2 + 1, y * 2 + 1);
     }
-
-    return solid;
 };
 
 GeoJSONVT.prototype.getTile = function (z, x, y) {
@@ -20042,11 +20168,13 @@ GeoJSONVT.prototype.getTile = function (z, x, y) {
         extent = options.extent,
         debug = options.debug;
 
+    if (z < 0 || z > 24) return null;
+
     var z2 = 1 << z;
     x = ((x % z2) + z2) % z2; // wrap tile x coordinate
 
     var id = toID(z, x, y);
-    if (this.tiles[id]) return transform.tile(this.tiles[id], extent);
+    if (this.tiles[id]) return transformTile(this.tiles[id], extent);
 
     if (debug > 1) console.log('drilling down to z%d-%d-%d', z, x, y);
 
@@ -20067,57 +20195,20 @@ GeoJSONVT.prototype.getTile = function (z, x, y) {
     // if we found a parent tile containing the original geometry, we can drill down from it
     if (debug > 1) console.log('found parent tile z%d-%d-%d', z0, x0, y0);
 
-    // it parent tile is a solid clipped square, return it instead since it's identical
-    if (isClippedSquare(parent, extent, options.buffer)) return transform.tile(parent, extent);
-
     if (debug > 1) console.time('drilling down');
-    var solid = this.splitTile(parent.source, z0, x0, y0, z, x, y);
+    this.splitTile(parent.source, z0, x0, y0, z, x, y);
     if (debug > 1) console.timeEnd('drilling down');
 
-    // one of the parent tiles was a solid clipped square
-    if (solid !== null) {
-        var m = 1 << (z - solid);
-        id = toID(solid, Math.floor(x / m), Math.floor(y / m));
-    }
-
-    return this.tiles[id] ? transform.tile(this.tiles[id], extent) : null;
+    return this.tiles[id] ? transformTile(this.tiles[id], extent) : null;
 };
 
 function toID(z, x, y) {
     return (((1 << z) * y + x) * 32) + z;
 }
 
-function intersectX(a, b, x) {
-    return [x, (x - a[0]) * (b[1] - a[1]) / (b[0] - a[0]) + a[1], 1];
-}
-function intersectY(a, b, y) {
-    return [(y - a[1]) * (b[0] - a[0]) / (b[1] - a[1]) + a[0], y, 1];
-}
-
 function extend(dest, src) {
     for (var i in src) dest[i] = src[i];
     return dest;
-}
-
-// checks whether a tile is a whole-area fill after clipping; if it is, there's no sense slicing it further
-function isClippedSquare(tile, extent, buffer) {
-
-    var features = tile.source;
-    if (features.length !== 1) return false;
-
-    var feature = features[0];
-    if (feature.type !== 3 || feature.geometry.length > 1) return false;
-
-    var len = feature.geometry[0].length;
-    if (len !== 5) return false;
-
-    for (var i = 0; i < len; i++) {
-        var p = transform.point(feature.geometry[0][i], extent, tile.z2, tile.x, tile.y);
-        if ((p[0] !== -buffer && p[0] !== extent + buffer) ||
-            (p[1] !== -buffer && p[1] !== extent + buffer)) return false;
-    }
-
-    return true;
 }
 
 /**
@@ -20151,7 +20242,7 @@ class GeoJSONSource extends NetworkSource {
         let layers = data.source_data.layers;
 
         for (let layer_name in layers) {
-          this.tile_indexes[layer_name] = src(layers[layer_name], {
+          this.tile_indexes[layer_name] = geojsonvt(layers[layer_name], {
             maxZoom: this.max_zoom,
             // max zoom to preserve detail on
             tolerance: 1.5,
@@ -20403,7 +20494,7 @@ function identity$1(x) {
   return x;
 }
 
-function transform$1(topology) {
+function transform(topology) {
   if ((transform = topology.transform) == null) return identity$1;
   var transform,
       x0,
@@ -20420,13 +20511,13 @@ function transform$1(topology) {
   };
 }
 
-function feature$2(topology, o) {
+function feature$1(topology, o) {
   return o.type === "GeometryCollection"
-      ? {type: "FeatureCollection", features: o.geometries.map(function(o) { return feature$3(topology, o); })}
-      : feature$3(topology, o);
+      ? {type: "FeatureCollection", features: o.geometries.map(function(o) { return feature$2(topology, o); })}
+      : feature$2(topology, o);
 }
 
-function feature$3(topology, o) {
+function feature$2(topology, o) {
   var id = o.id,
       bbox = o.bbox,
       properties = o.properties == null ? {} : o.properties,
@@ -20437,7 +20528,7 @@ function feature$3(topology, o) {
 }
 
 function object(topology, o) {
-  var transformPoint = transform$1(topology),
+  var transformPoint = transform(topology),
       arcs = topology.arcs;
 
   function arc(i, points) {
@@ -20531,7 +20622,7 @@ class TopoJSONSource extends GeoJSONSource {
 }
 
 function getTopoJSONFeature(topology, object) {
-  let feature = feature$2(topology, object); // Convert single feature to a feature collection
+  let feature = feature$1(topology, object); // Convert single feature to a feature collection
 
   if (feature.type === 'Feature') {
     feature = {
@@ -20567,65 +20658,65 @@ DataSource.register('TopoJSON', source => {
 
 // add all data source types
 
-exports.Collision = Collision;
-exports.DataSource = DataSource;
-exports.FeatureSelection = FeatureSelection;
-exports.FilterOptions = FilterOptions;
-exports.FontManager = FontManager;
-exports.GLSL = GLSL;
-exports.Geo = Geo$1;
-exports.Label = Label;
-exports.LabelLineStraight = LabelLineStraight;
-exports.LabelPoint = LabelPoint;
-exports.Light = Light;
-exports.Material = Material;
-exports.OBB = OBB;
-exports.ShaderProgram = ShaderProgram;
-exports.Style = Style;
-exports.StyleManager = StyleManager;
-exports.StyleParser = StyleParser;
-exports.Task = Task;
-exports.TextCanvas = TextCanvas;
-exports.Texture = Texture;
-exports.Thread = Thread;
-exports.Tile = Tile;
-exports.TileID = TileID;
-exports.Utils = Utils;
-exports.Vector = Vector$1;
-exports.VertexArrayObject = VertexArrayObject;
-exports.VertexData = VertexData;
-exports.VertexElements = VertexElements;
-exports.View = View;
-exports.WorkerBroker = WorkerBroker$1;
-exports._extends = _extends;
-exports.addBaseURL = addBaseURL;
-exports.buildFilter = buildFilter;
-exports.cache = cache;
-exports.clearFunctionStringCache = clearFunctionStringCache;
-exports.commonjsRequire = commonjsRequire;
-exports.compileFunctionStrings = compileFunctionStrings;
 exports.createCommonjsModule = createCommonjsModule;
+exports.commonjsRequire = commonjsRequire;
+exports.isLocalURL = isLocalURL;
+exports.extensionForURL = extensionForURL;
+exports.isRelativeURL = isRelativeURL;
+exports.pathForURL = pathForURL;
+exports.Utils = Utils;
+exports.addBaseURL = addBaseURL;
+exports.flattenRelativeURL = flattenRelativeURL;
 exports.createObjectURL = createObjectURL;
+exports.subscribeMixin = subscribeMixin;
+exports.log = log;
+exports.mergeObjects = mergeObjects;
+exports.isReserved = isReserved;
+exports.GLSL = GLSL;
+exports.TileID = TileID;
+exports.Collision = Collision;
+exports.Geo = Geo$1;
+exports.LabelPoint = LabelPoint;
+exports.LabelLineStraight = LabelLineStraight;
+exports.OBB = OBB;
+exports.Label = Label;
+exports.WorkerBroker = WorkerBroker$1;
+exports.Task = Task;
+exports.Tile = Tile;
+exports.StyleParser = StyleParser;
+exports.Texture = Texture;
 exports.debugSettings = debugSettings$1;
 exports.debugSumLayerStats = debugSumLayerStats;
-exports.extensionForURL = extensionForURL;
-exports.flattenRelativeURL = flattenRelativeURL;
-exports.isLocalURL = isLocalURL;
-exports.isRelativeURL = isRelativeURL;
-exports.isReserved = isReserved;
-exports.layerCache = layerCache;
-exports.log = log;
-exports.mergeDebugSettings = mergeDebugSettings;
-exports.mergeObjects = mergeObjects;
-exports.parseLayers = parseLayers;
-exports.pathForURL = pathForURL;
+exports.View = View;
+exports.StyleManager = StyleManager;
+exports.ShaderProgram = ShaderProgram;
+exports.VertexArrayObject = VertexArrayObject;
+exports.Style = Style;
+exports.TextCanvas = TextCanvas;
+exports._extends = _extends;
+exports.DataSource = DataSource;
+exports.Light = Light;
+exports.FontManager = FontManager;
+exports.FeatureSelection = FeatureSelection;
 exports.sliceObject = sliceObject;
-exports.subscribeMixin = subscribeMixin;
+exports.Thread = Thread;
+exports.mergeDebugSettings = mergeDebugSettings;
 exports.version = version$1;
+exports.Vector = Vector$1;
+exports.VertexData = VertexData;
+exports.Material = Material;
+exports.VertexElements = VertexElements;
+exports.compileFunctionStrings = compileFunctionStrings;
+exports.parseLayers = parseLayers;
+exports.buildFilter = buildFilter;
+exports.FilterOptions = FilterOptions;
+exports.layerCache = layerCache;
+exports.cache = cache;
+exports.clearFunctionStringCache = clearFunctionStringCache;
 
 });
 
-define(['./shared'], function (__chunk_1) { 'use strict';
+define(['./shared.js'], function (__chunk_1) { 'use strict';
 
 /*jshint worker: true*/
 const SceneWorker = Object.assign(self, {
@@ -20998,7 +21089,7 @@ __chunk_1.WorkerBroker.addTarget('self', SceneWorker);
 
 });
 
-define(['./shared'], function (__chunk_1) { 'use strict';
+define(['./shared.js'], function (__chunk_1) { 'use strict';
 
 // WebGL context wrapper
 var Context;
@@ -21958,7 +22049,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
     }
   }
 
-  function read (buf, i) {
+  function read$$1 (buf, i) {
     if (indexSize === 1) {
       return buf[i]
     } else {
@@ -21970,7 +22061,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
   if (dir) {
     var foundIndex = -1;
     for (i = byteOffset; i < arrLength; i++) {
-      if (read(arr, i) === read(val, foundIndex === -1 ? 0 : i - foundIndex)) {
+      if (read$$1(arr, i) === read$$1(val, foundIndex === -1 ? 0 : i - foundIndex)) {
         if (foundIndex === -1) foundIndex = i;
         if (i - foundIndex + 1 === valLength) return foundIndex * indexSize
       } else {
@@ -21983,7 +22074,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
     for (i = byteOffset; i >= 0; i--) {
       var found = true;
       for (var j = 0; j < valLength; j++) {
-        if (read(arr, i + j) !== read(val, j)) {
+        if (read$$1(arr, i + j) !== read$$1(val, j)) {
           found = false;
           break
         }
@@ -22054,7 +22145,7 @@ function ucs2Write (buf, string, offset, length) {
   return blitBuffer(utf16leToBytes(string, buf.length - offset), buf, offset, length)
 }
 
-Buffer.prototype.write = function write (string, offset, length, encoding) {
+Buffer.prototype.write = function write$$1 (string, offset, length, encoding) {
   // Buffer#write(string)
   if (offset === undefined) {
     encoding = 'utf8';
@@ -22723,7 +22814,7 @@ function checkIEEE754 (buf, value, offset, ext, max, min) {
 
 function writeFloat (buf, value, offset, littleEndian, noAssert) {
   if (!noAssert) {
-    checkIEEE754(buf, value, offset, 4);
+    checkIEEE754(buf, value, offset, 4, 3.4028234663852886e+38, -3.4028234663852886e+38);
   }
   write(buf, value, offset, littleEndian, 23, 4);
   return offset + 4
@@ -22739,7 +22830,7 @@ Buffer.prototype.writeFloatBE = function writeFloatBE (value, offset, noAssert) 
 
 function writeDouble (buf, value, offset, littleEndian, noAssert) {
   if (!noAssert) {
-    checkIEEE754(buf, value, offset, 8);
+    checkIEEE754(buf, value, offset, 8, 1.7976931348623157E+308, -1.7976931348623157E+308);
   }
   write(buf, value, offset, littleEndian, 52, 8);
   return offset + 8
@@ -23668,19 +23759,19 @@ function chdir (dir) {
 }function umask() { return 0; }
 
 // from https://github.com/kumavis/browser-process-hrtime/blob/master/index.js
-var performance = global$1.performance || {};
+var performance$1 = global$1.performance || {};
 var performanceNow =
-  performance.now        ||
-  performance.mozNow     ||
-  performance.msNow      ||
-  performance.oNow       ||
-  performance.webkitNow  ||
+  performance$1.now        ||
+  performance$1.mozNow     ||
+  performance$1.msNow      ||
+  performance$1.oNow       ||
+  performance$1.webkitNow  ||
   function(){ return (new Date()).getTime() };
 
 // generate timestamp or delta
 // see http://nodejs.org/api/process.html#process_process_hrtime
 function hrtime(previousTimestamp){
-  var clocktime = performanceNow.call(performance)*1e-3;
+  var clocktime = performanceNow.call(performance$1)*1e-3;
   var seconds = Math.floor(clocktime);
   var nanoseconds = Math.floor((clocktime%1)*1e9);
   if (previousTimestamp) {
@@ -23852,7 +23943,7 @@ var debugs = {};
 var debugEnviron;
 exports.debuglog = function(set) {
   if (isUndefined(debugEnviron))
-    debugEnviron = '';
+    debugEnviron = process.env.NODE_DEBUG || '';
   set = set.toUpperCase();
   if (!debugs[set]) {
     if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
@@ -25377,7 +25468,7 @@ Readable.prototype.on = function (ev, fn) {
       if (!state.reading) {
         nextTick(nReadingNextTick, this);
       } else if (state.length) {
-        emitReadable(this);
+        emitReadable(this, state);
       }
     }
   }
@@ -36023,7 +36114,7 @@ var generateZipParts = function(streamInfo, streamedContent, streamingEnded, off
         extFileAttr |= generateUnixExternalFileAttr(file.unixPermissions, dir);
     } else { // DOS or other, fallback to DOS
         versionMadeBy = 0x0014; // DOS, version 2.0
-        extFileAttr |= generateDosExternalFileAttr(file.dosPermissions);
+        extFileAttr |= generateDosExternalFileAttr(file.dosPermissions, dir);
     }
 
     // date
@@ -37491,8 +37582,8 @@ ZipEntries.prototype = {
     checkSignature: function(expectedSignature) {
         if (!this.reader.readAndCheckSignature(expectedSignature)) {
             this.reader.index -= 4;
-            var signature = this.reader.readString(4);
-            throw new Error("Corrupted zip or bug: unexpected signature " + "(" + utils.pretty(signature) + ", expected " + utils.pretty(expectedSignature) + ")");
+            var signature$$1 = this.reader.readString(4);
+            throw new Error("Corrupted zip or bug: unexpected signature " + "(" + utils.pretty(signature$$1) + ", expected " + utils.pretty(expectedSignature) + ")");
         }
     },
     /**
@@ -37504,8 +37595,8 @@ ZipEntries.prototype = {
     isSignature: function(askedIndex, expectedSignature) {
         var currentIndex = this.reader.index;
         this.reader.setIndex(askedIndex);
-        var signature = this.reader.readString(4);
-        var result = signature === expectedSignature;
+        var signature$$1 = this.reader.readString(4);
+        var result = signature$$1 === expectedSignature;
         this.reader.setIndex(currentIndex);
         return result;
     },
@@ -37759,12 +37850,12 @@ var load = function(data, options) {
 
     return utils.prepareContent("the loaded zip file", data, true, options.optimizedBinaryString, options.base64)
     .then(function(data) {
-        var zipEntries$1 = new zipEntries(options);
-        zipEntries$1.load(data);
-        return zipEntries$1;
-    }).then(function checkCRC32(zipEntries) {
-        var promises = [external.Promise.resolve(zipEntries)];
-        var files = zipEntries.files;
+        var zipEntries$$1 = new zipEntries(options);
+        zipEntries$$1.load(data);
+        return zipEntries$$1;
+    }).then(function checkCRC32(zipEntries$$1) {
+        var promises = [external.Promise.resolve(zipEntries$$1)];
+        var files = zipEntries$$1.files;
         if (options.checkCRC32) {
             for (var i = 0; i < files.length; i++) {
                 promises.push(checkEntryCRC32(files[i]));
@@ -37772,8 +37863,8 @@ var load = function(data, options) {
         }
         return external.Promise.all(promises);
     }).then(function addFiles(results) {
-        var zipEntries = results.shift();
-        var files = zipEntries.files;
+        var zipEntries$$1 = results.shift();
+        var files = zipEntries$$1.files;
         for (var i = 0; i < files.length; i++) {
             var input = files[i];
             zip.file(input.fileNameStr, input.decompressed, {
@@ -37787,8 +37878,8 @@ var load = function(data, options) {
                 createFolders: options.createFolders
             });
         }
-        if (zipEntries.zipComment.length) {
-            zip.comment = zipEntries.zipComment;
+        if (zipEntries$$1.zipComment.length) {
+            zip.comment = zipEntries$$1.zipComment;
         }
 
         return zip;
@@ -38107,7 +38198,7 @@ function compileList(schema, name, result) {
     result.push(currentType);
   });
 
-  return result.filter(function (type, index) {
+  return result.filter(function (type$$1, index) {
     return exclude.indexOf(index) === -1;
   });
 }
@@ -38116,8 +38207,8 @@ function compileList(schema, name, result) {
 function compileMap(/* lists... */) {
   var result = {}, index, length;
 
-  function collectType(type) {
-    result[type.tag] = type;
+  function collectType(type$$1) {
+    result[type$$1.tag] = type$$1;
   }
 
   for (index = 0, length = arguments.length; index < length; index += 1) {
@@ -38133,8 +38224,8 @@ function Schema(definition) {
   this.implicit = definition.implicit || [];
   this.explicit = definition.explicit || [];
 
-  this.implicit.forEach(function (type) {
-    if (type.loadKind && type.loadKind !== 'scalar') {
+  this.implicit.forEach(function (type$$1) {
+    if (type$$1.loadKind && type$$1.loadKind !== 'scalar') {
       throw new exception('There is a non-scalar type in the implicit list of a schema. Implicit resolving of such types is not supported.');
     }
   });
@@ -38173,7 +38264,7 @@ Schema.create = function createSchema() {
     throw new exception('Specified list of super schemas (or a single Schema object) contains a non-Schema object.');
   }
 
-  if (!types.every(function (type$1) { return type$1 instanceof type; })) {
+  if (!types.every(function (type$$1) { return type$$1 instanceof type; })) {
     throw new exception('Specified list of YAML types (or a single Type object) contains a non-Type object.');
   }
 
@@ -43920,6 +44011,10 @@ class Scene {
   createLights() {
     this.lights = {};
 
+    if (__chunk_1.debugSettings.wireframe) {
+      __chunk_1.Light.enabled = false; // disable lighting for wireframe mode
+    }
+
     for (let i in this.config.lights) {
       if (!this.config.lights[i] || typeof this.config.lights[i] !== 'object') {
         continue;
@@ -44839,7 +44934,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = 'e76e4fd4278c18dccb19ec07d7550bbb76bdd8f7';
+	Tangram.debug.SHA = 'f0e7cf665ee5bfbc46bfffb6b64474f2caee7de0';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
