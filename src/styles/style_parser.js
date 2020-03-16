@@ -321,11 +321,11 @@ StyleParser.evalCachedProperty = function(val, context) {
 
 StyleParser.convertUnits = function(val, context) {
     // pre-parsed units
-    if (val.val != null) {
+    if (val.value != null) {
         if (val.units === 'px') { // convert from pixels
-            return val.val * Geo.metersPerPixel(context.zoom);
+            return val.value * Geo.metersPerPixel(context.zoom);
         }
-        return val.val;
+        return val.value;
     }
     // un-parsed unit string
     else if (typeof val === 'string') {
@@ -352,9 +352,9 @@ StyleParser.convertUnits = function(val, context) {
 };
 
 // Pre-parse units from string values
-StyleParser.parseUnits = function (val) {
-    var obj = { val: parseNumber(val) };
-    if (obj.val !== 0 && typeof val === 'string' && val.trim().slice(-2) === 'px') {
+StyleParser.parseUnits = function (value) {
+    var obj = { value: parseNumber(value) };
+    if (obj.value !== 0 && typeof value === 'string' && value.trim().slice(-2) === 'px') {
         obj.units = 'px';
     }
     return obj;
