@@ -102,8 +102,14 @@ export class MVTSource extends NetworkTileSource {
                 geometry.coordinates = coordinates;
 
                 if (VectorTileFeature.types[feature.type] === 'Point') {
-                    geometry.type = 'Point';
-                    geometry.coordinates = geometry.coordinates[0][0];
+                    if (coordinates.length === 1) {
+                        geometry.type = 'Point';
+                        geometry.coordinates = geometry.coordinates[0][0];
+                    }
+                    else {
+                        geometry.type = 'MultiPoint';
+                        geometry.coordinates = geometry.coordinates[0];
+                    }
                 }
                 else if (VectorTileFeature.types[feature.type] === 'LineString') {
                     if (coordinates.length === 1) {
