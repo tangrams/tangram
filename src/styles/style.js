@@ -310,9 +310,6 @@ export var Style = {
                 style.selection_color = FeatureSelection.defaultColor;
             }
 
-            // Subclass implementation
-            style = this._parseFeature(feature, draw, context);
-
             return style;
         }
         catch (error) {
