@@ -240,6 +240,8 @@ Object.assign(Lines, {
                 style.outline.join = draw.outline.join;
                 style.outline.miter_limit = draw.outline.miter_limit;
                 style.outline.texcoords = draw.outline.texcoords;
+                style.outline.extrude = draw.outline.extrude;
+                style.outline.z = draw.outline.z;
                 style.outline.style = draw.outline.style;
                 style.outline.variant = draw.outline.variant;
 
@@ -303,9 +305,13 @@ Object.assign(Lines, {
             draw.outline.cap = draw.outline.cap || draw.cap;
             draw.outline.join = draw.outline.join || draw.join;
             draw.outline.miter_limit = (draw.outline.miter_limit != null) ? draw.outline.miter_limit : draw.miter_limit;
-            draw.outline.offset = draw.offset; // always apply inline offset to outline
 
-            // outline inhertits dash pattern, but NOT explicit texture
+            // always apply inline values for offset and extrusion/height to outline
+            draw.outline.offset = draw.offset;
+            draw.outline.extrude = draw.extrude;
+            draw.outline.z = draw.z;
+
+            // outline inherits dash pattern, but NOT explicit texture
             let outline_style = this.styles[draw.outline.style];
             if (outline_style) {
                 draw.outline.dash = (draw.outline.dash !== undefined ? draw.outline.dash : outline_style.dash);
@@ -432,7 +438,7 @@ Object.assign(Lines, {
         let key = (draw.offset ? 1 : 0); // whether feature has a line offset
         key += '/' + draw.texcoords; // whether feature has texture UVs
         key += '/' + (draw.interactive ? 1 : 0); // whether feature has interactivity
-        key += '/' + (draw.extrude || draw.z ? 1 : 0); // whether feature has a z coordinate
+        key += '/' + ((draw.extrude || draw.z) ? 1 : 0); // whether feature has a z coordinate
         key += '/' + draw.is_outline; // whether this is an outline of a line feature
 
         if (draw.dash_key) { // whether feature has a line dash pattern
