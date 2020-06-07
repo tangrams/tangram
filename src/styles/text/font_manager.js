@@ -56,6 +56,12 @@ const FontManager = {
 
         // Wait for font to load
         try {
+            // FontFaceObserver does not directly support variable fonts syntax, which allows for ranges,
+            // e.g. `font-weight: 100 800`. FontFaceObserver will insert the entire string value into a
+            // CSS `font` shorthand property, causing an error. To get around this, we simply take the first
+            // value, because as soon as one variant of the variable font is available, they all should be.
+            // See https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Fonts/Variable_Fonts_Guide
+            options.weight = typeof options.weight === 'string' ? options.weight.split(' ')[0] : options.weight;
             const observer = new FontFaceObserver(family, options);
             await observer.load();
             // Promise resolves, font is available
@@ -63,7 +69,7 @@ const FontManager = {
         }
         catch (e) {
             // Promise rejects, font is not available
-            log('debug', `Font face '${family}' is NOT available`, options);
+            log('warn', `Font face '${family}' is NOT available`, options, e);
         }
     },
 
