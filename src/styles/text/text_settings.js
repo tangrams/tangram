@@ -26,7 +26,7 @@ const TextSettings = {
 
     defaults: {
         style: 'normal',
-        weight: null,
+        weight: 'normal',
         size: '12px',
         px_size: 12,
         family: 'Helvetica',
@@ -62,8 +62,11 @@ const TextSettings = {
         // - style: normal, italic, oblique
         // - weight: normal, bold, etc.
         // - transform: capitalize, uppercase, lowercase
-        style.style = draw.font.style || this.defaults.style;
-        style.weight = draw.font.weight || this.defaults.weight;
+
+        // clamp weight to 1-1000 (see https://drafts.csswg.org/css-fonts-4/#valdef-font-weight-number)
+        style.weight = StyleParser.evalCachedProperty(draw.font.weight, context) || this.defaults.weight;
+        style.weight = Math.min(Math.max(style.weight, 1), 1000);
+
         if (draw.font.family) {
             style.family = draw.font.family;
             if (style.family !== this.defaults.family) {
@@ -74,6 +77,7 @@ const TextSettings = {
             style.family = this.defaults.family;
         }
 
+        style.style = draw.font.style || this.defaults.style;
         style.transform = draw.font.transform;
 
         // calculated pixel size

@@ -276,6 +276,9 @@ export const TextLabels = {
             return;
         }
 
+        // Font weight
+        draw.font.weight = StyleParser.createPropertyCache(draw.font.weight);
+
         // Colors
         draw.font.fill = StyleParser.createPropertyCache(draw.font.fill);
         draw.font.alpha = StyleParser.createPropertyCache(draw.font.alpha);
