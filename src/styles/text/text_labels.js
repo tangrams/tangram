@@ -281,6 +281,7 @@ export const TextLabels = {
 
         // Colors
         draw.font.fill = StyleParser.createPropertyCache(draw.font.fill);
+        draw.font.background = StyleParser.createPropertyCache(draw.font.background);
         draw.font.alpha = StyleParser.createPropertyCache(draw.font.alpha);
         if (draw.font.stroke) {
             draw.font.stroke.color = StyleParser.createPropertyCache(draw.font.stroke.color);

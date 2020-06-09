@@ -16,6 +16,7 @@ const TextSettings = {
             settings.fill,
             settings.stroke,
             settings.stroke_width,
+            settings.background,
             settings.transform,
             settings.text_wrap,
             settings.max_lines,
@@ -38,7 +39,8 @@ const TextSettings = {
     },
 
     compute (feature, draw, context) {
-        let style = {};
+        const style = {};
+        const geomType = Geo.geometryType(feature.geometry.type);
 
         draw.font = draw.font || this.defaults;
 
@@ -47,14 +49,23 @@ const TextSettings = {
 
         // Use fill if specified, or default
         style.fill = draw.font.fill && StyleParser.evalCachedColorProperty(draw.font.fill, context);
+        if (geomType === 'point') { // background color box for point labels only
+            style.background = draw.font.background && StyleParser.evalCachedColorProperty(draw.font.background, context);
+        }
 
         // optional alpha override
         const alpha = StyleParser.evalCachedProperty(draw.font.alpha, context);
         if (alpha != null) {
             style.fill = [...(style.fill ? style.fill : this.defaults.fill_array)]; // copy to avoid modifying underlying object
             style.fill[3] = alpha;
+
+            if (style.background) {
+                style.background = [...style.background]; // copy to avoid modifying underlying object
+                style.background[3] = alpha;
+            }
         }
         style.fill = (style.fill && Utils.toCSSColor(style.fill)) || this.defaults.fill; // convert to CSS for Canvas
+        style.background = (style.background && Utils.toCSSColor(style.background));
 
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
@@ -105,7 +116,7 @@ const TextSettings = {
         // Not a font properties, but affect atlas of unique text textures
         let text_wrap = draw.text_wrap; // use explicitly set value
 
-        if (text_wrap == null && Geo.geometryType(feature.geometry.type) !== 'line') {
+        if (text_wrap == null && geomType !== 'line') {
             // point labels (for point and polygon features) have word wrap on w/default max length,
             // line labels default off
             text_wrap = true;

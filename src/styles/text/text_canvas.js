@@ -181,50 +181,65 @@ export default class TextCanvas {
     }
 
     // Draw multiple lines of text
-    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, transform, align, supersample }, type) {
-        let line_height = size.line_height;
+    drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, background, transform, align, supersample }, type) {
+        // optional background box
+        if (background) {
+            const texture_size = size.texture_size;
+            const dpr = Utils.device_pixel_ratio * supersample;
+            const horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
+            const vertical_buffer = dpr * this.vertical_text_buffer;
+            const collision_size = size.collision_size;
+            const box_buffer = 4 * dpr; // pixel buffer on each side of label box
+
+            this.context.save();
+            this.context.fillStyle = background;
+            this.context.fillRect(
+                x + horizontal_buffer + (type === 'curved' ? texture_size[0] : 0) - box_buffer,
+                y + vertical_buffer - box_buffer,
+                dpr * collision_size[0] + box_buffer * 2,
+                dpr * collision_size[1] + box_buffer * 2
+            );
+            this.context.restore();
+        }
+
+        // draw text
         let height = y;
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
             this.drawTextLine(line, [x, height], size, { stroke, stroke_width, transform, align, supersample }, type);
-            height += line_height;
+            height += size.line_height;
         }
 
         // Draw bounding boxes for debugging
         if (debugSettings.draw_label_collision_boxes) {
+            const dpr = Utils.device_pixel_ratio * supersample;
+            const horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
+            const vertical_buffer = dpr * this.vertical_text_buffer;
+            const collision_size = size.collision_size;
+            const lineWidth = 2;
+
             this.context.save();
-
-            let dpr = Utils.device_pixel_ratio * supersample;
-            let horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
-            let vertical_buffer = dpr * this.vertical_text_buffer;
-            let collision_size = size.collision_size;
-            let lineWidth = 2;
-
             this.context.strokeStyle = 'blue';
             this.context.lineWidth = lineWidth;
             this.context.strokeRect(x + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
             if (type === 'curved'){
                 this.context.strokeRect(x + size.texture_size[0] + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
             }
-
             this.context.restore();
         }
 
         if (debugSettings.draw_label_texture_boxes) {
+            const texture_size = size.texture_size;
+            const lineWidth = 2;
+
             this.context.save();
-
-            let texture_size = size.texture_size;
-            let lineWidth = 2;
-
             this.context.strokeStyle = 'green';
             this.context.lineWidth = lineWidth;
             // stroke is applied internally, so the outer border is the edge of the texture
             this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
-
-            if (type === 'curved'){
-                this.context.strokeRect(x + lineWidth + size.texture_size[0], y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
+            if (type === 'curved') {
+                this.context.strokeRect(x + lineWidth + texture_size[0], y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
             }
-
             this.context.restore();
         }
     }
@@ -421,6 +436,7 @@ export default class TextCanvas {
                     }
                     else {
                         let lines = this.textSize(style, text, text_settings).lines;
+                        const aligned_text_settings = { ...text_settings };
 
                         for (let align in text_info.align) {
                             // Only render for current texture
@@ -428,13 +444,8 @@ export default class TextCanvas {
                                 continue;
                             }
 
-                            this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, {
-                                stroke: text_settings.stroke,
-                                stroke_width: text_settings.stroke_width,
-                                transform: text_settings.transform,
-                                supersample: text_settings.supersample,
-                                align: align
-                            });
+                            aligned_text_settings.align = align;
+                            this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, aligned_text_settings);
 
                             text_info.align[align].texcoords = Texture.getTexcoordsForSprite(
                                 text_info.align[align].texture_position,
