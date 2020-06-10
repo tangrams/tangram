@@ -26,6 +26,9 @@ export default class DataSource {
             });
         }
 
+        // Optional setting to keep tiles within a zoom range (higher requires more memory)
+        this.preserve_tiles_within_zoom = config.preserve_tiles_within_zoom;
+
         // Optional function to preprocess source data
         this.preprocess = config.preprocess;
         if (typeof this.preprocess === 'function') {
