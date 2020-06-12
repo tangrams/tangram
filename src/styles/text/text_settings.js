@@ -1,5 +1,4 @@
 import Utils from '../../utils/utils';
-import Geo from '../../utils/geo';
 import StyleParser from '../style_parser';
 
 export default TextSettings;
@@ -38,7 +37,7 @@ const TextSettings = {
         align: 'center'
     },
 
-    compute (feature, draw, context) {
+    compute (draw, context) {
         const style = {};
 
         draw.font = draw.font || this.defaults;

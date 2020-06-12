@@ -36,7 +36,7 @@ export const TextLabels = {
         }
 
         // Compute text style and layout settings for this feature label
-        let text_settings = TextSettings.compute(feature, draw, context);
+        let text_settings = TextSettings.compute(draw, context);
         let text_settings_key = TextSettings.key(text_settings);
 
         // first label in tile, or with this style?
