@@ -40,7 +40,6 @@ const TextSettings = {
 
     compute (feature, draw, context) {
         const style = {};
-        const geomType = Geo.geometryType(feature.geometry.type);
 
         draw.font = draw.font || this.defaults;
 
@@ -49,7 +48,7 @@ const TextSettings = {
 
         // Use fill if specified, or default
         style.fill = draw.font.fill && StyleParser.evalCachedColorProperty(draw.font.fill, context);
-        if (geomType === 'point') { // background color box for point labels only
+        if (!style.can_articulate) { // background color box for point labels only
             style.background = draw.font.background && StyleParser.evalCachedColorProperty(draw.font.background, context);
         }
 
@@ -112,7 +111,7 @@ const TextSettings = {
         // Not a font properties, but affect atlas of unique text textures
         let text_wrap = draw.text_wrap; // use explicitly set value
 
-        if (text_wrap == null && geomType !== 'line') {
+        if (text_wrap == null && !style.can_articulate) {
             // point labels (for point and polygon features) have word wrap on w/default max length,
             // line labels default off
             text_wrap = true;
