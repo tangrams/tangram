@@ -14,6 +14,7 @@ export default class TextCanvas {
         this.createCanvas();                // create initial canvas and context
         this.vertical_text_buffer = 8;      // vertical pixel padding around text
         this.horizontal_text_buffer = 4;    // text styling such as italic emphasis is not measured by the Canvas API, so padding is necessary
+        this.background_size = 4;           // padding around label for optional background box (TODO: make configurable?)
     }
 
     createCanvas () {
@@ -130,7 +131,7 @@ export default class TextCanvas {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (style, text, {transform, text_wrap, max_lines, stroke_width = 0, supersample}) {
+    textSize (style, text, {transform, text_wrap, max_lines, stroke_width = 0, background, supersample}) {
         // Check cache first
         TextCanvas.cache.text[style] = TextCanvas.cache.text[style] || {};
         if (TextCanvas.cache.text[style][text]) {
@@ -141,21 +142,20 @@ export default class TextCanvas {
         TextCanvas.cache.text_count++;
 
         // Calc and store in cache
-        let dpr = Utils.device_pixel_ratio * supersample;
-        let str = this.applyTextTransform(text, transform);
-        let ctx = this.context;
-        let vertical_buffer = this.vertical_text_buffer * dpr;
-        let horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
-        let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
-        let line_height = this.px_size + leading; // px_size already in device pixels
+        const dpr = Utils.device_pixel_ratio * supersample;
+        const str = this.applyTextTransform(text, transform);
+        const ctx = this.context;
+        const vertical_buffer = this.vertical_text_buffer * dpr;
+        const horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
+        const background_size = background ? this.background_size * dpr : 0;
+        const leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
+        const line_height = this.px_size + leading; // px_size already in device pixels
 
         // Parse string into series of lines if it exceeds the text wrapping value or contains line breaks
-        let multiline = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx);
-
-        // Final dimensions of text
-        let height = multiline.height;
-        let width = multiline.width;
-        let lines = multiline.lines;
+        // const multiline = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx);
+        let { width, height, lines } = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx);
+        width += background_size * 2;
+        height += background_size * 2;
 
         let collision_size = [
             width / dpr,
@@ -175,29 +175,26 @@ export default class TextCanvas {
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         TextCanvas.cache.text[style][text] = {
             lines,
-            size: { collision_size, texture_size, logical_size, line_height }
+            size: { collision_size, texture_size, logical_size, line_height, background_size }
         };
         return TextCanvas.cache.text[style][text];
     }
 
     // Draw multiple lines of text
     drawTextMultiLine (lines, [x, y], size, { stroke, stroke_width = 0, background, transform, align, supersample }, type) {
-        // optional background box
+        // draw optional background box
         if (background) {
-            const texture_size = size.texture_size;
             const dpr = Utils.device_pixel_ratio * supersample;
             const horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
             const vertical_buffer = dpr * this.vertical_text_buffer;
-            const collision_size = size.collision_size;
-            const box_buffer = 4 * dpr; // pixel buffer on each side of label box
 
             this.context.save();
             this.context.fillStyle = background;
             this.context.fillRect(
-                x + horizontal_buffer + (type === 'curved' ? texture_size[0] : 0) - box_buffer,
-                y + vertical_buffer - box_buffer,
-                dpr * collision_size[0] + box_buffer * 2,
-                dpr * collision_size[1] + box_buffer * 2
+                x + horizontal_buffer + (type === 'curved' ? size.texture_size[0] : 0),
+                y + vertical_buffer,
+                dpr * size.collision_size[0],
+                dpr * size.collision_size[1]
             );
             this.context.restore();
         }
@@ -259,18 +256,18 @@ export default class TextCanvas {
         // Text alignment
         let tx;
         if (align === 'left') {
-            tx = x + horizontal_buffer;
+            tx = x + horizontal_buffer + size.background_size;
         }
         else if (align === 'center') {
             tx = x + texture_size[0]/2 - line.width/2;
         }
         else if (align === 'right') {
-            tx = x + texture_size[0] - line.width - horizontal_buffer;
+            tx = x + texture_size[0] - line.width - horizontal_buffer - size.background_size;
         }
 
         // In the absence of better Canvas TextMetrics (not supported by browsers yet),
         // 0.75 buffer produces a better approximate vertical centering of text
-        let ty = y + vertical_buffer * 0.75 + line_height;
+        let ty = y + vertical_buffer * 0.75 + line_height + size.background_size;
 
         // Draw stroke and fill separately for curved text. Offset stroke in texture atlas by shift.
         if (stroke && stroke_width > 0) {
