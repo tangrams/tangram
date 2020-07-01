@@ -15,7 +15,9 @@ const TextSettings = {
             settings.fill,
             settings.stroke,
             settings.stroke_width,
-            settings.background,
+            settings.background_color,
+            settings.background_stroke_color,
+            settings.background_stroke_width,
             settings.transform,
             settings.text_wrap,
             settings.max_lines,
@@ -45,25 +47,61 @@ const TextSettings = {
         // LineString labels can articulate while point labels cannot. Needed for future texture coordinate calculations.
         style.can_articulate = draw.can_articulate;
 
-        // Use fill if specified, or default
+        // Text fill
         style.fill = draw.font.fill && StyleParser.evalCachedColorProperty(draw.font.fill, context);
-        if (!style.can_articulate) { // background color box for point labels only
-            style.background = draw.font.background && StyleParser.evalCachedColorProperty(draw.font.background, context);
-        }
-
-        // optional alpha override
-        const alpha = StyleParser.evalCachedProperty(draw.font.alpha, context);
+        const alpha = StyleParser.evalCachedProperty(draw.font.alpha, context); // optional alpha override
         if (alpha != null) {
             style.fill = [...(style.fill ? style.fill : this.defaults.fill_array)]; // copy to avoid modifying underlying object
             style.fill[3] = alpha;
-
-            if (style.background) {
-                style.background = [...style.background]; // copy to avoid modifying underlying object
-                style.background[3] = alpha;
-            }
         }
         style.fill = (style.fill && Utils.toCSSColor(style.fill)) || this.defaults.fill; // convert to CSS for Canvas
-        style.background = (style.background && Utils.toCSSColor(style.background));
+
+        // Text stroke
+        if (draw.font.stroke && draw.font.stroke.color) {
+            style.stroke = StyleParser.evalCachedColorProperty(draw.font.stroke.color, context);
+            if (style.stroke) {
+                // optional alpha override
+                const stroke_alpha = StyleParser.evalCachedProperty(draw.font.stroke.alpha, context);
+                if (stroke_alpha != null) {
+                    style.stroke = [...style.stroke]; // copy to avoid modifying underlying object
+                    style.stroke[3] = stroke_alpha;
+                }
+                style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
+            }
+            style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context);
+        }
+
+        // Background box
+        if (draw.font.background && !style.can_articulate) { // supported for point labels only
+            // Background fill
+            style.background_color = draw.font.background.color && StyleParser.evalCachedColorProperty(draw.font.background.color, context);
+            if (style.background_color) {
+                const background_alpha = draw.font.background.alpha && StyleParser.evalCachedProperty(draw.font.background.alpha, context);
+                if (background_alpha) {
+                    style.background_color = [...style.background_color];
+                    style.background_color[3] = background_alpha;
+                }
+                style.background_color = Utils.toCSSColor(style.background_color); // convert to CSS for Canvas
+            }
+
+            // Background stroke
+            style.background_stroke_color =
+                draw.font.background.stroke &&
+                draw.font.background.stroke.color &&
+                StyleParser.evalCachedColorProperty(draw.font.background.stroke.color, context);
+            if (style.background_stroke_color) {
+                const background_stroke_alpha = draw.font.background.stroke.alpha && StyleParser.evalCachedProperty(draw.font.background.stroke.alpha, context);
+                if (background_stroke_alpha) {
+                    style.background_stroke_color = [...style.background_stroke_color];
+                    style.background_stroke_color[3] = background_stroke_alpha;
+                }
+                style.background_stroke_color = Utils.toCSSColor(style.background_stroke_color); // convert to CSS for Canvas
+
+                // default background stroke to 1px when stroke color but no stroke width specified
+                style.background_stroke_width = draw.font.background.stroke.width != null ?
+                    StyleParser.evalCachedProperty(draw.font.background.stroke.width, context) : 1;
+            }
+        }
 
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
@@ -92,21 +130,6 @@ const TextSettings = {
         // calculated pixel size
         style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
         style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample;
-
-        // Use stroke if specified
-        if (draw.font.stroke && draw.font.stroke.color) {
-            style.stroke = StyleParser.evalCachedColorProperty(draw.font.stroke.color, context);
-            if (style.stroke) {
-                // optional alpha override
-                const stroke_alpha = StyleParser.evalCachedProperty(draw.font.stroke.alpha, context);
-                if (stroke_alpha != null) {
-                    style.stroke = [...style.stroke]; // copy to avoid modifying underlying object
-                    style.stroke[3] = stroke_alpha;
-                }
-                style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
-            }
-            style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context);
-        }
 
         style.font_css = this.fontCSS(style);
 

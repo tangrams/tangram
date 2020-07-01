@@ -281,17 +281,27 @@ export const TextLabels = {
 
         // Colors
         draw.font.fill = StyleParser.createPropertyCache(draw.font.fill);
-        draw.font.background = StyleParser.createPropertyCache(draw.font.background);
         draw.font.alpha = StyleParser.createPropertyCache(draw.font.alpha);
         if (draw.font.stroke) {
             draw.font.stroke.color = StyleParser.createPropertyCache(draw.font.stroke.color);
             draw.font.stroke.alpha = StyleParser.createPropertyCache(draw.font.stroke.alpha);
+        }
+        if (draw.font.background) {
+            draw.font.background.color = StyleParser.createPropertyCache(draw.font.background.color);
+            draw.font.background.alpha = StyleParser.createPropertyCache(draw.font.background.alpha);
+            if (draw.font.background.stroke) {
+                draw.font.background.stroke.color = StyleParser.createPropertyCache(draw.font.background.stroke.color);
+                draw.font.background.stroke.alpha = StyleParser.createPropertyCache(draw.font.background.stroke.alpha);
+            }
         }
 
         // Convert font and text stroke sizes
         draw.font.px_size = StyleParser.createPropertyCache(draw.font.size || TextSettings.defaults.size, TextCanvas.fontPixelSize, TextCanvas.fontPixelSize);
         if (draw.font.stroke && draw.font.stroke.width != null) {
             draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
+        }
+        if (draw.font.background && draw.font.background.stroke && draw.font.background.stroke.width != null) {
+            draw.font.background.stroke.width = StyleParser.createPropertyCache(draw.font.background.stroke.width, StyleParser.parsePositiveNumber);
         }
 
         // Offset (2d array)
