@@ -48,7 +48,7 @@ const TextSettings = {
         style.can_articulate = draw.can_articulate;
 
         // Text fill
-        style.fill = draw.font.fill && StyleParser.evalCachedColorProperty(draw.font.fill, context);
+        style.fill = StyleParser.evalCachedColorProperty(draw.font.fill, context);
         const alpha = StyleParser.evalCachedProperty(draw.font.alpha, context); // optional alpha override
         if (alpha != null) {
             style.fill = [...(style.fill ? style.fill : this.defaults.fill_array)]; // copy to avoid modifying underlying object
@@ -74,9 +74,9 @@ const TextSettings = {
         // Background box
         if (draw.font.background && !style.can_articulate) { // supported for point labels only
             // Background fill
-            style.background_color = draw.font.background.color && StyleParser.evalCachedColorProperty(draw.font.background.color, context);
+            style.background_color = StyleParser.evalCachedColorProperty(draw.font.background.color, context);
             if (style.background_color) {
-                const background_alpha = draw.font.background.alpha && StyleParser.evalCachedProperty(draw.font.background.alpha, context);
+                const background_alpha = StyleParser.evalCachedProperty(draw.font.background.alpha, context);
                 if (background_alpha) {
                     style.background_color = [...style.background_color];
                     style.background_color[3] = background_alpha;
@@ -90,7 +90,7 @@ const TextSettings = {
                 draw.font.background.stroke.color &&
                 StyleParser.evalCachedColorProperty(draw.font.background.stroke.color, context);
             if (style.background_stroke_color) {
-                const background_stroke_alpha = draw.font.background.stroke.alpha && StyleParser.evalCachedProperty(draw.font.background.stroke.alpha, context);
+                const background_stroke_alpha = StyleParser.evalCachedProperty(draw.font.background.stroke.alpha, context);
                 if (background_stroke_alpha) {
                     style.background_stroke_color = [...style.background_stroke_color];
                     style.background_stroke_color[3] = background_stroke_alpha;

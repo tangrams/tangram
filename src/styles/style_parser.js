@@ -223,6 +223,10 @@ StyleParser.createPointSizePropertyCache = function (obj, texture) {
 };
 
 StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_info, context) {
+    if (val == null) {
+        return;
+    }
+
     // no percentage-based calculation, one cache for all sprites
     if (!val.has_pct && !val.has_ratio) {
         return StyleParser.evalCachedProperty(val, context);
@@ -420,7 +424,10 @@ StyleParser.colorForString = function(string) {
 // (caching the result for future use)
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
 StyleParser.evalCachedColorProperty = function(val, context = {}) {
-    if (val.dynamic) {
+    if (val == null) {
+        return;
+    }
+    else if (val.dynamic) {
         let v = tryEval(val.dynamic, context);
 
         if (typeof v === 'string') {
