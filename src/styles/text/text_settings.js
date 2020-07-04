@@ -32,8 +32,7 @@ const TextSettings = {
         size: '12px',
         px_size: 12,
         family: 'Helvetica',
-        fill: 'white',
-        fill_array: [1, 1, 1, 1],
+        fill: [1, 1, 1, 1],
         text_wrap: 15,
         max_lines: 5,
         align: 'center'
@@ -48,53 +47,28 @@ const TextSettings = {
         style.can_articulate = draw.can_articulate;
 
         // Text fill
-        style.fill = StyleParser.evalCachedColorProperty(draw.font.fill, context);
-        const alpha = StyleParser.evalCachedProperty(draw.font.alpha, context); // optional alpha override
-        if (alpha != null) {
-            style.fill = [...(style.fill ? style.fill : this.defaults.fill_array)]; // copy to avoid modifying underlying object
-            style.fill[3] = alpha;
-        }
-        style.fill = (style.fill && Utils.toCSSColor(style.fill)) || this.defaults.fill; // convert to CSS for Canvas
+        style.fill = StyleParser.evalCachedColorPropertyWithAlpha(draw.font.fill, draw.font.alpha, context);
+        style.fill = Utils.toCSSColor(style.fill); // convert to CSS for Canvas
 
         // Text stroke
         if (draw.font.stroke && draw.font.stroke.color) {
-            style.stroke = StyleParser.evalCachedColorProperty(draw.font.stroke.color, context);
-            if (style.stroke) {
-                // optional alpha override
-                const stroke_alpha = StyleParser.evalCachedProperty(draw.font.stroke.alpha, context);
-                if (stroke_alpha != null) {
-                    style.stroke = [...style.stroke]; // copy to avoid modifying underlying object
-                    style.stroke[3] = stroke_alpha;
-                }
-                style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
-            }
+            style.stroke = StyleParser.evalCachedColorPropertyWithAlpha(draw.font.stroke.color, draw.font.stroke.alpha, context);
+            style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
             style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context);
         }
 
         // Background box
         if (draw.font.background && !style.can_articulate) { // supported for point labels only
             // Background fill
-            style.background_color = StyleParser.evalCachedColorProperty(draw.font.background.color, context);
-            if (style.background_color) {
-                const background_alpha = StyleParser.evalCachedProperty(draw.font.background.alpha, context);
-                if (background_alpha) {
-                    style.background_color = [...style.background_color];
-                    style.background_color[3] = background_alpha;
-                }
-                style.background_color = Utils.toCSSColor(style.background_color); // convert to CSS for Canvas
-            }
+            style.background_color = StyleParser.evalCachedColorPropertyWithAlpha(draw.font.background.color, draw.font.background.alpha, context);
+            style.background_color = Utils.toCSSColor(style.background_color); // convert to CSS for Canvas
 
             // Background stroke
             style.background_stroke_color =
                 draw.font.background.stroke &&
                 draw.font.background.stroke.color &&
-                StyleParser.evalCachedColorProperty(draw.font.background.stroke.color, context);
+            StyleParser.evalCachedColorPropertyWithAlpha(draw.font.background.stroke.color, draw.font.background.stroke.alpha, context);
             if (style.background_stroke_color) {
-                const background_stroke_alpha = StyleParser.evalCachedProperty(draw.font.background.stroke.alpha, context);
-                if (background_stroke_alpha) {
-                    style.background_stroke_color = [...style.background_stroke_color];
-                    style.background_stroke_color[3] = background_stroke_alpha;
-                }
                 style.background_stroke_color = Utils.toCSSColor(style.background_stroke_color); // convert to CSS for Canvas
 
                 // default background stroke to 1px when stroke color but no stroke width specified

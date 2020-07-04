@@ -494,6 +494,18 @@ StyleParser.evalCachedColorProperty = function(val, context = {}) {
     }
 };
 
+// Evaluate color cache object and apply optional alpha override (alpha arg is a single value cache object)
+StyleParser.evalCachedColorPropertyWithAlpha = function (val, alpha_prop, context) {
+    const color = StyleParser.evalCachedColorProperty(val, context);
+    if (color != null && alpha_prop != null) {
+        const alpha = StyleParser.evalCachedProperty(alpha_prop, context);
+        if (alpha != null) {
+            return [color[0], color[1], color[2], alpha];
+        }
+    }
+    return color;
+};
+
 StyleParser.parseColor = function(val, context = {}) {
     if (typeof val === 'function') {
         val = tryEval(val, context);
