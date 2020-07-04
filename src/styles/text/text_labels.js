@@ -280,7 +280,7 @@ export const TextLabels = {
         draw.font.weight = StyleParser.createPropertyCache(draw.font.weight);
 
         // Colors
-        draw.font.fill = StyleParser.createPropertyCache(draw.font.fill);
+        draw.font.fill = StyleParser.createPropertyCache(draw.font.fill || TextSettings.defaults.fill);
         draw.font.alpha = StyleParser.createPropertyCache(draw.font.alpha);
         if (draw.font.stroke) {
             draw.font.stroke.color = StyleParser.createPropertyCache(draw.font.stroke.color);
