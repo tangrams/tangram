@@ -147,7 +147,7 @@ export default class TextCanvas {
         const ctx = this.context;
         const vertical_buffer = this.vertical_text_buffer * dpr;
         const horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
-        const background_size = background_color ? (this.background_size + background_stroke_width) * dpr : 0;
+        const background_size = (background_color || background_stroke_width) ? (this.background_size + background_stroke_width) * dpr : 0;
         const leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
         const line_height = this.px_size + leading; // px_size already in device pixels
 
@@ -188,20 +188,22 @@ export default class TextCanvas {
         const { dpr, collision_size, texture_size, line_height, horizontal_buffer, vertical_buffer } = size;
 
         // draw optional background box
-        // TODO: allow background stroke without fill?
-        if (text_settings.background_color) {
+        if (text_settings.background_color || text_settings.background_stroke_color) {
             const background_stroke_color = text_settings.background_stroke_color;
             const background_stroke_width = text_settings.background_stroke_width * dpr;
 
             this.context.save();
-            this.context.fillStyle = text_settings.background_color;
-            this.context.fillRect(
-                // shift to "foreground" stroke texture for curved labels (separate stroke and fill textures)
-                x + horizontal_buffer + (label_type === 'curved' ? texture_size[0] : 0) + background_stroke_width,
-                y + vertical_buffer + background_stroke_width,
-                dpr * collision_size[0] - background_stroke_width * 2,
-                dpr * collision_size[1] - background_stroke_width * 2
-            );
+
+            if (text_settings.background_color) {
+                this.context.fillStyle = text_settings.background_color;
+                this.context.fillRect(
+                    // shift to "foreground" stroke texture for curved labels (separate stroke and fill textures)
+                    x + horizontal_buffer + (label_type === 'curved' ? texture_size[0] : 0) + background_stroke_width,
+                    y + vertical_buffer + background_stroke_width,
+                    dpr * collision_size[0] - background_stroke_width * 2,
+                    dpr * collision_size[1] - background_stroke_width * 2
+                );
+            }
 
             // optional stroke around background box
             if (background_stroke_color && background_stroke_width) {
