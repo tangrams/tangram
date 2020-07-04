@@ -131,7 +131,7 @@ export default class TextCanvas {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize(style, text, { transform, text_wrap, max_lines, stroke_width = 0, background_color, background_stroke_width, supersample}) {
+    textSize(style, text, { transform, text_wrap, max_lines, stroke_width = 0, background_color, background_stroke_width = 0, supersample}) {
         // Check cache first
         TextCanvas.cache.text[style] = TextCanvas.cache.text[style] || {};
         if (TextCanvas.cache.text[style][text]) {
@@ -190,7 +190,7 @@ export default class TextCanvas {
         // draw optional background box
         if (text_settings.background_color || text_settings.background_stroke_color) {
             const background_stroke_color = text_settings.background_stroke_color;
-            const background_stroke_width = text_settings.background_stroke_width * dpr;
+            const background_stroke_width = (text_settings.background_stroke_width || 0) * dpr;
 
             this.context.save();
 
