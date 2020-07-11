@@ -15,6 +15,8 @@ const TextSettings = {
             settings.fill,
             settings.stroke,
             settings.stroke_width,
+            settings.underline_color,
+            settings.underline_width,
             settings.background_color,
             settings.background_stroke_color,
             settings.background_stroke_width,
@@ -55,6 +57,17 @@ const TextSettings = {
             style.stroke = StyleParser.evalCachedColorPropertyWithAlpha(draw.font.stroke.color, draw.font.stroke.alpha, context);
             style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
             style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context);
+        }
+
+        // Text underline
+        if (draw.font.underline && draw.font.underline.color && !style.can_articulate) {
+            style.underline_color = Utils.toCSSColor(
+                StyleParser.evalCachedColorPropertyWithAlpha(draw.font.underline.color, draw.font.underline.alpha, context));
+            if (style.underline_color) {
+                // default underline to 1px when color but no width specified
+                style.underline_width = draw.font.underline.width != null ?
+                    StyleParser.evalCachedProperty(draw.font.underline.width, context) : 1;
+            }
         }
 
         // Background box
