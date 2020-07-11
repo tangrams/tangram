@@ -18,6 +18,7 @@ const TextSettings = {
             settings.underline_color,
             settings.underline_width,
             settings.background_color,
+            settings.background_width,
             settings.background_stroke_color,
             settings.background_stroke_width,
             settings.transform,
@@ -75,6 +76,9 @@ const TextSettings = {
             // Background fill
             style.background_color = StyleParser.evalCachedColorPropertyWithAlpha(draw.font.background.color, draw.font.background.alpha, context);
             style.background_color = Utils.toCSSColor(style.background_color); // convert to CSS for Canvas
+            if (style.background_color) {
+                style.background_width = StyleParser.evalCachedProperty(draw.font.background.width, context);
+            }
 
             // Background stroke
             style.background_stroke_color =

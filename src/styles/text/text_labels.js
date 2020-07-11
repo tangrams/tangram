@@ -296,6 +296,7 @@ export const TextLabels = {
         if (draw.font.background) {
             draw.font.background.color = StyleParser.createPropertyCache(draw.font.background.color);
             draw.font.background.alpha = StyleParser.createPropertyCache(draw.font.background.alpha);
+            draw.font.background.width = StyleParser.createPropertyCache(draw.font.background.width, StyleParser.parsePositiveNumber);
             if (draw.font.background.stroke) {
                 draw.font.background.stroke.color = StyleParser.createPropertyCache(draw.font.background.stroke.color);
                 draw.font.background.stroke.alpha = StyleParser.createPropertyCache(draw.font.background.stroke.alpha);
