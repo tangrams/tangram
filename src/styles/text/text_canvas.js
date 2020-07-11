@@ -131,7 +131,7 @@ export default class TextCanvas {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize(style, text, { transform, text_wrap, max_lines, stroke_width = 0, background_color, background_stroke_width = 0, supersample}) {
+    textSize(style, text, { transform, text_wrap, max_lines, stroke_width = 0, background_color, background_stroke_width = 0, underline_width = 0, supersample }) {
         // Check cache first
         TextCanvas.cache.text[style] = TextCanvas.cache.text[style] || {};
         if (TextCanvas.cache.text[style][text]) {
@@ -146,9 +146,9 @@ export default class TextCanvas {
         const str = this.applyTextTransform(text, transform);
         const ctx = this.context;
         const vertical_buffer = this.vertical_text_buffer * dpr;
-        const horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
+        const horizontal_buffer = (stroke_width + this.horizontal_text_buffer) * dpr;
         const background_size = (background_color || background_stroke_width) ? (this.background_size + background_stroke_width) * dpr : 0;
-        const leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
+        const leading = (2 + underline_width + (underline_width ? (stroke_width + 1) : 0)) * dpr; // adjust for underline and text stroke
         const line_height = this.px_size + leading; // px_size already in device pixels
 
         // Parse string into series of lines if it exceeds the text wrapping value or contains line breaks
@@ -216,14 +216,17 @@ export default class TextCanvas {
                     dpr * collision_size[0] - background_stroke_width,
                     dpr * collision_size[1] - background_stroke_width
                 );
-
             }
 
             this.context.restore();
         }
 
         // draw text
-        let ty = y;
+        const underline_width = text_settings.underline_width || 0;
+        const stroke_width = text_settings.stroke_width || 0;
+        const voffset = underline_width ? // offset text position to account for underline and text stroke
+            ((underline_width + stroke_width + 1) * 0.5 * dpr) : 0;
+        let ty = y - voffset;
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
             this.drawTextLine(line, [x, ty], size, text_settings, label_type);
@@ -235,8 +238,9 @@ export default class TextCanvas {
 
     // Draw single line of text at specified location, adjusting for buffer and baseline
     drawTextLine(line, [x, y], size, text_settings, type) {
-        const { stroke, stroke_width, transform, align = 'center' } = text_settings;
-        const { horizontal_buffer, vertical_buffer, texture_size, background_size, line_height } = size;
+        const { stroke, stroke_width, underline_color, transform, align = 'center' } = text_settings;
+        const { horizontal_buffer, vertical_buffer, texture_size, background_size, line_height, dpr } = size;
+        const underline_width = (text_settings.underline_width || 0) * dpr;
         const text = this.applyTextTransform(line.text, transform);
 
         // Text alignment
@@ -253,11 +257,28 @@ export default class TextCanvas {
 
         // In the absence of better Canvas TextMetrics (not supported by browsers yet),
         // 0.75 buffer produces a better approximate vertical centering of text
-        const ty = y + vertical_buffer * 0.75 + line_height + background_size;
+        const ty = y + vertical_buffer * 0.75 + line_height + background_size - underline_width * 0.5;
 
         // Draw stroke and fill separately for curved text. Offset stroke in texture atlas by shift.
+        const shift = (stroke && stroke_width > 0 && type === 'curved') ? texture_size[0] : 0;
+
+        // optional text underline
+        if (underline_color && underline_width) {
+            this.context.save();
+            this.context.strokeStyle = underline_color;
+            this.context.lineWidth = underline_width;
+
+            // adjust the underline to account for the text stroke
+            const uy = ty + ((stroke_width * 0.5 + 2) * dpr) + this.context.lineWidth * 0.5;
+
+            this.context.beginPath();
+            this.context.moveTo(tx + shift, uy);
+            this.context.lineTo(tx + shift + line.width, uy);
+            this.context.stroke();
+            this.context.restore();
+        }
+
         if (stroke && stroke_width > 0) {
-            let shift = (type === 'curved') ? texture_size[0] : 0;
             this.context.strokeText(text, tx + shift, ty);
         }
         this.context.fillText(text, tx, ty);
