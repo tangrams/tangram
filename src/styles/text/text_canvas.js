@@ -131,7 +131,7 @@ export default class TextCanvas {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize(style, text, { transform, text_wrap, max_lines, stroke_width = 0, background_color, background_stroke_width = 0, underline_width = 0, supersample }) {
+    textSize(style, text, { transform, text_wrap, max_lines, stroke_width = 0, background_color, background_stroke_width = 0, background_width, underline_width = 0, supersample }) {
         // Check cache first
         TextCanvas.cache.text[style] = TextCanvas.cache.text[style] || {};
         if (TextCanvas.cache.text[style][text]) {
@@ -147,7 +147,10 @@ export default class TextCanvas {
         const ctx = this.context;
         const vertical_buffer = this.vertical_text_buffer * dpr;
         const horizontal_buffer = (stroke_width + this.horizontal_text_buffer) * dpr;
-        const background_size = (background_color || background_stroke_width) ? (this.background_size + background_stroke_width) * dpr : 0;
+
+        background_width = background_width != null ? background_width : this.background_size; // apply default background width
+        const background_size = (background_color || background_stroke_width) ? (background_width + background_stroke_width) * dpr : 0;
+
         const leading = (2 + underline_width + (underline_width ? (stroke_width + 1) : 0)) * dpr; // adjust for underline and text stroke
         const line_height = this.px_size + leading; // px_size already in device pixels
 
