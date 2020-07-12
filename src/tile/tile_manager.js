@@ -203,17 +203,12 @@ export default class TileManager {
 
         let proxy = false;
         this.forEachTile(tile => {
-            if (this.view.zoom_direction === 1) {
-                if (tile.visible && !tile.labeled) {
-                    const parent = this.pyramid.getAncestor(tile);
-                    if (parent) {
-                        parent.setProxyFor(tile);
-                        proxy = true;
-                    }
-                }
-            }
-            else if (this.view.zoom_direction === -1) {
-                if (tile.visible && !tile.labeled) {
+            if (tile.visible && !tile.labeled) {
+                const parent = this.pyramid.getAncestor(tile);
+                if (parent) {
+                    parent.setProxyFor(tile);
+                    proxy = true;
+                } else {
                     const descendants = this.pyramid.getDescendants(tile);
                     for (let i=0; i < descendants.length; i++) {
                         descendants[i].setProxyFor(tile);
