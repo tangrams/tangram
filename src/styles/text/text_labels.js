@@ -288,11 +288,6 @@ export const TextLabels = {
             draw.font.stroke.alpha = StyleParser.createPropertyCache(draw.font.stroke.alpha);
         }
 
-        if (draw.font.underline) {
-            draw.font.underline.color = StyleParser.createPropertyCache(draw.font.underline.color);
-            draw.font.underline.alpha = StyleParser.createPropertyCache(draw.font.underline.alpha);
-        }
-
         if (draw.font.background) {
             draw.font.background.color = StyleParser.createPropertyCache(draw.font.background.color);
             draw.font.background.alpha = StyleParser.createPropertyCache(draw.font.background.alpha);
@@ -308,10 +303,6 @@ export const TextLabels = {
 
         if (draw.font.stroke && draw.font.stroke.width != null) {
             draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
-        }
-
-        if (draw.font.underline && draw.font.underline.width != null) {
-            draw.font.underline.width = StyleParser.createPropertyCache(draw.font.underline.width, StyleParser.parsePositiveNumber);
         }
 
         if (draw.font.background && draw.font.background.stroke && draw.font.background.stroke.width != null) {

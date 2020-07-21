@@ -15,7 +15,6 @@ const TextSettings = {
             settings.fill,
             settings.stroke,
             settings.stroke_width,
-            settings.underline_color,
             settings.underline_width,
             settings.background_color,
             settings.background_width,
@@ -46,6 +45,8 @@ const TextSettings = {
 
         draw.font = draw.font || this.defaults;
 
+        style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
+
         // LineString labels can articulate while point labels cannot. Needed for future texture coordinate calculations.
         style.can_articulate = draw.can_articulate;
 
@@ -61,14 +62,8 @@ const TextSettings = {
         }
 
         // Text underline
-        if (draw.font.underline && draw.font.underline.color && !style.can_articulate) {
-            style.underline_color = Utils.toCSSColor(
-                StyleParser.evalCachedColorPropertyWithAlpha(draw.font.underline.color, draw.font.underline.alpha, context));
-            if (style.underline_color) {
-                // default underline to 1px when color but no width specified
-                style.underline_width = draw.font.underline.width != null ?
-                    StyleParser.evalCachedProperty(draw.font.underline.width, context) : 1;
-            }
+        if (draw.font.underline === true && !style.can_articulate) {
+            style.underline_width = 1.5 * style.supersample;
         }
 
         // Background box
@@ -119,7 +114,6 @@ const TextSettings = {
         style.transform = draw.font.transform;
 
         // calculated pixel size
-        style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
         style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample;
 
         style.font_css = this.fontCSS(style);
