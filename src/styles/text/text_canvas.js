@@ -241,7 +241,7 @@ export default class TextCanvas {
 
     // Draw single line of text at specified location, adjusting for buffer and baseline
     drawTextLine(line, [x, y], size, text_settings, type) {
-        const { stroke, stroke_width, underline_color, transform, align = 'center' } = text_settings;
+        const { stroke, stroke_width, transform, align = 'center' } = text_settings;
         const { horizontal_buffer, vertical_buffer, texture_size, background_size, line_height, dpr } = size;
         const underline_width = (text_settings.underline_width || 0) * dpr;
         const text = this.applyTextTransform(line.text, transform);
@@ -266,9 +266,9 @@ export default class TextCanvas {
         const shift = (stroke && stroke_width > 0 && type === 'curved') ? texture_size[0] : 0;
 
         // optional text underline
-        if (underline_color && underline_width) {
+        if (underline_width) {
             this.context.save();
-            this.context.strokeStyle = underline_color;
+            this.context.strokeStyle = this.context.fillStyle;
             this.context.lineWidth = underline_width;
 
             // adjust the underline to account for the text stroke
