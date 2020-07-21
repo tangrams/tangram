@@ -98,7 +98,9 @@ const TextSettings = {
 
         // clamp weight to 1-1000 (see https://drafts.csswg.org/css-fonts-4/#valdef-font-weight-number)
         style.weight = StyleParser.evalCachedProperty(draw.font.weight, context) || this.defaults.weight;
-        style.weight = Math.min(Math.max(style.weight, 1), 1000);
+        if (typeof style.weight === 'number') {
+            style.weight = Math.min(Math.max(style.weight, 1), 1000);
+        }
 
         if (draw.font.family) {
             style.family = draw.font.family;
