@@ -103,6 +103,7 @@ sources:
         # zooms: [0, 2, 4, 6, 8, 10, 12, 14, 16] # only load tiles every 2 zooms (overrides max_zoom)
         url_params:
             api_key: global.api_key
+        attribution: Tiles by <a href="https://www.nextzen.org/" target="_blank">Nextzen</a>
         # request_headers: # send custom headers with tile requests
         #     Authorization: Bearer xxxxxxxxx
         # Data filtering demo with 'scripts' and 'transform' properties:
