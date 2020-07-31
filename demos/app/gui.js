@@ -8,7 +8,8 @@
             url: 'https://api.geocode.earth/v1',
             layers: 'coarse',
             expanded: true,
-            markers: false
+            markers: false,
+            attribution: 'Geocoding by <a href="https://geocode.earth/" target="_blank">geocode.earth</a>'
         }).addTo(window.map);
 
         // Add GUI on scene load
