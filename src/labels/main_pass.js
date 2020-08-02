@@ -24,9 +24,9 @@ export default async function mainThreadLabelCollisionPass (tiles, view_zoom, hi
     // Adaptive collision grid, using a heuristic based on the tile with the most labels
     const max_tile_label_count =
         Math.max(0, ...Object.values(tiles)
-            .flatMap(t => Object.values(t.meshes))
-            .map(m => m[0].labels && Object.keys(m[0].labels).length)
-            .filter(x => x)
+            .map(t => Object.values(t.meshes))
+            .flat()
+            .map(meshes => Math.max(0, ...meshes.map(mesh => mesh.labels ? Object.keys(mesh.labels).length : 0)))
         );
 
     const grid_divs = Math.floor(max_tile_label_count / Geo.tile_size); // heuristic of label density to tile size
