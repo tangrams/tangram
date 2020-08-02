@@ -67,7 +67,7 @@ function _extends() {
   return _extends.apply(this, arguments);
 }
 
-var version = "0.20.1";
+var version = "0.21.0";
 
 var version$1 = 'v' + version;
 
@@ -894,13 +894,15 @@ Utils.interpolate = function (x, points, transform) {
 };
 
 Utils.toCSSColor = function (color) {
-  if (color[3] === 1) {
-    // full opacity
-    return `rgb(${color.slice(0, 3).map(c => Math.round(c * 255)).join(', ')})`;
-  } // RGB is between [0, 255] opacity is between [0, 1]
+  if (color != null) {
+    if (color[3] === 1) {
+      // full opacity
+      return `rgb(${color.slice(0, 3).map(c => Math.round(c * 255)).join(', ')})`;
+    } // RGB is between [0, 255] opacity is between [0, 1]
 
 
-  return `rgba(${color.map((c, i) => i < 3 && Math.round(c * 255) || c).join(', ')})`;
+    return `rgba(${color.map((c, i) => i < 3 && Math.round(c * 255) || c).join(', ')})`;
+  }
 };
 
 let debugSettings;
@@ -3907,7 +3909,11 @@ StyleParser.createPointSizePropertyCache = function (obj, texture) {
 };
 
 StyleParser.evalCachedPointSizeProperty = function (val, sprite_info, texture_info, context) {
-  // no percentage-based calculation, one cache for all sprites
+  if (val == null) {
+    return;
+  } // no percentage-based calculation, one cache for all sprites
+
+
   if (!val.has_pct && !val.has_ratio) {
     return StyleParser.evalCachedProperty(val, context);
   }
@@ -4003,13 +4009,13 @@ StyleParser.evalCachedProperty = function (val, context) {
 
 StyleParser.convertUnits = function (val, context) {
   // pre-parsed units
-  if (val.val != null) {
+  if (val.value != null) {
     if (val.units === 'px') {
       // convert from pixels
-      return val.val * Geo$1.metersPerPixel(context.zoom);
+      return val.value * Geo$1.metersPerPixel(context.zoom);
     }
 
-    return val.val;
+    return val.value;
   } // un-parsed unit string
   else if (typeof val === 'string') {
       if (val.trim().slice(-2) === 'px') {
@@ -4033,12 +4039,12 @@ StyleParser.convertUnits = function (val, context) {
 }; // Pre-parse units from string values
 
 
-StyleParser.parseUnits = function (val) {
+StyleParser.parseUnits = function (value) {
   var obj = {
-    val: parseNumber(val)
+    value: parseNumber(value)
   };
 
-  if (obj.val !== 0 && typeof val === 'string' && val.trim().slice(-2) === 'px') {
+  if (obj.value !== 0 && typeof value === 'string' && value.trim().slice(-2) === 'px') {
     obj.units = 'px';
   }
 
@@ -4104,7 +4110,9 @@ StyleParser.evalCachedColorProperty = function (val, context) {
     context = {};
   }
 
-  if (val.dynamic) {
+  if (val == null) {
+    return;
+  } else if (val.dynamic) {
     let v = tryEval(val.dynamic, context);
 
     if (typeof v === 'string') {
@@ -4170,6 +4178,21 @@ StyleParser.evalCachedColorProperty = function (val, context) {
             return val.static;
           }
   }
+}; // Evaluate color cache object and apply optional alpha override (alpha arg is a single value cache object)
+
+
+StyleParser.evalCachedColorPropertyWithAlpha = function (val, alpha_prop, context) {
+  const color = StyleParser.evalCachedColorProperty(val, context);
+
+  if (color != null && alpha_prop != null) {
+    const alpha = StyleParser.evalCachedProperty(alpha_prop, context);
+
+    if (alpha != null) {
+      return [color[0], color[1], color[2], alpha];
+    }
+  }
+
+  return color;
 };
 
 StyleParser.parseColor = function (val, context) {
@@ -6860,10 +6883,8 @@ var Style = {
         style.selection_color = FeatureSelection.makeColor(feature, context.tile, context);
       } else {
         style.selection_color = FeatureSelection.defaultColor;
-      } // Subclass implementation
+      }
 
-
-      style = this._parseFeature(feature, draw, context);
       return style;
     } catch (error) {
       log('error', 'Style.parseFeature: style parsing error', feature, style, error.stack);
@@ -7787,6 +7808,7 @@ function isCoordOutsideTile(coord, tolerance) {
 }
 
 var earcut_1 = earcut;
+var default_1 = earcut;
 
 function earcut(data, holeIndices, dim) {
 
@@ -7797,9 +7819,9 @@ function earcut(data, holeIndices, dim) {
         outerNode = linkedList(data, 0, outerLen, dim, true),
         triangles = [];
 
-    if (!outerNode) return triangles;
+    if (!outerNode || outerNode.next === outerNode.prev) return triangles;
 
-    var minX, minY, maxX, maxY, x, y, size;
+    var minX, minY, maxX, maxY, x, y, invSize;
 
     if (hasHoles) outerNode = eliminateHoles(data, holeIndices, outerNode, dim);
 
@@ -7817,11 +7839,12 @@ function earcut(data, holeIndices, dim) {
             if (y > maxY) maxY = y;
         }
 
-        // minX, minY and size are later used to transform coords into integers for z-order calculation
-        size = Math.max(maxX - minX, maxY - minY);
+        // minX, minY and invSize are later used to transform coords into integers for z-order calculation
+        invSize = Math.max(maxX - minX, maxY - minY);
+        invSize = invSize !== 0 ? 1 / invSize : 0;
     }
 
-    earcutLinked(outerNode, triangles, dim, minX, minY, size);
+    earcutLinked(outerNode, triangles, dim, minX, minY, invSize);
 
     return triangles;
 }
@@ -7857,7 +7880,7 @@ function filterPoints(start, end) {
         if (!p.steiner && (equals(p, p.next) || area(p.prev, p, p.next) === 0)) {
             removeNode(p);
             p = end = p.prev;
-            if (p === p.next) return null;
+            if (p === p.next) break;
             again = true;
 
         } else {
@@ -7869,11 +7892,11 @@ function filterPoints(start, end) {
 }
 
 // main ear slicing loop which triangulates a polygon (given as a linked list)
-function earcutLinked(ear, triangles, dim, minX, minY, size, pass) {
+function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
     if (!ear) return;
 
     // interlink polygon nodes in z-order
-    if (!pass && size) indexCurve(ear, minX, minY, size);
+    if (!pass && invSize) indexCurve(ear, minX, minY, invSize);
 
     var stop = ear,
         prev, next;
@@ -7883,7 +7906,7 @@ function earcutLinked(ear, triangles, dim, minX, minY, size, pass) {
         prev = ear.prev;
         next = ear.next;
 
-        if (size ? isEarHashed(ear, minX, minY, size) : isEar(ear)) {
+        if (invSize ? isEarHashed(ear, minX, minY, invSize) : isEar(ear)) {
             // cut off the triangle
             triangles.push(prev.i / dim);
             triangles.push(ear.i / dim);
@@ -7891,7 +7914,7 @@ function earcutLinked(ear, triangles, dim, minX, minY, size, pass) {
 
             removeNode(ear);
 
-            // skipping the next vertice leads to less sliver triangles
+            // skipping the next vertex leads to less sliver triangles
             ear = next.next;
             stop = next.next;
 
@@ -7904,16 +7927,16 @@ function earcutLinked(ear, triangles, dim, minX, minY, size, pass) {
         if (ear === stop) {
             // try filtering points and slicing again
             if (!pass) {
-                earcutLinked(filterPoints(ear), triangles, dim, minX, minY, size, 1);
+                earcutLinked(filterPoints(ear), triangles, dim, minX, minY, invSize, 1);
 
             // if this didn't work, try curing all small self-intersections locally
             } else if (pass === 1) {
-                ear = cureLocalIntersections(ear, triangles, dim);
-                earcutLinked(ear, triangles, dim, minX, minY, size, 2);
+                ear = cureLocalIntersections(filterPoints(ear), triangles, dim);
+                earcutLinked(ear, triangles, dim, minX, minY, invSize, 2);
 
             // as a last resort, try splitting the remaining polygon into two
             } else if (pass === 2) {
-                splitEarcut(ear, triangles, dim, minX, minY, size);
+                splitEarcut(ear, triangles, dim, minX, minY, invSize);
             }
 
             break;
@@ -7941,7 +7964,7 @@ function isEar(ear) {
     return true;
 }
 
-function isEarHashed(ear, minX, minY, size) {
+function isEarHashed(ear, minX, minY, invSize) {
     var a = ear.prev,
         b = ear,
         c = ear.next;
@@ -7955,27 +7978,39 @@ function isEarHashed(ear, minX, minY, size) {
         maxTY = a.y > b.y ? (a.y > c.y ? a.y : c.y) : (b.y > c.y ? b.y : c.y);
 
     // z-order range for the current triangle bbox;
-    var minZ = zOrder(minTX, minTY, minX, minY, size),
-        maxZ = zOrder(maxTX, maxTY, minX, minY, size);
+    var minZ = zOrder(minTX, minTY, minX, minY, invSize),
+        maxZ = zOrder(maxTX, maxTY, minX, minY, invSize);
 
-    // first look for points inside the triangle in increasing z-order
-    var p = ear.nextZ;
+    var p = ear.prevZ,
+        n = ear.nextZ;
 
-    while (p && p.z <= maxZ) {
+    // look for points inside the triangle in both directions
+    while (p && p.z >= minZ && n && n.z <= maxZ) {
         if (p !== ear.prev && p !== ear.next &&
             pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
             area(p.prev, p, p.next) >= 0) return false;
-        p = p.nextZ;
+        p = p.prevZ;
+
+        if (n !== ear.prev && n !== ear.next &&
+            pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) &&
+            area(n.prev, n, n.next) >= 0) return false;
+        n = n.nextZ;
     }
 
-    // then look for points in decreasing z-order
-    p = ear.prevZ;
-
+    // look for remaining points in decreasing z-order
     while (p && p.z >= minZ) {
         if (p !== ear.prev && p !== ear.next &&
             pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
             area(p.prev, p, p.next) >= 0) return false;
         p = p.prevZ;
+    }
+
+    // look for remaining points in increasing z-order
+    while (n && n.z <= maxZ) {
+        if (n !== ear.prev && n !== ear.next &&
+            pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) &&
+            area(n.prev, n, n.next) >= 0) return false;
+        n = n.nextZ;
     }
 
     return true;
@@ -8003,11 +8038,11 @@ function cureLocalIntersections(start, triangles, dim) {
         p = p.next;
     } while (p !== start);
 
-    return p;
+    return filterPoints(p);
 }
 
 // try splitting polygon into two and triangulate them independently
-function splitEarcut(start, triangles, dim, minX, minY, size) {
+function splitEarcut(start, triangles, dim, minX, minY, invSize) {
     // look for a valid diagonal that divides the polygon into two
     var a = start;
     do {
@@ -8022,8 +8057,8 @@ function splitEarcut(start, triangles, dim, minX, minY, size) {
                 c = filterPoints(c, c.next);
 
                 // run earcut on each half
-                earcutLinked(a, triangles, dim, minX, minY, size);
-                earcutLinked(c, triangles, dim, minX, minY, size);
+                earcutLinked(a, triangles, dim, minX, minY, invSize);
+                earcutLinked(c, triangles, dim, minX, minY, invSize);
                 return;
             }
             b = b.next;
@@ -8065,6 +8100,9 @@ function eliminateHole(hole, outerNode) {
     outerNode = findHoleBridge(hole, outerNode);
     if (outerNode) {
         var b = splitPolygon(outerNode, hole);
+
+        // filter collinear points around the cuts
+        filterPoints(outerNode, outerNode.next);
         filterPoints(b, b.next);
     }
 }
@@ -8080,7 +8118,7 @@ function findHoleBridge(hole, outerNode) {
     // find a segment intersected by a ray from the hole's leftmost point to the left;
     // segment's endpoint with lesser x will be potential connection point
     do {
-        if (hy <= p.y && hy >= p.next.y) {
+        if (hy <= p.y && hy >= p.next.y && p.next.y !== p.y) {
             var x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
             if (x <= hx && x > qx) {
                 qx = x;
@@ -8096,7 +8134,7 @@ function findHoleBridge(hole, outerNode) {
 
     if (!m) return null;
 
-    if (hx === qx) return m.prev; // hole touches outer segment; pick lower endpoint
+    if (hx === qx) return m; // hole touches outer segment; pick leftmost endpoint
 
     // look for points inside the triangle of hole point, segment intersection and endpoint;
     // if there are no points found, we have a valid connection;
@@ -8108,31 +8146,37 @@ function findHoleBridge(hole, outerNode) {
         tanMin = Infinity,
         tan;
 
-    p = m.next;
+    p = m;
 
-    while (p !== stop) {
-        if (hx >= p.x && p.x >= mx &&
+    do {
+        if (hx >= p.x && p.x >= mx && hx !== p.x &&
                 pointInTriangle(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
 
             tan = Math.abs(hy - p.y) / (hx - p.x); // tangential
 
-            if ((tan < tanMin || (tan === tanMin && p.x > m.x)) && locallyInside(p, hole)) {
+            if (locallyInside(p, hole) &&
+                (tan < tanMin || (tan === tanMin && (p.x > m.x || (p.x === m.x && sectorContainsSector(m, p)))))) {
                 m = p;
                 tanMin = tan;
             }
         }
 
         p = p.next;
-    }
+    } while (p !== stop);
 
     return m;
 }
 
+// whether sector in vertex m contains sector in vertex p in the same coordinates
+function sectorContainsSector(m, p) {
+    return area(m.prev, m, p.prev) < 0 && area(p.next, m, m.next) < 0;
+}
+
 // interlink polygon nodes in z-order
-function indexCurve(start, minX, minY, size) {
+function indexCurve(start, minX, minY, invSize) {
     var p = start;
     do {
-        if (p.z === null) p.z = zOrder(p.x, p.y, minX, minY, size);
+        if (p.z === null) p.z = zOrder(p.x, p.y, minX, minY, invSize);
         p.prevZ = p.prev;
         p.nextZ = p.next;
         p = p.next;
@@ -8165,20 +8209,11 @@ function sortLinked(list) {
                 q = q.nextZ;
                 if (!q) break;
             }
-
             qSize = inSize;
 
             while (pSize > 0 || (qSize > 0 && q)) {
 
-                if (pSize === 0) {
-                    e = q;
-                    q = q.nextZ;
-                    qSize--;
-                } else if (qSize === 0 || !q) {
-                    e = p;
-                    p = p.nextZ;
-                    pSize--;
-                } else if (p.z <= q.z) {
+                if (pSize !== 0 && (qSize === 0 || !q || p.z <= q.z)) {
                     e = p;
                     p = p.nextZ;
                     pSize--;
@@ -8206,11 +8241,11 @@ function sortLinked(list) {
     return list;
 }
 
-// z-order of a point given coords and size of the data bounding box
-function zOrder(x, y, minX, minY, size) {
+// z-order of a point given coords and inverse of the longer side of data bbox
+function zOrder(x, y, minX, minY, invSize) {
     // coords are transformed into non-negative 15-bit integer range
-    x = 32767 * (x - minX) / size;
-    y = 32767 * (y - minY) / size;
+    x = 32767 * (x - minX) * invSize;
+    y = 32767 * (y - minY) * invSize;
 
     x = (x | (x << 8)) & 0x00FF00FF;
     x = (x | (x << 4)) & 0x0F0F0F0F;
@@ -8230,7 +8265,7 @@ function getLeftmost(start) {
     var p = start,
         leftmost = start;
     do {
-        if (p.x < leftmost.x) leftmost = p;
+        if (p.x < leftmost.x || (p.x === leftmost.x && p.y < leftmost.y)) leftmost = p;
         p = p.next;
     } while (p !== start);
 
@@ -8246,8 +8281,10 @@ function pointInTriangle(ax, ay, bx, by, cx, cy, px, py) {
 
 // check if a diagonal between two polygon nodes is valid (lies in polygon interior)
 function isValidDiagonal(a, b) {
-    return a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon(a, b) &&
-           locallyInside(a, b) && locallyInside(b, a) && middleInside(a, b);
+    return a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon(a, b) && // dones't intersect other edges
+           (locallyInside(a, b) && locallyInside(b, a) && middleInside(a, b) && // locally visible
+            (area(a.prev, a, b.prev) || area(a, b.prev, b)) || // does not create opposite-facing sectors
+            equals(a, b) && area(a.prev, a, a.next) > 0 && area(b.prev, b, b.next) > 0); // special zero-length case
 }
 
 // signed area of a triangle
@@ -8262,10 +8299,28 @@ function equals(p1, p2) {
 
 // check if two segments intersect
 function intersects(p1, q1, p2, q2) {
-    if ((equals(p1, q1) && equals(p2, q2)) ||
-        (equals(p1, q2) && equals(p2, q1))) return true;
-    return area(p1, q1, p2) > 0 !== area(p1, q1, q2) > 0 &&
-           area(p2, q2, p1) > 0 !== area(p2, q2, q1) > 0;
+    var o1 = sign(area(p1, q1, p2));
+    var o2 = sign(area(p1, q1, q2));
+    var o3 = sign(area(p2, q2, p1));
+    var o4 = sign(area(p2, q2, q1));
+
+    if (o1 !== o2 && o3 !== o4) return true; // general case
+
+    if (o1 === 0 && onSegment(p1, p2, q1)) return true; // p1, q1 and p2 are collinear and p2 lies on p1q1
+    if (o2 === 0 && onSegment(p1, q2, q1)) return true; // p1, q1 and q2 are collinear and q2 lies on p1q1
+    if (o3 === 0 && onSegment(p2, p1, q2)) return true; // p2, q2 and p1 are collinear and p1 lies on p2q2
+    if (o4 === 0 && onSegment(p2, q1, q2)) return true; // p2, q2 and q1 are collinear and q1 lies on p2q2
+
+    return false;
+}
+
+// for collinear points p, q, r, check if point q lies on segment pr
+function onSegment(p, q, r) {
+    return q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) && q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y);
+}
+
+function sign(num) {
+    return num > 0 ? 1 : num < 0 ? -1 : 0;
 }
 
 // check if a polygon diagonal intersects any polygon segments
@@ -8294,7 +8349,8 @@ function middleInside(a, b) {
         px = (a.x + b.x) / 2,
         py = (a.y + b.y) / 2;
     do {
-        if (((p.y > py) !== (p.next.y > py)) && (px < (p.next.x - p.x) * (py - p.y) / (p.next.y - p.y) + p.x))
+        if (((p.y > py) !== (p.next.y > py)) && p.next.y !== p.y &&
+                (px < (p.next.x - p.x) * (py - p.y) / (p.next.y - p.y) + p.x))
             inside = !inside;
         p = p.next;
     } while (p !== a);
@@ -8351,14 +8407,14 @@ function removeNode(p) {
 }
 
 function Node(i, x, y) {
-    // vertice index in coordinates array
+    // vertex index in coordinates array
     this.i = i;
 
     // vertex coordinates
     this.x = x;
     this.y = y;
 
-    // previous and next vertice nodes in a polygon ring
+    // previous and next vertex nodes in a polygon ring
     this.prev = null;
     this.next = null;
 
@@ -8428,6 +8484,7 @@ earcut.flatten = function (data) {
     }
     return result;
 };
+earcut_1.default = default_1;
 
 // Polygon builders
 const up_vec3 = [0, 0, 1];
@@ -9714,6 +9771,8 @@ Object.assign(Lines, {
         style.outline.join = draw.outline.join;
         style.outline.miter_limit = draw.outline.miter_limit;
         style.outline.texcoords = draw.outline.texcoords;
+        style.outline.extrude = draw.outline.extrude;
+        style.outline.z = draw.outline.z;
         style.outline.style = draw.outline.style;
         style.outline.variant = draw.outline.variant; // Explicitly defined outline order, or inherited from inner line
 
@@ -9777,9 +9836,11 @@ Object.assign(Lines, {
       draw.outline.interactive = draw.outline.interactive != null ? draw.outline.interactive : draw.interactive;
       draw.outline.cap = draw.outline.cap || draw.cap;
       draw.outline.join = draw.outline.join || draw.join;
-      draw.outline.miter_limit = draw.outline.miter_limit != null ? draw.outline.miter_limit : draw.miter_limit;
-      draw.outline.offset = draw.offset; // always apply inline offset to outline
-      // outline inhertits dash pattern, but NOT explicit texture
+      draw.outline.miter_limit = draw.outline.miter_limit != null ? draw.outline.miter_limit : draw.miter_limit; // always apply inline values for offset and extrusion/height to outline
+
+      draw.outline.offset = draw.offset;
+      draw.outline.extrude = draw.extrude;
+      draw.outline.z = draw.z; // outline inherits dash pattern, but NOT explicit texture
 
       let outline_style = this.styles[draw.outline.style];
 
@@ -11215,48 +11276,79 @@ function interpolateSegment(p, q, distance) {
 const TextSettings = {
   // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
   key(settings) {
-    return [settings.style, settings.weight, settings.family, settings.px_size, settings.fill, settings.stroke, settings.stroke_width, settings.transform, settings.text_wrap, settings.max_lines, settings.supersample, Utils.device_pixel_ratio].join('/');
+    return [settings.style, settings.weight, settings.family, settings.px_size, settings.fill, settings.stroke, settings.stroke_width, settings.underline_width, settings.background_color, settings.background_width, settings.background_stroke_color, settings.background_stroke_width, settings.transform, settings.text_wrap, settings.max_lines, settings.supersample, Utils.device_pixel_ratio].join('/');
   },
 
   defaults: {
     style: 'normal',
-    weight: null,
+    weight: 'normal',
     size: '12px',
     px_size: 12,
     family: 'Helvetica',
-    fill: 'white',
-    fill_array: [1, 1, 1, 1],
+    fill: [1, 1, 1, 1],
     text_wrap: 15,
     max_lines: 5,
     align: 'center'
   },
 
-  compute(feature, draw, context) {
-    let style = {};
-    draw.font = draw.font || this.defaults; // LineString labels can articulate while point labels cannot. Needed for future texture coordinate calculations.
+  compute(draw, context) {
+    const style = {};
+    draw.font = draw.font || this.defaults;
+    style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
+    // LineString labels can articulate while point labels cannot. Needed for future texture coordinate calculations.
 
-    style.can_articulate = draw.can_articulate; // Use fill if specified, or default
+    style.can_articulate = draw.can_articulate; // Text fill
 
-    style.fill = draw.font.fill && StyleParser.evalCachedColorProperty(draw.font.fill, context); // optional alpha override
+    style.fill = StyleParser.evalCachedColorPropertyWithAlpha(draw.font.fill, draw.font.alpha, context);
+    style.fill = Utils.toCSSColor(style.fill); // convert to CSS for Canvas
+    // Text stroke
 
-    const alpha = StyleParser.evalCachedProperty(draw.font.alpha, context);
+    if (draw.font.stroke && draw.font.stroke.color) {
+      style.stroke = StyleParser.evalCachedColorPropertyWithAlpha(draw.font.stroke.color, draw.font.stroke.alpha, context);
+      style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
 
-    if (alpha != null) {
-      style.fill = [...(style.fill ? style.fill : this.defaults.fill_array)]; // copy to avoid modifying underlying object
+      style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context);
+    } // Text underline
 
-      style.fill[3] = alpha;
-    }
 
-    style.fill = style.fill && Utils.toCSSColor(style.fill) || this.defaults.fill; // convert to CSS for Canvas
-    // Font properties are modeled after CSS names:
+    if (draw.font.underline === true && !style.can_articulate) {
+      style.underline_width = 1.5 * style.supersample;
+    } // Background box
+
+
+    if (draw.font.background && !style.can_articulate) {
+      // supported for point labels only
+      // Background fill
+      style.background_color = StyleParser.evalCachedColorPropertyWithAlpha(draw.font.background.color, draw.font.background.alpha, context);
+      style.background_color = Utils.toCSSColor(style.background_color); // convert to CSS for Canvas
+
+      if (style.background_color) {
+        style.background_width = StyleParser.evalCachedProperty(draw.font.background.width, context);
+      } // Background stroke
+
+
+      style.background_stroke_color = draw.font.background.stroke && draw.font.background.stroke.color && StyleParser.evalCachedColorPropertyWithAlpha(draw.font.background.stroke.color, draw.font.background.stroke.alpha, context);
+
+      if (style.background_stroke_color) {
+        style.background_stroke_color = Utils.toCSSColor(style.background_stroke_color); // convert to CSS for Canvas
+        // default background stroke to 1px when stroke color but no stroke width specified
+
+        style.background_stroke_width = draw.font.background.stroke.width != null ? StyleParser.evalCachedProperty(draw.font.background.stroke.width, context) : 1;
+      }
+    } // Font properties are modeled after CSS names:
     // - family: Helvetica, Futura, etc.
     // - size: in pt, px, or em
     // - style: normal, italic, oblique
     // - weight: normal, bold, etc.
     // - transform: capitalize, uppercase, lowercase
+    // clamp weight to 1-1000 (see https://drafts.csswg.org/css-fonts-4/#valdef-font-weight-number)
 
-    style.style = draw.font.style || this.defaults.style;
-    style.weight = draw.font.weight || this.defaults.weight;
+
+    style.weight = StyleParser.evalCachedProperty(draw.font.weight, context) || this.defaults.weight;
+
+    if (typeof style.weight === 'number') {
+      style.weight = Math.min(Math.max(style.weight, 1), 1000);
+    }
 
     if (draw.font.family) {
       style.family = draw.font.family;
@@ -11268,37 +11360,16 @@ const TextSettings = {
       style.family = this.defaults.family;
     }
 
+    style.style = draw.font.style || this.defaults.style;
     style.transform = draw.font.transform; // calculated pixel size
 
-    style.supersample = draw.supersample_text ? 1.5 : 1; // optionally render text at 150% to improve clarity
-
-    style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample; // Use stroke if specified
-
-    if (draw.font.stroke && draw.font.stroke.color) {
-      style.stroke = StyleParser.evalCachedColorProperty(draw.font.stroke.color, context);
-
-      if (style.stroke) {
-        // optional alpha override
-        const stroke_alpha = StyleParser.evalCachedProperty(draw.font.stroke.alpha, context);
-
-        if (stroke_alpha != null) {
-          style.stroke = [...style.stroke]; // copy to avoid modifying underlying object
-
-          style.stroke[3] = stroke_alpha;
-        }
-
-        style.stroke = Utils.toCSSColor(style.stroke); // convert to CSS for Canvas
-      }
-
-      style.stroke_width = StyleParser.evalCachedProperty(draw.font.stroke.width, context);
-    }
-
+    style.px_size = StyleParser.evalCachedProperty(draw.font.px_size, context) * style.supersample;
     style.font_css = this.fontCSS(style); // Word wrap and text alignment
     // Not a font properties, but affect atlas of unique text textures
 
     let text_wrap = draw.text_wrap; // use explicitly set value
 
-    if (text_wrap == null && Geo$1.geometryType(feature.geometry.type) !== 'line') {
+    if (text_wrap == null && !style.can_articulate) {
       // point labels (for point and polygon features) have word wrap on w/default max length,
       // line labels default off
       text_wrap = true;
@@ -11395,13 +11466,19 @@ const FontManager = {
 
 
     try {
+      // FontFaceObserver does not directly support variable fonts syntax, which allows for ranges,
+      // e.g. `font-weight: 100 800`. FontFaceObserver will insert the entire string value into a
+      // CSS `font` shorthand property, causing an error. To get around this, we simply take the first
+      // value, because as soon as one variant of the variable font is available, they all should be.
+      // See https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Fonts/Variable_Fonts_Guide
+      options.weight = typeof options.weight === 'string' ? options.weight.split(' ')[0] : options.weight;
       const observer = new fontfaceobserver_standalone(family, options);
       await observer.load(); // Promise resolves, font is available
 
       log('debug', `Font face '${family}' is available`, options);
     } catch (e) {
       // Promise rejects, font is not available
-      log('debug', `Font face '${family}' is NOT available`, options);
+      log('warn', `Font face '${family}' is NOT available`, options, e);
     }
   },
 
@@ -11793,6 +11870,8 @@ class TextCanvas {
     this.vertical_text_buffer = 8; // vertical pixel padding around text
 
     this.horizontal_text_buffer = 4; // text styling such as italic emphasis is not measured by the Canvas API, so padding is necessary
+
+    this.background_size = 4; // padding around label for optional background box (TODO: make configurable?)
   }
 
   createCanvas() {
@@ -11926,6 +12005,12 @@ class TextCanvas {
         max_lines = _ref2.max_lines,
         _ref2$stroke_width = _ref2.stroke_width,
         stroke_width = _ref2$stroke_width === void 0 ? 0 : _ref2$stroke_width,
+        background_color = _ref2.background_color,
+        _ref2$background_stro = _ref2.background_stroke_width,
+        background_stroke_width = _ref2$background_stro === void 0 ? 0 : _ref2$background_stro,
+        background_width = _ref2.background_width,
+        _ref2$underline_width = _ref2.underline_width,
+        underline_width = _ref2$underline_width === void 0 ? 0 : _ref2$underline_width,
         supersample = _ref2.supersample;
     // Check cache first
     TextCanvas.cache.text[style] = TextCanvas.cache.text[style] || {};
@@ -11938,21 +12023,27 @@ class TextCanvas {
     TextCanvas.cache.stats.text_misses++;
     TextCanvas.cache.text_count++; // Calc and store in cache
 
-    let dpr = Utils.device_pixel_ratio * supersample;
-    let str = this.applyTextTransform(text, transform);
-    let ctx = this.context;
-    let vertical_buffer = this.vertical_text_buffer * dpr;
-    let horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
-    let leading = 2 * dpr; // make configurable and/or use Canvas TextMetrics when available
+    const dpr = Utils.device_pixel_ratio * supersample;
+    const str = this.applyTextTransform(text, transform);
+    const ctx = this.context;
+    const vertical_buffer = this.vertical_text_buffer * dpr;
+    const horizontal_buffer = (stroke_width + this.horizontal_text_buffer) * dpr;
+    background_width = background_width != null ? background_width : this.background_size; // apply default background width
 
-    let line_height = this.px_size + leading; // px_size already in device pixels
+    const background_size = background_color || background_stroke_width ? (background_width + background_stroke_width) * dpr : 0;
+    const leading = (2 + underline_width + (underline_width ? stroke_width + 1 : 0)) * dpr; // adjust for underline and text stroke
+
+    const line_height = this.px_size + leading; // px_size already in device pixels
     // Parse string into series of lines if it exceeds the text wrapping value or contains line breaks
+    // const multiline = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx);
 
-    let multiline = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx); // Final dimensions of text
+    let _MultiLine$parse = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx),
+        width = _MultiLine$parse.width,
+        height = _MultiLine$parse.height,
+        lines = _MultiLine$parse.lines;
 
-    let height = multiline.height;
-    let width = multiline.width;
-    let lines = multiline.lines;
+    width += background_size * 2;
+    height += background_size * 2;
     let collision_size = [width / dpr, height / dpr];
     let texture_size = [width + 2 * horizontal_buffer, height + 2 * vertical_buffer];
     let logical_size = [texture_size[0] / dpr, texture_size[1] / dpr]; // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
@@ -11963,51 +12054,138 @@ class TextCanvas {
         collision_size,
         texture_size,
         logical_size,
-        line_height
+        horizontal_buffer,
+        vertical_buffer,
+        dpr,
+        line_height,
+        background_size
       }
     };
     return TextCanvas.cache.text[style][text];
   } // Draw multiple lines of text
 
 
-  drawTextMultiLine(lines, _ref3, size, _ref4, type) {
+  drawTextMultiLine(lines, _ref3, size, text_settings, label_type) {
     let x = _ref3[0],
         y = _ref3[1];
-    let stroke = _ref4.stroke,
-        _ref4$stroke_width = _ref4.stroke_width,
-        stroke_width = _ref4$stroke_width === void 0 ? 0 : _ref4$stroke_width,
-        transform = _ref4.transform,
-        align = _ref4.align,
-        supersample = _ref4.supersample;
-    let line_height = size.line_height;
-    let height = y;
+    const dpr = size.dpr,
+          collision_size = size.collision_size,
+          texture_size = size.texture_size,
+          line_height = size.line_height,
+          horizontal_buffer = size.horizontal_buffer,
+          vertical_buffer = size.vertical_buffer; // draw optional background box
+
+    if (text_settings.background_color || text_settings.background_stroke_color) {
+      const background_stroke_color = text_settings.background_stroke_color;
+      const background_stroke_width = (text_settings.background_stroke_width || 0) * dpr;
+      this.context.save();
+
+      if (text_settings.background_color) {
+        this.context.fillStyle = text_settings.background_color;
+        this.context.fillRect( // shift to "foreground" stroke texture for curved labels (separate stroke and fill textures)
+        x + horizontal_buffer + (label_type === 'curved' ? texture_size[0] : 0) + background_stroke_width, y + vertical_buffer + background_stroke_width, dpr * collision_size[0] - background_stroke_width * 2, dpr * collision_size[1] - background_stroke_width * 2);
+      } // optional stroke around background box
+
+
+      if (background_stroke_color && background_stroke_width) {
+        this.context.strokeStyle = background_stroke_color;
+        this.context.lineWidth = background_stroke_width;
+        this.context.strokeRect( // shift to "foreground" stroke texture for curved labels (separate stroke and fill textures)
+        x + horizontal_buffer + (label_type === 'curved' ? texture_size[0] : 0) + background_stroke_width * 0.5, y + vertical_buffer + background_stroke_width * 0.5, dpr * collision_size[0] - background_stroke_width, dpr * collision_size[1] - background_stroke_width);
+      }
+
+      this.context.restore();
+    } // draw text
+
+
+    const underline_width = text_settings.underline_width || 0;
+    const stroke_width = text_settings.stroke_width || 0;
+    const voffset = underline_width ? // offset text position to account for underline and text stroke
+    (underline_width + stroke_width + 1) * 0.5 * dpr : 0;
+    let ty = y - voffset;
 
     for (let line_num = 0; line_num < lines.length; line_num++) {
       let line = lines[line_num];
-      this.drawTextLine(line, [x, height], size, {
-        stroke,
-        stroke_width,
-        transform,
-        align,
-        supersample
-      }, type);
-      height += line_height;
-    } // Draw bounding boxes for debugging
+      this.drawTextLine(line, [x, ty], size, text_settings, label_type);
+      ty += line_height;
+    }
 
+    this.drawTextDebug([x, y], size, label_type);
+  } // Draw single line of text at specified location, adjusting for buffer and baseline
+
+
+  drawTextLine(line, _ref4, size, text_settings, type) {
+    let x = _ref4[0],
+        y = _ref4[1];
+    const stroke = text_settings.stroke,
+          stroke_width = text_settings.stroke_width,
+          transform = text_settings.transform,
+          _text_settings$align = text_settings.align,
+          align = _text_settings$align === void 0 ? 'center' : _text_settings$align;
+    const horizontal_buffer = size.horizontal_buffer,
+          vertical_buffer = size.vertical_buffer,
+          texture_size = size.texture_size,
+          background_size = size.background_size,
+          line_height = size.line_height,
+          dpr = size.dpr;
+    const underline_width = (text_settings.underline_width || 0) * dpr;
+    const text = this.applyTextTransform(line.text, transform); // Text alignment
+
+    let tx;
+
+    if (align === 'left') {
+      tx = x + horizontal_buffer + background_size;
+    } else if (align === 'center') {
+      tx = x + texture_size[0] / 2 - line.width / 2;
+    } else if (align === 'right') {
+      tx = x + texture_size[0] - line.width - horizontal_buffer - background_size;
+    } // In the absence of better Canvas TextMetrics (not supported by browsers yet),
+    // 0.75 buffer produces a better approximate vertical centering of text
+
+
+    const ty = y + vertical_buffer * 0.75 + line_height + background_size - underline_width * 0.5; // Draw stroke and fill separately for curved text. Offset stroke in texture atlas by shift.
+
+    const shift = stroke && stroke_width > 0 && type === 'curved' ? texture_size[0] : 0; // optional text underline
+
+    if (underline_width) {
+      this.context.save();
+      this.context.strokeStyle = this.context.fillStyle;
+      this.context.lineWidth = underline_width; // adjust the underline to account for the text stroke
+
+      const uy = ty + (stroke_width * 0.5 + 2) * dpr + this.context.lineWidth * 0.5;
+      this.context.beginPath();
+      this.context.moveTo(tx + shift, uy);
+      this.context.lineTo(tx + shift + line.width, uy);
+      this.context.stroke();
+      this.context.restore();
+    }
+
+    if (stroke && stroke_width > 0) {
+      this.context.strokeText(text, tx + shift, ty);
+    }
+
+    this.context.fillText(text, tx, ty);
+  } // Draw optional text debug boxes
+
+
+  drawTextDebug(_ref5, size, label_type) {
+    let x = _ref5[0],
+        y = _ref5[1];
+    const dpr = size.dpr,
+          horizontal_buffer = size.horizontal_buffer,
+          vertical_buffer = size.vertical_buffer,
+          texture_size = size.texture_size,
+          collision_size = size.collision_size;
+    const line_width = 2;
 
     if (debugSettings$1.draw_label_collision_boxes) {
       this.context.save();
-      let dpr = Utils.device_pixel_ratio * supersample;
-      let horizontal_buffer = dpr * (this.horizontal_text_buffer + stroke_width);
-      let vertical_buffer = dpr * this.vertical_text_buffer;
-      let collision_size = size.collision_size;
-      let lineWidth = 2;
       this.context.strokeStyle = 'blue';
-      this.context.lineWidth = lineWidth;
+      this.context.lineWidth = line_width;
       this.context.strokeRect(x + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
 
-      if (type === 'curved') {
-        this.context.strokeRect(x + size.texture_size[0] + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
+      if (label_type === 'curved') {
+        this.context.strokeRect(x + texture_size[0] + horizontal_buffer, y + vertical_buffer, dpr * collision_size[0], dpr * collision_size[1]);
       }
 
       this.context.restore();
@@ -12015,59 +12193,17 @@ class TextCanvas {
 
     if (debugSettings$1.draw_label_texture_boxes) {
       this.context.save();
-      let texture_size = size.texture_size;
-      let lineWidth = 2;
       this.context.strokeStyle = 'green';
-      this.context.lineWidth = lineWidth; // stroke is applied internally, so the outer border is the edge of the texture
+      this.context.lineWidth = line_width; // stroke is applied internally, so the outer border is the edge of the texture
 
-      this.context.strokeRect(x + lineWidth, y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
+      this.context.strokeRect(x + line_width, y + line_width, texture_size[0] - 2 * line_width, texture_size[1] - 2 * line_width);
 
-      if (type === 'curved') {
-        this.context.strokeRect(x + lineWidth + size.texture_size[0], y + lineWidth, texture_size[0] - 2 * lineWidth, texture_size[1] - 2 * lineWidth);
+      if (label_type === 'curved') {
+        this.context.strokeRect(x + line_width + texture_size[0], y + line_width, texture_size[0] - 2 * line_width, texture_size[1] - 2 * line_width);
       }
 
       this.context.restore();
     }
-  } // Draw single line of text at specified location, adjusting for buffer and baseline
-
-
-  drawTextLine(line, _ref5, size, _ref6, type) {
-    let x = _ref5[0],
-        y = _ref5[1];
-    let stroke = _ref6.stroke,
-        _ref6$stroke_width = _ref6.stroke_width,
-        stroke_width = _ref6$stroke_width === void 0 ? 0 : _ref6$stroke_width,
-        transform = _ref6.transform,
-        align = _ref6.align,
-        supersample = _ref6.supersample;
-    let dpr = Utils.device_pixel_ratio * supersample;
-    align = align || 'center';
-    let vertical_buffer = this.vertical_text_buffer * dpr;
-    let texture_size = size.texture_size;
-    let line_height = size.line_height;
-    let horizontal_buffer = dpr * (stroke_width + this.horizontal_text_buffer);
-    let str = this.applyTextTransform(line.text, transform); // Text alignment
-
-    let tx;
-
-    if (align === 'left') {
-      tx = x + horizontal_buffer;
-    } else if (align === 'center') {
-      tx = x + texture_size[0] / 2 - line.width / 2;
-    } else if (align === 'right') {
-      tx = x + texture_size[0] - line.width - horizontal_buffer;
-    } // In the absence of better Canvas TextMetrics (not supported by browsers yet),
-    // 0.75 buffer produces a better approximate vertical centering of text
-
-
-    let ty = y + vertical_buffer * 0.75 + line_height; // Draw stroke and fill separately for curved text. Offset stroke in texture atlas by shift.
-
-    if (stroke && stroke_width > 0) {
-      let shift = type === 'curved' ? texture_size[0] : 0;
-      this.context.strokeText(str, tx + shift, ty);
-    }
-
-    this.context.fillText(str, tx, ty);
   }
 
   rasterize(texts, textures, tile_id, texture_prefix, gl) {
@@ -12212,19 +12348,16 @@ class TextCanvas {
           } else {
             let lines = this.textSize(style, text, text_settings).lines;
 
+            const aligned_text_settings = _extends({}, text_settings);
+
             for (let align in text_info.align) {
               // Only render for current texture
               if (text_info.align[align].texture_id !== cursor.texture_idx) {
                 continue;
               }
 
-              this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, {
-                stroke: text_settings.stroke,
-                stroke_width: text_settings.stroke_width,
-                transform: text_settings.transform,
-                supersample: text_settings.supersample,
-                align: align
-              });
+              aligned_text_settings.align = align;
+              this.drawTextMultiLine(lines, text_info.align[align].texture_position, text_info.size, aligned_text_settings);
               text_info.align[align].texcoords = Texture.getTexcoordsForSprite(text_info.align[align].texture_position, text_info.size.texture_size, texture.texture_size);
             }
           }
@@ -12417,9 +12550,9 @@ class TextCanvas {
 
     size = typeof size === 'string' ? size : String(size); // need a string for regex
 
-    let _ref7 = size.match(TextCanvas.font_size_re) || [],
-        px_size = _ref7[1],
-        units = _ref7[2];
+    let _ref6 = size.match(TextCanvas.font_size_re) || [],
+        px_size = _ref6[1],
+        units = _ref6[2];
 
     units = units || 'px';
 
@@ -12495,7 +12628,7 @@ const TextLabels = {
     } // Compute text style and layout settings for this feature label
 
 
-    let text_settings = TextSettings.compute(feature, draw, context);
+    let text_settings = TextSettings.compute(draw, context);
     let text_settings_key = TextSettings.key(text_settings); // first label in tile, or with this style?
 
     this.texts[tile.id] = this.texts[tile.id] || {};
@@ -12752,15 +12885,28 @@ const TextLabels = {
     // Font settings are required
     if (!draw || !draw.font || typeof draw.font !== 'object') {
       return;
-    } // Colors
+    } // Font weight
 
 
-    draw.font.fill = StyleParser.createPropertyCache(draw.font.fill);
+    draw.font.weight = StyleParser.createPropertyCache(draw.font.weight); // Colors
+
+    draw.font.fill = StyleParser.createPropertyCache(draw.font.fill || TextSettings.defaults.fill);
     draw.font.alpha = StyleParser.createPropertyCache(draw.font.alpha);
 
     if (draw.font.stroke) {
       draw.font.stroke.color = StyleParser.createPropertyCache(draw.font.stroke.color);
       draw.font.stroke.alpha = StyleParser.createPropertyCache(draw.font.stroke.alpha);
+    }
+
+    if (draw.font.background) {
+      draw.font.background.color = StyleParser.createPropertyCache(draw.font.background.color);
+      draw.font.background.alpha = StyleParser.createPropertyCache(draw.font.background.alpha);
+      draw.font.background.width = StyleParser.createPropertyCache(draw.font.background.width, StyleParser.parsePositiveNumber);
+
+      if (draw.font.background.stroke) {
+        draw.font.background.stroke.color = StyleParser.createPropertyCache(draw.font.background.stroke.color);
+        draw.font.background.stroke.alpha = StyleParser.createPropertyCache(draw.font.background.stroke.alpha);
+      }
     } // Convert font and text stroke sizes
 
 
@@ -12768,6 +12914,10 @@ const TextLabels = {
 
     if (draw.font.stroke && draw.font.stroke.width != null) {
       draw.font.stroke.width = StyleParser.createPropertyCache(draw.font.stroke.width, StyleParser.parsePositiveNumber);
+    }
+
+    if (draw.font.background && draw.font.background.stroke && draw.font.background.stroke.width != null) {
+      draw.font.background.stroke.width = StyleParser.createPropertyCache(draw.font.background.stroke.width, StyleParser.parsePositiveNumber);
     } // Offset (2d array)
 
 
@@ -19231,8 +19381,13 @@ class MVTSource extends NetworkTileSource {
         geometry.coordinates = coordinates;
 
         if (VectorTileFeature$1.types[feature.type] === 'Point') {
-          geometry.type = 'Point';
-          geometry.coordinates = geometry.coordinates[0][0];
+          if (coordinates.length === 1) {
+            geometry.type = 'Point';
+            geometry.coordinates = geometry.coordinates[0][0];
+          } else {
+            geometry.type = 'MultiPoint';
+            geometry.coordinates = geometry.coordinates[0];
+          }
         } else if (VectorTileFeature$1.types[feature.type] === 'LineString') {
           if (coordinates.length === 1) {
             geometry.type = 'LineString';
@@ -41660,7 +41815,7 @@ async function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
   });
   __chunk_1.Collision.addStyle('main', 'main'); // Adaptive collision grid, using a heuristic based on the tile with the most labels
 
-  const max_tile_label_count = Math.max(0, ...Object.values(tiles).flatMap(t => Object.values(t.meshes)).map(m => m[0].labels && Object.keys(m[0].labels).length).filter(x => x));
+  const max_tile_label_count = Math.max(0, ...Object.values(tiles).map(t => Object.values(t.meshes)).flat().map(meshes => Math.max(0, ...meshes.map(mesh => mesh.labels ? Object.keys(mesh.labels).length : 0))));
   const grid_divs = Math.floor(max_tile_label_count / __chunk_1.Geo.tile_size); // heuristic of label density to tile size
 
   if (grid_divs > 0) {
@@ -42054,17 +42209,13 @@ class TileManager {
     this.forEachTile(tile => tile.setProxyFor(null));
     let proxy = false;
     this.forEachTile(tile => {
-      if (this.view.zoom_direction === 1) {
-        if (tile.visible && !tile.labeled) {
-          const parent = this.pyramid.getAncestor(tile);
+      if (tile.visible && !tile.labeled) {
+        const parent = this.pyramid.getAncestor(tile);
 
-          if (parent) {
-            parent.setProxyFor(tile);
-            proxy = true;
-          }
-        }
-      } else if (this.view.zoom_direction === -1) {
-        if (tile.visible && !tile.labeled) {
+        if (parent) {
+          parent.setProxyFor(tile);
+          proxy = true;
+        } else {
           const descendants = this.pyramid.getDescendants(tile);
 
           for (let i = 0; i < descendants.length; i++) {
@@ -44463,6 +44614,16 @@ function extendLeaflet(options) {
           file_type: this.options.sceneFileType,
           blocking: false
         }).then(() => {
+          if (!this.options.attribution) {
+            for (const _ref of Object.entries(this.scene.config.sources)) {
+              const value = _ref[1];
+
+              if (value.attribution) {
+                map.attributionControl.addAttribution(value.attribution);
+              }
+            }
+          }
+
           this._updating_tangram = true;
           this.updateSize();
           this.updateView();
@@ -44825,8 +44986,8 @@ function extendLeaflet(options) {
       // Currently only one handler can be defined for each event type
       // Event types are: `click`, `hover` (leaflet `mousemove`)
       setSelectionEvents(events, _temp) {
-        let _ref = _temp === void 0 ? {} : _temp,
-            radius = _ref.radius;
+        let _ref2 = _temp === void 0 ? {} : _temp,
+            radius = _ref2.radius;
 
         this._selection_events = Object.assign(this._selection_events, events);
         this._selection_radius = radius !== undefined ? radius : this._selection_radius;
@@ -44934,7 +45095,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = 'f0e7cf665ee5bfbc46bfffb6b64474f2caee7de0';
+	Tangram.debug.SHA = '7baed5ea035938bc9de4116ff9a1ce039ddebb47';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
