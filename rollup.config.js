@@ -53,15 +53,16 @@ const config = [{
             include: ['**/*.glsl'] // inline shader files
         }),
 
+        babel({
+            exclude: 'node_modules/**'
+        }),
+
         // These are needed for jszip node-environment compatibility,
         // previously provided by browserify
         globals(),
         builtins(),
 
-        MINIFY ? terser() : false,
-        babel({
-          exclude: 'node_modules/**'
-        })
+        MINIFY ? terser() : false
     ]
 }, {
     // Second pass: combine the chunks from the first pass into a single bundle

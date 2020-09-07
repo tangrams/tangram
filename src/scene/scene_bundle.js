@@ -205,17 +205,11 @@ export function isGlobal (val) {
 }
 
 function parseResource (body) {
-    var data;
-    try {
-        // jsyaml 'json' option allows duplicate keys
-        // Keeping this for backwards compatibility, but should consider migrating to requiring
-        // unique keys, as this is YAML spec. But Tangram ES currently accepts dupe keys as well,
-        // so should consider how best to unify.
-        data = yaml.safeLoad(body, { json: true });
-    } catch (e) {
-        throw e;
-    }
-    return data;
+    // jsyaml 'json' option allows duplicate keys
+    // Keeping this for backwards compatibility, but should consider migrating to requiring
+    // unique keys, as this is YAML spec. But Tangram ES currently accepts dupe keys as well,
+    // so should consider how best to unify.
+    return yaml.safeLoad(body, { json: true });
 }
 
 function loadResource (source) {

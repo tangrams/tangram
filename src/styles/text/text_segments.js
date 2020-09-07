@@ -47,7 +47,7 @@ const accents_and_vowels = '[\u0300-\u036F' + // Combining Diacritical Marks
 const combo_characters = '[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0C4D\u0CCD\u0D4D\u0F84\u1039\u17D2\u1A60\u1A7F]';
 
 // Find the next grapheme cluster (non-Arabic)
-const grapheme_match = new RegExp('^.(?:' + accents_and_vowels + '+)?' + '(' + combo_characters + '\\W(?:' + accents_and_vowels + '+)?)*');
+const grapheme_match = new RegExp(`^.(?:${accents_and_vowels}+)?(${combo_characters}\\W(?:${accents_and_vowels}+)?)*`); // eslint-disable-line no-misleading-character-class
 
 // Scripts that cannot be curved due (due to contextual shaping and/or layout complexity)
 const curve_blacklist = {

@@ -1,4 +1,3 @@
-/* global FontFace */
 import log from '../../utils/log';
 import Utils from '../../utils/utils';
 import FontFaceObserver from 'fontfaceobserver';

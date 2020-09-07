@@ -166,10 +166,10 @@ export class StyleManager {
         style.raster = sources.map(x => x.raster).filter(x => x != null).pop();
         style.dash = sources.map(x => x.dash).filter(x => x != null).pop();
         style.dash_background_color = sources.map(x => x.dash_background_color).filter(x => x != null).pop();
-        if (sources.some(x => x.hasOwnProperty('blend') && x.blend)) {
+        if (sources.some(x => Object.prototype.hasOwnProperty.call(x, 'blend') && x.blend)) {
             // only mix blend if explicitly set, otherwise let base style choose blending mode
             // hasOwnProperty check gives preference to base style prototype
-            style.blend = sources.map(x => x.hasOwnProperty('blend') && x.blend).filter(x => x).pop();
+            style.blend = sources.map(x => Object.prototype.hasOwnProperty.call(x, 'blend') && x.blend).filter(x => x).pop();
         }
         style.blend_order = sources.map(x => x.blend_order).filter(x => x != null).pop();
 
