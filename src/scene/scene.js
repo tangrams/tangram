@@ -21,6 +21,7 @@ import DataSource from '../sources/data_source';
 import '../sources/sources';
 import FeatureSelection from '../selection/selection';
 import RenderStateManager from '../gl/render_state';
+import RenderTarget from '../gl/render_target';
 import TextCanvas from '../styles/text/text_canvas';
 import FontManager from '../styles/text/font_manager';
 import MediaCapture from '../utils/media_capture';
@@ -261,6 +262,7 @@ export default class Scene {
         }
 
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+        this.render_target = new RenderTarget(this.gl, { size: this.gl.canvas });
         VertexArrayObject.init(this.gl);
         this.render_states = new RenderStateManager(this.gl);
         this.media_capture.setCanvas(this.canvas, this.gl);
@@ -382,6 +384,7 @@ export default class Scene {
         this.view.setViewportSize(width, height);
         if (this.gl) {
             Context.resize(this.gl, width, height, Utils.device_pixel_ratio);
+            this.render_target.resize(this.gl.canvas);
         }
     }
 
@@ -477,7 +480,13 @@ export default class Scene {
         // Render main pass
         this.render_count_changed = false;
         if (main) {
+            this.render_target.bind();
             this.render_count = this.renderPass();
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            this.render_target.blit();
+
             this.last_main_render = this.frame;
 
             // Update feature selection map if necessary
