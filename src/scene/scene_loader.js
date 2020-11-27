@@ -3,8 +3,9 @@ import GLSL from '../gl/glsl';
 import * as URLs from '../utils/urls';
 import mergeObjects from '../utils/merge';
 import subscribeMixin from '../utils/subscribe';
-import {createSceneBundle, isGlobal} from './scene_bundle';
-import {isReserved} from '../styles/layer';
+import { flattenGlobalProperties, applyGlobalProperties } from './globals';
+import { createSceneBundle } from './scene_bundle';
+import { isReserved } from '../styles/layer';
 
 var SceneLoader;
 
@@ -278,73 +279,8 @@ export default SceneLoader = {
             return config; // no global properties to transform
         }
 
-        const globals = flattenProperties(config.global); // flatten nested globals for simpler string look-ups
-
-        // Find and apply new global properties (and re-apply old ones)
-        function applyGlobals (obj, target, key) {
-            let prop;
-
-            // Check for previously applied global substitution
-            if (target != null && typeof target === 'object' && target._global_prop && target._global_prop[key]) {
-                prop = target._global_prop[key];
-            }
-            // Check string for new global substitution
-            else if (typeof obj === 'string' && obj.slice(0, 7) === 'global.') {
-                prop = obj;
-            }
-
-            // Found global property to substitute
-            if (prop) {
-                // Mark property as global substitution
-                if (target._global_prop == null) {
-                    Object.defineProperty(target, '_global_prop', { value: {} });
-                }
-                target._global_prop[key] = prop;
-
-                // Get current global value
-                let val = globals[prop];
-                let stack;
-                while (typeof val === 'string' && val.slice(0, 7) === 'global.') {
-                    // handle globals that refer to other globals, detecting any cyclical references
-                    stack = stack || [prop];
-                    if (stack.indexOf(val) > -1) {
-                        log({ level: 'warn', once: true }, 'Global properties: cyclical reference detected', stack);
-                        val = null;
-                        break;
-                    }
-                    stack.push(val);
-                    val = globals[val];
-                }
-
-                // Create getter/setter
-                Object.defineProperty(target, key, {
-                    enumerable: true,
-                    get: function () {
-                        return val; // return substituted value
-                    },
-                    set: function (v) {
-                        // clear the global substitution and remove the getter/setter
-                        delete target._global_prop[key];
-                        delete target[key];
-                        target[key] = v; // save the new value
-                    }
-                });
-            }
-            // Loop through object keys or array indices
-            else if (Array.isArray(obj)) {
-                for (let p=0; p < obj.length; p++) {
-                    applyGlobals(obj[p], obj, p);
-                }
-            }
-            else if (typeof obj === 'object') {
-                for (let p in obj) {
-                    applyGlobals(obj[p], obj, p);
-                }
-            }
-            return obj;
-        }
-
-        return applyGlobals(config);
+        const globals = flattenGlobalProperties(config.global); // flatten nested globals for simpler string look-ups
+        return applyGlobalProperties(globals, config);
     },
 
     // Normalize some scene-wide settings that apply to the final, merged scene
@@ -383,21 +319,5 @@ export default SceneLoader = {
     }
 
 };
-
-// Flatten nested properties for simpler string look-ups
-function flattenProperties (obj, prefix = null, globals = {}) {
-    prefix = prefix ? (prefix + '.') : 'global.';
-
-    for (const p in obj) {
-        const key = prefix + p;
-        const val = obj[p];
-        globals[key] = val;
-
-        if (typeof val === 'object' && !Array.isArray(val)) {
-            flattenProperties(val, key, globals);
-        }
-    }
-    return globals;
-}
 
 subscribeMixin(SceneLoader);

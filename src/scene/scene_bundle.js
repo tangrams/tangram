@@ -1,5 +1,6 @@
 import Utils from '../utils/utils';
 import * as URLs from '../utils/urls';
+import { isGlobalReference } from './globals';
 
 import JSZip from 'jszip';
 import yaml from 'js-yaml';
@@ -52,7 +53,7 @@ export class SceneBundle {
     }
 
     urlFor(url) {
-        if (isGlobal(url)) {
+        if (isGlobalReference(url)) {
             return url;
         }
 
@@ -104,7 +105,7 @@ export class ZipSceneBundle extends SceneBundle {
     }
 
     urlFor(url) {
-        if (isGlobal(url)) {
+        if (isGlobalReference(url)) {
             return url;
         }
 
@@ -194,14 +195,6 @@ export function createSceneBundle(url, path, parent, type = null) {
         return new ZipSceneBundle(url, path, parent);
     }
     return new SceneBundle(url, path, parent);
-}
-
-// References a global property?
-export function isGlobal (val) {
-    if (val && val.slice(0, 7) === 'global.') {
-        return true;
-    }
-    return false;
 }
 
 function parseResource (body) {
