@@ -113,7 +113,7 @@ export default class Scene {
     // Options:
     //   `base_path`: base URL against which scene resources should be resolved (useful for Play) (default nulll)
     //   `blocking`: should rendering block on scene load completion (default true)
-    load(config_source = null, options = {}) {
+    load (config_source = null, options = {}) {
         if (this.initializing) {
             return this.initializing;
         }
@@ -140,8 +140,9 @@ export default class Scene {
         this.createCanvas();
         this.prev_textures = this.config && Object.keys(this.config.textures); // save textures from last scene
         this.initializing = this.loadScene(config_source, options)
-            .then(() => this.createWorkers())
-            .then(() => {
+            .then(async ({ texture_nodes }) => {
+                await this.createWorkers();
+
                 // Clean up resources from prior scene
                 this.destroyFeatureSelection();
                 WorkerBroker.postMessage(this.workers, 'self.clearFunctionStringCache');
@@ -150,11 +151,17 @@ export default class Scene {
                 // which need to be serialized, while one loaded only from a URL does not.
                 const serialize_funcs = ((typeof this.config_source === 'object') || this.hasSubscribersFor('load'));
 
-                const updating = this.updateConfig({ serialize_funcs, normalize: false, loading: true, fade_in: true });
+                const updating = this.updateConfig({
+                    texture_nodes,
+                    serialize_funcs,
+                    normalize: false,
+                    loading: true,
+                    fade_in: true });
+
                 if (options.blocking === true) {
-                    return updating;
+                    await updating;
                 }
-            }).then(() => {
+
                 this.freePreviousTextures();
                 this.updating--;
                 this.initializing = null;
@@ -980,7 +987,7 @@ export default class Scene {
        Load (or reload) the scene config
        @return {Promise}
     */
-    loadScene(config_source = null, { base_path, file_type } = {}) {
+    async loadScene(config_source = null, { base_path, file_type } = {}) {
         this.config_source = config_source || this.config_source;
 
         if (typeof this.config_source === 'string') {
@@ -994,11 +1001,13 @@ export default class Scene {
         // TODO: schedule for deprecation
         this.config_path = this.base_path;
 
-        return SceneLoader.loadScene(this.config_source, { path: this.base_path, type: file_type }).then(({config, bundle}) => {
-            this.config = config;
-            this.config_bundle = bundle;
-            return this.config;
-        });
+        const { config, bundle, texture_nodes } = await SceneLoader.loadScene(
+            this.config_source,
+            { path: this.base_path, type: file_type });
+
+        this.config = config;
+        this.config_bundle = bundle;
+        return { texture_nodes }; // pass along texture nodes for resolution after global property subtistution
     }
 
     // Add source to a scene, arguments `name` and `config` need to be provided:
@@ -1217,22 +1226,18 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ loading = false, rebuild = true, serialize_funcs, normalize = true, fade_in = false } = {}) {
+    updateConfig({ loading = false, rebuild = true, serialize_funcs, texture_nodes = {}, normalize = true, fade_in = false } = {}) {
         this.generation = ++Scene.generation;
         this.updating++;
 
+        // Apply globals, finalize textures and other resource paths if needed
         this.config = SceneLoader.applyGlobalProperties(this.config);
         if (normalize) {
-            // normalize whole scene
-            SceneLoader.normalize(this.config, this.config_bundle);
+            // normalize whole scene if requested - usually when user is making run-time updates to scene
+            SceneLoader.normalize(this.config, this.config_bundle, texture_nodes);
         }
-        else {
-            // special handling for shader uniforms that are globals
-            SceneLoader.hoistStyleShaderUniformTextures(this.config, this.config_bundle, { include_globals: true });
+        SceneLoader.hoistTextureNodes(this.config, this.config_bundle, texture_nodes);
 
-            // just normalize top-level textures - necessary for adding base path to globals
-            SceneLoader.normalizeTextures(this.config, this.config_bundle);
-        }
         this.trigger(loading ? 'load' : 'update', { config: this.config });
 
         this.style_manager.init();

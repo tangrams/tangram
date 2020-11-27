@@ -3,18 +3,18 @@ import GLSL from '../gl/glsl';
 import * as URLs from '../utils/urls';
 import mergeObjects from '../utils/merge';
 import subscribeMixin from '../utils/subscribe';
-import { flattenGlobalProperties, applyGlobalProperties } from './globals';
+import { getPropertyPath, setPropertyPath } from '../utils/props';
+import { flattenGlobalProperties, applyGlobalProperties, isGlobalSubstitution } from './globals';
 import { createSceneBundle } from './scene_bundle';
 import { isReserved } from '../styles/layer';
 
-var SceneLoader;
-
-export default SceneLoader = {
+const SceneLoader = {
 
     // Load scenes definitions from URL & proprocess
     async loadScene(url, { path, type } = {}) {
-        let errors = [];
-        const scene = await this.loadSceneRecursive({ url, path, type }, null, errors);
+        const errors = [];
+        const texture_nodes = {};
+        const scene = await this.loadSceneRecursive({ url, path, type }, null, texture_nodes, errors);
         const { config, bundle } = this.finalize(scene);
         if (!config) {
             // root scene failed to load, reject with first error
@@ -23,30 +23,29 @@ export default SceneLoader = {
         else if (errors.length > 0) {
             // scene loaded, but some imports had errors
             errors.forEach(error => {
-                let message = `Failed to import scene: ${error.url}`;
+                const message = `Failed to import scene: ${error.url}`;
                 log('error', message, error);
                 this.trigger('error', { type: 'scene_import', message, error, url: error.url });
             });
         }
-        return { config, bundle };
+        return { config, bundle, texture_nodes };
     },
 
     // Loads scene files from URL, recursively loading 'import' scenes
     // Optional *initial* path only (won't be passed to recursive 'import' calls)
     // Useful for loading resources in base scene file from a separate location
     // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
-    async loadSceneRecursive({ url, path, type }, parent, errors = []) {
+    async loadSceneRecursive({ url, path, type }, parent, texture_nodes = {}, errors = []) {
         if (!url) {
             return {};
         }
 
-        let bundle = createSceneBundle(url, path, parent, type);
+        const bundle = createSceneBundle(url, path, parent, type);
 
         try {
             let config = await bundle.load();
-            // debugger
             if (config.import == null) {
-                this.normalize(config, bundle);
+                this.normalize(config, bundle, texture_nodes);
                 return { config, bundle };
             }
 
@@ -56,7 +55,7 @@ export default SceneLoader = {
             }
 
             // Collect URLs of scenes to import
-            let imports = [];
+            const imports = [];
             config.import.forEach(url => {
                 // Convert scene objects to URLs
                 if (typeof url === 'object') {
@@ -67,14 +66,14 @@ export default SceneLoader = {
             delete config.import; // don't want to merge this property
 
             // load and normalize imports
-            const queue = imports.map(resource => this.loadSceneRecursive(resource, bundle, errors));
+            const queue = imports.map(resource => this.loadSceneRecursive(resource, bundle, texture_nodes, errors));
             const configs = (await Promise.all(queue))
-                .map(r => this.normalize(r.config, r.bundle))
+                .map(r => this.normalize(r.config, r.bundle, texture_nodes))
                 .map(r => r.config);
 
+            this.normalize(config, bundle, texture_nodes); // last normalize parent
             config = mergeObjects(...configs, config);
-            this.normalize(config, bundle); // last normalize parent, after merge
-            return { config, bundle };
+            return { config, bundle, texture_nodes };
         }
         catch (error) {
             // Collect scene load errors as we go
@@ -85,19 +84,19 @@ export default SceneLoader = {
     },
 
     // Normalize properties that should be adjust within each local scene file (usually by path)
-    normalize(config, bundle) {
+    normalize(config, bundle, texture_nodes = {}) {
         this.normalizeDataSources(config, bundle);
         this.normalizeFonts(config, bundle);
         this.normalizeTextures(config, bundle);
-        this.hoistTextures(config, bundle);
-        return { config, bundle };
+        this.collectTextures(config, bundle, texture_nodes);
+        return { config, bundle, texture_nodes };
     },
 
     // Expand paths for data source
     normalizeDataSources(config, bundle) {
         config.sources = config.sources || {};
 
-        for (let sn in config.sources) {
+        for (const sn in config.sources) {
             this.normalizeDataSource(config.sources[sn], bundle);
         }
 
@@ -120,7 +119,7 @@ export default SceneLoader = {
             }
 
             // resolve URLs for external scripts
-            for (let s in source.scripts) {
+            for (const s in source.scripts) {
                 source.scripts[s] = bundle.urlFor(source.scripts[s]);
             }
         }
@@ -132,14 +131,14 @@ export default SceneLoader = {
     normalizeFonts(config, bundle) {
         config.fonts = config.fonts || {};
 
-        for (let family in config.fonts) {
+        for (const family in config.fonts) {
             if (Array.isArray(config.fonts[family])) {
                 config.fonts[family].forEach(face => {
                     face.url = face.url && bundle.urlFor(face.url);
                 });
             }
             else {
-                let face = config.fonts[family];
+                const face = config.fonts[family];
                 face.url = face.url && bundle.urlFor(face.url);
             }
         }
@@ -155,8 +154,8 @@ export default SceneLoader = {
         // Only adds path for textures with relative URLs, so textures in imported scenes get the base
         // path of their immediate scene file
         if (config.textures) {
-            for (let tn in config.textures) {
-                let texture = config.textures[tn];
+            for (const tn in config.textures) {
+                const texture = config.textures[tn];
                 if (texture.url) {
                     texture.url = bundle.urlFor(texture.url);
                 }
@@ -170,62 +169,81 @@ export default SceneLoader = {
     // - in a style's `material` properties
     // - in a style's custom uniforms (`shaders.uniforms`)
     // - in a draw groups `texture` property
-    hoistTextures (config, bundle) {
-        // Resolve URLs for inline textures
+    collectTextures(config, bundle, texture_nodes) {
+        // Inline textures in styles
         if (config.styles) {
-            for (let sn in config.styles) {
-                let style = config.styles[sn];
+            for (const sn in config.styles) {
+                const style = config.styles[sn];
 
                 // Style `texture`
-                let tex = style.texture;
+                const tex = style.texture;
                 if (typeof tex === 'string' && !config.textures[tex]) {
-                    style.texture = this.hoistTexture(tex, config, bundle);
+                    const path = ['styles', sn, 'texture'];
+                    this.addTextureNode(path, bundle, texture_nodes);
                 }
 
                 // Material
                 if (style.material) {
                     ['emission', 'ambient', 'diffuse', 'specular', 'normal'].forEach(prop => {
                         // Material property has a texture
-                        let tex = style.material[prop] != null && style.material[prop].texture;
+                        const tex = style.material[prop] != null && style.material[prop].texture;
                         if (typeof tex === 'string' && !config.textures[tex]) {
-                            style.material[prop].texture = this.hoistTexture(tex, config, bundle);
+                            const path = ['styles', sn, 'material', prop, 'texture'];
+                            this.addTextureNode(path, bundle, texture_nodes);
                         }
                     });
                 }
             }
         }
 
-        // Special handling for shader uniforms, exclude globals because they are ambiguous:
-        // could later be resolved to a string value indicating a texture, but could also be a vector or other type
-        this.hoistStyleShaderUniformTextures(config, bundle, { include_globals: false });
+        // Inline textures in shader uniforms
+        if (config.styles) {
+            for (const sn in config.styles) {
+                const style = config.styles[sn];
 
-        // Resolve and hoist inline textures in draw blocks
+                if (style.shaders && style.shaders.uniforms) {
+                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({ type, value, key }) => {
+                        // Texture by URL (string-named texture not referencing existing texture definition)
+                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
+                            const path = ['styles', sn, 'shaders', 'uniforms', key];
+                            this.addTextureNode(path, bundle, texture_nodes);
+                        }
+                    });
+                }
+            }
+        }
+
+        // Inline textures in draw blocks
         if (config.layers) {
-            let stack = [config.layers];
+            const stack = [config.layers];
+            const path_stack = [['layers']];
             while (stack.length > 0) {
-                let layer = stack.pop();
+                const layer = stack.pop();
+                const layer_path = path_stack.pop();
 
                 // only recurse into objects
                 if (typeof layer !== 'object' || Array.isArray(layer)) {
                     continue;
                 }
 
-                for (let prop in layer) {
+                for (const prop in layer) {
                     if (prop === 'draw') { // process draw groups for current layer
-                        let draws = layer[prop];
-                        for (let group in draws) {
+                        const draws = layer[prop];
+                        for (const group in draws) {
                             if (draws[group].texture) {
-                                let tex = draws[group].texture;
+                                const tex = draws[group].texture;
                                 if (typeof tex === 'string' && !config.textures[tex]) {
-                                    draws[group].texture = this.hoistTexture(tex, config, bundle);
+                                    const path = [...layer_path, prop, 'draw', group, 'texture'];
+                                    this.addTextureNode(path, bundle, texture_nodes);
                                 }
                             }
 
                             // special handling for outlines :(
                             if (draws[group].outline && draws[group].outline.texture) {
-                                let tex = draws[group].outline.texture;
+                                const tex = draws[group].outline.texture;
                                 if (typeof tex === 'string' && !config.textures[tex]) {
-                                    draws[group].outline.texture = this.hoistTexture(tex, config, bundle);
+                                    const path = [...layer_path, prop, 'draw', group, 'outline', 'texture'];
+                                    this.addTextureNode(path, bundle, texture_nodes);
                                 }
                             }
                         }
@@ -236,39 +254,45 @@ export default SceneLoader = {
                     }
                     else {
                         stack.push(layer[prop]); // traverse sublayer
+                        path_stack.push([...layer_path, prop]);
                     }
                 }
             }
         }
     },
 
-    hoistStyleShaderUniformTextures (config, bundle, { include_globals }) {
-        // Resolve URLs for inline textures
-        if (config.styles) {
-            for (let sn in config.styles) {
-                let style = config.styles[sn];
+    addTextureNode (path, bundle, texture_nodes) {
+        const pathKey = JSON.stringify(path);
+        texture_nodes[pathKey] = {
+            path,
+            bundle
+        };
+    },
 
-                // Shader uniforms
-                if (style.shaders && style.shaders.uniforms) {
-                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({type, value, key, uniforms}) => {
-                        // Texture by URL (string-named texture not referencing existing texture definition)
-                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] &&
-                            (include_globals || !isGlobal(value))) {
-                            uniforms[key] = this.hoistTexture(value, config, bundle);
-                        }
-                    });
+    // Hoist any remaining inline texture nodes that don't have a corresponding named texture
+    // base_bundle is the bundle for the root scene, for resolving textures from global properties
+    hoistTextureNodes (config, base_bundle, texture_nodes = {}) {
+        for(const { path, bundle } of Object.values(texture_nodes)) {
+            const curValue = getPropertyPath(config, path);
+
+            // Make sure current property values is a string to account for global property substitutions
+            // e.g. shader uniforms are ambiguous, could be replaced with string value indicating texture,
+            // but could also be a float, an array indicating vector, etc.
+            if (typeof curValue === 'string' && config.textures[curValue] == null) {
+                if (isGlobalSubstitution(config, path)) {
+                    // global substituions are resolved against the base scene path, not the import they came from
+                    // const url = curValue;
+                    const url = base_bundle.urlFor(curValue);
+                    config.textures[curValue] = { url };
+                }
+                else {
+                    // non-global textures are resolved against the import they came from
+                    const url = bundle.urlFor(curValue);
+                    config.textures[url] = { url };
+                    setPropertyPath(config, path, url);
                 }
             }
         }
-    },
-
-    // Convert an inline URL texture to a global one, and return the texture's (possibly modified) name
-    hoistTexture (tex, config, bundle) {
-        let global = isGlobal(tex);
-        let url = global ? tex : bundle.urlFor(tex);
-        let name = global ? `texture-${url}` : url;
-        config.textures[name] = { url };
-        return name;
     },
 
     // Substitutes global scene properties (those defined in the `config.global` object) for any style values
@@ -321,3 +345,5 @@ export default SceneLoader = {
 };
 
 subscribeMixin(SceneLoader);
+
+export default SceneLoader;
