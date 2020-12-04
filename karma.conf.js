@@ -64,14 +64,14 @@ module.exports = function (config) {
                     include: ['**/*.glsl'] // inline shader files
                 }),
 
+                babel({
+                    exclude: ['node_modules/**', '*.json']
+                }),
+
                 // These are needed for jszip node-environment compatibility,
                 // previously provided by browserify
                 globals(),
-                builtins(),
-
-                babel({
-                  exclude: ['node_modules/**', '*.json']
-                })
+                builtins()
             ]
         },
 
