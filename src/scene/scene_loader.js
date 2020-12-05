@@ -281,7 +281,6 @@ const SceneLoader = {
             if (typeof curValue === 'string' && config.textures[curValue] == null) {
                 if (isGlobalSubstitution(config, path)) {
                     // global substituions are resolved against the base scene path, not the import they came from
-                    // const url = curValue;
                     const url = base_bundle.urlFor(curValue);
                     config.textures[curValue] = { url };
                 }

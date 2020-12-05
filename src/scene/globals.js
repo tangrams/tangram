@@ -10,10 +10,7 @@ const GLOBAL_REGISTRY = '__global_prop';
 
 // Property name references a global property?
 export function isGlobalReference (val) {
-    if (val && val.slice(0, GLOBAL_PREFIX_LENGTH) === GLOBAL_PREFIX) {
-        return true;
-    }
-    return false;
+    return val?.slice(0, GLOBAL_PREFIX_LENGTH) === GLOBAL_PREFIX;
 }
 
 // Has object property been substitued with a value from a global reference?
