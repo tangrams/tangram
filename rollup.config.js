@@ -1,16 +1,16 @@
 import fs from 'fs';
 import { execSync } from 'child_process';
 
-import babel from 'rollup-plugin-babel';
-import resolve from 'rollup-plugin-node-resolve';
-import commonjs from 'rollup-plugin-commonjs';
+import babel from '@rollup/plugin-babel';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
 import globals from 'rollup-plugin-node-globals';
 import builtins from 'rollup-plugin-node-builtins';
-import replace from 'rollup-plugin-replace';
+import replace from '@rollup/plugin-replace';
 import sourcemaps from 'rollup-plugin-sourcemaps';
-import {terser} from 'rollup-plugin-terser';
-import json from 'rollup-plugin-json';
-import string from 'rollup-plugin-string';
+import { terser } from 'rollup-plugin-terser';
+import json from '@rollup/plugin-json';
+import { string } from 'rollup-plugin-string';
 
 import serve from 'rollup-plugin-serve';
 import livereload from 'rollup-plugin-livereload';
@@ -40,13 +40,7 @@ const config = [{
         }),
         commonjs({
             // Avoids Webpack minification errors
-            ignoreGlobal: true,
-            // There hints are required for importing jszip
-            // See https://rollupjs.org/guide/en#error-name-is-not-exported-by-module-
-            namedExports: {
-                'node_modules/process/browser.js': ['nextTick'],
-                'node_modules/events/events.js': ['EventEmitter'],
-            }
+            ignoreGlobal: true
         }),
         json(), // load JSON files
         string({

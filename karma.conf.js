@@ -1,12 +1,10 @@
-/*jshint node: true*/
-
-var babel = require('rollup-plugin-babel');
-var resolve = require('rollup-plugin-node-resolve');
-var commonjs = require('rollup-plugin-commonjs');
-var globals = require('rollup-plugin-node-globals');
-var builtins = require('rollup-plugin-node-builtins');
-var json = require('rollup-plugin-json');
-var string = require('rollup-plugin-string');
+const babel = require('@rollup/plugin-babel').default;
+const resolve = require('@rollup/plugin-node-resolve').default;
+const commonjs = require('@rollup/plugin-commonjs');
+const globals = require('rollup-plugin-node-globals');
+const builtins = require('rollup-plugin-node-builtins');
+const json = require('@rollup/plugin-json');
+const string = require('rollup-plugin-string').string;
 
 module.exports = function (config) {
 
@@ -48,14 +46,7 @@ module.exports = function (config) {
                     browser: true,
                     preferBuiltins: false
                 }),
-                commonjs({
-                    // There hints are required for importing jszip
-                    // See https://rollupjs.org/guide/en#error-name-is-not-exported-by-module-
-                    namedExports: {
-                        'node_modules/process/browser.js': ['nextTick'],
-                        'node_modules/events/events.js': ['EventEmitter']
-                    }
-                }),
+                commonjs(),
 
                 json({
                     exclude: ['node_modules/**', 'src/**'] // import JSON files
