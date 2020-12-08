@@ -3,13 +3,14 @@ module.exports = function(context) {
   const cache = context.cache(() => ESM);
   const targets = ESM ?
     { esmodules: true } :
-    { browsers: ['last 2 versions', 'ie >= 11', 'safari >= 7'] };
+    { browsers: ['ie >= 11'] };
 
   return {
     presets: [
       [
         '@babel/preset-env', {
           targets,
+          bugfixes: true,
           loose: true,
           debug: true,
           useBuiltIns: ESM ? false : 'usage',
