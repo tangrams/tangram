@@ -1,11 +1,11 @@
 // Create a standalone worker bundle, to allow the Karma suite to load the web worker
 // (regular two-pass code-splitting build process is not easily adaptable to Karma)
 
-import babel from '@rollup/plugin-babel';
-import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
-import json from '@rollup/plugin-json';
-import { string } from 'rollup-plugin-string';
+import babel from 'rollup-plugin-babel';
+import resolve from 'rollup-plugin-node-resolve';
+import commonjs from 'rollup-plugin-commonjs';
+import json from 'rollup-plugin-json';
+import string from 'rollup-plugin-string';
 
 const config = {
     input: 'src/scene/scene_worker.js',

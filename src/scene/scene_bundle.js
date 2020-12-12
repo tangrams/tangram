@@ -2,7 +2,7 @@ import Utils from '../utils/utils';
 import * as URLs from '../utils/urls';
 import { isGlobalReference } from './globals';
 
-import JSZip from 'jszip/dist/jszip'; // see https://github.com/Stuk/jszip/issues/673
+import JSZip from 'jszip';
 import yaml from 'js-yaml';
 
 export class SceneBundle {
