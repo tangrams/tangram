@@ -67,7 +67,7 @@ function _extends() {
   return _extends.apply(this, arguments);
 }
 
-var version = "0.21.0";
+var version = "0.21.1";
 
 var version$1 = 'v' + version;
 
@@ -126,11 +126,7 @@ function setupMainThread() {
   // Returns:
   //   - a promise that will be fulfilled if the worker method returns a value (could be immediately, or async)
   //
-  WorkerBroker.postMessage = function (worker, method) {
-    for (var _len = arguments.length, message = new Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
-      message[_key - 2] = arguments[_key];
-    }
-
+  WorkerBroker.postMessage = function (worker, method, ...message) {
     // If more than one worker specified, post to multiple
     if (Array.isArray(worker)) {
       return Promise.all(worker.map(w => WorkerBroker.postMessage(w, method, ...message)));
@@ -216,10 +212,7 @@ function setupMainThread() {
           let result, error, target, method_name, method;
 
           try {
-            var _findTarget = findTarget(data.method);
-
-            method_name = _findTarget[0];
-            target = _findTarget[1];
+            [method_name, target] = findTarget(data.method);
 
             if (!target) {
               throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
@@ -311,11 +304,7 @@ function setupWorkerThread() {
   // Returns:
   //   - a promise that will be fulfilled if the main thread method returns a value (could be immediately, or async)
   //
-  WorkerBroker.postMessage = function (method) {
-    for (var _len2 = arguments.length, message = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
-      message[_key2 - 1] = arguments[_key2];
-    }
-
+  WorkerBroker.postMessage = function (method, ...message) {
     // Parse options
     let options = {};
 
@@ -389,10 +378,7 @@ function setupWorkerThread() {
         let result, error, target, method_name, method;
 
         try {
-          var _findTarget2 = findTarget(data.method);
-
-          method_name = _findTarget2[0];
-          target = _findTarget2[1];
+          [method_name, target] = findTarget(data.method);
 
           if (!target) {
             throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
@@ -464,11 +450,7 @@ function setupWorkerThread() {
 } // Special value wrapper, to indicate that we want to find and include transferable objects in the message
 
 
-WorkerBroker.withTransferables = function () {
-  for (var _len3 = arguments.length, value = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
-    value[_key3] = arguments[_key3];
-  }
-
+WorkerBroker.withTransferables = function (...value) {
   if (!(this instanceof WorkerBroker.withTransferables)) {
     return new WorkerBroker.withTransferables(...value);
   }
@@ -483,19 +465,7 @@ WorkerBroker.withTransferables = function () {
 // TODO: add option in case you DON'T want to transfer objects
 
 
-function findTransferables(source, parent, property, list) {
-  if (parent === void 0) {
-    parent = null;
-  }
-
-  if (property === void 0) {
-    property = null;
-  }
-
-  if (list === void 0) {
-    list = [];
-  }
-
+function findTransferables(source, parent = null, property = null, list = []) {
   if (!source) {
     return list;
   }
@@ -570,14 +540,10 @@ function methodForLevel(level) {
 // that would otherwise be repetitive or possibly logged thousands of times, such as per feature).
 
 
-function log(opts) {
+function log(opts, ...msg) {
   let level = typeof opts === 'object' ? opts.level : opts;
 
   if (LEVELS[level] <= LEVELS[log.level]) {
-    for (var _len = arguments.length, msg = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-      msg[_key - 1] = arguments[_key];
-    }
-
     if (Thread.is_worker) {
       // Proxy to main thread
       return WorkerBroker$1.postMessage({
@@ -653,31 +619,7 @@ Utils._requests = {}; // XHR requests on current thread
 Utils._proxy_requests = {}; // XHR requests proxied to main thread
 // `request_key` is a user-provided key that can be later used to cancel the request
 
-Utils.io = function (url, timeout, responseType, method, headers, request_key, proxy) {
-  if (timeout === void 0) {
-    timeout = 60000;
-  }
-
-  if (responseType === void 0) {
-    responseType = 'text';
-  }
-
-  if (method === void 0) {
-    method = 'GET';
-  }
-
-  if (headers === void 0) {
-    headers = {};
-  }
-
-  if (request_key === void 0) {
-    request_key = null;
-  }
-
-  if (proxy === void 0) {
-    proxy = false;
-  }
-
+Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}, request_key = null, proxy = false) {
   if (Thread.is_worker && Utils.isMicrosoft()) {
     // Some versions of IE11 and Edge will hang web workers when performing XHR requests
     // These requests can be proxied through the main thread
@@ -1247,11 +1189,7 @@ function subscribeMixin(target) {
       listeners = [];
     },
 
-    trigger(event) {
-      for (var _len = arguments.length, data = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-        data[_key - 1] = arguments[_key];
-      }
-
+    trigger(event, ...data) {
       listeners.forEach(listener => {
         if (typeof listener[event] === 'function') {
           try {
@@ -1285,11 +1223,7 @@ function sliceObject(obj, keys) {
 // Texture management
 
 class Texture {
-  constructor(gl, name, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  constructor(gl, name, options = {}) {
     options = Texture.sliceOptions(options); // exclude any non-texture-specific props
 
     this.gl = gl;
@@ -1345,10 +1279,9 @@ class Texture {
   } // Destroy a single texture instance
 
 
-  destroy(_temp) {
-    let _ref = _temp === void 0 ? {} : _temp,
-        force = _ref.force;
-
+  destroy({
+    force
+  } = {}) {
     if (this.retain_count > 0 && !force) {
       log('error', `Texture '${this.name}': destroying texture with retain count of '${this.retain_count}'`);
       return;
@@ -1386,11 +1319,7 @@ class Texture {
     }
   }
 
-  bind(unit) {
-    if (unit === void 0) {
-      unit = 0;
-    }
-
+  bind(unit = 0) {
     if (!this.valid) {
       return;
     }
@@ -1433,11 +1362,7 @@ class Texture {
   } // Sets texture from an url
 
 
-  setUrl(url, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  setUrl(url, options = {}) {
     if (!this.valid) {
       return;
     }
@@ -1499,11 +1424,7 @@ class Texture {
   } // Sets texture to a raw image buffer
 
 
-  setData(width, height, data, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  setData(width, height, data, options = {}) {
     this.width = width;
     this.height = height; // Convert regular array to typed array
 
@@ -1546,11 +1467,7 @@ class Texture {
   } // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
 
 
-  update(source, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  update(source, options = {}) {
     if (!this.valid) {
       return;
     }
@@ -1577,11 +1494,7 @@ class Texture {
   } // Determines appropriate filtering mode
 
 
-  setFiltering(options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  setFiltering(options = {}) {
     if (!this.valid) {
       return;
     }
@@ -2056,11 +1969,7 @@ GLSL.defineUniform = function (name, value) {
 */
 
 
-GLSL.expandVec3 = function (v, z) {
-  if (z === void 0) {
-    z = 1;
-  }
-
+GLSL.expandVec3 = function (v, z = 1) {
   let x;
 
   if (Array.isArray(v)) {
@@ -2084,11 +1993,7 @@ GLSL.expandVec3 = function (v, z) {
 */
 
 
-GLSL.expandVec4 = function (v, w) {
-  if (w === void 0) {
-    w = 1;
-  }
-
+GLSL.expandVec4 = function (v, w = 1) {
   let x;
 
   if (Array.isArray(v)) {
@@ -2443,11 +2348,7 @@ class ShaderProgram {
     } // Get GLSL definitions
 
 
-    const inject = Object.entries(uniforms).map((_ref) => {
-      let name = _ref[0],
-          uniform = _ref[1];
-      return GLSL.defineUniform(name, uniform);
-    }).filter(x => x); // Inject uniforms
+    const inject = Object.entries(uniforms).map(([name, uniform]) => GLSL.defineUniform(name, uniform)).filter(x => x); // Inject uniforms
     // NOTE: these are injected at the very top of the shaders, even before any #defines or #pragmas are added
     // this could cause some issues with certain #pragmas, or other functions that might expect #defines
 
@@ -2456,11 +2357,7 @@ class ShaderProgram {
   } // Set uniforms from a JS object, with inferred types
 
 
-  setUniforms(uniforms, reset_texture_unit) {
-    if (reset_texture_unit === void 0) {
-      reset_texture_unit = true;
-    }
-
+  setUniforms(uniforms, reset_texture_unit = true) {
     if (!this.compiled) {
       return;
     } // TODO: only update uniforms when changed
@@ -2811,13 +2708,8 @@ ShaderProgram.buildExtensionString = function (extensions) {
   return str;
 };
 
-ShaderProgram.addBlock = function (key) {
+ShaderProgram.addBlock = function (key, ...blocks) {
   ShaderProgram.blocks[key] = ShaderProgram.blocks[key] || [];
-
-  for (var _len = arguments.length, blocks = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-    blocks[_key - 1] = arguments[_key];
-  }
-
   ShaderProgram.blocks[key].push(...blocks);
 }; // Remove all global shader blocks for a given key
 
@@ -2826,13 +2718,8 @@ ShaderProgram.removeBlock = function (key) {
   ShaderProgram.blocks[key] = [];
 };
 
-ShaderProgram.replaceBlock = function (key) {
+ShaderProgram.replaceBlock = function (key, ...blocks) {
   ShaderProgram.removeBlock(key);
-
-  for (var _len2 = arguments.length, blocks = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
-    blocks[_key2 - 1] = arguments[_key2];
-  }
-
   ShaderProgram.addBlock(key, ...blocks);
 }; // Compile & link a WebGL program from provided vertex and fragment shader sources
 // update a program if one is passed in. Create one if not. Alert and don't update anything if the shaders don't compile.
@@ -3019,9 +2906,9 @@ var VertexArrayObject = {
 };
 
 // Deep/recursive merge of one or more source objects into a destination object
-function mergeObjects(dest) {
-  for (let s = 0; s < (arguments.length <= 1 ? 0 : arguments.length - 1); s++) {
-    let source = s + 1 < 1 || arguments.length <= s + 1 ? undefined : arguments[s + 1];
+function mergeObjects(dest, ...sources) {
+  for (let s = 0; s < sources.length; s++) {
+    let source = sources[s];
 
     if (!source) {
       continue;
@@ -3102,9 +2989,7 @@ Geo.metersForTile = function (tile) {
 */
 
 
-Geo.tileForMeters = function (_ref, zoom) {
-  let x = _ref[0],
-      y = _ref[1];
+Geo.tileForMeters = function ([x, y], zoom) {
   return {
     x: Math.floor((x + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
     y: Math.floor((-y + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
@@ -3114,18 +2999,14 @@ Geo.tileForMeters = function (_ref, zoom) {
 // Optionally specify the axes to wrap
 
 
-Geo.wrapTile = function (_ref2, mask) {
-  let x = _ref2.x,
-      y = _ref2.y,
-      z = _ref2.z;
-
-  if (mask === void 0) {
-    mask = {
-      x: true,
-      y: false
-    };
-  }
-
+Geo.wrapTile = function ({
+  x,
+  y,
+  z
+}, mask = {
+  x: true,
+  y: false
+}) {
   var m = (1 << z) - 1;
 
   if (mask.x) {
@@ -3277,11 +3158,7 @@ Geo.geometryType = function (type) {
 // Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
 
 
-Geo.centroid = function (polygon, relative) {
-  if (relative === void 0) {
-    relative = true;
-  }
-
+Geo.centroid = function (polygon, relative = true) {
   if (!polygon || polygon.length === 0) {
     return;
   }
@@ -3739,14 +3616,14 @@ StyleParser.defaults = {
 
 StyleParser.macros = {
   // pseudo-random color by geometry id
-  'Style.color.pseudoRandomColor': function StyleColorPseudoRandomColor() {
+  'Style.color.pseudoRandomColor': function () {
     return [0.7 * (parseInt(feature.id, 16) / 100 % 1), // eslint-disable-line no-undef
     0.7 * (parseInt(feature.id, 16) / 10000 % 1), // eslint-disable-line no-undef
     0.7 * (parseInt(feature.id, 16) / 1000000 % 1), // eslint-disable-line no-undef
     1];
   },
   // random color
-  'Style.color.randomColor': function StyleColorRandomColor() {
+  'Style.color.randomColor': function () {
     return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random(), 1];
   }
 }; // A context object that is passed to style parsing functions to provide a scope of commonly used values
@@ -3776,15 +3653,7 @@ const CACHE_TYPE = {
 };
 StyleParser.CACHE_TYPE = CACHE_TYPE;
 
-StyleParser.createPropertyCache = function (obj, transform, dynamic_transform) {
-  if (transform === void 0) {
-    transform = null;
-  }
-
-  if (dynamic_transform === void 0) {
-    dynamic_transform = null;
-  }
-
+StyleParser.createPropertyCache = function (obj, transform = null, dynamic_transform = null) {
   if (obj == null) {
     return;
   }
@@ -4105,11 +3974,7 @@ StyleParser.colorForString = function (string) {
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
 
 
-StyleParser.evalCachedColorProperty = function (val, context) {
-  if (context === void 0) {
-    context = {};
-  }
-
+StyleParser.evalCachedColorProperty = function (val, context = {}) {
   if (val == null) {
     return;
   } else if (val.dynamic) {
@@ -4195,11 +4060,7 @@ StyleParser.evalCachedColorPropertyWithAlpha = function (val, alpha_prop, contex
   return color;
 };
 
-StyleParser.parseColor = function (val, context) {
-  if (context === void 0) {
-    context = {};
-  }
-
+StyleParser.parseColor = function (val, context = {}) {
   if (typeof val === 'function') {
     val = tryEval(val, context);
   } // Parse CSS-style colors
@@ -4343,9 +4204,9 @@ class FeatureSelection {
   // Runs asynchronously, schedules selection buffer to be updated
 
 
-  getFeatureAt(point, _ref) {
-    let radius = _ref.radius;
-
+  getFeatureAt(point, {
+    radius
+  }) {
     // ensure requested point is in canvas bounds
     if (!point || point.x < 0 || point.y < 0 || point.x > 1 || point.y > 1) {
       return Promise.resolve({
@@ -4420,8 +4281,10 @@ class FeatureSelection {
 
         let feature_key,
             worker_id = 255;
-        let point = request.point,
-            radius = request.radius;
+        let {
+          point,
+          radius
+        } = request;
         let diam_px;
 
         if (!radius) {
@@ -4451,8 +4314,8 @@ class FeatureSelection {
         if (this.pixels.fill instanceof Function) {
           this.pixels.fill(0); // native typed array fill
         } else {
-          for (let p = 0; p < this.pixels.length; p++) {
-            this.pixels[p] = 0;
+          for (let _p = 0; _p < this.pixels.length; _p++) {
+            this.pixels[_p] = 0;
           }
         } // capture pixels
 
@@ -4717,11 +4580,7 @@ class VBOMesh {
   // Returns true if mesh requests a render on next frame (e.g. for fade animations)
 
 
-  render(options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  render(options = {}) {
     if (!this.valid) {
       return false;
     }
@@ -5053,9 +4912,7 @@ Vector.rot = function (v, a) {
 // Angles in quadrant III and IV are mapped to [-PI, 0]
 
 
-Vector.angle = function (_ref) {
-  let x = _ref[0],
-      y = _ref[1];
+Vector.angle = function ([x, y]) {
   return Math.atan2(y, x);
 }; // Get angle between two vectors
 
@@ -5663,9 +5520,12 @@ class DataSource {
   */
 
 
-  static scaleData(source, _ref) {
-    let z = _ref.coords.z,
-        min = _ref.min;
+  static scaleData(source, {
+    coords: {
+      z
+    },
+    min
+  }) {
     let units_per_meter = Geo$1.unitsPerMeter(z);
 
     for (var t in source.layers) {
@@ -5735,9 +5595,10 @@ class DataSource {
   // e.g. can be used to skip fetching data for some zooms, reusing data from next lowest available zoom instead
 
 
-  setZooms(_ref2) {
-    let max_zoom = _ref2.max_zoom,
-        zooms = _ref2.zooms;
+  setZooms({
+    max_zoom,
+    zooms
+  }) {
     // overzoom will apply for zooms higher than this
     this.max_zoom = max_zoom != null ? max_zoom : Geo$1.default_source_max_zoom;
 
@@ -5823,14 +5684,9 @@ class NetworkSource extends DataSource {
     this.response_type = ''; // use to set explicit XHR type
     // Add extra URL params, and warn on duplicates
 
-    let _URLs$addParamsToURL = addParamsToURL(source.url, source.url_params),
-        url = _URLs$addParamsToURL[0],
-        dupes = _URLs$addParamsToURL[1];
-
+    let [url, dupes] = addParamsToURL(source.url, source.url_params);
     this.url = url;
-    dupes.forEach((_ref3) => {
-      let param = _ref3[0],
-          value = _ref3[1];
+    dupes.forEach(([param, value]) => {
       log({
         level: 'warn',
         once: true
@@ -5853,8 +5709,9 @@ class NetworkSource extends DataSource {
       let promise = Utils.io(url, 60 * 1000, this.response_type, 'GET', this.request_headers, request_id);
       source_data.request_id = request_id;
       source_data.error = null;
-      promise.then((_ref4) => {
-        let body = _ref4.body;
+      promise.then(({
+        body
+      }) => {
         dest.debug.response_size = body && (body.length || body.byteLength);
         dest.debug.network = +new Date() - dest.debug.network;
         dest.debug.parsing = +new Date(); // Apply optional data transform on raw network response
@@ -5940,11 +5797,7 @@ class NetworkTileSource extends NetworkSource {
 
   parseBounds(source) {
     if (Array.isArray(source.bounds) && source.bounds.length === 4) {
-      const _source$bounds = source.bounds,
-            w = _source$bounds[0],
-            s = _source$bounds[1],
-            e = _source$bounds[2],
-            n = _source$bounds[3];
+      const [w, s, e, n] = source.bounds;
       return {
         latlng: [...source.bounds],
         meters: {
@@ -6050,10 +5903,11 @@ class NetworkTileSource extends NetworkSource {
     return ''; // for 1x (or less) displays, no URL modifier is used (following @2x URL convention)
   }
 
-  toQuadKey(_ref5) {
-    let x = _ref5.x,
-        y = _ref5.y,
-        z = _ref5.z;
+  toQuadKey({
+    x,
+    y,
+    z
+  }) {
     let quadkey = '';
 
     for (let i = z; i > 0; i--) {
@@ -6084,10 +5938,11 @@ const TileID = {
     };
   },
 
-  coordKey(_ref) {
-    let x = _ref.x,
-        y = _ref.y,
-        z = _ref.z;
+  coordKey({
+    x,
+    y,
+    z
+  }) {
     return x + '/' + y + '/' + z;
   },
 
@@ -6111,10 +5966,11 @@ const TileID = {
     return this.coordForTileZooms(coords, source.zooms);
   },
 
-  coordAtZoom(_ref2, zoom) {
-    let x = _ref2.x,
-        y = _ref2.y,
-        z = _ref2.z;
+  coordAtZoom({
+    x,
+    y,
+    z
+  }, zoom) {
     zoom = Math.max(0, zoom); // zoom can't go below zero
 
     if (z !== zoom) {
@@ -6131,10 +5987,11 @@ const TileID = {
     });
   },
 
-  coordForTileZooms(_ref3, zooms) {
-    let x = _ref3.x,
-        y = _ref3.y,
-        z = _ref3.z;
+  coordForTileZooms({
+    x,
+    y,
+    z
+  }, zooms) {
     const nz = this.findZoomInRange(z, zooms);
 
     if (nz !== z) {
@@ -6158,10 +6015,10 @@ const TileID = {
 
   isDescendant(parent, descendant) {
     if (descendant.z > parent.z) {
-      let _this$coordAtZoom = this.coordAtZoom(descendant, parent.z),
-          x = _this$coordAtZoom.x,
-          y = _this$coordAtZoom.y;
-
+      let {
+        x,
+        y
+      } = this.coordAtZoom(descendant, parent.z);
       return parent.x === x && parent.y === y;
     }
 
@@ -6169,11 +6026,11 @@ const TileID = {
   },
 
   // Return identifying info for tile's parent tile
-  parent(_ref4) {
-    let coords = _ref4.coords,
-        source = _ref4.source,
-        style_z = _ref4.style_z;
-
+  parent({
+    coords,
+    source,
+    style_z
+  }) {
     if (style_z > 0) {
       // no more tiles above style zoom 0
       style_z--;
@@ -6195,15 +6052,11 @@ const TileID = {
   },
 
   // Return identifying info for tile's child tiles
-  children(_ref5, CACHE) {
-    let coords = _ref5.coords,
-        source = _ref5.source,
-        style_z = _ref5.style_z;
-
-    if (CACHE === void 0) {
-      CACHE = {};
-    }
-
+  children({
+    coords,
+    source,
+    style_z
+  }, CACHE = {}) {
     style_z++;
     const c = this.coordForTileZooms(this.coordAtZoom(coords, style_z - source.zoom_bias), source.zooms);
 
@@ -6392,9 +6245,10 @@ class RasterSource extends RasterTileSource {
   // and clipping the raster against vector source data.
 
 
-  async tileTexture(tile, _ref) {
-    let blend = _ref.blend,
-        generation = _ref.generation;
+  async tileTexture(tile, {
+    blend,
+    generation
+  }) {
     let coords = this.adjustRasterTileZoom(tile);
     const use_alpha = blend !== 'opaque'; // ignore source alpha multiplier with opaque blending
 
@@ -6562,22 +6416,20 @@ var selection_fragment_source = "// Fragment shader for feature selection passes
 var rasters_source = "// Uniforms defining raster textures and macros for accessing them\n\n#ifdef TANGRAM_FRAGMENT_SHADER\nuniform sampler2D u_rasters[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture samplers\nuniform vec2 u_raster_sizes[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture sizes (width/height in pixels)\nuniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile texture UV starting offset for tile\n\n// Raster sources can optionally mask by the alpha channel (render with only full or no alpha, based on a threshold),\n// which is used for handling transparency outside the raster image when rendering with opaque blending\n#if defined(TANGRAM_HAS_MASKED_RASTERS) && !defined(TANGRAM_ALL_MASKED_RASTERS) // only add uniform if we need it\nuniform bool u_raster_mask_alpha;\n#endif\n\n// Note: the raster accessors below are #defines rather than functions to\n// avoid issues with constant integer expressions for array indices\n\n// Adjusts UVs in model space to account for raster tile texture overzooming\n// (applies scale and offset adjustments)\n#define adjustRasterUV(raster_index, uv) \\\n    ((uv) * u_raster_offsets[raster_index].z + u_raster_offsets[raster_index].xy)\n\n// Returns the UVs of the current model position for a raster sampler\n#define currentRasterUV(raster_index) \\\n    (adjustRasterUV(raster_index, v_modelpos_base_zoom.xy))\n\n// Returns pixel location in raster tile texture at current model position\n#define currentRasterPixel(raster_index) \\\n    (currentRasterUV(raster_index) * rasterPixelSize(raster_index))\n\n// Samples a raster tile texture for the current model position\n#define sampleRaster(raster_index) \\\n    (texture2D(u_rasters[raster_index], currentRasterUV(raster_index)))\n\n// Samples a raster tile texture for a given pixel\n#define sampleRasterAtPixel(raster_index, pixel) \\\n    (texture2D(u_rasters[raster_index], (pixel) / rasterPixelSize(raster_index)))\n\n// Returns size of raster sampler in pixels\n#define rasterPixelSize(raster_index) \\\n    (u_raster_sizes[raster_index])\n\n#endif\n";
 
 var Style = {
-  init(_temp) {
-    let _ref = _temp === void 0 ? {} : _temp,
-        generation = _ref.generation,
-        styles = _ref.styles,
-        _ref$sources = _ref.sources,
-        sources = _ref$sources === void 0 ? {} : _ref$sources,
-        introspection = _ref.introspection;
-
+  init({
+    generation,
+    styles,
+    sources = {},
+    introspection
+  } = {}) {
     this.setGeneration(generation);
     this.styles = styles; // styles for scene
 
     this.sources = sources; // data sources for scene
 
-    this.defines = this.hasOwnProperty('defines') && this.defines || {}; // #defines to be injected into the shaders
+    this.defines = Object.prototype.hasOwnProperty.call(this, 'defines') && this.defines || {}; // #defines to be injected into the shaders
 
-    this.shaders = this.hasOwnProperty('shaders') && this.shaders || {}; // shader customization (uniforms, defines, blocks, etc.)
+    this.shaders = Object.prototype.hasOwnProperty.call(this, 'shaders') && this.shaders || {}; // shader customization (uniforms, defines, blocks, etc.)
 
     this.introspection = introspection || false;
     this.selection = this.selection || this.introspection || false; // flag indicating if this style supports feature selection
@@ -6992,11 +6844,7 @@ var Style = {
     this.max_texture_size = Texture.getMaxTextureSize(this.gl);
   },
 
-  makeMesh(vertex_data, vertex_elements, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  makeMesh(vertex_data, vertex_elements, options = {}) {
     let vertex_layout = this.vertexLayoutForMeshVariant(options.variant);
 
     if (debugSettings$1.wireframe) {
@@ -7015,11 +6863,7 @@ var Style = {
   },
 
   // Get a specific program, compiling if necessary
-  getProgram(key) {
-    if (key === void 0) {
-      key = 'program';
-    }
-
+  getProgram(key = 'program') {
     this.compileSetup();
     const program = this[key];
 
@@ -7109,11 +6953,7 @@ var Style = {
   },
 
   // Add a shader block
-  addShaderBlock(key, block, scope) {
-    if (scope === void 0) {
-      scope = null;
-    }
-
+  addShaderBlock(key, block, scope = null) {
     this.shaders.blocks = this.shaders.blocks || {};
     this.shaders.blocks[key] = this.shaders.blocks[key] || [];
     this.shaders.blocks[key].push(block);
@@ -7133,11 +6973,7 @@ var Style = {
     }
   },
 
-  replaceShaderBlock(key, block, scope) {
-    if (scope === void 0) {
-      scope = null;
-    }
-
+  replaceShaderBlock(key, block, scope = null) {
     this.removeShaderBlock(key);
     this.addShaderBlock(key, block, scope);
   },
@@ -7312,10 +7148,7 @@ var Style = {
   // Setup shader definitions for custom attributes
   setupCustomAttributes() {
     if (this.shaders.attributes) {
-      for (const _ref2 of Object.entries(this.shaders.attributes)) {
-        const aname = _ref2[0];
-        const attrib = _ref2[1];
-
+      for (const [aname, attrib] of Object.entries(this.shaders.attributes)) {
         // alias each custom attribute to the internal attribute name in vertex shader,
         // and internal varying name in fragment shader (if varying is enabled)
         if (attrib.type === 'float') {
@@ -7347,10 +7180,7 @@ var Style = {
   // Add custom attributes to a list of attributes for initializing a vertex layout
   addCustomAttributesToAttributeList(attribs) {
     if (this.shaders.attributes) {
-      for (const _ref3 of Object.entries(this.shaders.attributes)) {
-        const aname = _ref3[0];
-        const attrib = _ref3[1];
-
+      for (const [aname, attrib] of Object.entries(this.shaders.attributes)) {
         if (attrib.type === 'float') {
           attribs.push({
             name: `a_${aname}`,
@@ -7519,11 +7349,9 @@ let array_types = {
 // Used to construct a mesh/VBO for rendering
 
 class VertexData {
-  constructor(vertex_layout, _temp) {
-    let _ref = _temp === void 0 ? {} : _temp,
-        _ref$prealloc = _ref.prealloc,
-        prealloc = _ref$prealloc === void 0 ? 500 : _ref$prealloc;
-
+  constructor(vertex_layout, {
+    prealloc = 500
+  } = {}) {
     this.vertex_layout = vertex_layout;
     this.vertex_elements = new VertexElements();
     this.stride = this.vertex_layout.stride;
@@ -7784,9 +7612,9 @@ const tile_bounds = [{
   y: 0
 }, {
   x: Geo$1.tile_scale,
-  y: -Geo$1.tile_scale // TODO: correct for flipped y-axis?
-
-}];
+  y: -Geo$1.tile_scale
+} // TODO: correct for flipped y-axis?
+];
 const default_uvs = [0, 0, 1, 1]; // Tests if a line segment (from point A to B) is outside the tile bounds
 // (within a certain tolerance to account for geometry nearly on tile edges)
 
@@ -8498,10 +8326,11 @@ const up_vec3 = [0, 0, 1];
  * @return {number} the number of the resulting geometries (triangles)
  */
 
-function buildPolygons(polygons, vertex_data, vertex_template, _ref) {
-  let texcoord_index = _ref.texcoord_index,
-      texcoord_scale = _ref.texcoord_scale,
-      texcoord_normalize = _ref.texcoord_normalize;
+function buildPolygons(polygons, vertex_data, vertex_template, {
+  texcoord_index,
+  texcoord_scale,
+  texcoord_normalize
+}) {
   let vertex_elements = vertex_data.vertex_elements,
       num_polygons = polygons.length,
       geom_count = 0,
@@ -8520,13 +8349,7 @@ function buildPolygons(polygons, vertex_data, vertex_template, _ref) {
 
   if (texcoord_index) {
     texcoord_normalize = texcoord_normalize || 1;
-
-    var _ref2 = texcoord_scale || default_uvs;
-
-    min_u = _ref2[0];
-    min_v = _ref2[1];
-    max_u = _ref2[2];
-    max_v = _ref2[3];
+    [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
   }
 
   for (let p = 0; p < num_polygons; p++) {
@@ -8538,9 +8361,7 @@ function buildPolygons(polygons, vertex_data, vertex_template, _ref) {
     if (num_indices) {
       // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box:
       if (texcoord_index) {
-        var _Geo$findBoundingBox;
-
-        (_Geo$findBoundingBox = Geo$1.findBoundingBox(polygon), min_x = _Geo$findBoundingBox[0], min_y = _Geo$findBoundingBox[1], max_x = _Geo$findBoundingBox[2], max_y = _Geo$findBoundingBox[3], _Geo$findBoundingBox), span_x = max_x - min_x, span_y = max_y - min_y, scale_u = (max_u - min_u) / span_x, scale_v = (max_v - min_v) / span_y;
+        [min_x, min_y, max_x, max_y] = Geo$1.findBoundingBox(polygon), span_x = max_x - min_x, span_y = max_y - min_y, scale_u = (max_u - min_u) / span_x, scale_v = (max_v - min_v) / span_y;
       }
 
       for (let ring_index = 0; ring_index < polygon.length; ring_index++) {
@@ -8573,13 +8394,14 @@ function buildPolygons(polygons, vertex_data, vertex_template, _ref) {
   return geom_count;
 } // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
 
-function buildExtrudedPolygons(polygons, z, height, min_height, vertex_data, vertex_template, normal_index, normal_normalize, _ref3) {
-  let remove_tile_edges = _ref3.remove_tile_edges,
-      tile_edge_tolerance = _ref3.tile_edge_tolerance,
-      texcoord_index = _ref3.texcoord_index,
-      texcoord_scale = _ref3.texcoord_scale,
-      texcoord_normalize = _ref3.texcoord_normalize,
-      winding = _ref3.winding;
+function buildExtrudedPolygons(polygons, z, height, min_height, vertex_data, vertex_template, normal_index, normal_normalize, {
+  remove_tile_edges,
+  tile_edge_tolerance,
+  texcoord_index,
+  texcoord_scale,
+  texcoord_normalize,
+  winding
+}) {
   // Top
   var min_z = z + (min_height || 0);
   var max_z = z + height;
@@ -8595,13 +8417,7 @@ function buildExtrudedPolygons(polygons, z, height, min_height, vertex_data, ver
 
   if (texcoord_index) {
     texcoord_normalize = texcoord_normalize || 1;
-
-    var _ref4 = texcoord_scale || default_uvs,
-        min_u = _ref4[0],
-        min_v = _ref4[1],
-        max_u = _ref4[2],
-        max_v = _ref4[3];
-
+    var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     var texcoords = [[min_u, max_v], [min_u, min_v], [max_u, min_v], [max_u, max_v]];
   }
 
@@ -8966,13 +8782,15 @@ function buildPolyline(line, context) {
   }
 
   var coordCurr, coordNext, normPrev, normNext;
-  var join_type = context.join_type,
-      cap_type = context.cap_type,
-      closed_polygon = context.closed_polygon,
-      remove_tile_edges = context.remove_tile_edges,
-      tile_edge_tolerance = context.tile_edge_tolerance,
-      v_scale = context.v_scale,
-      miter_len_sq = context.miter_len_sq;
+  var {
+    join_type,
+    cap_type,
+    closed_polygon,
+    remove_tile_edges,
+    tile_edge_tolerance,
+    v_scale,
+    miter_len_sq
+  } = context;
   var has_texcoord = context.texcoord_index != null;
   var v = 0; // Texture v-coordinate
   // Loop backwards through line to a tile boundary if found
@@ -9516,11 +9334,7 @@ function permuteLine(line, startIndex) {
 // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash
 const default_dash_color = [255, 255, 255, 255];
 const default_background_color = [0, 0, 0, 0];
-function renderDashArray(pattern, options) {
-  if (options === void 0) {
-    options = {};
-  }
-
+function renderDashArray(pattern, options = {}) {
   const dash_pixel = options.dash_color || default_dash_color;
   const background_color = options.background_color || default_background_color;
   const dashes = pattern;
@@ -10263,11 +10077,7 @@ const rights = ['right', 'top-right', 'bottom-right'];
 const tops = ['top', 'top-left', 'top-right'];
 const bottoms = ['bottom', 'bottom-left', 'bottom-right'];
 const PointAnchor = {
-  computeOffset(offset, size, anchor, buffer) {
-    if (buffer === void 0) {
-      buffer = null;
-    }
-
+  computeOffset(offset, size, anchor, buffer = null) {
     if (!anchor || anchor === 'center') {
       return offset;
     }
@@ -10481,11 +10291,7 @@ class OBB {
 }
 
 class Label {
-  constructor(size, layout) {
-    if (layout === void 0) {
-      layout = {};
-    }
-
+  constructor(size, layout = {}) {
     this.id = Label.nextLabelId();
     this.type = ''; // set by subclass
 
@@ -10525,11 +10331,7 @@ class Label {
   } // check for overlaps with other labels in the tile
 
 
-  occluded(bboxes, exclude) {
-    if (exclude === void 0) {
-      exclude = null;
-    }
-
+  occluded(bboxes, exclude = null) {
     let intersect = false;
     let aabbs = bboxes.aabb;
     let obbs = bboxes.obb; // Broad phase
@@ -10589,11 +10391,7 @@ class Label {
   // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
 
 
-  discard(bboxes, exclude) {
-    if (exclude === void 0) {
-      exclude = null;
-    }
-
+  discard(bboxes, exclude = null) {
     if (this.throw_away) {
       return true;
     }
@@ -10757,13 +10555,10 @@ const Collision = {
     }
   },
 
-  startTile(tile, _temp) {
-    let _ref = _temp === void 0 ? {} : _temp,
-        _ref$apply_repeat_gro = _ref.apply_repeat_groups,
-        apply_repeat_groups = _ref$apply_repeat_gro === void 0 ? true : _ref$apply_repeat_gro,
-        _ref$return_hidden = _ref.return_hidden,
-        return_hidden = _ref$return_hidden === void 0 ? false : _ref$return_hidden;
-
+  startTile(tile, {
+    apply_repeat_groups = true,
+    return_hidden = false
+  } = {}) {
     let state = this.tiles[tile] = {
       bboxes: {
         // current set of placed bounding boxes
@@ -10934,15 +10729,9 @@ const Collision = {
   },
 
   // Run collision and repeat check to see if label can currently be placed
-  canBePlaced(object, tile, exclude, _temp2) {
-    if (exclude === void 0) {
-      exclude = null;
-    }
-
-    let _ref2 = _temp2 === void 0 ? {} : _temp2,
-        _ref2$repeat = _ref2.repeat,
-        repeat = _ref2$repeat === void 0 ? true : _ref2$repeat;
-
+  canBePlaced(object, tile, exclude = null, {
+    repeat = true
+  } = {}) {
     let label = object.label;
     let layout = object.label.layout; // Skip if already processed (e.g. by parent object)
 
@@ -10984,11 +10773,11 @@ const Collision = {
   },
 
   // Place label
-  place(_ref3, tile, _ref4) {
-    let label = _ref3.label;
-    let _ref4$repeat = _ref4.repeat,
-        repeat = _ref4$repeat === void 0 ? true : _ref4$repeat;
-
+  place({
+    label
+  }, tile, {
+    repeat = true
+  }) {
     // Skip if already processed (e.g. by parent object)
     if (label.placed != null) {
       return;
@@ -11009,11 +10798,7 @@ const Collision = {
 };
 
 class LabelPoint extends Label {
-  constructor(position, size, layout, angle) {
-    if (angle === void 0) {
-      angle = 0;
-    }
-
+  constructor(position, size, layout, angle = 0) {
     super(size, layout);
     this.type = 'point';
     this.position = [position[0], position[1]];
@@ -11078,11 +10863,7 @@ class LabelPoint extends Label {
     }
   }
 
-  discard(bboxes, exclude) {
-    if (exclude === void 0) {
-      exclude = null;
-    }
-
+  discard(bboxes, exclude = null) {
     if (this.degenerate) {
       return false;
     }
@@ -11155,8 +10936,9 @@ function placePointsOnLine(line, size, layout) {
       q = line[i + 1];
 
       if (layout.tile_edges === true || !isCoordOutsideTile(p)) {
-        const angle = getAngle(p, q, layout.angle);
-        labels.push(new LabelPoint(p, size, layout, angle));
+        const _angle = getAngle(p, q, layout.angle);
+
+        labels.push(new LabelPoint(p, size, layout, _angle));
       }
     } // add last endpoint
 
@@ -11197,9 +10979,10 @@ function getPositionsAndAngles(line, min_length, layout) {
   let distance = 0.5 * remainder;
 
   for (let i = 0; i < num_labels; i++) {
-    let _interpolateLine = interpolateLine(line, distance, min_length, layout),
-        position = _interpolateLine.position,
-        angle = _interpolateLine.angle;
+    let {
+      position,
+      angle
+    } = interpolateLine(line, distance, min_length, layout);
 
     if (position != null && angle != null) {
       positions.push(position);
@@ -11215,11 +10998,7 @@ function getPositionsAndAngles(line, min_length, layout) {
   };
 }
 
-function getAngle(p, q, angle) {
-  if (angle === void 0) {
-    angle = 0;
-  }
-
+function getAngle(p, q, angle = 0) {
   return angle === 'auto' ? Math.atan2(q[0] - p[0], q[1] - p[1]) : angle;
 }
 
@@ -11387,11 +11166,12 @@ const TextSettings = {
   },
 
   // Build CSS-style font string (to set Canvas draw state)
-  fontCSS(_ref) {
-    let style = _ref.style,
-        weight = _ref.weight,
-        px_size = _ref.px_size,
-        family = _ref.family;
+  fontCSS({
+    style,
+    weight,
+    px_size,
+    family
+  }) {
     return [style, weight, px_size + 'px', family].filter(x => x) // remove null props
     .join(' ');
   }
@@ -11404,11 +11184,10 @@ this.f.style.cssText="max-width:none;display:inline-block;position:absolute;heig
 function x(a,b){a.a.style.cssText="max-width:none;min-width:20px;min-height:20px;display:inline-block;overflow:hidden;position:absolute;width:auto;margin:0;padding:0;top:-999px;left:-999px;white-space:nowrap;font:"+b+";";}function y(a){var b=a.a.offsetWidth,c=b+100;a.f.style.width=c+"px";a.c.scrollLeft=c;a.b.scrollLeft=a.b.scrollWidth+100;return a.g!==b?(a.g=b,!0):!1}function z(a,b){function c(){var a=l;y(a)&&a.a.parentNode&&b(a.g);}var l=a;m(a.b,c);m(a.c,c);y(a);}function A(a,b){var c=b||{};this.family=a;this.style=c.style||"normal";this.weight=c.weight||"normal";this.stretch=c.stretch||"normal";}var B=null,C=null,E=null,F=null;function I(){if(null===E){var a=document.createElement("div");try{a.style.font="condensed 100px sans-serif";}catch(b){}E=""!==a.style.font;}return E}function J(a,b){return [a.style,a.weight,I()?a.stretch:"","100px",b].join(" ")}
 A.prototype.load=function(a,b){var c=this,l=a||"BESbswy",r=0,D=b||3E3,G=(new Date).getTime();return new Promise(function(a,b){var e;null===F&&(F=!!document.fonts);if(e=F)null===C&&(C=/OS X.*Version\/10\..*Safari/.test(navigator.userAgent)&&/Apple/.test(navigator.vendor)),e=!C;if(e){e=new Promise(function(a,b){function f(){(new Date).getTime()-G>=D?b():document.fonts.load(J(c,'"'+c.family+'"'),l).then(function(c){1<=c.length?a():setTimeout(f,25);},function(){b();});}f();});var K=new Promise(function(a,
 c){r=setTimeout(c,D);});Promise.race([K,e]).then(function(){clearTimeout(r);a(c);},function(){b(c);});}else n(function(){function e(){var b;if(b=-1!=g&&-1!=h||-1!=g&&-1!=k||-1!=h&&-1!=k)(b=g!=h&&g!=k&&h!=k)||(null===B&&(b=/AppleWebKit\/([0-9]+)(?:\.([0-9]+))/.exec(window.navigator.userAgent),B=!!b&&(536>parseInt(b[1],10)||536===parseInt(b[1],10)&&11>=parseInt(b[2],10))),b=B&&(g==u&&h==u&&k==u||g==v&&h==v&&k==v||g==w&&h==w&&k==w)),b=!b;b&&(d.parentNode&&d.parentNode.removeChild(d),clearTimeout(r),a(c));}
-function H(){if((new Date).getTime()-G>=D)d.parentNode&&d.parentNode.removeChild(d),b(c);else{var a=document.hidden;if(!0===a||void 0===a)g=f.a.offsetWidth,h=p.a.offsetWidth,k=q.a.offsetWidth,e();r=setTimeout(H,50);}}var f=new t(l),p=new t(l),q=new t(l),g=-1,h=-1,k=-1,u=-1,v=-1,w=-1,d=document.createElement("div");d.dir="ltr";x(f,J(c,"sans-serif"));x(p,J(c,"serif"));x(q,J(c,"monospace"));d.appendChild(f.a);d.appendChild(p.a);d.appendChild(q.a);document.body.appendChild(d);u=f.a.offsetWidth;v=p.a.offsetWidth;
+function H(){if((new Date).getTime()-G>=D)d.parentNode&&d.parentNode.removeChild(d),b(c);else {var a=document.hidden;if(!0===a||void 0===a)g=f.a.offsetWidth,h=p.a.offsetWidth,k=q.a.offsetWidth,e();r=setTimeout(H,50);}}var f=new t(l),p=new t(l),q=new t(l),g=-1,h=-1,k=-1,u=-1,v=-1,w=-1,d=document.createElement("div");d.dir="ltr";x(f,J(c,"sans-serif"));x(p,J(c,"serif"));x(q,J(c,"monospace"));d.appendChild(f.a);d.appendChild(p.a);d.appendChild(q.a);document.body.appendChild(d);u=f.a.offsetWidth;v=p.a.offsetWidth;
 w=q.a.offsetWidth;H();z(f,function(a){g=a;e();});x(f,J(c,'"'+c.family+'",sans-serif'));z(p,function(a){h=a;e();});x(p,J(c,'"'+c.family+'",serif'));z(q,function(a){k=a;e();});x(q,J(c,'"'+c.family+'",monospace'));});})};module.exports=A;}());
 });
 
-/* global FontFace */
 const FontManager = {
   // Font detection
   fonts_loaded: Promise.resolve(),
@@ -11484,12 +11263,12 @@ const FontManager = {
 
   // Loads a font face via either the native FontFace API, or CSS injection
   // TODO: consider support for multiple format URLs per face, unicode ranges
-  async injectFontFace(_ref) {
-    let family = _ref.family,
-        url = _ref.url,
-        weight = _ref.weight,
-        style = _ref.style;
-
+  async injectFontFace({
+    family,
+    url,
+    weight,
+    style
+  }) {
     if (this.supports_native_font_loading === undefined) {
       this.supports_native_font_loading = window.FontFace !== undefined;
     } // Convert blob URLs, depending on whether the native FontFace API will be used or not.
@@ -11608,7 +11387,8 @@ const accents_and_vowels = '[\u0300-\u036F' + // Combining Diacritical Marks
 ']';
 const combo_characters = '[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0C4D\u0CCD\u0D4D\u0F84\u1039\u17D2\u1A60\u1A7F]'; // Find the next grapheme cluster (non-Arabic)
 
-const grapheme_match = new RegExp('^.(?:' + accents_and_vowels + '+)?' + '(' + combo_characters + '\\W(?:' + accents_and_vowels + '+)?)*'); // Scripts that cannot be curved due (due to contextual shaping and/or layout complexity)
+const grapheme_match = new RegExp(`^.(?:${accents_and_vowels}+)?(${combo_characters}\\W(?:${accents_and_vowels}+)?)*`); // eslint-disable-line no-misleading-character-class
+// Scripts that cannot be curved due (due to contextual shaping and/or layout complexity)
 
 const curve_blacklist = {
   Mongolian: '\u1800-\u18AF'
@@ -11694,15 +11474,7 @@ function splitLabelText(text, rtl, cache) {
 // "text wrap" and "max line" values
 
 class MultiLine {
-  constructor(context, max_lines, text_wrap) {
-    if (max_lines === void 0) {
-      max_lines = Infinity;
-    }
-
-    if (text_wrap === void 0) {
-      text_wrap = Infinity;
-    }
-
+  constructor(context, max_lines = Infinity, text_wrap = Infinity) {
     this.width = 0;
     this.height = 0;
     this.lines = [];
@@ -11837,15 +11609,7 @@ MultiLine.ellipsis = '...'; // A Private class used by MultiLine to contain the 
 // including character count, width, height and text
 
 class Line {
-  constructor(height, text_wrap) {
-    if (height === void 0) {
-      height = 0;
-    }
-
-    if (text_wrap === void 0) {
-      text_wrap = 0;
-    }
-
+  constructor(height = 0, text_wrap = 0) {
     this.chars = 0;
     this.text = '';
     this.height = Math.ceil(height);
@@ -11888,13 +11652,14 @@ class TextCanvas {
   } // Set font style params for canvas drawing
 
 
-  setFont(_ref) {
-    let font_css = _ref.font_css,
-        fill = _ref.fill,
-        stroke = _ref.stroke,
-        stroke_width = _ref.stroke_width,
-        px_size = _ref.px_size,
-        supersample = _ref.supersample;
+  setFont({
+    font_css,
+    fill,
+    stroke,
+    stroke_width,
+    px_size,
+    supersample
+  }) {
     this.px_size = px_size;
     let ctx = this.context;
     let dpr = Utils.device_pixel_ratio * supersample;
@@ -11926,8 +11691,10 @@ class TextCanvas {
   }
 
   processTextSizesTask(task) {
-    let cursor = task.cursor,
-        texts = task.texts;
+    let {
+      cursor,
+      texts
+    } = task;
     cursor.style_idx = cursor.style_idx || 0;
 
     while (cursor.style_idx < cursor.styles.length) {
@@ -11999,19 +11766,17 @@ class TextCanvas {
   // Includes word wrapping, returns size info for whole text block and individual lines
 
 
-  textSize(style, text, _ref2) {
-    let transform = _ref2.transform,
-        text_wrap = _ref2.text_wrap,
-        max_lines = _ref2.max_lines,
-        _ref2$stroke_width = _ref2.stroke_width,
-        stroke_width = _ref2$stroke_width === void 0 ? 0 : _ref2$stroke_width,
-        background_color = _ref2.background_color,
-        _ref2$background_stro = _ref2.background_stroke_width,
-        background_stroke_width = _ref2$background_stro === void 0 ? 0 : _ref2$background_stro,
-        background_width = _ref2.background_width,
-        _ref2$underline_width = _ref2.underline_width,
-        underline_width = _ref2$underline_width === void 0 ? 0 : _ref2$underline_width,
-        supersample = _ref2.supersample;
+  textSize(style, text, {
+    transform,
+    text_wrap,
+    max_lines,
+    stroke_width = 0,
+    background_color,
+    background_stroke_width = 0,
+    background_width,
+    underline_width = 0,
+    supersample
+  }) {
     // Check cache first
     TextCanvas.cache.text[style] = TextCanvas.cache.text[style] || {};
 
@@ -12037,11 +11802,11 @@ class TextCanvas {
     // Parse string into series of lines if it exceeds the text wrapping value or contains line breaks
     // const multiline = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx);
 
-    let _MultiLine$parse = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx),
-        width = _MultiLine$parse.width,
-        height = _MultiLine$parse.height,
-        lines = _MultiLine$parse.lines;
-
+    let {
+      width,
+      height,
+      lines
+    } = MultiLine.parse(str, text_wrap, max_lines, line_height, ctx);
     width += background_size * 2;
     height += background_size * 2;
     let collision_size = [width / dpr, height / dpr];
@@ -12065,15 +11830,15 @@ class TextCanvas {
   } // Draw multiple lines of text
 
 
-  drawTextMultiLine(lines, _ref3, size, text_settings, label_type) {
-    let x = _ref3[0],
-        y = _ref3[1];
-    const dpr = size.dpr,
-          collision_size = size.collision_size,
-          texture_size = size.texture_size,
-          line_height = size.line_height,
-          horizontal_buffer = size.horizontal_buffer,
-          vertical_buffer = size.vertical_buffer; // draw optional background box
+  drawTextMultiLine(lines, [x, y], size, text_settings, label_type) {
+    const {
+      dpr,
+      collision_size,
+      texture_size,
+      line_height,
+      horizontal_buffer,
+      vertical_buffer
+    } = size; // draw optional background box
 
     if (text_settings.background_color || text_settings.background_stroke_color) {
       const background_stroke_color = text_settings.background_stroke_color;
@@ -12114,20 +11879,21 @@ class TextCanvas {
   } // Draw single line of text at specified location, adjusting for buffer and baseline
 
 
-  drawTextLine(line, _ref4, size, text_settings, type) {
-    let x = _ref4[0],
-        y = _ref4[1];
-    const stroke = text_settings.stroke,
-          stroke_width = text_settings.stroke_width,
-          transform = text_settings.transform,
-          _text_settings$align = text_settings.align,
-          align = _text_settings$align === void 0 ? 'center' : _text_settings$align;
-    const horizontal_buffer = size.horizontal_buffer,
-          vertical_buffer = size.vertical_buffer,
-          texture_size = size.texture_size,
-          background_size = size.background_size,
-          line_height = size.line_height,
-          dpr = size.dpr;
+  drawTextLine(line, [x, y], size, text_settings, type) {
+    const {
+      stroke,
+      stroke_width,
+      transform,
+      align = 'center'
+    } = text_settings;
+    const {
+      horizontal_buffer,
+      vertical_buffer,
+      texture_size,
+      background_size,
+      line_height,
+      dpr
+    } = size;
     const underline_width = (text_settings.underline_width || 0) * dpr;
     const text = this.applyTextTransform(line.text, transform); // Text alignment
 
@@ -12168,14 +11934,14 @@ class TextCanvas {
   } // Draw optional text debug boxes
 
 
-  drawTextDebug(_ref5, size, label_type) {
-    let x = _ref5[0],
-        y = _ref5[1];
-    const dpr = size.dpr,
-          horizontal_buffer = size.horizontal_buffer,
-          vertical_buffer = size.vertical_buffer,
-          texture_size = size.texture_size,
-          collision_size = size.collision_size;
+  drawTextDebug([x, y], size, label_type) {
+    const {
+      dpr,
+      horizontal_buffer,
+      vertical_buffer,
+      texture_size,
+      collision_size
+    } = size;
     const line_width = 2;
 
     if (debugSettings$1.draw_label_collision_boxes) {
@@ -12233,9 +11999,11 @@ class TextCanvas {
   }
 
   processRasterizeTask(task) {
-    let cursor = task.cursor,
-        texts = task.texts,
-        textures = task.textures;
+    let {
+      cursor,
+      texts,
+      textures
+    } = task;
     let texture; // Rasterize one texture at a time, so we only have to keep one canvas in memory (they can be large)
 
     while (cursor.texture_idx < task.textures.length) {
@@ -12287,11 +12055,10 @@ class TextCanvas {
                   texcoord = cache.texcoord;
                 } else {
                   let texture_position = cache.texture_position;
-
-                  let _this$textSize = this.textSize(style, word, text_settings),
-                      size = _this$textSize.size,
-                      lines = _this$textSize.lines;
-
+                  let {
+                    size,
+                    lines
+                  } = this.textSize(style, word, text_settings);
                   this.drawTextMultiLine(lines, texture_position, size, text_settings, type);
                   texcoord = Texture.getTexcoordsForSprite(texture_position, size.texture_size, texture.texture_size);
                   cache.texcoord = texcoord;
@@ -12323,11 +12090,10 @@ class TextCanvas {
                     text_info.texcoords_stroke.push(texcoord_stroke);
                   } else {
                     let texture_position = cache.texture_position;
-
-                    let _this$textSize2 = this.textSize(style, word, text_settings),
-                        size = _this$textSize2.size,
-                        lines = _this$textSize2.lines;
-
+                    let {
+                      size,
+                      lines
+                    } = this.textSize(style, word, text_settings);
                     this.drawTextMultiLine(lines, texture_position, size, text_settings, type);
                     texcoord = Texture.getTexcoordsForSprite(texture_position, size.texture_size, texture.texture_size);
                     let texture_position_stroke = [texture_position[0] + size.texture_size[0], texture_position[1]];
@@ -12550,10 +12316,7 @@ class TextCanvas {
 
     size = typeof size === 'string' ? size : String(size); // need a string for regex
 
-    let _ref6 = size.match(TextCanvas.font_size_re) || [],
-        px_size = _ref6[1],
-        units = _ref6[2];
-
+    let [, px_size, units] = size.match(TextCanvas.font_size_re) || [];
     units = units || 'px';
 
     if (units === 'em') {
@@ -13397,11 +13160,7 @@ const mat4 = {
 };
 
 class Camera {
-  constructor(name, view, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  constructor(name, view, options = {}) {
     this.view = view;
     this.position = options.position;
     this.zoom = options.zoom;
@@ -13483,11 +13242,7 @@ class Camera {
 */
 
 class PerspectiveCamera extends Camera {
-  constructor(name, view, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  constructor(name, view, options = {}) {
     super(name, view, options);
     this.type = 'perspective'; // a single scalar, or pairs of stops mapping zoom levels, e.g. [zoom, focal length]
 
@@ -13521,12 +13276,12 @@ class PerspectiveCamera extends Camera {
   // (focal length is used if both are passed).
 
 
-  constrainCamera(_ref) {
-    let view_height = _ref.view_height,
-        height = _ref.height,
-        focal_length = _ref.focal_length,
-        fov = _ref.fov;
-
+  constrainCamera({
+    view_height,
+    height,
+    focal_length,
+    fov
+  }) {
     // Solve for camera height
     if (!height) {
       // We have focal length, calculate FOV
@@ -13561,14 +13316,14 @@ class PerspectiveCamera extends Camera {
     // Height of the viewport in meters at current zoom
     var viewport_height = this.view.size.css.height * this.view.meters_per_pixel; // Compute camera properties to fit desired view
 
-    var _this$constrainCamera = this.constrainCamera({
+    var {
+      height,
+      fov
+    } = this.constrainCamera({
       view_height: viewport_height,
       focal_length: Utils.interpolate(this.view.zoom, this.focal_length),
       fov: Utils.interpolate(this.view.zoom, this.fov)
-    }),
-        height = _this$constrainCamera.height,
-        fov = _this$constrainCamera.fov; // View matrix
-
+    }); // View matrix
 
     var position = [this.view.center.meters.x, this.view.center.meters.y, height];
     this.position_meters = position; // mat4.lookAt(this.view_matrix,
@@ -13615,11 +13370,7 @@ class PerspectiveCamera extends Camera {
 
 
 class IsometricCamera extends Camera {
-  constructor(name, view, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  constructor(name, view, options = {}) {
     super(name, view, options);
     this.type = 'isometric';
     this.axis = options.axis || {
@@ -13685,11 +13436,7 @@ class IsometricCamera extends Camera {
 
 
 class FlatCamera extends IsometricCamera {
-  constructor(name, view, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  constructor(name, view, options = {}) {
     super(name, view, options);
     this.type = 'flat';
   }
@@ -13812,12 +13559,11 @@ class View {
   } // Set the map view, can be passed an object with lat/lng and/or zoom
 
 
-  setView(_temp) {
-    let _ref = _temp === void 0 ? {} : _temp,
-        lng = _ref.lng,
-        lat = _ref.lat,
-        zoom = _ref.zoom;
-
+  setView({
+    lng,
+    lat,
+    zoom
+  } = {}) {
     var changed = false; // Set center
 
     if (typeof lng === 'number' && typeof lat === 'number') {
@@ -14070,11 +13816,7 @@ Object.assign(Points, {
   blend: 'overlay',
 
   // overlays drawn on top of all other styles, with blending
-  init(options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  init(options = {}) {
     Style.init.call(this, options); // Shader defines
 
     this.setupDefines(); // Include code for SDF-drawn shader points
@@ -14377,7 +14119,11 @@ Object.assign(Points, {
       }
     }); // Collide both points and text, then build features
 
-    const _ref = await Promise.all([// Points
+    const [, {
+      labels,
+      texts,
+      textures
+    }] = await Promise.all([// Points
     Collision.collide(point_objs, this.collision_group_points, tile.id).then(point_objs => {
       point_objs.forEach(q => {
         this.feature_style = q.style;
@@ -14387,12 +14133,7 @@ Object.assign(Points, {
         Style.addFeature.call(this, q.feature, q.draw, q.context);
       });
     }), // Labels
-    this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)]),
-          _ref$ = _ref[1],
-          labels = _ref$.labels,
-          texts = _ref$.texts,
-          textures = _ref$.textures; // Process labels
-
+    this.collideAndRenderTextLabels(tile, this.collision_group_text, text_objs)]); // Process labels
 
     if (labels && texts) {
       // Build queued features
@@ -14647,11 +14388,7 @@ Object.assign(Points, {
    * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
    * A plain JS array matching the order of the vertex layout.
    */
-  makeVertexTemplate(style, mesh, add_custom_attribs) {
-    if (add_custom_attribs === void 0) {
-      add_custom_attribs = true;
-    }
-
+  makeVertexTemplate(style, mesh, add_custom_attribs = true) {
     let i = 0; // a_position.xyz - vertex position
     // a_position.w - layer order
 
@@ -14985,11 +14722,7 @@ Object.assign(Points, {
   },
 
   // Override
-  makeMesh(vertex_data, vertex_elements, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  makeMesh(vertex_data, vertex_elements, options = {}) {
     // Add label fade time
     options = Object.assign({}, options, {
       fade_in_time: this.fade_in_time
@@ -15022,7 +14755,7 @@ const VERTICAL_ANGLE_TOLERANCE = 0.01; // nearly vertical lines considered verti
 let LabelLine = {
   // Given a label's bounding box size and size of broken up individual segments
   // return a label that fits along the line geometry that is either straight (preferred) or curved (if straight tolerances aren't met)
-  create: function create(segment_sizes, total_size, line, layout) {
+  create: function (segment_sizes, total_size, line, layout) {
     // The passes done for fitting a label, and provided tolerances for each pass
     // First straight is chosen with a low tolerance. Then curved. Then straight with a higher tolerance.
     const passes = [{
@@ -15170,11 +14903,7 @@ class LabelLineBase {
   } // Checks each segment to see if it should be discarded (via collision). If any segment fails this test, they all fail.
 
 
-  discard(bboxes, exclude) {
-    if (exclude === void 0) {
-      exclude = null;
-    }
-
+  discard(bboxes, exclude = null) {
     if (this.throw_away) {
       return true;
     }
@@ -15249,12 +14978,8 @@ class LabelLineStraight extends LabelLineBase {
     let flipped; // boolean indicating if orientation of line is changed
     // Make new copy of line, with consistent orientation
 
-    var _LabelLineBase$splitL = LabelLineBase.splitLineByOrientation(line);
+    [line, flipped] = LabelLineBase.splitLineByOrientation(line); // matches for "left" or "right" labels where the offset angle is dependent on the geometry
 
-    line = _LabelLineBase$splitL[0];
-    flipped = _LabelLineBase$splitL[1];
-
-    // matches for "left" or "right" labels where the offset angle is dependent on the geometry
     if (typeof layout.orientation === 'number') {
       this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (size[1] - layout.vertical_buffer); // if line is flipped, or the orientation is "left" (-1), flip the offset's y-axis
 
@@ -15382,12 +15107,8 @@ class LabelLineCurved extends LabelLineBase {
 
     let height = height_px * upp; // Make new copy of line, with consistent orientation
 
-    var _LabelLineBase$splitL2 = LabelLineBase.splitLineByOrientation(line);
+    [line, flipped] = LabelLineBase.splitLineByOrientation(line); // matches for "left" or "right" labels where the offset angle is dependent on the geometry
 
-    line = _LabelLineBase$splitL2[0];
-    flipped = _LabelLineBase$splitL2[1];
-
-    // matches for "left" or "right" labels where the offset angle is dependent on the geometry
     if (typeof layout.orientation === 'number') {
       this.offset[1] += ORIENTED_LABEL_OFFSET_FACTOR * (height_px - layout.vertical_buffer); // if line is flipped, or the orientation is "left" (-1), flip the offset's y-axis
 
@@ -15439,18 +15160,15 @@ class LabelLineCurved extends LabelLineBase {
       for (var j = 0; j < STOPS.length; j++) {
         let stop = STOPS[j]; // scale the line geometry by the zoom magnification
 
-        let _LabelLineCurved$scal = LabelLineCurved.scaleLine(stop, line),
-            new_line = _LabelLineCurved$scal[0],
-            line_lengths = _LabelLineCurved$scal[1];
-
+        let [new_line, _line_lengths] = LabelLineCurved.scaleLine(stop, line);
         anchor = new_line[anchor_index]; // calculate label data relative to anchor position
 
-        let _LabelLineCurved$plac = LabelLineCurved.placeAtIndex(anchor_index, new_line, line_lengths, label_lengths),
-            positions = _LabelLineCurved$plac.positions,
-            offsets = _LabelLineCurved$plac.offsets,
-            angles = _LabelLineCurved$plac.angles,
-            pre_angles = _LabelLineCurved$plac.pre_angles; // translate 2D offsets into "polar coordinates"" (1D distances with angles)
-
+        let {
+          positions,
+          offsets,
+          angles,
+          pre_angles
+        } = LabelLineCurved.placeAtIndex(anchor_index, new_line, _line_lengths, label_lengths); // translate 2D offsets into "polar coordinates"" (1D distances with angles)
 
         let offsets1d = offsets.map(offset => {
           return Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]) / upp;
@@ -15460,11 +15178,11 @@ class LabelLineCurved extends LabelLineBase {
           // use average angle for a global label offset (if offset is specified)
           this.angle = 1 / angles.length * angles.reduce((prev, next) => prev + next); // calculate bounding boxes for collision at zoom level 0
 
-          for (let i = 0; i < positions.length; i++) {
-            let position = positions[i];
-            let pre_angle = pre_angles[i];
-            let width = label_lengths[i];
-            let angle_segment = pre_angle + angles[i];
+          for (let _i = 0; _i < positions.length; _i++) {
+            let position = positions[_i];
+            let pre_angle = pre_angles[_i];
+            let width = label_lengths[_i];
+            let angle_segment = pre_angle + angles[_i];
             let angle_offset = this.angle;
             let obb = LabelLineBase.createOBB(position, width, height, angle_segment, angle_offset, this.offset, upp);
             let aabb = obb.getExtent();
@@ -15594,18 +15312,11 @@ class LabelLineCurved extends LabelLineBase {
   static placeAtIndex(anchor_index, line, line_lengths, label_lengths) {
     let anchor = line[anchor_index]; // Use flat coordinates. Get nearest line vertex index, and offset from the vertex for all labels.
 
-    let _LabelLineCurved$getI = LabelLineCurved.getIndicesAndOffsets(anchor_index, line_lengths, label_lengths),
-        indices = _LabelLineCurved$getI[0],
-        relative_offsets = _LabelLineCurved$getI[1]; // get 2D positions based on "flat" indices and offsets
-
+    let [indices, relative_offsets] = LabelLineCurved.getIndicesAndOffsets(anchor_index, line_lengths, label_lengths); // get 2D positions based on "flat" indices and offsets
 
     let positions = LabelLineCurved.getPositionsFromIndicesAndOffsets(line, indices, relative_offsets); // get 2d offsets, angles and pre_angles relative to anchor
 
-    let _LabelLineCurved$getA = LabelLineCurved.getAnglesFromIndicesAndOffsets(anchor, indices, line, positions),
-        offsets = _LabelLineCurved$getA[0],
-        angles = _LabelLineCurved$getA[1],
-        pre_angles = _LabelLineCurved$getA[2];
-
+    let [offsets, angles, pre_angles] = LabelLineCurved.getAnglesFromIndicesAndOffsets(anchor, indices, line, positions);
     return {
       positions,
       offsets,
@@ -15756,11 +15467,7 @@ Object.assign(TextStyle, {
   super: Points,
   built_in: true,
 
-  init(options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  init(options = {}) {
     Style.init.call(this, options); // Shader defines
 
     this.setupDefines(); // Omit some code for SDF-drawn shader points
@@ -15841,11 +15548,11 @@ Object.assign(TextStyle, {
   async endData(tile) {
     let queue = this.queues[tile.id];
     delete this.queues[tile.id];
-
-    const _ref = await this.collideAndRenderTextLabels(tile, this.name, queue),
-          labels = _ref.labels,
-          texts = _ref.texts,
-          textures = _ref.textures;
+    const {
+      labels,
+      texts,
+      textures
+    } = await this.collideAndRenderTextLabels(tile, this.name, queue);
 
     if (labels && texts) {
       this.texts[tile.id] = texts; // Build queued features
@@ -16193,9 +15900,7 @@ class StyleManager {
   updateActiveBlendOrders(tiles) {
     const orders = [];
     tiles.forEach(tile => {
-      Object.entries(tile.meshes).forEach((_ref) => {
-        let style = _ref[0],
-            style_meshes = _ref[1];
+      Object.entries(tile.meshes).forEach(([style, style_meshes]) => {
         // for each tile's set of meshes, keyed by style name
         style_meshes.forEach(mesh => {
           // for each style's list of meshes
@@ -16252,10 +15957,10 @@ class StyleManager {
     style.dash = sources.map(x => x.dash).filter(x => x != null).pop();
     style.dash_background_color = sources.map(x => x.dash_background_color).filter(x => x != null).pop();
 
-    if (sources.some(x => x.hasOwnProperty('blend') && x.blend)) {
+    if (sources.some(x => Object.prototype.hasOwnProperty.call(x, 'blend') && x.blend)) {
       // only mix blend if explicitly set, otherwise let base style choose blending mode
       // hasOwnProperty check gives preference to base style prototype
-      style.blend = sources.map(x => x.hasOwnProperty('blend') && x.blend).filter(x => x).pop();
+      style.blend = sources.map(x => Object.prototype.hasOwnProperty.call(x, 'blend') && x.blend).filter(x => x).pop();
     }
 
     style.blend_order = sources.map(x => x.blend_order).filter(x => x != null).pop(); // Merges - property-specific rules for merging values
@@ -16302,7 +16007,7 @@ class StyleManager {
         Object.defineProperty(shaders.uniforms, u, {
           enumerable: true,
           configurable: true,
-          get: function get() {
+          get: function () {
             // Uniform is explicitly defined on this style
             if (shaders._uniforms[u] !== undefined) {
               return shaders._uniforms[u];
@@ -16315,7 +16020,7 @@ class StyleManager {
 
             return undefined;
           },
-          set: function set(v) {
+          set: function (v) {
             shaders._uniforms[u] = v;
           }
         });
@@ -16399,11 +16104,7 @@ class StyleManager {
   // styles: working set of styles being built (used for mixing in existing styles)
 
 
-  create(name, config, styles) {
-    if (styles === void 0) {
-      styles = {};
-    }
-
+  create(name, config, styles = {}) {
     let style = mergeObjects({}, config); // deep copy
 
     style.name = name; // Style mixins
@@ -16468,11 +16169,7 @@ class StyleManager {
   } // Initialize all styles
 
 
-  initStyles(scene) {
-    if (scene === void 0) {
-      scene = {};
-    }
-
+  initStyles(scene = {}) {
     // Initialize all
     for (let sname in this.styles) {
       this.styles[sname].init(scene);
@@ -16684,10 +16381,10 @@ function parseFilter(filter, options) {
       if (value.max || value.min) {
         filterAST.push(rangeMatch(key, value, options));
       } else if (value.includes_any || value.includes_all) {
-        filterAST.push(includesMatch(key, value, options));
+        filterAST.push(includesMatch(key, value));
       }
     } else if (value == null) {
-      filterAST.push(nullValue(key, value));
+      filterAST.push(nullValue());
     } else {
       throw new Error('Unknown Query syntax: ' + value);
     }
@@ -16780,17 +16477,18 @@ function mergeTrees(matchingTrees, group) {
 const blacklist = ['any', 'all', 'not', 'none'];
 
 class Layer {
-  constructor(_ref) {
-    let layer = _ref.layer,
-        name = _ref.name,
-        parent = _ref.parent,
-        draw = _ref.draw,
-        visible = _ref.visible,
-        enabled = _ref.enabled,
-        filter = _ref.filter,
-        exclusive = _ref.exclusive,
-        priority = _ref.priority,
-        styles = _ref.styles;
+  constructor({
+    layer,
+    name,
+    parent,
+    draw,
+    visible,
+    enabled,
+    filter,
+    exclusive,
+    priority,
+    styles
+  }) {
     this.id = Layer.id++;
     this.config_data = layer.data;
     this.parent = parent;
@@ -17126,11 +16824,7 @@ function parseLayerNode(name, layer, parent, styles) {
     parent,
     styles
   };
-
-  let _groupProps = groupProps(layer),
-      reserved = _groupProps[0],
-      children = _groupProps[1];
-
+  let [reserved, children] = groupProps(layer);
   let empty = isEmpty(children);
   let Create;
 
@@ -17253,7 +16947,7 @@ function matchFeature(context, layers, collected_layers, collected_layers_ids) {
   return matched;
 }
 
-let id$1 = 0; // unique tile id
+let id = 0; // unique tile id
 
 let build_id = 0; // id tracking order in which tiles were build
 
@@ -17265,13 +16959,14 @@ class Tile {
       coords: object with {x, y, z} properties identifying tile coordinate location
       worker: web worker to handle tile construction
   */
-  constructor(_ref) {
-    let coords = _ref.coords,
-        style_z = _ref.style_z,
-        source = _ref.source,
-        workers = _ref.workers,
-        view = _ref.view;
-    this.id = id$1++;
+  constructor({
+    coords,
+    style_z,
+    source,
+    workers,
+    view
+  }) {
+    this.id = id++;
     this.view = view;
     this.source = source;
     this.generation = null;
@@ -17390,19 +17085,13 @@ class Tile {
     this.worker = workers[this.worker_id];
   }
 
-  workerMessage() {
-    for (var _len = arguments.length, message = new Array(_len), _key = 0; _key < _len; _key++) {
-      message[_key] = arguments[_key];
-    }
-
+  workerMessage(...message) {
     return WorkerBroker$1.postMessage(this.worker, ...message);
   }
 
-  build(generation, _temp) {
-    let _ref2 = _temp === void 0 ? {} : _temp,
-        _ref2$fade_in = _ref2.fade_in,
-        fade_in = _ref2$fade_in === void 0 ? true : _ref2$fade_in;
-
+  build(generation, {
+    fade_in = true
+  } = {}) {
     this.generation = generation;
     this.fade_in = fade_in;
 
@@ -17441,11 +17130,12 @@ class Tile {
   // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
 
 
-  static buildGeometry(tile, _ref3) {
-    let scene_id = _ref3.scene_id,
-        layers = _ref3.layers,
-        styles = _ref3.styles,
-        global = _ref3.global;
+  static buildGeometry(tile, {
+    scene_id,
+    layers,
+    styles,
+    global
+  }) {
     let data = tile.source_data;
     tile.debug.building = +new Date();
     tile.debug.feature_count = 0;
@@ -17583,18 +17273,19 @@ class Tile {
   } // Build a single group of styles
 
 
-  static async buildStyleGroup(_ref4) {
-    let group_name = _ref4.group_name,
-        groups = _ref4.groups,
-        tile = _ref4.tile,
-        progress = _ref4.progress,
-        scene_id = _ref4.scene_id;
+  static async buildStyleGroup({
+    group_name,
+    groups,
+    tile,
+    progress,
+    scene_id
+  }) {
     const group = groups[group_name];
     const mesh_data = {};
 
     try {
       // For each group, build all styles in the group
-      await Promise.all(group.map(async style => {
+      await Promise.all(group.map(async function (style) {
         const style_data = await style.endData(tile);
 
         if (style_data) {
@@ -17868,9 +17559,10 @@ class Tile {
   } // Update model matrix and tile uniforms
 
 
-  setupProgram(_ref5, program) {
-    let model = _ref5.model,
-        model32 = _ref5.model32;
+  setupProgram({
+    model,
+    model32
+  }, program) {
     // Tile origin
     program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_z, this.coords.z]);
     program.uniform('1f', 'u_tile_proxy_order_offset', this.proxy_order_offset); // Model - transform tile space into world space (meters, absolute mercator position)
@@ -20733,14 +20425,6 @@ function object(topology, o) {
   return geometry(o);
 }
 
-// export {default as bbox} from "./src/bbox";
-// export {default as mesh, meshArcs} from "./src/mesh";
-// export {default as merge, mergeArcs} from "./src/merge";
-// export {default as neighbors} from "./src/neighbors";
-// export {default as quantize} from "./src/quantize";
-// export {default as transform} from "./src/transform";
-// export {default as untransform} from "./src/untransform";
-
 /**
  TopoJSON standalone (non-tiled) source
  Uses geojson-vt split into tiles client-side
@@ -20811,71 +20495,69 @@ DataSource.register('TopoJSON', source => {
   return TopoJSONTileSource.urlHasTilePattern(source.url) ? TopoJSONTileSource : TopoJSONSource;
 });
 
-// add all data source types
-
-exports.createCommonjsModule = createCommonjsModule;
-exports.commonjsRequire = commonjsRequire;
-exports.isLocalURL = isLocalURL;
-exports.extensionForURL = extensionForURL;
-exports.isRelativeURL = isRelativeURL;
-exports.pathForURL = pathForURL;
-exports.Utils = Utils;
-exports.addBaseURL = addBaseURL;
-exports.flattenRelativeURL = flattenRelativeURL;
-exports.createObjectURL = createObjectURL;
-exports.subscribeMixin = subscribeMixin;
-exports.log = log;
-exports.mergeObjects = mergeObjects;
-exports.isReserved = isReserved;
-exports.GLSL = GLSL;
-exports.TileID = TileID;
 exports.Collision = Collision;
-exports.Geo = Geo$1;
-exports.LabelPoint = LabelPoint;
-exports.LabelLineStraight = LabelLineStraight;
-exports.OBB = OBB;
-exports.Label = Label;
-exports.WorkerBroker = WorkerBroker$1;
-exports.Task = Task;
-exports.Tile = Tile;
-exports.StyleParser = StyleParser;
-exports.Texture = Texture;
-exports.debugSettings = debugSettings$1;
-exports.debugSumLayerStats = debugSumLayerStats;
-exports.View = View;
-exports.StyleManager = StyleManager;
-exports.ShaderProgram = ShaderProgram;
-exports.VertexArrayObject = VertexArrayObject;
-exports.Style = Style;
-exports.TextCanvas = TextCanvas;
-exports._extends = _extends;
 exports.DataSource = DataSource;
-exports.Light = Light;
-exports.FontManager = FontManager;
 exports.FeatureSelection = FeatureSelection;
-exports.sliceObject = sliceObject;
-exports.Thread = Thread;
-exports.mergeDebugSettings = mergeDebugSettings;
-exports.version = version$1;
-exports.Vector = Vector$1;
-exports.VertexData = VertexData;
-exports.Material = Material;
-exports.VertexElements = VertexElements;
-exports.compileFunctionStrings = compileFunctionStrings;
-exports.parseLayers = parseLayers;
-exports.buildFilter = buildFilter;
 exports.FilterOptions = FilterOptions;
-exports.layerCache = layerCache;
+exports.FontManager = FontManager;
+exports.GLSL = GLSL;
+exports.Geo = Geo$1;
+exports.Label = Label;
+exports.LabelLineStraight = LabelLineStraight;
+exports.LabelPoint = LabelPoint;
+exports.Light = Light;
+exports.Material = Material;
+exports.OBB = OBB;
+exports.ShaderProgram = ShaderProgram;
+exports.Style = Style;
+exports.StyleManager = StyleManager;
+exports.StyleParser = StyleParser;
+exports.Task = Task;
+exports.TextCanvas = TextCanvas;
+exports.Texture = Texture;
+exports.Thread = Thread;
+exports.Tile = Tile;
+exports.TileID = TileID;
+exports.Utils = Utils;
+exports.Vector = Vector$1;
+exports.VertexArrayObject = VertexArrayObject;
+exports.VertexData = VertexData;
+exports.VertexElements = VertexElements;
+exports.View = View;
+exports.WorkerBroker = WorkerBroker$1;
+exports._extends = _extends;
+exports.addBaseURL = addBaseURL;
+exports.buildFilter = buildFilter;
 exports.cache = cache;
 exports.clearFunctionStringCache = clearFunctionStringCache;
+exports.commonjsRequire = commonjsRequire;
+exports.compileFunctionStrings = compileFunctionStrings;
+exports.createCommonjsModule = createCommonjsModule;
+exports.createObjectURL = createObjectURL;
+exports.debugSettings = debugSettings$1;
+exports.debugSumLayerStats = debugSumLayerStats;
+exports.extensionForURL = extensionForURL;
+exports.flattenRelativeURL = flattenRelativeURL;
+exports.isLocalURL = isLocalURL;
+exports.isRelativeURL = isRelativeURL;
+exports.isReserved = isReserved;
+exports.layerCache = layerCache;
+exports.log = log;
+exports.mergeDebugSettings = mergeDebugSettings;
+exports.mergeObjects = mergeObjects;
+exports.parseLayers = parseLayers;
+exports.pathForURL = pathForURL;
+exports.sliceObject = sliceObject;
+exports.subscribeMixin = subscribeMixin;
+exports.version = version$1;
 
 });
 
-define(['./shared.js'], function (__chunk_1) { 'use strict';
+define(['./shared'], function (sources) { 'use strict';
 
 /*jshint worker: true*/
 const SceneWorker = Object.assign(self, {
-  FeatureSelection: __chunk_1.FeatureSelection,
+  FeatureSelection: sources.FeatureSelection,
   sources: {},
   styles: {},
   layers: {},
@@ -20886,14 +20568,14 @@ const SceneWorker = Object.assign(self, {
     this.scene_id = scene_id;
     this._worker_id = worker_id;
     this.num_workers = num_workers;
-    __chunk_1.log.setLevel(log_level);
-    __chunk_1.Utils.device_pixel_ratio = device_pixel_ratio;
-    __chunk_1.VertexElements.setElementIndexUint(has_element_index_unit);
-    __chunk_1.FeatureSelection.setPrefix(this._worker_id);
-    this.style_manager = new __chunk_1.StyleManager();
+    sources.log.setLevel(log_level);
+    sources.Utils.device_pixel_ratio = device_pixel_ratio;
+    sources.VertexElements.setElementIndexUint(has_element_index_unit);
+    sources.FeatureSelection.setPrefix(this._worker_id);
+    this.style_manager = new sources.StyleManager();
     this.importExternalScripts(external_scripts);
-    __chunk_1.Label.id_prefix = worker_id;
-    __chunk_1.Label.id_multiplier = num_workers;
+    sources.Label.id_prefix = worker_id;
+    sources.Label.id_multiplier = num_workers;
     return worker_id;
   },
 
@@ -20903,7 +20585,7 @@ const SceneWorker = Object.assign(self, {
       return;
     }
 
-    __chunk_1.log('debug', 'loading custom data source scripts in worker:', scripts); // `window` is already shimmed to allow compatibility with some other libraries (e.g. FontFaceObserver)
+    sources.log('debug', 'loading custom data source scripts in worker:', scripts); // `window` is already shimmed to allow compatibility with some other libraries (e.g. FontFaceObserver)
     // So there's an extra dance here to look for any additional `window` properties added by these script imports,
     // then add them to the worker `self` scope.
 
@@ -20917,20 +20599,21 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Starts a config refresh
-  updateConfig(_ref, debug) {
-    let config = _ref.config,
-        generation = _ref.generation,
-        introspection = _ref.introspection;
+  updateConfig({
+    config,
+    generation,
+    introspection
+  }, debug) {
     config = JSON.parse(config);
-    __chunk_1.mergeDebugSettings(debug);
+    sources.mergeDebugSettings(debug);
     this.generation = generation;
     this.introspection = introspection; // Expand global properties
 
-    this.global = __chunk_1.compileFunctionStrings(config.global); // Create data sources
+    this.global = sources.compileFunctionStrings(config.global); // Create data sources
 
     this.createDataSources(config); // Expand styles
 
-    config.styles = __chunk_1.compileFunctionStrings(config.styles, __chunk_1.StyleParser.wrapFunction);
+    config.styles = sources.compileFunctionStrings(config.styles, sources.StyleParser.wrapFunction);
     this.styles = this.style_manager.build(config.styles);
     this.style_manager.initStyles({
       generation: this.generation,
@@ -20939,12 +20622,12 @@ const SceneWorker = Object.assign(self, {
       introspection: this.introspection
     }); // Parse each top-level layer as a separate tree
 
-    this.layers = __chunk_1.parseLayers(config.layers, this.style_manager.styles); // Sync tetxure info from main thread
+    this.layers = sources.parseLayers(config.layers, this.style_manager.styles); // Sync tetxure info from main thread
 
     this.syncing_textures = this.syncTextures(config.textures); // Return promise for when config refresh finishes
 
     this.configuring = this.syncing_textures.then(() => {
-      __chunk_1.log('debug', 'updated config');
+      sources.log('debug', 'updated config');
     });
     return this.configuring;
   },
@@ -20966,11 +20649,11 @@ const SceneWorker = Object.assign(self, {
       } // compile any user-defined JS functions
 
 
-      config.sources[name] = __chunk_1.compileFunctionStrings(config.sources[name]);
+      config.sources[name] = sources.compileFunctionStrings(config.sources[name]);
       let source;
 
       try {
-        source = __chunk_1.DataSource.create(Object.assign({}, config.sources[name], {
+        source = sources.DataSource.create(Object.assign({}, config.sources[name], {
           name
         }), this.sources);
       } catch (e) {
@@ -21001,9 +20684,9 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
-  buildTile(_ref2) {
-    let tile = _ref2.tile;
-
+  buildTile({
+    tile
+  }) {
     // Tile cached?
     if (this.getTile(tile.key) != null) {
       // Already loading?
@@ -21023,36 +20706,36 @@ const SceneWorker = Object.assign(self, {
         tile.error = null;
         this.loadTileSourceData(tile).then(() => {
           if (!this.getTile(tile.key)) {
-            __chunk_1.log('trace', `stop tile build after data source load because tile was removed: ${tile.key}`);
+            sources.log('trace', `stop tile build after data source load because tile was removed: ${tile.key}`);
             return;
           } // Warn and continue on data source error
 
 
           if (tile.source_data.error) {
-            __chunk_1.log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
+            sources.log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
           }
 
           tile.loading = false;
           tile.loaded = true;
-          __chunk_1.Tile.buildGeometry(tile, this);
+          sources.Tile.buildGeometry(tile, this);
         }).catch(error => {
           tile.loading = false;
           tile.loaded = false;
           tile.error = error.stack;
-          __chunk_1.log('error', `tile load error for ${tile.key}: ${tile.error}`); // Send error to main thread
+          sources.log('error', `tile load error for ${tile.key}: ${tile.error}`); // Send error to main thread
 
-          __chunk_1.WorkerBroker.postMessage(`TileManager_${this.scene_id}.buildTileError`, __chunk_1.Tile.slice(tile));
+          sources.WorkerBroker.postMessage(`TileManager_${this.scene_id}.buildTileError`, sources.Tile.slice(tile));
         });
       } // Tile already loaded, just rebuild
       else {
-          __chunk_1.log('trace', `used worker cache for tile ${tile.key}`); // Build geometry
+          sources.log('trace', `used worker cache for tile ${tile.key}`); // Build geometry
 
           try {
-            __chunk_1.Tile.buildGeometry(tile, this);
+            sources.Tile.buildGeometry(tile, this);
           } catch (error) {
             // Send error to main thread
             tile.error = error.toString();
-            __chunk_1.WorkerBroker.postMessage(`TileManager_${this.scene_id}.buildTileError`, __chunk_1.Tile.slice(tile));
+            sources.WorkerBroker.postMessage(`TileManager_${this.scene_id}.buildTileError`, sources.Tile.slice(tile));
           }
         }
     });
@@ -21091,34 +20774,35 @@ const SceneWorker = Object.assign(self, {
     if (tile != null) {
       // Cancel if loading
       if (tile.loading === true) {
-        __chunk_1.log('trace', `cancel tile load for ${key}`);
+        sources.log('trace', `cancel tile load for ${key}`);
         tile.loading = false;
-        __chunk_1.Tile.cancel(tile);
+        sources.Tile.cancel(tile);
       } // Remove from cache
 
 
-      __chunk_1.FeatureSelection.clearTile(key);
+      sources.FeatureSelection.clearTile(key);
       delete this.tiles[key];
-      __chunk_1.log('trace', `remove tile from cache for ${key}`);
+      sources.log('trace', `remove tile from cache for ${key}`);
     }
   },
 
   // Query features within visible tiles, with optional filter conditions
-  queryFeatures(_ref3) {
-    let filter = _ref3.filter,
-        visible = _ref3.visible,
-        geometry = _ref3.geometry,
-        tile_keys = _ref3.tile_keys;
+  queryFeatures({
+    filter,
+    visible,
+    geometry,
+    tile_keys
+  }) {
     let features = [];
     let tiles = tile_keys.map(t => this.tiles[t]).filter(t => t && t.loaded); // Compile feature filter
 
     if (filter != null) {
       filter = ['{', '['].indexOf(filter[0]) > -1 ? JSON.parse(filter) : filter; // de-serialize if looks like an object
 
-      filter = __chunk_1.compileFunctionStrings(filter, __chunk_1.StyleParser.wrapFunction);
+      filter = sources.compileFunctionStrings(filter, sources.StyleParser.wrapFunction);
     }
 
-    filter = __chunk_1.buildFilter(filter, __chunk_1.FilterOptions);
+    filter = sources.buildFilter(filter, sources.FilterOptions);
     tiles.forEach(tile => {
       for (let layer in tile.source_data.layers) {
         let data = tile.source_data.layers[layer];
@@ -21136,7 +20820,7 @@ const SceneWorker = Object.assign(self, {
           } // Apply feature filter
 
 
-          let context = __chunk_1.StyleParser.getFeatureParseContext(feature, tile, this.global);
+          let context = sources.StyleParser.getFeatureParseContext(feature, tile, this.global);
           context.source = tile.source; // add data source name
 
           context.layer = layer; // add data source layer name
@@ -21161,8 +20845,8 @@ const SceneWorker = Object.assign(self, {
 
           if (geometry === true) {
             // Transform back to lat lng (copy geometry to avoid local modification)
-            subset.geometry = __chunk_1.Geo.copyGeometry(feature.geometry);
-            __chunk_1.Geo.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min);
+            subset.geometry = sources.Geo.copyGeometry(feature.geometry);
+            sources.Geo.tileSpaceToLatlng(subset.geometry, tile.coords.z, tile.min);
           }
 
           features.push(subset);
@@ -21173,12 +20857,11 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Get a feature from the selection map
-  getFeatureSelection(_temp) {
-    let _ref4 = _temp === void 0 ? {} : _temp,
-        id = _ref4.id,
-        key = _ref4.key;
-
-    var selection = __chunk_1.FeatureSelection.map[key];
+  getFeatureSelection({
+    id,
+    key
+  } = {}) {
+    var selection = sources.FeatureSelection.map[key];
     return {
       id: id,
       feature: selection && selection.feature
@@ -21186,17 +20869,13 @@ const SceneWorker = Object.assign(self, {
   },
 
   // Resets the feature selection state
-  resetFeatureSelection(sources) {
-    if (sources === void 0) {
-      sources = null;
-    }
-
-    __chunk_1.FeatureSelection.reset(sources);
+  resetFeatureSelection(sources$1 = null) {
+    sources.FeatureSelection.reset(sources$1);
   },
 
   // Selection map size for this worker
   getFeatureSelectionMapSize() {
-    return __chunk_1.FeatureSelection.getMapSize();
+    return sources.FeatureSelection.getMapSize();
   },
 
   // Texture info needs to be synced from main thread, e.g. width/height, which we only know after the texture loads
@@ -21207,10 +20886,10 @@ const SceneWorker = Object.assign(self, {
       textures.push(...Object.keys(tex_config));
     }
 
-    __chunk_1.log('trace', 'sync textures to worker:', textures);
+    sources.log('trace', 'sync textures to worker:', textures);
 
     if (textures.length > 0) {
-      return __chunk_1.Texture.syncTexturesToWorker(textures);
+      return sources.Texture.syncTexturesToWorker(textures);
     }
 
     return Promise.resolve();
@@ -21218,11 +20897,11 @@ const SceneWorker = Object.assign(self, {
 
   // Sync device pixel ratio from main thread
   updateDevicePixelRatio(device_pixel_ratio) {
-    __chunk_1.Utils.device_pixel_ratio = device_pixel_ratio;
+    sources.Utils.device_pixel_ratio = device_pixel_ratio;
   },
 
   clearFunctionStringCache() {
-    __chunk_1.clearFunctionStringCache();
+    sources.clearFunctionStringCache();
   },
 
   // Profiling helpers
@@ -21235,16 +20914,16 @@ const SceneWorker = Object.assign(self, {
   },
 
   debug: {
-    debugSettings: __chunk_1.debugSettings,
-    layerCache: __chunk_1.layerCache,
-    functionStringCache: __chunk_1.cache
+    debugSettings: sources.debugSettings,
+    layerCache: sources.layerCache,
+    functionStringCache: sources.cache
   }
 });
-__chunk_1.WorkerBroker.addTarget('self', SceneWorker);
+sources.WorkerBroker.addTarget('self', SceneWorker);
 
 });
 
-define(['./shared.js'], function (__chunk_1) { 'use strict';
+define(['./shared'], function (sources) { 'use strict';
 
 // WebGL context wrapper
 var Context;
@@ -21299,6 +20978,148 @@ Context.resize = function (gl, width, height, device_pixel_ratio) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 };
+
+// Get a value for a nested property with path provided as an array (`a.b.c` => ['a', 'b', 'c'])
+function getPropertyPath(object, path) {
+  var _getPropertyPathTarge;
+
+  const prop = path[path.length - 1];
+  return (_getPropertyPathTarge = getPropertyPathTarget(object, path)) == null ? void 0 : _getPropertyPathTarge[prop];
+} // Set a value for a nested property with path provided as an array (`a.b.c` => ['a', 'b', 'c'])
+
+function setPropertyPath(object, path, value) {
+  const prop = path[path.length - 1];
+  const target = getPropertyPathTarget(object, path);
+
+  if (target) {
+    target[prop] = value;
+  }
+} // Get the immediate parent object for a property path name provided as an array
+// e.g. for a single-depth path, this is just `object`, for path ['a', 'b'], this is `object[a]`
+
+function getPropertyPathTarget(object, path) {
+  if (path.length === 0) {
+    return;
+  }
+
+  let target = object;
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const prop = path[i];
+    target = target[prop];
+
+    if (target == null) {
+      return;
+    }
+  }
+
+  return target;
+}
+
+const GLOBAL_PREFIX = 'global.';
+const GLOBAL_PREFIX_LENGTH = GLOBAL_PREFIX.length; // name of 'hidden' (non-enumerable) property used to track global property references on an object
+
+const GLOBAL_REGISTRY = '__global_prop'; // Property name references a global property?
+
+function isGlobalReference(val) {
+  return (val == null ? void 0 : val.slice(0, GLOBAL_PREFIX_LENGTH)) === GLOBAL_PREFIX;
+} // Has object property been substitued with a value from a global reference?
+// Property provided as a single-depth string name, or nested path array (`a.b.c` => ['a', 'b', 'c'])
+
+function isGlobalSubstitution(object, prop_or_path) {
+  var _target$GLOBAL_REGIST;
+
+  const path = Array.isArray(prop_or_path) ? prop_or_path : [prop_or_path];
+  const target = getPropertyPathTarget(object, path);
+  const prop = path[path.length - 1];
+  return (target == null ? void 0 : (_target$GLOBAL_REGIST = target[GLOBAL_REGISTRY]) == null ? void 0 : _target$GLOBAL_REGIST[prop]) !== undefined;
+} // Flatten nested global properties for simpler string look-ups
+
+function flattenGlobalProperties(obj, prefix = null, globals = {}) {
+  prefix = prefix ? prefix + '.' : GLOBAL_PREFIX;
+
+  for (const p in obj) {
+    const key = prefix + p;
+    const val = obj[p];
+    globals[key] = val;
+
+    if (typeof val === 'object' && !Array.isArray(val)) {
+      flattenGlobalProperties(val, key, globals);
+    }
+  }
+
+  return globals;
+} // Find and apply new global properties (and re-apply old ones)
+
+function applyGlobalProperties(globals, obj, target, key) {
+  var _target$GLOBAL_REGIST2;
+
+  let prop; // Check for previously applied global substitution
+
+  if (target == null ? void 0 : (_target$GLOBAL_REGIST2 = target[GLOBAL_REGISTRY]) == null ? void 0 : _target$GLOBAL_REGIST2[key]) {
+    prop = target[GLOBAL_REGISTRY][key];
+  } // Check string for new global substitution
+  else if (typeof obj === 'string' && obj.slice(0, GLOBAL_PREFIX_LENGTH) === GLOBAL_PREFIX) {
+      prop = obj;
+    } // Found global property to substitute
+
+
+  if (prop) {
+    // Mark property as global substitution
+    if (target[GLOBAL_REGISTRY] == null) {
+      Object.defineProperty(target, GLOBAL_REGISTRY, {
+        value: {}
+      });
+    }
+
+    target[GLOBAL_REGISTRY][key] = prop; // Get current global value
+
+    let val = globals[prop];
+    let stack;
+
+    while (typeof val === 'string' && val.slice(0, GLOBAL_PREFIX_LENGTH) === GLOBAL_PREFIX) {
+      // handle globals that refer to other globals, detecting any cyclical references
+      stack = stack || [prop];
+
+      if (stack.indexOf(val) > -1) {
+        sources.log({
+          level: 'warn',
+          once: true
+        }, 'Global properties: cyclical reference detected', stack);
+        val = null;
+        break;
+      }
+
+      stack.push(val);
+      val = globals[val];
+    } // Create getter/setter
+
+
+    Object.defineProperty(target, key, {
+      enumerable: true,
+      get: function () {
+        return val; // return substituted value
+      },
+      set: function (v) {
+        // clear the global substitution and remove the getter/setter
+        delete target[GLOBAL_REGISTRY][key];
+        delete target[key];
+        target[key] = v; // save the new value
+      }
+    });
+  } // Loop through object keys or array indices
+  else if (Array.isArray(obj)) {
+      for (let p = 0; p < obj.length; p++) {
+        applyGlobalProperties(globals, obj[p], obj, p);
+      }
+    } else if (typeof obj === 'object') {
+      for (const p in obj) {
+        applyGlobalProperties(globals, obj[p], obj, p);
+      }
+    }
+
+  return obj;
+}
 
 var global$1 = (typeof global !== "undefined" ? global :
             typeof self !== "undefined" ? self :
@@ -22204,7 +22025,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
     }
   }
 
-  function read$$1 (buf, i) {
+  function read (buf, i) {
     if (indexSize === 1) {
       return buf[i]
     } else {
@@ -22216,7 +22037,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
   if (dir) {
     var foundIndex = -1;
     for (i = byteOffset; i < arrLength; i++) {
-      if (read$$1(arr, i) === read$$1(val, foundIndex === -1 ? 0 : i - foundIndex)) {
+      if (read(arr, i) === read(val, foundIndex === -1 ? 0 : i - foundIndex)) {
         if (foundIndex === -1) foundIndex = i;
         if (i - foundIndex + 1 === valLength) return foundIndex * indexSize
       } else {
@@ -22229,7 +22050,7 @@ function arrayIndexOf (arr, val, byteOffset, encoding, dir) {
     for (i = byteOffset; i >= 0; i--) {
       var found = true;
       for (var j = 0; j < valLength; j++) {
-        if (read$$1(arr, i + j) !== read$$1(val, j)) {
+        if (read(arr, i + j) !== read(val, j)) {
           found = false;
           break
         }
@@ -22300,7 +22121,7 @@ function ucs2Write (buf, string, offset, length) {
   return blitBuffer(utf16leToBytes(string, buf.length - offset), buf, offset, length)
 }
 
-Buffer.prototype.write = function write$$1 (string, offset, length, encoding) {
+Buffer.prototype.write = function write (string, offset, length, encoding) {
   // Buffer#write(string)
   if (offset === undefined) {
     encoding = 'utf8';
@@ -22969,7 +22790,7 @@ function checkIEEE754 (buf, value, offset, ext, max, min) {
 
 function writeFloat (buf, value, offset, littleEndian, noAssert) {
   if (!noAssert) {
-    checkIEEE754(buf, value, offset, 4, 3.4028234663852886e+38, -3.4028234663852886e+38);
+    checkIEEE754(buf, value, offset, 4);
   }
   write(buf, value, offset, littleEndian, 23, 4);
   return offset + 4
@@ -22985,7 +22806,7 @@ Buffer.prototype.writeFloatBE = function writeFloatBE (value, offset, noAssert) 
 
 function writeDouble (buf, value, offset, littleEndian, noAssert) {
   if (!noAssert) {
-    checkIEEE754(buf, value, offset, 8, 1.7976931348623157E+308, -1.7976931348623157E+308);
+    checkIEEE754(buf, value, offset, 8);
   }
   write(buf, value, offset, littleEndian, 52, 8);
   return offset + 8
@@ -23278,6 +23099,7 @@ function isSlowBuffer (obj) {
 }
 
 var bufferEs6 = /*#__PURE__*/Object.freeze({
+__proto__: null,
 INSPECT_MAX_BYTES: INSPECT_MAX_BYTES,
 kMaxLength: _kMaxLength,
 Buffer: Buffer,
@@ -23315,7 +23137,7 @@ EventEmitter.init = function() {
   this.domain = null;
   if (EventEmitter.usingDomains) {
     // if there is an active domain, then attach to it.
-    if (domain.active && !(this instanceof domain.Domain)) ;
+    if (domain.active ) ;
   }
 
   if (!this._events || this._events === Object.getPrototypeOf(this)._events) {
@@ -23914,19 +23736,19 @@ function chdir (dir) {
 }function umask() { return 0; }
 
 // from https://github.com/kumavis/browser-process-hrtime/blob/master/index.js
-var performance$1 = global$1.performance || {};
+var performance = global$1.performance || {};
 var performanceNow =
-  performance$1.now        ||
-  performance$1.mozNow     ||
-  performance$1.msNow      ||
-  performance$1.oNow       ||
-  performance$1.webkitNow  ||
+  performance.now        ||
+  performance.mozNow     ||
+  performance.msNow      ||
+  performance.oNow       ||
+  performance.webkitNow  ||
   function(){ return (new Date()).getTime() };
 
 // generate timestamp or delta
 // see http://nodejs.org/api/process.html#process_process_hrtime
 function hrtime(previousTimestamp){
-  var clocktime = performanceNow.call(performance$1)*1e-3;
+  var clocktime = performanceNow.call(performance)*1e-3;
   var seconds = Math.floor(clocktime);
   var nanoseconds = Math.floor((clocktime%1)*1e9);
   if (previousTimestamp) {
@@ -23980,7 +23802,7 @@ var isBufferBrowser = function isBuffer(arg) {
     && typeof arg.readUInt8 === 'function';
 };
 
-var inherits_browser = __chunk_1.createCommonjsModule(function (module) {
+var inherits_browser = sources.createCommonjsModule(function (module) {
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -24006,7 +23828,7 @@ if (typeof Object.create === 'function') {
 }
 });
 
-var util = __chunk_1.createCommonjsModule(function (module, exports) {
+var util = sources.createCommonjsModule(function (module, exports) {
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -24098,7 +23920,7 @@ var debugs = {};
 var debugEnviron;
 exports.debuglog = function(set) {
   if (isUndefined(debugEnviron))
-    debugEnviron = process.env.NODE_DEBUG || '';
+    debugEnviron =  '';
   set = set.toUpperCase();
   if (!debugs[set]) {
     if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
@@ -24663,7 +24485,7 @@ BufferList.prototype.concat = function (n) {
   return ret;
 };
 
-var safeBuffer = __chunk_1.createCommonjsModule(function (module, exports) {
+var safeBuffer = sources.createCommonjsModule(function (module, exports) {
 /* eslint-disable node/no-deprecated-api */
 
 var Buffer = bufferEs6.Buffer;
@@ -25623,7 +25445,7 @@ Readable.prototype.on = function (ev, fn) {
       if (!state.reading) {
         nextTick(nReadingNextTick, this);
       } else if (state.length) {
-        emitReadable(this, state);
+        emitReadable(this);
       }
     }
   }
@@ -26646,7 +26468,7 @@ Stream.prototype.pipe = function(dest, options) {
  */
 var readableStreamBrowser = Stream;
 
-var support = __chunk_1.createCommonjsModule(function (module, exports) {
+var support = sources.createCommonjsModule(function (module, exports) {
 
 exports.base64 = true;
 exports.array = true;
@@ -26854,14 +26676,14 @@ var nodejsUtils = {
     }
 };
 
-var _global = __chunk_1.createCommonjsModule(function (module) {
+var _global = sources.createCommonjsModule(function (module) {
 // https://github.com/zloirock/core-js/issues/86#issuecomment-115759028
 var global = module.exports = typeof window != 'undefined' && window.Math == Math
   ? window : typeof self != 'undefined' && self.Math == Math ? self : Function('return this')();
 if(typeof __g == 'number')__g = global; // eslint-disable-line no-undef
 });
 
-var _core = __chunk_1.createCommonjsModule(function (module) {
+var _core = sources.createCommonjsModule(function (module) {
 var core = module.exports = {version: '2.3.0'};
 if(typeof __e == 'number')__e = core; // eslint-disable-line no-undef
 });
@@ -27471,7 +27293,7 @@ var external = {
     Promise: ES6Promise
 };
 
-var utils = __chunk_1.createCommonjsModule(function (module, exports) {
+var utils = sources.createCommonjsModule(function (module, exports) {
 
 
 
@@ -28223,7 +28045,7 @@ GenericWorker.prototype = {
 
 var GenericWorker_1 = GenericWorker;
 
-var utf8 = __chunk_1.createCommonjsModule(function (module, exports) {
+var utf8 = sources.createCommonjsModule(function (module, exports) {
 
 
 
@@ -29218,7 +29040,7 @@ for(var i = 0; i < removedMethods.length; i++) {
 }
 var zipObject = ZipObject;
 
-var common = __chunk_1.createCommonjsModule(function (module, exports) {
+var common = sources.createCommonjsModule(function (module, exports) {
 
 
 var TYPED_OK =  (typeof Uint8Array !== 'undefined') &&
@@ -36269,7 +36091,7 @@ var generateZipParts = function(streamInfo, streamedContent, streamingEnded, off
         extFileAttr |= generateUnixExternalFileAttr(file.unixPermissions, dir);
     } else { // DOS or other, fallback to DOS
         versionMadeBy = 0x0014; // DOS, version 2.0
-        extFileAttr |= generateDosExternalFileAttr(file.dosPermissions, dir);
+        extFileAttr |= generateDosExternalFileAttr(file.dosPermissions);
     }
 
     // date
@@ -37737,8 +37559,8 @@ ZipEntries.prototype = {
     checkSignature: function(expectedSignature) {
         if (!this.reader.readAndCheckSignature(expectedSignature)) {
             this.reader.index -= 4;
-            var signature$$1 = this.reader.readString(4);
-            throw new Error("Corrupted zip or bug: unexpected signature " + "(" + utils.pretty(signature$$1) + ", expected " + utils.pretty(expectedSignature) + ")");
+            var signature = this.reader.readString(4);
+            throw new Error("Corrupted zip or bug: unexpected signature " + "(" + utils.pretty(signature) + ", expected " + utils.pretty(expectedSignature) + ")");
         }
     },
     /**
@@ -37750,8 +37572,8 @@ ZipEntries.prototype = {
     isSignature: function(askedIndex, expectedSignature) {
         var currentIndex = this.reader.index;
         this.reader.setIndex(askedIndex);
-        var signature$$1 = this.reader.readString(4);
-        var result = signature$$1 === expectedSignature;
+        var signature = this.reader.readString(4);
+        var result = signature === expectedSignature;
         this.reader.setIndex(currentIndex);
         return result;
     },
@@ -38005,12 +37827,12 @@ var load = function(data, options) {
 
     return utils.prepareContent("the loaded zip file", data, true, options.optimizedBinaryString, options.base64)
     .then(function(data) {
-        var zipEntries$$1 = new zipEntries(options);
-        zipEntries$$1.load(data);
-        return zipEntries$$1;
-    }).then(function checkCRC32(zipEntries$$1) {
-        var promises = [external.Promise.resolve(zipEntries$$1)];
-        var files = zipEntries$$1.files;
+        var zipEntries$1 = new zipEntries(options);
+        zipEntries$1.load(data);
+        return zipEntries$1;
+    }).then(function checkCRC32(zipEntries) {
+        var promises = [external.Promise.resolve(zipEntries)];
+        var files = zipEntries.files;
         if (options.checkCRC32) {
             for (var i = 0; i < files.length; i++) {
                 promises.push(checkEntryCRC32(files[i]));
@@ -38018,8 +37840,8 @@ var load = function(data, options) {
         }
         return external.Promise.all(promises);
     }).then(function addFiles(results) {
-        var zipEntries$$1 = results.shift();
-        var files = zipEntries$$1.files;
+        var zipEntries = results.shift();
+        var files = zipEntries.files;
         for (var i = 0; i < files.length; i++) {
             var input = files[i];
             zip.file(input.fileNameStr, input.decompressed, {
@@ -38033,8 +37855,8 @@ var load = function(data, options) {
                 createFolders: options.createFolders
             });
         }
-        if (zipEntries$$1.zipComment.length) {
-            zip.comment = zipEntries$$1.zipComment;
+        if (zipEntries.zipComment.length) {
+            zip.comment = zipEntries.zipComment;
         }
 
         return zip;
@@ -38353,7 +38175,7 @@ function compileList(schema, name, result) {
     result.push(currentType);
   });
 
-  return result.filter(function (type$$1, index) {
+  return result.filter(function (type, index) {
     return exclude.indexOf(index) === -1;
   });
 }
@@ -38362,8 +38184,8 @@ function compileList(schema, name, result) {
 function compileMap(/* lists... */) {
   var result = {}, index, length;
 
-  function collectType(type$$1) {
-    result[type$$1.tag] = type$$1;
+  function collectType(type) {
+    result[type.tag] = type;
   }
 
   for (index = 0, length = arguments.length; index < length; index += 1) {
@@ -38379,8 +38201,8 @@ function Schema(definition) {
   this.implicit = definition.implicit || [];
   this.explicit = definition.explicit || [];
 
-  this.implicit.forEach(function (type$$1) {
-    if (type$$1.loadKind && type$$1.loadKind !== 'scalar') {
+  this.implicit.forEach(function (type) {
+    if (type.loadKind && type.loadKind !== 'scalar') {
       throw new exception('There is a non-scalar type in the implicit list of a schema. Implicit resolving of such types is not supported.');
     }
   });
@@ -38419,7 +38241,7 @@ Schema.create = function createSchema() {
     throw new exception('Specified list of super schemas (or a single Schema object) contains a non-Schema object.');
   }
 
-  if (!types.every(function (type$$1) { return type$$1 instanceof type; })) {
+  if (!types.every(function (type$1) { return type$1 instanceof type; })) {
     throw new exception('Specified list of YAML types (or a single Type object) contains a non-Type object.');
   }
 
@@ -39005,7 +38827,7 @@ function representYamlBinary(object /*, style*/) {
 }
 
 function isBinary(object) {
-  return NodeBuffer && NodeBuffer.isBuffer(object);
+  return NodeBuffer ;
 }
 
 var binary$1 = new type('tag:yaml.org,2002:binary', {
@@ -39242,7 +39064,7 @@ var esprima;
 //
 try {
   // workaround to exclude package from browserify list.
-  var _require = __chunk_1.commonjsRequire;
+  var _require = sources.commonjsRequire;
   esprima = _require('esprima');
 } catch (_) {
   /*global window */
@@ -40978,18 +40800,14 @@ var jsYaml = {
 var jsYaml$1 = jsYaml;
 
 class SceneBundle {
-  constructor(url, path, parent) {
-    if (parent === void 0) {
-      parent = null;
-    }
-
+  constructor(url, path, parent = null) {
     this.url = url; // If a base path was provided, use it for resolving local bundle resources only if
     // the base path is absolute, or this bundle's path is relative
 
-    if (path && (!__chunk_1.isRelativeURL(path) || __chunk_1.isRelativeURL(this.url))) {
+    if (path && (!sources.isRelativeURL(path) || sources.isRelativeURL(this.url))) {
       this.path = path;
     } else {
-      this.path = __chunk_1.pathForURL(this.url);
+      this.path = sources.pathForURL(this.url);
     }
 
     this.path_for_parent = path || this.path; // for resolving paths relative to a parent bundle
@@ -41026,23 +40844,23 @@ class SceneBundle {
   }
 
   urlFor(url) {
-    if (isGlobal(url)) {
+    if (isGlobalReference(url)) {
       return url;
     }
 
-    if (__chunk_1.isRelativeURL(url) && this.container) {
+    if (sources.isRelativeURL(url) && this.container) {
       return this.parent.urlFor(this.path_for_parent + url);
     }
 
-    return __chunk_1.addBaseURL(url, this.path);
+    return sources.addBaseURL(url, this.path);
   }
 
   pathFor(url) {
-    return __chunk_1.pathForURL(url);
+    return sources.pathForURL(url);
   }
 
   typeFor(url) {
-    return __chunk_1.extensionForURL(url);
+    return sources.extensionForURL(url);
   }
 
   isContainer() {
@@ -41067,9 +40885,9 @@ class ZipSceneBundle extends SceneBundle {
     this.zip = new lib();
 
     if (typeof this.url === 'string') {
-      const _ref = await __chunk_1.Utils.io(this.url, 60000, 'arraybuffer'),
-            body = _ref.body;
-
+      const {
+        body
+      } = await sources.Utils.io(this.url, 60000, 'arraybuffer');
       await this.zip.loadAsync(body);
       await this.parseZipFiles();
       return this.loadRoot();
@@ -41079,19 +40897,19 @@ class ZipSceneBundle extends SceneBundle {
   }
 
   urlFor(url) {
-    if (isGlobal(url)) {
+    if (isGlobalReference(url)) {
       return url;
     }
 
-    if (__chunk_1.isRelativeURL(url)) {
-      return this.urlForZipFile(__chunk_1.flattenRelativeURL(url));
+    if (sources.isRelativeURL(url)) {
+      return this.urlForZipFile(sources.flattenRelativeURL(url));
     }
 
     return super.urlFor(url);
   }
 
   typeFor(url) {
-    if (__chunk_1.isRelativeURL(url)) {
+    if (sources.isRelativeURL(url)) {
       return this.typeForZipFile(url);
     }
 
@@ -41105,7 +40923,7 @@ class ZipSceneBundle extends SceneBundle {
 
   findRoot() {
     // There must be a single YAML file at the top level of the zip
-    const yamls = Object.keys(this.files).filter(path => this.files[path].depth === 0).filter(path => __chunk_1.extensionForURL(path) === 'yaml');
+    const yamls = Object.keys(this.files).filter(path => this.files[path].depth === 0).filter(path => sources.extensionForURL(path) === 'yaml');
 
     if (yamls.length === 1) {
       this.root = yamls[0];
@@ -41142,7 +40960,7 @@ class ZipSceneBundle extends SceneBundle {
       let depth = path.split('/').length - 1;
       this.files[path] = {
         data: data[i],
-        type: __chunk_1.extensionForURL(path),
+        type: sources.extensionForURL(path),
         depth
       };
     }
@@ -41151,7 +40969,7 @@ class ZipSceneBundle extends SceneBundle {
   urlForZipFile(file) {
     if (this.files[file]) {
       if (!this.files[file].url) {
-        this.files[file].url = __chunk_1.createObjectURL(new Blob([this.files[file].data]));
+        this.files[file].url = sources.createObjectURL(new Blob([this.files[file].data]));
       }
 
       return this.files[file].url;
@@ -41163,50 +40981,30 @@ class ZipSceneBundle extends SceneBundle {
   }
 
 }
-function createSceneBundle(url, path, parent, type) {
-  if (type === void 0) {
-    type = null;
-  }
-
-  if (type != null && type === 'zip' || typeof url === 'string' && !__chunk_1.isLocalURL(url) && __chunk_1.extensionForURL(url) === 'zip') {
+function createSceneBundle(url, path, parent, type = null) {
+  if (type != null && type === 'zip' || typeof url === 'string' && !sources.isLocalURL(url) && sources.extensionForURL(url) === 'zip') {
     return new ZipSceneBundle(url, path, parent);
   }
 
   return new SceneBundle(url, path, parent);
-} // References a global property?
-
-function isGlobal(val) {
-  if (val && val.slice(0, 7) === 'global.') {
-    return true;
-  }
-
-  return false;
 }
 
 function parseResource(body) {
-  var data;
-
-  try {
-    // jsyaml 'json' option allows duplicate keys
-    // Keeping this for backwards compatibility, but should consider migrating to requiring
-    // unique keys, as this is YAML spec. But Tangram ES currently accepts dupe keys as well,
-    // so should consider how best to unify.
-    data = jsYaml$1.safeLoad(body, {
-      json: true
-    });
-  } catch (e) {
-    throw e;
-  }
-
-  return data;
+  // jsyaml 'json' option allows duplicate keys
+  // Keeping this for backwards compatibility, but should consider migrating to requiring
+  // unique keys, as this is YAML spec. But Tangram ES currently accepts dupe keys as well,
+  // so should consider how best to unify.
+  return jsYaml$1.safeLoad(body, {
+    json: true
+  });
 }
 
 function loadResource(source) {
   return new Promise((resolve, reject) => {
     if (typeof source === 'string') {
-      __chunk_1.Utils.io(source).then((_ref2) => {
-        let body = _ref2.body;
-
+      sources.Utils.io(source).then(({
+        body
+      }) => {
         try {
           resolve(parseResource(body));
         } catch (e) {
@@ -41222,24 +41020,23 @@ function loadResource(source) {
   });
 }
 
-var SceneLoader;
-var SceneLoader$1 = SceneLoader = {
+const SceneLoader = {
   // Load scenes definitions from URL & proprocess
-  async loadScene(url, _temp) {
-    let _ref = _temp === void 0 ? {} : _temp,
-        path = _ref.path,
-        type = _ref.type;
-
-    let errors = [];
+  async loadScene(url, {
+    path,
+    type
+  } = {}) {
+    const errors = [];
+    const texture_nodes = {};
     const scene = await this.loadSceneRecursive({
       url,
       path,
       type
-    }, null, errors);
-
-    const _this$finalize = this.finalize(scene),
-          config = _this$finalize.config,
-          bundle = _this$finalize.bundle;
+    }, null, texture_nodes, errors);
+    const {
+      config,
+      bundle
+    } = this.finalize(scene);
 
     if (!config) {
       // root scene failed to load, reject with first error
@@ -41247,8 +41044,8 @@ var SceneLoader$1 = SceneLoader = {
     } else if (errors.length > 0) {
       // scene loaded, but some imports had errors
       errors.forEach(error => {
-        let message = `Failed to import scene: ${error.url}`;
-        __chunk_1.log('error', message, error);
+        const message = `Failed to import scene: ${error.url}`;
+        sources.log('error', message, error);
         this.trigger('error', {
           type: 'scene_import',
           message,
@@ -41260,7 +41057,8 @@ var SceneLoader$1 = SceneLoader = {
 
     return {
       config,
-      bundle
+      bundle,
+      texture_nodes
     };
   },
 
@@ -41268,26 +41066,22 @@ var SceneLoader$1 = SceneLoader = {
   // Optional *initial* path only (won't be passed to recursive 'import' calls)
   // Useful for loading resources in base scene file from a separate location
   // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
-  async loadSceneRecursive(_ref2, parent, errors) {
-    let url = _ref2.url,
-        path = _ref2.path,
-        type = _ref2.type;
-
-    if (errors === void 0) {
-      errors = [];
-    }
-
+  async loadSceneRecursive({
+    url,
+    path,
+    type
+  }, parent, texture_nodes = {}, errors = []) {
     if (!url) {
       return {};
     }
 
-    let bundle = createSceneBundle(url, path, parent, type);
+    const bundle = createSceneBundle(url, path, parent, type);
 
     try {
-      let config = await bundle.load(); // debugger
+      let config = await bundle.load();
 
       if (config.import == null) {
-        this.normalize(config, bundle);
+        this.normalize(config, bundle, texture_nodes);
         return {
           config,
           bundle
@@ -41300,11 +41094,11 @@ var SceneLoader$1 = SceneLoader = {
       } // Collect URLs of scenes to import
 
 
-      let imports = [];
+      const imports = [];
       config.import.forEach(url => {
         // Convert scene objects to URLs
         if (typeof url === 'object') {
-          url = __chunk_1.createObjectURL(new Blob([JSON.stringify(url)]));
+          url = sources.createObjectURL(new Blob([JSON.stringify(url)]));
         }
 
         imports.push(bundle.resourceFor(url));
@@ -41312,14 +41106,15 @@ var SceneLoader$1 = SceneLoader = {
       delete config.import; // don't want to merge this property
       // load and normalize imports
 
-      const queue = imports.map(resource => this.loadSceneRecursive(resource, bundle, errors));
-      const configs = (await Promise.all(queue)).map(r => this.normalize(r.config, r.bundle)).map(r => r.config);
-      config = __chunk_1.mergeObjects(...configs, config);
-      this.normalize(config, bundle); // last normalize parent, after merge
+      const queue = imports.map(resource => this.loadSceneRecursive(resource, bundle, texture_nodes, errors));
+      const configs = (await Promise.all(queue)).map(r => this.normalize(r.config, r.bundle, texture_nodes)).map(r => r.config);
+      this.normalize(config, bundle, texture_nodes); // last normalize parent
 
+      config = sources.mergeObjects(...configs, config);
       return {
         config,
-        bundle
+        bundle,
+        texture_nodes
       };
     } catch (error) {
       // Collect scene load errors as we go
@@ -41330,14 +41125,15 @@ var SceneLoader$1 = SceneLoader = {
   },
 
   // Normalize properties that should be adjust within each local scene file (usually by path)
-  normalize(config, bundle) {
+  normalize(config, bundle, texture_nodes = {}) {
     this.normalizeDataSources(config, bundle);
     this.normalizeFonts(config, bundle);
     this.normalizeTextures(config, bundle);
-    this.hoistTextures(config, bundle);
+    this.collectTextures(config, bundle, texture_nodes);
     return {
       config,
-      bundle
+      bundle,
+      texture_nodes
     };
   },
 
@@ -41345,7 +41141,7 @@ var SceneLoader$1 = SceneLoader = {
   normalizeDataSources(config, bundle) {
     config.sources = config.sources || {};
 
-    for (let sn in config.sources) {
+    for (const sn in config.sources) {
       this.normalizeDataSource(config.sources[sn], bundle);
     }
 
@@ -41370,7 +41166,7 @@ var SceneLoader$1 = SceneLoader = {
       } // resolve URLs for external scripts
 
 
-      for (let s in source.scripts) {
+      for (const s in source.scripts) {
         source.scripts[s] = bundle.urlFor(source.scripts[s]);
       }
     }
@@ -41382,13 +41178,13 @@ var SceneLoader$1 = SceneLoader = {
   normalizeFonts(config, bundle) {
     config.fonts = config.fonts || {};
 
-    for (let family in config.fonts) {
+    for (const family in config.fonts) {
       if (Array.isArray(config.fonts[family])) {
         config.fonts[family].forEach(face => {
           face.url = face.url && bundle.urlFor(face.url);
         });
       } else {
-        let face = config.fonts[family];
+        const face = config.fonts[family];
         face.url = face.url && bundle.urlFor(face.url);
       }
     }
@@ -41403,8 +41199,8 @@ var SceneLoader$1 = SceneLoader = {
     // path of their immediate scene file
 
     if (config.textures) {
-      for (let tn in config.textures) {
-        let texture = config.textures[tn];
+      for (const tn in config.textures) {
+        const texture = config.textures[tn];
 
         if (texture.url) {
           texture.url = bundle.urlFor(texture.url);
@@ -41419,115 +41215,141 @@ var SceneLoader$1 = SceneLoader = {
   // - in a style's `material` properties
   // - in a style's custom uniforms (`shaders.uniforms`)
   // - in a draw groups `texture` property
-  hoistTextures(config, bundle) {
-    // Resolve URLs for inline textures
+  collectTextures(config, bundle, texture_nodes) {
+    // Inline textures in styles
     if (config.styles) {
-      for (let sn in config.styles) {
-        let style = config.styles[sn]; // Style `texture`
+      for (const sn in config.styles) {
+        const style = config.styles[sn]; // Style `texture`
 
-        let tex = style.texture;
+        const tex = style.texture;
 
         if (typeof tex === 'string' && !config.textures[tex]) {
-          style.texture = this.hoistTexture(tex, config, bundle);
+          const path = ['styles', sn, 'texture'];
+          this.addTextureNode(path, bundle, texture_nodes);
         } // Material
 
 
         if (style.material) {
           ['emission', 'ambient', 'diffuse', 'specular', 'normal'].forEach(prop => {
             // Material property has a texture
-            let tex = style.material[prop] != null && style.material[prop].texture;
+            const tex = style.material[prop] != null && style.material[prop].texture;
 
             if (typeof tex === 'string' && !config.textures[tex]) {
-              style.material[prop].texture = this.hoistTexture(tex, config, bundle);
+              const path = ['styles', sn, 'material', prop, 'texture'];
+              this.addTextureNode(path, bundle, texture_nodes);
             }
           });
         }
       }
-    } // Special handling for shader uniforms, exclude globals because they are ambiguous:
-    // could later be resolved to a string value indicating a texture, but could also be a vector or other type
+    } // Inline textures in shader uniforms
 
 
-    this.hoistStyleShaderUniformTextures(config, bundle, {
-      include_globals: false
-    }); // Resolve and hoist inline textures in draw blocks
+    if (config.styles) {
+      for (const sn in config.styles) {
+        const style = config.styles[sn];
+
+        if (style.shaders && style.shaders.uniforms) {
+          sources.GLSL.parseUniforms(style.shaders.uniforms).forEach(({
+            type,
+            value,
+            key
+          }) => {
+            // Texture by URL (string-named texture not referencing existing texture definition)
+            if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
+              const path = ['styles', sn, 'shaders', 'uniforms', key];
+              this.addTextureNode(path, bundle, texture_nodes);
+            }
+          });
+        }
+      }
+    } // Inline textures in draw blocks
+
 
     if (config.layers) {
-      let stack = [config.layers];
+      const stack = [config.layers];
+      const path_stack = [['layers']];
 
       while (stack.length > 0) {
-        let layer = stack.pop(); // only recurse into objects
+        const layer = stack.pop();
+        const layer_path = path_stack.pop(); // only recurse into objects
 
         if (typeof layer !== 'object' || Array.isArray(layer)) {
           continue;
         }
 
-        for (let prop in layer) {
+        for (const prop in layer) {
           if (prop === 'draw') {
             // process draw groups for current layer
-            let draws = layer[prop];
+            const draws = layer[prop];
 
-            for (let group in draws) {
+            for (const group in draws) {
               if (draws[group].texture) {
-                let tex = draws[group].texture;
+                const tex = draws[group].texture;
 
                 if (typeof tex === 'string' && !config.textures[tex]) {
-                  draws[group].texture = this.hoistTexture(tex, config, bundle);
+                  const path = [...layer_path, prop, 'draw', group, 'texture'];
+                  this.addTextureNode(path, bundle, texture_nodes);
                 }
               } // special handling for outlines :(
 
 
               if (draws[group].outline && draws[group].outline.texture) {
-                let tex = draws[group].outline.texture;
+                const tex = draws[group].outline.texture;
 
                 if (typeof tex === 'string' && !config.textures[tex]) {
-                  draws[group].outline.texture = this.hoistTexture(tex, config, bundle);
+                  const path = [...layer_path, prop, 'draw', group, 'outline', 'texture'];
+                  this.addTextureNode(path, bundle, texture_nodes);
                 }
               }
             }
-          } else if (__chunk_1.isReserved(prop)) {
+          } else if (sources.isReserved(prop)) {
             continue; // skip reserved keyword
           } else {
             stack.push(layer[prop]); // traverse sublayer
+
+            path_stack.push([...layer_path, prop]);
           }
         }
       }
     }
   },
 
-  hoistStyleShaderUniformTextures(config, bundle, _ref3) {
-    let include_globals = _ref3.include_globals;
+  addTextureNode(path, bundle, texture_nodes) {
+    const pathKey = JSON.stringify(path);
+    texture_nodes[pathKey] = {
+      path,
+      bundle
+    };
+  },
 
-    // Resolve URLs for inline textures
-    if (config.styles) {
-      for (let sn in config.styles) {
-        let style = config.styles[sn]; // Shader uniforms
+  // Hoist any remaining inline texture nodes that don't have a corresponding named texture
+  // base_bundle is the bundle for the root scene, for resolving textures from global properties
+  hoistTextureNodes(config, base_bundle, texture_nodes = {}) {
+    for (const {
+      path,
+      bundle
+    } of Object.values(texture_nodes)) {
+      const curValue = getPropertyPath(config, path); // Make sure current property values is a string to account for global property substitutions
+      // e.g. shader uniforms are ambiguous, could be replaced with string value indicating texture,
+      // but could also be a float, an array indicating vector, etc.
 
-        if (style.shaders && style.shaders.uniforms) {
-          __chunk_1.GLSL.parseUniforms(style.shaders.uniforms).forEach((_ref4) => {
-            let type = _ref4.type,
-                value = _ref4.value,
-                key = _ref4.key,
-                uniforms = _ref4.uniforms;
-
-            // Texture by URL (string-named texture not referencing existing texture definition)
-            if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value] && (include_globals || !isGlobal(value))) {
-              uniforms[key] = this.hoistTexture(value, config, bundle);
-            }
-          });
+      if (typeof curValue === 'string' && config.textures[curValue] == null) {
+        if (isGlobalSubstitution(config, path)) {
+          // global substituions are resolved against the base scene path, not the import they came from
+          const url = base_bundle.urlFor(curValue);
+          config.textures[curValue] = {
+            url
+          };
+        } else {
+          // non-global textures are resolved against the import they came from
+          const url = bundle.urlFor(curValue);
+          config.textures[url] = {
+            url
+          };
+          setPropertyPath(config, path, url);
         }
       }
     }
-  },
-
-  // Convert an inline URL texture to a global one, and return the texture's (possibly modified) name
-  hoistTexture(tex, config, bundle) {
-    let global = isGlobal(tex);
-    let url = global ? tex : bundle.urlFor(tex);
-    let name = global ? `texture-${url}` : url;
-    config.textures[name] = {
-      url
-    };
-    return name;
   },
 
   // Substitutes global scene properties (those defined in the `config.global` object) for any style values
@@ -41538,85 +41360,16 @@ var SceneLoader$1 = SceneLoader = {
       return config; // no global properties to transform
     }
 
-    const globals = flattenProperties(config.global); // flatten nested globals for simpler string look-ups
-    // Find and apply new global properties (and re-apply old ones)
+    const globals = flattenGlobalProperties(config.global); // flatten nested globals for simpler string look-ups
 
-    function applyGlobals(obj, target, key) {
-      let prop; // Check for previously applied global substitution
-
-      if (target != null && typeof target === 'object' && target._global_prop && target._global_prop[key]) {
-        prop = target._global_prop[key];
-      } // Check string for new global substitution
-      else if (typeof obj === 'string' && obj.slice(0, 7) === 'global.') {
-          prop = obj;
-        } // Found global property to substitute
-
-
-      if (prop) {
-        // Mark property as global substitution
-        if (target._global_prop == null) {
-          Object.defineProperty(target, '_global_prop', {
-            value: {}
-          });
-        }
-
-        target._global_prop[key] = prop; // Get current global value
-
-        let val = globals[prop];
-        let stack;
-
-        while (typeof val === 'string' && val.slice(0, 7) === 'global.') {
-          // handle globals that refer to other globals, detecting any cyclical references
-          stack = stack || [prop];
-
-          if (stack.indexOf(val) > -1) {
-            __chunk_1.log({
-              level: 'warn',
-              once: true
-            }, 'Global properties: cyclical reference detected', stack);
-            val = null;
-            break;
-          }
-
-          stack.push(val);
-          val = globals[val];
-        } // Create getter/setter
-
-
-        Object.defineProperty(target, key, {
-          enumerable: true,
-          get: function get() {
-            return val; // return substituted value
-          },
-          set: function set(v) {
-            // clear the global substitution and remove the getter/setter
-            delete target._global_prop[key];
-            delete target[key];
-            target[key] = v; // save the new value
-          }
-        });
-      } // Loop through object keys or array indices
-      else if (Array.isArray(obj)) {
-          for (let p = 0; p < obj.length; p++) {
-            applyGlobals(obj[p], obj, p);
-          }
-        } else if (typeof obj === 'object') {
-          for (let p in obj) {
-            applyGlobals(obj[p], obj, p);
-          }
-        }
-
-      return obj;
-    }
-
-    return applyGlobals(config);
+    return applyGlobalProperties(globals, config);
   },
 
   // Normalize some scene-wide settings that apply to the final, merged scene
-  finalize(_ref5) {
-    let config = _ref5.config,
-        bundle = _ref5.bundle;
-
+  finalize({
+    config,
+    bundle
+  }) {
     if (!config) {
       return {};
     } // Ensure top-level properties
@@ -41651,33 +41404,8 @@ var SceneLoader$1 = SceneLoader = {
     };
   }
 
-}; // Flatten nested properties for simpler string look-ups
-
-function flattenProperties(obj, prefix, globals) {
-  if (prefix === void 0) {
-    prefix = null;
-  }
-
-  if (globals === void 0) {
-    globals = {};
-  }
-
-  prefix = prefix ? prefix + '.' : 'global.';
-
-  for (const p in obj) {
-    const key = prefix + p;
-    const val = obj[p];
-    globals[key] = val;
-
-    if (typeof val === 'object' && !Array.isArray(val)) {
-      flattenProperties(val, key, globals);
-    }
-  }
-
-  return globals;
-}
-
-__chunk_1.subscribeMixin(SceneLoader);
+};
+sources.subscribeMixin(SceneLoader);
 
 class TilePyramid {
   constructor() {
@@ -41696,7 +41424,7 @@ class TilePyramid {
     this.tiles[tile.key].tile = tile; // Add to parents
 
     while (tile.style_z >= 0) {
-      tile = __chunk_1.TileID.parent(tile);
+      tile = sources.TileID.parent(tile);
 
       if (!tile) {
         return;
@@ -41724,7 +41452,7 @@ class TilePyramid {
 
 
     while (tile.style_z >= 0) {
-      tile = __chunk_1.TileID.parent(tile);
+      tile = sources.TileID.parent(tile);
 
       if (!tile) {
         return;
@@ -41745,7 +41473,7 @@ class TilePyramid {
     let level = 0;
 
     while (level < this.max_proxy_ancestor_depth) {
-      tile = __chunk_1.TileID.parent(tile);
+      tile = sources.TileID.parent(tile);
 
       if (!tile) {
         return;
@@ -41760,15 +41488,11 @@ class TilePyramid {
   } // Find the descendant tiles for a given tile and style zoom level
 
 
-  getDescendants(tile, level) {
-    if (level === void 0) {
-      level = 0;
-    }
-
+  getDescendants(tile, level = 0) {
     let descendants = [];
 
     if (level < this.max_proxy_descendant_depth) {
-      let tiles = __chunk_1.TileID.children(tile, this.children_cache);
+      let tiles = sources.TileID.children(tile, this.children_cache);
 
       if (!tiles) {
         return;
@@ -41795,11 +41519,7 @@ let visible = {}; // currently visible labels
 
 let prev_visible = {}; // previously visible labels (in last collision run)
 
-async function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
-  if (hide_breach === void 0) {
-    hide_breach = false;
-  }
-
+async function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach = false) {
   // Swap/reset visible label set
   prev_visible = visible; // save last visible label set
 
@@ -41809,17 +41529,17 @@ async function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
   let containers = buildLabels(tiles, view_zoom); // Collide all labels in a single group
   // TODO: maybe rename tile and style to group/subgroup?
 
-  __chunk_1.Collision.startTile('main', {
+  sources.Collision.startTile('main', {
     apply_repeat_groups: true,
     return_hidden: true
   });
-  __chunk_1.Collision.addStyle('main', 'main'); // Adaptive collision grid, using a heuristic based on the tile with the most labels
+  sources.Collision.addStyle('main', 'main'); // Adaptive collision grid, using a heuristic based on the tile with the most labels
 
   const max_tile_label_count = Math.max(0, ...Object.values(tiles).map(t => Object.values(t.meshes)).flat().map(meshes => Math.max(0, ...meshes.map(mesh => mesh.labels ? Object.keys(mesh.labels).length : 0))));
-  const grid_divs = Math.floor(max_tile_label_count / __chunk_1.Geo.tile_size); // heuristic of label density to tile size
+  const grid_divs = Math.floor(max_tile_label_count / sources.Geo.tile_size); // heuristic of label density to tile size
 
   if (grid_divs > 0) {
-    __chunk_1.Collision.initGrid({
+    sources.Collision.initGrid({
       anchor: {
         x: Math.min(...tiles.map(t => t.min.x)),
         y: Math.min(...tiles.map(t => t.min.y))
@@ -41827,10 +41547,10 @@ async function mainThreadLabelCollisionPass(tiles, view_zoom, hide_breach) {
       span: tiles[0].span.x / grid_divs
     });
   } else {
-    __chunk_1.Collision.initGrid();
+    sources.Collision.initGrid();
   }
 
-  const labels = await __chunk_1.Collision.collide(containers, 'main', 'main'); // Update label visiblity
+  const labels = await sources.Collision.collide(containers, 'main', 'main'); // Update label visiblity
 
   let meshes = [];
   labels.forEach(container => {
@@ -41893,13 +41613,13 @@ function buildLabels(tiles, view_zoom) {
   let containers = {}; // Collect labels from each tile and turn into new label instances
 
   tiles.forEach(tile => {
-    const units_per_meter = __chunk_1.Geo.unitsPerMeter(tile.coords.z); // scale from tile units to mercator meters
+    const units_per_meter = sources.Geo.unitsPerMeter(tile.coords.z); // scale from tile units to mercator meters
 
     const zoom_scale = Math.pow(2, view_zoom - tile.style_z); // adjust label size by view zoom
 
     const size_scale = units_per_meter * zoom_scale; // scale from tile units to zoom-adjusted meters
 
-    const meters_per_pixel = __chunk_1.Geo.metersPerPixel(view_zoom); // First pass: create label instances and centralize collision containers
+    const meters_per_pixel = sources.Geo.metersPerPixel(view_zoom); // First pass: create label instances and centralize collision containers
     // Combine existing (previously collided) and pending (waiting to be collided for first time) meshes
 
     const tile_meshes = Object.assign({}, tile.meshes, tile.pending_label_meshes);
@@ -41939,24 +41659,26 @@ function buildLabels(tiles, view_zoom) {
 
             if (label.type === 'point') {
               // TODO: move to integer constants to avoid excess string copies
-              __chunk_1.LabelPoint.prototype.updateBBoxes.call(label);
+              sources.LabelPoint.prototype.updateBBoxes.call(label);
             } else if (label.type === 'straight') {
-              __chunk_1.LabelLineStraight.prototype.updateBBoxes.call(label, label.position, label.size, label.angle, label.angle, label.offset);
+              sources.LabelLineStraight.prototype.updateBBoxes.call(label, label.position, label.size, label.angle, label.angle, label.offset);
             } else if (params.obbs) {
               // NB: this is a very rough approximation of curved label collision at intermediate zooms,
               // because the position/scale of each collision box isn't correctly updated; however,
               // it's good enough to provide some additional label coverage, with less overhead
               const obbs = params.obbs.map(o => {
-                let x = o.x,
-                    y = o.y,
-                    a = o.a,
-                    w = o.w,
-                    h = o.h;
+                let {
+                  x,
+                  y,
+                  a,
+                  w,
+                  h
+                } = o;
                 x = x / units_per_meter + tile.min.x;
                 y = y / units_per_meter + tile.min.y;
                 w /= size_scale;
                 h /= size_scale;
-                return new __chunk_1.OBB(x, y, a, w, h);
+                return new sources.OBB(x, y, a, w, h);
               });
               label.obbs = obbs;
               label.aabbs = obbs.map(o => o.getExtent());
@@ -41991,14 +41713,10 @@ function buildLabels(tiles, view_zoom) {
 // (no additional logic to try alternate anchors or other layout options, etc.)
 
 
-function discard(bboxes, exclude) {
-  if (exclude === void 0) {
-    exclude = null;
-  }
-
+function discard(bboxes, exclude = null) {
   if (this.obb) {
     // single collision box
-    return __chunk_1.Label.prototype.occluded.call(this, bboxes, exclude);
+    return sources.Label.prototype.occluded.call(this, bboxes, exclude);
   } else if (this.obbs) {
     // mutliple collision boxes
     for (let i = 0; i < this.obbs.length; i++) {
@@ -42008,7 +41726,7 @@ function discard(bboxes, exclude) {
         aabb,
         obb
       };
-      let should_discard = __chunk_1.Label.prototype.occluded.call(obj, bboxes, exclude);
+      let should_discard = sources.Label.prototype.occluded.call(obj, bboxes, exclude);
 
       if (should_discard) {
         return true;
@@ -42020,8 +41738,9 @@ function discard(bboxes, exclude) {
 }
 
 class TileManager {
-  constructor(_ref) {
-    let scene = _ref.scene;
+  constructor({
+    scene
+  }) {
     this.scene = scene;
     this.tiles = {};
     this.pyramid = new TilePyramid();
@@ -42038,7 +41757,7 @@ class TileManager {
     }; // Provide a hook for this object to be called from worker threads
 
     this.main_thread_target = ['TileManager', this.scene.id].join('_');
-    __chunk_1.WorkerBroker.addTarget(this.main_thread_target, this);
+    sources.WorkerBroker.addTarget(this.main_thread_target, this);
   }
 
   destroy() {
@@ -42048,7 +41767,7 @@ class TileManager {
     this.visible_coords = {};
     this.queued_coords = [];
     this.scene = null;
-    __chunk_1.WorkerBroker.removeTarget(this.main_thread_target);
+    sources.WorkerBroker.removeTarget(this.main_thread_target);
   }
 
   get view() {
@@ -42080,7 +41799,7 @@ class TileManager {
 
 
   removeTile(key) {
-    __chunk_1.log('trace', `tile unload for ${key}`);
+    sources.log('trace', `tile unload for ${key}`);
     var tile = this.tiles[key];
 
     if (tile != null) {
@@ -42144,6 +41863,8 @@ class TileManager {
   }
 
   updateLabels() {
+    var _this = this;
+
     if (this.scene.building && !this.scene.building.initial) {
       // log('debug', `Skip label layout due to on-going scene rebuild`);
       return Promise.resolve({});
@@ -42179,19 +41900,21 @@ class TileManager {
 
       this.collision.task = {
         type: 'tileManagerUpdateLabels',
-        run: async task => {
+        run: async function (task) {
           // Do collision pass, then update view
-          const results = await mainThreadLabelCollisionPass(tiles, this.collision.zoom, this.isLoadingVisibleTiles());
-          this.scene.requestRedraw(); // Clear state to allow another collision pass to start
+          const results = await mainThreadLabelCollisionPass(tiles, _this.collision.zoom, _this.isLoadingVisibleTiles());
 
-          this.collision.task = null;
-          __chunk_1.Task.finish(task, results); // Check if tiles changed during previous collision pass - will start new pass if so
+          _this.scene.requestRedraw(); // Clear state to allow another collision pass to start
 
-          this.updateTileStates();
+
+          _this.collision.task = null;
+          sources.Task.finish(task, results); // Check if tiles changed during previous collision pass - will start new pass if so
+
+          _this.updateTileStates();
         },
         immediate: true
       };
-      __chunk_1.Task.add(this.collision.task);
+      sources.Task.add(this.collision.task);
     } // else {
     //     log('debug', `Skip label layout due to on-going layout (zoom ${this.view.zoom.toFixed(2)}, tiles ${this.collision.tile_keys})`);
     // }
@@ -42240,7 +41963,7 @@ class TileManager {
       } else {
         // brute force
         for (let key in this.visible_coords) {
-          if (__chunk_1.TileID.isDescendant(tile.coords, this.visible_coords[key])) {
+          if (sources.TileID.isDescendant(tile.coords, this.visible_coords[key])) {
             tile.visible = true;
             break;
           }
@@ -42294,11 +42017,11 @@ class TileManager {
 
     this.queued_coords.sort((a, b) => {
       let center = this.view.center.meters;
-      let half_span = __chunk_1.Geo.metersPerTile(a.z) / 2;
-      let ac = __chunk_1.Geo.metersForTile(a);
+      let half_span = sources.Geo.metersPerTile(a.z) / 2;
+      let ac = sources.Geo.metersForTile(a);
       ac.x += half_span;
       ac.y -= half_span;
-      let bc = __chunk_1.Geo.metersForTile(b);
+      let bc = sources.Geo.metersForTile(b);
       bc.x += half_span;
       bc.y -= half_span;
       let ad = Math.abs(center.x - ac.x) + Math.abs(center.y - ac.y);
@@ -42326,11 +42049,11 @@ class TileManager {
         continue;
       }
 
-      let key = __chunk_1.TileID.normalizedKey(coords, source, this.view.tile_zoom);
+      let key = sources.TileID.normalizedKey(coords, source, this.view.tile_zoom);
 
       if (key && !this.hasTile(key)) {
-        __chunk_1.log('trace', `load tile ${key}, distance from view center: ${coords.center_dist}`);
-        let tile = new __chunk_1.Tile({
+        sources.log('trace', `load tile ${key}, distance from view center: ${coords.center_dist}`);
+        let tile = new sources.Tile({
           source,
           coords,
           workers: this.scene.workers,
@@ -42351,27 +42074,27 @@ class TileManager {
   } // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
 
 
-  buildTileStylesCompleted(_ref2) {
-    let tile = _ref2.tile,
-        progress = _ref2.progress;
-
+  buildTileStylesCompleted({
+    tile,
+    progress
+  }) {
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
-      __chunk_1.log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because previously removed`);
-      __chunk_1.Tile.abortBuild(tile);
+      sources.log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because previously removed`);
+      sources.Tile.abortBuild(tile);
       this.updateTileStates();
     } // Built with an outdated scene configuration?
     else if (tile.generation !== this.scene.generation) {
-        __chunk_1.log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` + `scene config gen ${tile.generation}, current ${this.scene.generation}`);
-        __chunk_1.Tile.abortBuild(tile);
+        sources.log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` + `scene config gen ${tile.generation}, current ${this.scene.generation}`);
+        sources.Tile.abortBuild(tile);
         this.updateTileStates();
       } else {
         // Update tile with properties from worker
         if (this.tiles[tile.key]) {
           // Ignore if from a previously discarded tile
           if (tile.id < this.tiles[tile.key].id) {
-            __chunk_1.log('trace', `discarded tile ${tile.key} for id ${tile.id} in TileManager.buildTileStylesCompleted because built for discarded tile id`);
-            __chunk_1.Tile.abortBuild(tile);
+            sources.log('trace', `discarded tile ${tile.key} for id ${tile.id} in TileManager.buildTileStylesCompleted because built for discarded tile id`);
+            sources.Tile.abortBuild(tile);
             return;
           }
 
@@ -42394,22 +42117,22 @@ class TileManager {
 
 
   buildTileError(tile) {
-    __chunk_1.log('error', `Error building tile ${tile.key}:`, tile.error);
+    sources.log('error', `Error building tile ${tile.key}:`, tile.error);
     this.forgetTile(tile.key);
-    __chunk_1.Tile.abortBuild(tile);
+    sources.Tile.abortBuild(tile);
   } // Track tile build state
 
 
   tileBuildStart(key) {
     this.building_tiles = this.building_tiles || {};
     this.building_tiles[key] = true;
-    __chunk_1.log('trace', `tileBuildStart for ${key}: ${Object.keys(this.building_tiles).length}`);
+    sources.log('trace', `tileBuildStart for ${key}: ${Object.keys(this.building_tiles).length}`);
   }
 
   tileBuildStop(key) {
     // Done building?
     if (this.building_tiles) {
-      __chunk_1.log('trace', `tileBuildStop for ${key}: ${Object.keys(this.building_tiles).length}`);
+      sources.log('trace', `tileBuildStop for ${key}: ${Object.keys(this.building_tiles).length}`);
       delete this.building_tiles[key];
       this.checkBuildQueue();
     }
@@ -42457,21 +42180,15 @@ class TileManager {
 } // Round a number to given number of decimal divisions
 // e.g. roundPrecision(x, 4) rounds a number to increments of 0.25
 
-function roundPrecision(x, d, places) {
-  if (places === void 0) {
-    places = 2;
-  }
-
+function roundPrecision(x, d, places = 2) {
   return (Math.floor(x * d) / d).toFixed(places);
 } // Create a string representing the current set of meshes for a given set of tiles,
 // based on their created timestamp. Used to determine when tiles should be re-collided.
 
 
 function meshSetString(tiles) {
-  return JSON.stringify(Object.entries(tiles).map((_ref3) => {
-    let t = _ref3[1];
-    return Object.entries(t.meshes).map((_ref4) => {
-      let s = _ref4[1];
+  return JSON.stringify(Object.entries(tiles).map(([, t]) => {
+    return Object.entries(t.meshes).map(([, s]) => {
       return s.map(m => m.created_at);
     });
   }));
@@ -42562,7 +42279,6 @@ class RenderStateManager {
 
 }
 
-/* global MediaRecorder, ImageData */
 class MediaCapture {
   constructor() {
     this.canvas = null;
@@ -42580,10 +42296,9 @@ class MediaCapture {
   // `background`: optional background color to blend screenshot with
 
 
-  screenshot(_temp) {
-    let _ref = _temp === void 0 ? {} : _temp,
-        background = _ref.background;
-
+  screenshot({
+    background
+  } = {}) {
     if (this.queue_screenshot != null) {
       return this.queue_screenshot.promise; // only capture one screenshot at a time
     } // Will resolve once rendering is complete and render buffer is captured
@@ -42615,7 +42330,7 @@ class MediaCapture {
       let background = this.queue_screenshot.background;
 
       if (background && background !== 'transparent') {
-        background = __chunk_1.StyleParser.parseColor(background).slice(0, 3).map(c => c * 255);
+        background = sources.StyleParser.parseColor(background).slice(0, 3).map(c => c * 255);
       } else {
         background = null; // skip blend if transparent
       } // Flip Y (GL buffer is upside down)
@@ -42682,10 +42397,10 @@ class MediaCapture {
 
   startVideoCapture() {
     if (typeof window.MediaRecorder !== 'function' || !this.canvas || typeof this.canvas.captureStream !== 'function') {
-      __chunk_1.log('warn', 'Video capture (Canvas.captureStream and/or MediaRecorder APIs) not supported by browser');
+      sources.log('warn', 'Video capture (Canvas.captureStream and/or MediaRecorder APIs) not supported by browser');
       return false;
     } else if (this.video_capture) {
-      __chunk_1.log('warn', 'Video capture already in progress, call Scene.stopVideoCapture() first');
+      sources.log('warn', 'Video capture already in progress, call Scene.stopVideoCapture() first');
       return false;
     } // Start a new capture
 
@@ -42710,7 +42425,7 @@ class MediaCapture {
           let blob = new Blob(cap.chunks, {
             type: cap.options.mimeType
           });
-          let url = __chunk_1.createObjectURL(blob); // Explicitly remove all stream tracks, and set objects to null
+          let url = sources.createObjectURL(blob); // Explicitly remove all stream tracks, and set objects to null
 
           if (cap.stream) {
             let tracks = cap.stream.getTracks() || [];
@@ -42734,7 +42449,7 @@ class MediaCapture {
       cap.media_recorder.start();
     } catch (e) {
       this.video_capture = null;
-      __chunk_1.log('error', 'Scene video capture failed', e);
+      sources.log('error', 'Scene video capture failed', e);
       return false;
     }
 
@@ -42744,7 +42459,7 @@ class MediaCapture {
 
   stopVideoCapture() {
     if (!this.video_capture) {
-      __chunk_1.log('warn', 'No scene video capture in progress, call Scene.startVideoCapture() first');
+      sources.log('warn', 'No scene video capture in progress, call Scene.startVideoCapture() first');
       return Promise.resolve({});
     } // Promise that will resolve when final stream is available
 
@@ -42766,25 +42481,17 @@ function setupSceneDebug(scene) {
     profile(name) {
       console.profile(`main thread: ${name}`); // eslint-disable-line no-console
 
-      __chunk_1.WorkerBroker.postMessage(scene.workers, 'self.profile', name);
+      sources.WorkerBroker.postMessage(scene.workers, 'self.profile', name);
     },
 
     profileEnd(name) {
       console.profileEnd(`main thread: ${name}`); // eslint-disable-line no-console
 
-      __chunk_1.WorkerBroker.postMessage(scene.workers, 'self.profileEnd', name);
+      sources.WorkerBroker.postMessage(scene.workers, 'self.profileEnd', name);
     },
 
     // Rebuild geometry a given # of times and print average, min, max timings
-    timeRebuild(num, options) {
-      if (num === void 0) {
-        num = 1;
-      }
-
-      if (options === void 0) {
-        options = {};
-      }
-
+    timeRebuild(num = 1, options = {}) {
       let times = [];
 
       let cycle = () => {
@@ -42796,7 +42503,7 @@ function setupSceneDebug(scene) {
             cycle();
           } else {
             let avg = ~~(times.reduce((a, b) => a + b) / times.length);
-            __chunk_1.log('info', `Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
+            sources.log('info', `Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
           }
         });
       };
@@ -42874,14 +42581,14 @@ function setupSceneDebug(scene) {
 
     // Return sum of all texture memory usage
     textureSizeTotal() {
-      return Object.values(__chunk_1.Texture.textures).map(t => t.byteSize()).reduce((p, c) => p + c);
+      return Object.values(sources.Texture.textures).map(t => t.byteSize()).reduce((p, c) => p + c);
     },
 
     layerStats() {
-      if (__chunk_1.debugSettings.layer_stats) {
-        return __chunk_1.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
+      if (sources.debugSettings.layer_stats) {
+        return sources.debugSumLayerStats(scene.tile_manager.getRenderableTiles());
       } else {
-        __chunk_1.log('warn', 'Enable the \'layer_stats\' debug setting to collect layer stats');
+        sources.log('warn', 'Enable the \'layer_stats\' debug setting to collect layer stats');
         return {};
       }
     },
@@ -42896,30 +42603,30 @@ function setupSceneDebug(scene) {
 class Scene {
   constructor(config_source, options) {
     options = options || {};
-    __chunk_1.subscribeMixin(this);
+    sources.subscribeMixin(this);
     this.id = Scene.id++;
     this.initialized = false;
     this.initializing = null; // will be a promise that resolves when scene is loaded
 
     this.sources = {};
-    this.view = new __chunk_1.View(this, options);
+    this.view = new sources.View(this, options);
     this.tile_manager = new TileManager({
       scene: this
     });
     this.num_workers = options.numWorkers || 2;
 
     if (options.disableVertexArrayObjects === true) {
-      __chunk_1.VertexArrayObject.disabled = true;
+      sources.VertexArrayObject.disabled = true;
     }
 
-    __chunk_1.Utils.use_high_density_display = options.highDensityDisplay !== undefined ? options.highDensityDisplay : true;
-    __chunk_1.Utils.updateDevicePixelRatio();
+    sources.Utils.use_high_density_display = options.highDensityDisplay !== undefined ? options.highDensityDisplay : true;
+    sources.Utils.updateDevicePixelRatio();
     this.config = null;
     this.config_source = config_source;
     this.config_bundle = null;
     this.last_valid_config_source = null;
     this.styles = null;
-    this.style_manager = new __chunk_1.StyleManager();
+    this.style_manager = new sources.StyleManager();
     this.building = null; // tracks current scene building state (tiles being built, etc.)
 
     this.dirty = true; // request a redraw
@@ -42973,15 +42680,11 @@ class Scene {
 
     setupSceneDebug(this);
     this.log_level = options.logLevel || 'warn';
-    __chunk_1.log.setLevel(this.log_level);
-    __chunk_1.log.reset();
+    sources.log.setLevel(this.log_level);
+    sources.log.reset();
   }
 
-  static create(config, options) {
-    if (options === void 0) {
-      options = {};
-    }
-
+  static create(config, options = {}) {
     return new Scene(config, options);
   } // Load scene (or reload existing scene if no new source specified)
   // Options:
@@ -42989,20 +42692,14 @@ class Scene {
   //   `blocking`: should rendering block on scene load completion (default true)
 
 
-  load(config_source, options) {
-    if (config_source === void 0) {
-      config_source = null;
-    }
-
-    if (options === void 0) {
-      options = {};
-    }
+  load(config_source = null, options = {}) {
+    var _this = this;
 
     if (this.initializing) {
       return this.initializing;
     }
 
-    __chunk_1.log.reset();
+    sources.log.reset();
     this.updating++;
     this.initialized = false;
     this.view_complete = false; // track if a view complete event has been triggered yet
@@ -43027,14 +42724,20 @@ class Scene {
     this.createCanvas();
     this.prev_textures = this.config && Object.keys(this.config.textures); // save textures from last scene
 
-    this.initializing = this.loadScene(config_source, options).then(() => this.createWorkers()).then(() => {
-      // Clean up resources from prior scene
-      this.destroyFeatureSelection();
-      __chunk_1.WorkerBroker.postMessage(this.workers, 'self.clearFunctionStringCache'); // Scene loaded from a JS object, or modified by a `load` event, may contain compiled JS functions
+    this.initializing = this.loadScene(config_source, options).then(async function ({
+      texture_nodes
+    }) {
+      await _this.createWorkers(); // Clean up resources from prior scene
+
+      _this.destroyFeatureSelection();
+
+      sources.WorkerBroker.postMessage(_this.workers, 'self.clearFunctionStringCache'); // Scene loaded from a JS object, or modified by a `load` event, may contain compiled JS functions
       // which need to be serialized, while one loaded only from a URL does not.
 
-      const serialize_funcs = typeof this.config_source === 'object' || this.hasSubscribersFor('load');
-      const updating = this.updateConfig({
+      const serialize_funcs = typeof _this.config_source === 'object' || _this.hasSubscribersFor('load');
+
+      const updating = _this.updateConfig({
+        texture_nodes,
         serialize_funcs,
         normalize: false,
         loading: true,
@@ -43042,19 +42745,21 @@ class Scene {
       });
 
       if (options.blocking === true) {
-        return updating;
+        await updating;
       }
-    }).then(() => {
-      this.freePreviousTextures();
-      this.updating--;
-      this.initializing = null;
-      this.initialized = true;
-      this.last_valid_config_source = this.config_source;
-      this.last_valid_options = {
+
+      _this.freePreviousTextures();
+
+      _this.updating--;
+      _this.initializing = null;
+      _this.initialized = true;
+      _this.last_valid_config_source = _this.config_source;
+      _this.last_valid_options = {
         base_path: options.base_path,
         file_type: options.file_type
       };
-      this.requestRedraw();
+
+      _this.requestRedraw();
     }).catch(error => {
       this.initializing = null;
       this.updating = 0; // Report and revert to last valid config if available
@@ -43078,12 +42783,12 @@ class Scene {
       message = `Scene.load() failed to load ${JSON.stringify(this.config_source)}: ${error.message}`;
 
       if (this.last_valid_config_source) {
-        __chunk_1.log('warn', message, error);
-        __chunk_1.log('info', 'Scene.load() reverting to last valid configuration');
+        sources.log('warn', message, error);
+        sources.log('info', 'Scene.load() reverting to last valid configuration');
         return this.load(this.last_valid_config_source, this.last_valid_base_path);
       }
 
-      __chunk_1.log('error', message, error);
+      sources.log('error', message, error);
       throw error;
     });
     return this.initializing;
@@ -43104,10 +42809,10 @@ class Scene {
     this.container = null;
 
     if (this.gl) {
-      __chunk_1.Texture.destroy(this.gl);
+      sources.Texture.destroy(this.gl);
       this.style_manager.destroy(this.gl);
       this.styles = {};
-      __chunk_1.ShaderProgram.reset(); // Force context loss
+      sources.ShaderProgram.reset(); // Force context loss
 
       let ext = this.gl.getExtension('WEBGL_lose_context');
 
@@ -43122,7 +42827,7 @@ class Scene {
     this.destroyWorkers();
     this.tile_manager.destroy();
     this.tile_manager = null;
-    __chunk_1.log.reset();
+    sources.log.reset();
   }
 
   createCanvas() {
@@ -43144,7 +42849,7 @@ class Scene {
         alpha: true,
         premultipliedAlpha: true,
         stencil: true,
-        device_pixel_ratio: __chunk_1.Utils.device_pixel_ratio,
+        device_pixel_ratio: sources.Utils.device_pixel_ratio,
         powerPreference: 'high-performance'
       }, this.contextOptions));
     } catch (e) {
@@ -43152,7 +42857,7 @@ class Scene {
     }
 
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
-    __chunk_1.VertexArrayObject.init(this.gl);
+    sources.VertexArrayObject.init(this.gl);
     this.render_states = new RenderStateManager(this.gl);
     this.media_capture.setCanvas(this.canvas, this.gl);
   } // Update list of any custom scripts (either at scene-level or data-source-level)
@@ -43214,21 +42919,21 @@ class Scene {
       let worker = new Worker(Tangram.workerURL); // eslint-disable-line no-undef
 
       this.workers[id] = worker;
-      __chunk_1.WorkerBroker.addWorker(worker);
-      __chunk_1.log('debug', `Scene.makeWorkers: initializing worker ${id}`);
+      sources.WorkerBroker.addWorker(worker);
+      sources.log('debug', `Scene.makeWorkers: initializing worker ${id}`);
       let _id = id;
-      queue.push(__chunk_1.WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, __chunk_1.Utils.device_pixel_ratio, has_element_index_uint, this.external_scripts).then(id => {
-        __chunk_1.log('debug', `Scene.makeWorkers: initialized worker ${id}`);
+      queue.push(sources.WorkerBroker.postMessage(worker, 'self.init', this.id, id, this.num_workers, this.log_level, sources.Utils.device_pixel_ratio, has_element_index_uint, this.external_scripts).then(id => {
+        sources.log('debug', `Scene.makeWorkers: initialized worker ${id}`);
         return id;
       }, error => {
-        __chunk_1.log('error', `Scene.makeWorkers: failed to initialize worker ${_id}:`, error);
+        sources.log('error', `Scene.makeWorkers: failed to initialize worker ${_id}:`, error);
         return Promise.reject(error);
       }));
     }
 
     this.next_worker = 0;
     return Promise.all(queue).then(() => {
-      __chunk_1.log.setWorkers(this.workers);
+      sources.log.setWorkers(this.workers);
     });
   }
 
@@ -43236,7 +42941,7 @@ class Scene {
     this.selection = null; // selection needs to be re-initialized when workers are
 
     if (Array.isArray(this.workers)) {
-      __chunk_1.log.setWorkers(null);
+      sources.log.setWorkers(null);
       this.workers.forEach(worker => {
         worker.terminate();
       });
@@ -43255,8 +42960,8 @@ class Scene {
 
 
   updateDevicePixelRatio() {
-    if (__chunk_1.Utils.updateDevicePixelRatio()) {
-      __chunk_1.WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', __chunk_1.Utils.device_pixel_ratio).then(() => this.rebuild()).then(() => this.resizeMap(this.view.size.css.width, this.view.size.css.height));
+    if (sources.Utils.updateDevicePixelRatio()) {
+      sources.WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', sources.Utils.device_pixel_ratio).then(() => this.rebuild()).then(() => this.resizeMap(this.view.size.css.width, this.view.size.css.height));
     }
   }
 
@@ -43269,7 +42974,7 @@ class Scene {
     this.view.setViewportSize(width, height);
 
     if (this.gl) {
-      Context$1.resize(this.gl, width, height, __chunk_1.Utils.device_pixel_ratio);
+      Context$1.resize(this.gl, width, height, sources.Utils.device_pixel_ratio);
     }
   } // Request scene be redrawn at next animation loop
 
@@ -43292,10 +42997,10 @@ class Scene {
 
     this.update(); // Pending background tasks
 
-    __chunk_1.Task.setState({
+    sources.Task.setState({
       user_moving_view: this.view.user_input_active
     });
-    __chunk_1.Task.processAll(); // Request the next frame if not scheduled to stop
+    sources.Task.processAll(); // Request the next frame if not scheduled to stop
 
     if (!this.render_loop_stop) {
       window.requestAnimationFrame(this.renderLoop.bind(this));
@@ -43348,14 +43053,15 @@ class Scene {
     }
 
     this.frame++;
-    __chunk_1.log('trace', 'Scene.render()');
+    sources.log('trace', 'Scene.render()');
     return true;
   } // Accepts flags indicating which render passes should be made
 
 
-  render(_ref) {
-    let main = _ref.main,
-        selection = _ref.selection;
+  render({
+    main,
+    selection
+  }) {
     var gl = this.gl;
     this.updateBackground();
     Object.keys(this.lights).forEach(i => this.lights[i].update()); // Render main pass
@@ -43371,7 +43077,7 @@ class Scene {
         this.logFirstFrame();
         this.getFeatureSelectionMapSize().then(size => {
           this.selection_feature_count = size;
-          __chunk_1.log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
+          sources.log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
         });
       }
 
@@ -43410,14 +43116,9 @@ class Scene {
   // Called both for main render pass, and for secondary passes like selection buffer
 
 
-  renderPass(program_key, _temp) {
-    if (program_key === void 0) {
-      program_key = 'program';
-    }
-
-    let _ref2 = _temp === void 0 ? {} : _temp,
-        allow_blend = _ref2.allow_blend;
-
+  renderPass(program_key = 'program', {
+    allow_blend
+  } = {}) {
     // optionally force alpha off (e.g. for selection pass)
     allow_blend = allow_blend == null ? true : allow_blend;
     this.clearFrame();
@@ -43428,10 +43129,10 @@ class Scene {
 
     const blend_orders = this.style_manager.getActiveBlendOrders();
 
-    for (const _ref3 of blend_orders) {
-      const blend_order = _ref3.blend_order;
-      const styles = _ref3.styles;
-
+    for (const {
+      blend_order,
+      styles
+    } of blend_orders) {
       // Render each style
       for (let s = 0; s < styles.length; s++) {
         let style = this.styles[styles[s]];
@@ -43442,11 +43143,11 @@ class Scene {
 
 
         if (style.blend !== last_blend) {
-          let state = Object.assign({}, __chunk_1.Style.render_states[style.blend], // render state for blend mode
+          let state = Object.assign({}, sources.Style.render_states[style.blend], // render state for blend mode
           {
-            blend: allow_blend && style.blend // enable/disable blending (e.g. no blend for selection)
-
-          });
+            blend: allow_blend && style.blend
+          } // enable/disable blending (e.g. no blend for selection)
+          );
           this.setRenderState(state);
         }
 
@@ -43515,11 +43216,7 @@ class Scene {
     return count;
   }
 
-  renderStyle(style_name, program_key, blend_order, proxy_level) {
-    if (proxy_level === void 0) {
-      proxy_level = null;
-    }
-
+  renderStyle(style_name, program_key, blend_order, proxy_level = null) {
     let style = this.styles[style_name];
     let first_for_style = true; // TODO: allow this state to be passed in (for multilpe blend orders, stencil tests, etc)
 
@@ -43538,16 +43235,13 @@ class Scene {
     // Mesh variants must be rendered in requested order across tiles, to prevent labels that cross
     // tile boundaries from rendering over adjacent tile features meant to be underneath
 
-    let max_mesh_order = Math.max(...tile_meshes.map((_ref4) => {
-      let meshes = _ref4[1];
+    let max_mesh_order = Math.max(...tile_meshes.map(([, meshes]) => {
       return Math.max(...meshes.map(m => m.variant.mesh_order));
     })); // One pass per mesh variant order (loop goes to max value +1 because 0 is a valid order value)
 
     for (let mo = 0; mo < max_mesh_order + 1; mo++) {
       // Loop over tiles, with meshes pre-filtered by current blend order
-      for (let _ref5 of tile_meshes) {
-        let tile = _ref5[0];
-        let meshes = _ref5[1];
+      for (let [tile, meshes] of tile_meshes) {
         let first_for_tile = true; // Skip proxy tiles if new tiles have finished loading this style
 
         if (!tile.shouldProxyForStyle(style_name)) {
@@ -43639,13 +43333,12 @@ class Scene {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
   }
 
-  setRenderState(_temp2) {
-    let _ref6 = _temp2 === void 0 ? {} : _temp2,
-        depth_test = _ref6.depth_test,
-        depth_write = _ref6.depth_write,
-        cull_face = _ref6.cull_face,
-        blend = _ref6.blend;
-
+  setRenderState({
+    depth_test,
+    depth_write,
+    cull_face,
+    blend
+  } = {}) {
     if (!this.initialized) {
       return;
     } // Defaults
@@ -43714,12 +43407,11 @@ class Scene {
   } // Request feature selection at given pixel. Runs async and returns results via a promise.
 
 
-  getFeatureAt(pixel, _temp3) {
-    let _ref7 = _temp3 === void 0 ? {} : _temp3,
-        radius = _ref7.radius;
-
+  getFeatureAt(pixel, {
+    radius
+  } = {}) {
     if (!this.initialized) {
-      __chunk_1.log('debug', 'Scene.getFeatureAt() called before scene was initialized');
+      sources.log('debug', 'Scene.getFeatureAt() called before scene was initialized');
       return Promise.resolve();
     } // skip selection if no interactive features
 
@@ -43758,30 +43450,25 @@ class Scene {
   } // Query features within visible tiles, with optional filter conditions
 
 
-  async queryFeatures(_temp4) {
-    let _ref8 = _temp4 === void 0 ? {} : _temp4,
-        filter = _ref8.filter,
-        _ref8$unique = _ref8.unique,
-        unique = _ref8$unique === void 0 ? true : _ref8$unique,
-        _ref8$group_by = _ref8.group_by,
-        group_by = _ref8$group_by === void 0 ? null : _ref8$group_by,
-        _ref8$visible = _ref8.visible,
-        visible = _ref8$visible === void 0 ? null : _ref8$visible,
-        _ref8$geometry = _ref8.geometry,
-        geometry = _ref8$geometry === void 0 ? false : _ref8$geometry;
-
+  async queryFeatures({
+    filter,
+    unique = true,
+    group_by = null,
+    visible = null,
+    geometry = false
+  } = {}) {
     if (!this.initialized) {
       return [];
     }
 
-    filter = __chunk_1.Utils.serializeWithFunctions(filter); // Optional uniqueify criteria
+    filter = sources.Utils.serializeWithFunctions(filter); // Optional uniqueify criteria
     // Valid values: true, false/null, single property name, or array of property names
 
     unique = typeof unique === 'string' ? [unique] : unique;
     const uniqueify_on_id = unique === true || Array.isArray(unique) && unique.indexOf('$id') > -1;
 
     const uniqueify = unique && (obj => {
-      const properties = Array.isArray(unique) ? __chunk_1.sliceObject(obj.properties, unique) : obj.properties;
+      const properties = Array.isArray(unique) ? sources.sliceObject(obj.properties, unique) : obj.properties;
       const id = uniqueify_on_id ? obj.id : null;
 
       if (geometry) {
@@ -43804,11 +43491,11 @@ class Scene {
     group_by = (typeof group_by === 'string' || Array.isArray(group_by)) && group_by;
 
     const group = group_by && (obj => {
-      return Array.isArray(group_by) ? JSON.stringify(__chunk_1.sliceObject(obj, group_by)) : obj[group_by];
+      return Array.isArray(group_by) ? JSON.stringify(sources.sliceObject(obj, group_by)) : obj[group_by];
     });
 
     const tile_keys = this.tile_manager.getRenderableTiles().map(t => t.key);
-    const results = await __chunk_1.WorkerBroker.postMessage(this.workers, 'self.queryFeatures', {
+    const results = await sources.WorkerBroker.postMessage(this.workers, 'self.queryFeatures', {
       filter,
       visible,
       geometry,
@@ -43842,27 +43529,21 @@ class Scene {
   // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
 
 
-  rebuild(_temp5) {
-    let _ref9 = _temp5 === void 0 ? {} : _temp5,
-        _ref9$initial = _ref9.initial,
-        initial = _ref9$initial === void 0 ? false : _ref9$initial,
-        _ref9$new_generation = _ref9.new_generation,
-        new_generation = _ref9$new_generation === void 0 ? true : _ref9$new_generation,
-        _ref9$sources = _ref9.sources,
-        sources = _ref9$sources === void 0 ? null : _ref9$sources,
-        serialize_funcs = _ref9.serialize_funcs,
-        _ref9$profile = _ref9.profile,
-        profile = _ref9$profile === void 0 ? false : _ref9$profile,
-        _ref9$fade_in = _ref9.fade_in,
-        fade_in = _ref9$fade_in === void 0 ? false : _ref9$fade_in;
-
+  rebuild({
+    initial = false,
+    new_generation = true,
+    sources: sources$1 = null,
+    serialize_funcs,
+    profile = false,
+    fade_in = false
+  } = {}) {
     return new Promise((resolve, reject) => {
       // Skip rebuild if already in progress
       if (this.building) {
         // Queue up to one rebuild call at a time, only save last request
         if (this.building.queued && this.building.queued.reject) {
           // notify previous request that it did not complete
-          __chunk_1.log('debug', 'Scene.rebuild: request superceded by a newer call');
+          sources.log('debug', 'Scene.rebuild: request superceded by a newer call');
           this.building.queued.resolve(false); // false flag indicates rebuild request was superceded
         } // Save queued request
 
@@ -43870,7 +43551,7 @@ class Scene {
         let options = {
           initial,
           new_generation,
-          sources,
+          sources: sources$1,
           serialize_funcs,
           profile,
           fade_in
@@ -43880,7 +43561,7 @@ class Scene {
           reject,
           options
         };
-        __chunk_1.log('trace', 'Scene.rebuild(): queuing request');
+        sources.log('trace', 'Scene.rebuild(): queuing request');
         return;
       } // Track tile build state
 
@@ -43909,12 +43590,12 @@ class Scene {
       this.syncConfigToWorker({
         serialize_funcs
       });
-      this.resetWorkerFeatureSelection(sources);
+      this.resetWorkerFeatureSelection(sources$1);
       this.resetTime(); // Rebuild visible tiles
 
       this.tile_manager.pruneToVisibleTiles();
       this.tile_manager.forEachTile(tile => {
-        if (!sources || sources.indexOf(tile.source.name) > -1) {
+        if (!sources$1 || sources$1.indexOf(tile.source.name) > -1) {
           this.tile_manager.buildTile(tile, {
             fade_in
           });
@@ -43934,10 +43615,10 @@ class Scene {
 
 
   tileManagerBuildDone() {
-    __chunk_1.TextCanvas.pruneTextCache();
+    sources.TextCanvas.pruneTextCache();
 
     if (this.building) {
-      __chunk_1.log('info', 'Scene: build geometry finished');
+      sources.log('info', 'Scene: build geometry finished');
 
       if (this.building.resolve) {
         this.logFirstBuild();
@@ -43949,7 +43630,7 @@ class Scene {
       this.building = null;
 
       if (queued) {
-        __chunk_1.log('debug', 'Scene: starting queued rebuild() request');
+        sources.log('debug', 'Scene: starting queued rebuild() request');
         this.rebuild(queued.options).then(queued.resolve, queued.reject);
       } else {
         this.tile_manager.updateLabels(); // refresh label if nothing to rebuild
@@ -43962,36 +43643,34 @@ class Scene {
   */
 
 
-  loadScene(config_source, _temp6) {
-    if (config_source === void 0) {
-      config_source = null;
-    }
-
-    let _ref10 = _temp6 === void 0 ? {} : _temp6,
-        base_path = _ref10.base_path,
-        file_type = _ref10.file_type;
-
+  async loadScene(config_source = null, {
+    base_path,
+    file_type
+  } = {}) {
     this.config_source = config_source || this.config_source;
 
     if (typeof this.config_source === 'string') {
-      this.base_path = __chunk_1.pathForURL(base_path || this.config_source);
+      this.base_path = sources.pathForURL(base_path || this.config_source);
     } else {
-      this.base_path = __chunk_1.pathForURL(base_path);
+      this.base_path = sources.pathForURL(base_path);
     } // backwards compatibility for accessing base path under previous name
     // TODO: schedule for deprecation
 
 
     this.config_path = this.base_path;
-    return SceneLoader$1.loadScene(this.config_source, {
+    const {
+      config,
+      bundle,
+      texture_nodes
+    } = await SceneLoader.loadScene(this.config_source, {
       path: this.base_path,
       type: file_type
-    }).then((_ref11) => {
-      let config = _ref11.config,
-          bundle = _ref11.bundle;
-      this.config = config;
-      this.config_bundle = bundle;
-      return this.config;
     });
+    this.config = config;
+    this.config_bundle = bundle;
+    return {
+      texture_nodes
+    }; // pass along texture nodes for resolution after global property subtistution
   } // Add source to a scene, arguments `name` and `config` need to be provided:
   //  - If the name doesn't match a sources it will create it
   //  - the `config` obj follow the YAML scene spec, ex: ```{type: 'TopoJSON', url: "//tile.mapzen.com/mapzen/vector/v1/all/{z}/{x}/{y}.topojson"]}```
@@ -44009,7 +43688,7 @@ class Scene {
 
   setDataSource(name, config) {
     if (!name || !config || !config.type || !config.url && !config.data) {
-      __chunk_1.log('error', 'No name provided or not a valid config:', name, config);
+      sources.log('error', 'No name provided or not a valid config:', name, config);
       return;
     }
 
@@ -44017,7 +43696,7 @@ class Scene {
     let source = this.config.sources[name] = Object.assign({}, config); // Convert raw data into blob URL
 
     if (source.data && typeof source.data === 'object') {
-      source.url = __chunk_1.createObjectURL(new Blob([JSON.stringify(source.data)]));
+      source.url = sources.createObjectURL(new Blob([JSON.stringify(source.data)]));
       delete source.data;
     }
 
@@ -44037,11 +43716,7 @@ class Scene {
   // 2) the data source has changed in a way that affects tile layout (e.g. tile size, max_zoom, etc.)
 
 
-  createDataSources(rebuild_all) {
-    if (rebuild_all === void 0) {
-      rebuild_all = false;
-    }
-
+  createDataSources(rebuild_all = false) {
     const reset = []; // sources to reset
 
     const prev_source_names = Object.keys(this.sources);
@@ -44052,12 +43727,12 @@ class Scene {
       const prev_source = this.sources[name];
 
       try {
-        const config = __chunk_1._extends({}, source, {
+        const config = sources._extends({}, source, {
           name,
           id: source_id++
         });
 
-        this.sources[name] = __chunk_1.DataSource.create(config, this.sources);
+        this.sources[name] = sources.DataSource.create(config, this.sources);
 
         if (!this.sources[name]) {
           throw {};
@@ -44065,7 +43740,7 @@ class Scene {
       } catch (e) {
         delete this.sources[name];
         const message = `Could not create data source: ${e.message}`;
-        __chunk_1.log('warn', `Scene: ${message}`, source);
+        sources.log('warn', `Scene: ${message}`, source);
         this.trigger('warning', {
           type: 'sources',
           source,
@@ -44075,7 +43750,7 @@ class Scene {
       // If so, we'll re-calculate the tiles in view for this source and rebuild them
 
 
-      if (rebuild_all || __chunk_1.DataSource.tileLayoutChanged(this.sources[name], prev_source)) {
+      if (rebuild_all || sources.DataSource.tileLayoutChanged(this.sources[name], prev_source)) {
         reset.push(name);
       }
     } // Sources that were removed
@@ -44107,7 +43782,7 @@ class Scene {
 
 
   loadTextures() {
-    return __chunk_1.Texture.createFromObject(this.gl, this.config.textures).then(() => __chunk_1.Texture.createDefault(this.gl)); // create a 'default' texture for placeholders
+    return sources.Texture.createFromObject(this.gl, this.config.textures).then(() => sources.Texture.createDefault(this.gl)); // create a 'default' texture for placeholders
   } // Free textures from previously loaded scene
 
 
@@ -44118,8 +43793,8 @@ class Scene {
 
     this.prev_textures.forEach(t => {
       // free textures that aren't in the new scene, but are still in the global texture set
-      if (!this.config.textures[t] && __chunk_1.Texture.textures[t]) {
-        __chunk_1.Texture.textures[t].destroy();
+      if (!this.config.textures[t] && sources.Texture.textures[t]) {
+        sources.Texture.textures[t].destroy();
       }
     });
     this.prev_textures = null;
@@ -44162,8 +43837,8 @@ class Scene {
   createLights() {
     this.lights = {};
 
-    if (__chunk_1.debugSettings.wireframe) {
-      __chunk_1.Light.enabled = false; // disable lighting for wireframe mode
+    if (sources.debugSettings.wireframe) {
+      sources.Light.enabled = false; // disable lighting for wireframe mode
     }
 
     for (let i in this.config.lights) {
@@ -44177,11 +43852,11 @@ class Scene {
       light.visible = light.visible === false ? false : true;
 
       if (light.visible) {
-        this.lights[light.name] = __chunk_1.Light.create(this.view, light);
+        this.lights[light.name] = sources.Light.create(this.view, light);
       }
     }
 
-    __chunk_1.Light.inject(this.lights);
+    sources.Light.inject(this.lights);
   } // Set background color from scene config
 
 
@@ -44190,18 +43865,18 @@ class Scene {
     this.background = {};
 
     if (bg && bg.color) {
-      this.background.color = __chunk_1.StyleParser.createColorPropertyCache(bg.color);
+      this.background.color = sources.StyleParser.createColorPropertyCache(bg.color);
     }
 
     if (!this.background.color) {
-      this.background.color = __chunk_1.StyleParser.createColorPropertyCache([0, 0, 0, 0]); // default background TODO: vary w/scene alpha
+      this.background.color = sources.StyleParser.createColorPropertyCache([0, 0, 0, 0]); // default background TODO: vary w/scene alpha
     }
   } // Update background color each frame as needed (e.g. may be zoom-interpolated)
 
 
   updateBackground() {
     const last_color = this.background.computed_color;
-    const color = this.background.computed_color = __chunk_1.StyleParser.evalCachedColorProperty(this.background.color, {
+    const color = this.background.computed_color = sources.StyleParser.evalCachedColorProperty(this.background.color, {
       zoom: this.view.tile_zoom
     }); // update GL/canvas if color has changed
 
@@ -44232,34 +43907,25 @@ class Scene {
   // rebuild can be boolean, or an object containing rebuild options to passthrough
 
 
-  updateConfig(_temp7) {
-    let _ref12 = _temp7 === void 0 ? {} : _temp7,
-        _ref12$loading = _ref12.loading,
-        loading = _ref12$loading === void 0 ? false : _ref12$loading,
-        _ref12$rebuild = _ref12.rebuild,
-        rebuild = _ref12$rebuild === void 0 ? true : _ref12$rebuild,
-        serialize_funcs = _ref12.serialize_funcs,
-        _ref12$normalize = _ref12.normalize,
-        normalize = _ref12$normalize === void 0 ? true : _ref12$normalize,
-        _ref12$fade_in = _ref12.fade_in,
-        fade_in = _ref12$fade_in === void 0 ? false : _ref12$fade_in;
-
+  updateConfig({
+    loading = false,
+    rebuild = true,
+    serialize_funcs,
+    texture_nodes = {},
+    normalize = true,
+    fade_in = false
+  } = {}) {
     this.generation = ++Scene.generation;
-    this.updating++;
-    this.config = SceneLoader$1.applyGlobalProperties(this.config);
+    this.updating++; // Apply globals, finalize textures and other resource paths if needed
+
+    this.config = SceneLoader.applyGlobalProperties(this.config);
 
     if (normalize) {
-      // normalize whole scene
-      SceneLoader$1.normalize(this.config, this.config_bundle);
-    } else {
-      // special handling for shader uniforms that are globals
-      SceneLoader$1.hoistStyleShaderUniformTextures(this.config, this.config_bundle, {
-        include_globals: true
-      }); // just normalize top-level textures - necessary for adding base path to globals
-
-      SceneLoader$1.normalizeTextures(this.config, this.config_bundle);
+      // normalize whole scene if requested - usually when user is making run-time updates to scene
+      SceneLoader.normalize(this.config, this.config_bundle, texture_nodes);
     }
 
+    SceneLoader.hoistTextureNodes(this.config, this.config_bundle, texture_nodes);
     this.trigger(loading ? 'load' : 'update', {
       config: this.config
     });
@@ -44269,7 +43935,7 @@ class Scene {
     this.createDataSources(loading);
     this.loadTextures();
     this.setBackground();
-    __chunk_1.FontManager.loadFonts(this.config.fonts); // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
+    sources.FontManager.loadFonts(this.config.fonts); // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
 
     this.updateStyles(); // Optionally rebuild geometry
 
@@ -44294,18 +43960,16 @@ class Scene {
   } // Serialize config and send to worker
 
 
-  syncConfigToWorker(_temp8) {
-    let _ref13 = _temp8 === void 0 ? {} : _temp8,
-        _ref13$serialize_func = _ref13.serialize_funcs,
-        serialize_funcs = _ref13$serialize_func === void 0 ? true : _ref13$serialize_func;
-
+  syncConfigToWorker({
+    serialize_funcs = true
+  } = {}) {
     // Tell workers we're about to rebuild (so they can update styles, etc.)
-    let config_serialized = serialize_funcs ? __chunk_1.Utils.serializeWithFunctions(this.config) : JSON.stringify(this.config);
-    return __chunk_1.WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
+    let config_serialized = serialize_funcs ? sources.Utils.serializeWithFunctions(this.config) : JSON.stringify(this.config);
+    return sources.WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
       config: config_serialized,
       generation: this.generation,
       introspection: this.introspection
-    }, __chunk_1.debugSettings);
+    }, sources.debugSettings);
   } // Listen to related objects
 
 
@@ -44321,20 +43985,20 @@ class Scene {
         type: 'textures'
       }, data))
     };
-    __chunk_1.Texture.subscribe(this.listeners.texture);
+    sources.Texture.subscribe(this.listeners.texture);
     this.listeners.scene_loader = {
       error: data => this.trigger('error', Object.assign({
         type: 'scene'
       }, data))
     };
-    SceneLoader$1.subscribe(this.listeners.scene_loader);
+    SceneLoader.subscribe(this.listeners.scene_loader);
   }
 
   destroyListeners() {
     this.unsubscribeAll();
     this.view.unsubscribe(this.listeners.view);
-    __chunk_1.Texture.unsubscribe(this.listeners.texture);
-    SceneLoader$1.unsubscribe(this.listeners.scene_loader);
+    sources.Texture.unsubscribe(this.listeners.texture);
+    SceneLoader.unsubscribe(this.listeners.scene_loader);
     this.listeners = null;
   }
 
@@ -44346,17 +44010,13 @@ class Scene {
   }
 
   resetFeatureSelection() {
-    this.selection = new __chunk_1.FeatureSelection(this.gl, this.workers, () => this.building);
+    this.selection = new sources.FeatureSelection(this.gl, this.workers, () => this.building);
     this.last_render_count = 0; // force re-evaluation of selection map
   }
 
-  resetWorkerFeatureSelection(sources) {
-    if (sources === void 0) {
-      sources = null;
-    }
-
+  resetWorkerFeatureSelection(sources$1 = null) {
     if (this.workers) {
-      __chunk_1.WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection', sources);
+      sources.WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection', sources$1);
     }
   } // Gets the current feature selection map size across all workers. Returns a promise.
 
@@ -44364,7 +44024,7 @@ class Scene {
   getFeatureSelectionMapSize() {
     // Only allow one fetch process to run at a time
     if (this.fetching_selection_map == null) {
-      this.fetching_selection_map = __chunk_1.WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionMapSize').then(sizes => {
+      this.fetching_selection_map = sources.WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionMapSize').then(sizes => {
         this.fetching_selection_map = null;
         return sizes.reduce((a, b) => a + b);
       });
@@ -44397,11 +44057,9 @@ class Scene {
   // Returns a promise
 
 
-  screenshot(_temp9) {
-    let _ref14 = _temp9 === void 0 ? {} : _temp9,
-        _ref14$background = _ref14.background,
-        background = _ref14$background === void 0 ? 'white' : _ref14$background;
-
+  screenshot({
+    background = 'white'
+  } = {}) {
     this.requestRedraw();
     return this.media_capture.screenshot({
       background
@@ -44421,7 +44079,7 @@ class Scene {
   logFirstFrame() {
     if (this.last_render_count === 0 && !this.times.first_frame) {
       this.times.first_frame = +new Date() - this.start_time;
-      __chunk_1.log('debug', `Scene: initial frame time: ${this.times.first_frame}`);
+      sources.log('debug', `Scene: initial frame time: ${this.times.first_frame}`);
     }
   } // Log completion of first scene build
 
@@ -44429,7 +44087,7 @@ class Scene {
   logFirstBuild() {
     if (this.times.first_build == null) {
       this.times.first_build = +new Date() - this.start_time;
-      __chunk_1.log('debug', `Scene: initial build time: ${this.times.first_build}`);
+      sources.log('debug', `Scene: initial build time: ${this.times.first_build}`);
     }
   }
 
@@ -44475,7 +44133,7 @@ function extendLeaflet(options) {
   } // Leaflet layer functionality is only defined in main thread
 
 
-  if (__chunk_1.Thread.is_main) {
+  if (sources.Thread.is_main) {
     let L = options.leaflet || window.L; // Determine if we are extending the leaflet 0.7.x TileLayer class, or the newer
     // leaflet 1.x GridLayer class.
 
@@ -44554,7 +44212,7 @@ function extendLeaflet(options) {
           this._updating_tangram = true;
           this.scene.view.setPanning(true);
           var view = map.getCenter();
-          view.zoom = Math.max(Math.min(map.getZoom(), map.getMaxZoom() || __chunk_1.Geo.default_view_max_zoom), map.getMinZoom());
+          view.zoom = Math.max(Math.min(map.getZoom(), map.getMaxZoom() || sources.Geo.default_view_max_zoom), map.getMinZoom());
           this.scene.view.setView(view);
 
           if (this._mapLayerCount > 1) {
@@ -44615,9 +44273,7 @@ function extendLeaflet(options) {
           blocking: false
         }).then(() => {
           if (!this.options.attribution) {
-            for (const _ref of Object.entries(this.scene.config.sources)) {
-              const value = _ref[1];
-
+            for (const [, value] of Object.entries(this.scene.config.sources)) {
               if (value.attribution) {
                 map.attributionControl.addAttribution(value.attribution);
               }
@@ -44866,7 +44522,7 @@ function extendLeaflet(options) {
       updateView() {
         var view = this._map.getCenter();
 
-        view.zoom = Math.max(Math.min(this._map.getZoom(), this._map.getMaxZoom() || __chunk_1.Geo.default_view_max_zoom), this._map.getMinZoom());
+        view.zoom = Math.max(Math.min(this._map.getZoom(), this._map.getMaxZoom() || sources.Geo.default_view_max_zoom), this._map.getMinZoom());
         this.scene.view.setView(view);
       },
 
@@ -44985,10 +44641,9 @@ function extendLeaflet(options) {
       // Set user-defined handlers for feature selection events
       // Currently only one handler can be defined for each event type
       // Event types are: `click`, `hover` (leaflet `mousemove`)
-      setSelectionEvents(events, _temp) {
-        let _ref2 = _temp === void 0 ? {} : _temp,
-            radius = _ref2.radius;
-
+      setSelectionEvents(events, {
+        radius
+      } = {}) {
         this._selection_events = Object.assign(this._selection_events, events);
         this._selection_radius = radius !== undefined ? radius : this._selection_radius;
       },
@@ -45011,12 +44666,12 @@ function extendLeaflet(options) {
       },
 
       updateTangramDebugSettings() {
-        __chunk_1.mergeDebugSettings(this.options.debug || {});
+        sources.mergeDebugSettings(this.options.debug || {});
       }
 
     }); // Modified version of Leaflet's setZoomAround that doesn't trigger a moveEnd event
 
-    setZoomAroundNoMoveEnd = function setZoomAroundNoMoveEnd(layer, latlng, zoom) {
+    setZoomAroundNoMoveEnd = function (layer, latlng, zoom) {
       var map = layer._map,
           scene = layer.scene,
           scale = map.getZoomScale(zoom),
@@ -45056,33 +44711,33 @@ function extendLeaflet(options) {
 /*jshint worker: true*/
 
 const debug$1 = {
-  log: __chunk_1.log,
+  log: sources.log,
   yaml: jsYaml$1,
-  Utils: __chunk_1.Utils,
-  Geo: __chunk_1.Geo,
-  Vector: __chunk_1.Vector,
-  DataSource: __chunk_1.DataSource,
-  GLSL: __chunk_1.GLSL,
-  ShaderProgram: __chunk_1.ShaderProgram,
-  VertexData: __chunk_1.VertexData,
-  Texture: __chunk_1.Texture,
-  Material: __chunk_1.Material,
-  Light: __chunk_1.Light,
+  Utils: sources.Utils,
+  Geo: sources.Geo,
+  Vector: sources.Vector,
+  DataSource: sources.DataSource,
+  GLSL: sources.GLSL,
+  ShaderProgram: sources.ShaderProgram,
+  VertexData: sources.VertexData,
+  Texture: sources.Texture,
+  Material: sources.Material,
+  Light: sources.Light,
   Scene,
-  WorkerBroker: __chunk_1.WorkerBroker,
-  Task: __chunk_1.Task,
-  StyleManager: __chunk_1.StyleManager,
-  StyleParser: __chunk_1.StyleParser,
-  TileID: __chunk_1.TileID,
-  Collision: __chunk_1.Collision,
-  FeatureSelection: __chunk_1.FeatureSelection,
-  TextCanvas: __chunk_1.TextCanvas,
-  debugSettings: __chunk_1.debugSettings
+  WorkerBroker: sources.WorkerBroker,
+  Task: sources.Task,
+  StyleManager: sources.StyleManager,
+  StyleParser: sources.StyleParser,
+  TileID: sources.TileID,
+  Collision: sources.Collision,
+  FeatureSelection: sources.FeatureSelection,
+  TextCanvas: sources.TextCanvas,
+  debugSettings: sources.debugSettings
 };
 var index = {
   leafletLayer,
   debug: debug$1,
-  version: __chunk_1.version
+  version: sources.version
 };
 
 return index;
@@ -45095,7 +44750,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = '7baed5ea035938bc9de4116ff9a1ce039ddebb47';
+	Tangram.debug.SHA = '81ee5a1ddf14547d5653c42972e0a66fa999d545';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
