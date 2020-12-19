@@ -131,16 +131,11 @@ const SceneLoader = {
     normalizeFonts(config, bundle) {
         config.fonts = config.fonts || {};
 
-        for (const family in config.fonts) {
-            if (Array.isArray(config.fonts[family])) {
-                config.fonts[family].forEach(face => {
-                    face.url = face.url && bundle.urlFor(face.url);
-                });
-            }
-            else {
-                const face = config.fonts[family];
-                face.url = face.url && bundle.urlFor(face.url);
-            }
+        // Add scene base path for URL-based fonts (skip "external" fonts referencing CSS-loaded resources)
+        const fonts = Object.values(config.fonts).filter(face => face !== 'external');
+        for (const face of fonts) {
+            const faces = (Array.isArray(face) ? face : [face]); // can be single value or array
+            faces.forEach(face => face.url = bundle.urlFor(face.url));
         }
 
         return config;
