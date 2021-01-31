@@ -313,19 +313,16 @@ export default class ShaderProgram {
         }
 
         // Parse uniform types and values from the JS object
-        const parsed = GLSL.parseUniforms(uniforms);
-
-        // Set each uniform
-        for (let u=0; u < parsed.length; u++) {
-            const uniform = parsed[u];
-            if (uniform.type === 'sampler2D') {
-                // For textures, we need to track texture units, so we have a special setter
-                this.setTextureUniform(uniform.name, uniform.value);
-            }
-            else {
-                this.uniform(uniform.method, uniform.name, uniform.value);
-            }
-        }
+        GLSL.parseUniforms(uniforms)
+            .forEach(({ name, type, value, method }) => {
+                if (type === 'sampler2D') {
+                    // For textures, we need to track texture units, so we have a special setter
+                    this.setTextureUniform(name, value);
+                }
+                else {
+                    this.uniform(method, name, value);
+                }
+            });
     }
 
     // Cache some or all uniform values so they can be restored

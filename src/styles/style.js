@@ -790,7 +790,7 @@ export var Style = {
             return;
         }
 
-        program.setUniforms(this.shaders && this.shaders.uniforms, true); // reset texture unit to 0
+        program.setUniforms(this.shaders?.uniforms, true); // reset texture unit to 0
     },
 
     // Render state settings by blend mode

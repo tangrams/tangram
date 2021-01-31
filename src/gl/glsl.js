@@ -17,14 +17,10 @@ export default GLSL;
     for actually setting the uniforms). For example, this could be used as a key into a dictionary of
     known texture names, or it could simply be used as a URL to dynamically load the texture from.
 */
-GLSL.parseUniforms = function (uniforms) {
+GLSL.parseUniforms = function (uniforms = {}) {
     var parsed = [];
 
-    for (var name in uniforms) {
-        var key = name; // save the original name
-        var uniform = uniforms[name];
-        var u;
-
+    for (const [name, uniform] of Object.entries(uniforms)) {
         // Single float
         if (typeof uniform === 'number') {
             parsed.push({
@@ -32,8 +28,7 @@ GLSL.parseUniforms = function (uniforms) {
                 method: '1f',
                 name,
                 value: uniform,
-                key,
-                uniforms
+                path: [name]
             });
         }
         // Array: vector, array of floats, array of textures
@@ -47,8 +42,7 @@ GLSL.parseUniforms = function (uniforms) {
                         method: uniform.length + 'fv',
                         name,
                         value: uniform,
-                        key,
-                        uniforms
+                        path: [name]
                     });
                 }
                 // float array
@@ -58,22 +52,20 @@ GLSL.parseUniforms = function (uniforms) {
                         method: '1fv',
                         name: name + '[0]',
                         value: uniform,
-                        key,
-                        uniforms
+                        path: [name]
                     });
                 }
                 // TODO: assume matrix for (typeof == Float32Array && length == 16)?
             }
             // Array of textures
             else if (typeof uniform[0] === 'string') {
-                for (u=0; u < uniform.length; u++) {
+                for (let u = 0; u < uniform.length; u++) {
                     parsed.push({
                         type: 'sampler2D',
                         method: '1i',
                         name: name + '[' + u + ']',
                         value: uniform[u],
-                        key: u,
-                        uniforms: uniform
+                        path: [name, u]
                     });
                 }
             }
@@ -82,14 +74,13 @@ GLSL.parseUniforms = function (uniforms) {
                 // float vectors (vec2, vec3, vec4)
                 if (uniform[0].length >= 2 && uniform[0].length <= 4) {
                     // Set each vector in the array
-                    for (u=0; u < uniform.length; u++) {
+                    for (let u = 0; u < uniform.length; u++) {
                         parsed.push({
                             type: 'vec' + uniform[0].length,
                             method: uniform[0].length + 'fv',
                             name: name + '[' + u + ']',
                             value: uniform[u],
-                            key: u,
-                            uniforms: uniform
+                            path: [name, u]
                         });
                     }
                 }
@@ -103,8 +94,7 @@ GLSL.parseUniforms = function (uniforms) {
                 method: '1i',
                 name,
                 value: uniform,
-                key,
-                uniforms
+                path: [name]
             });
         }
         // Texture
@@ -114,8 +104,7 @@ GLSL.parseUniforms = function (uniforms) {
                 method: '1i',
                 name,
                 value: uniform,
-                key,
-                uniforms
+                path: [name]
             });
         }
     }

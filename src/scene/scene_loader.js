@@ -197,11 +197,11 @@ const SceneLoader = {
                 const style = config.styles[sn];
 
                 if (style.shaders && style.shaders.uniforms) {
-                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({ type, value, key }) => {
+                    GLSL.parseUniforms(style.shaders.uniforms).forEach(({ type, value, path }) => {
                         // Texture by URL (string-named texture not referencing existing texture definition)
                         if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
-                            const path = ['styles', sn, 'shaders', 'uniforms', key];
-                            this.addTextureNode(path, bundle, texture_nodes);
+                            const texture_path = ['styles', sn, 'shaders', 'uniforms', ...path];
+                            this.addTextureNode(texture_path, bundle, texture_nodes);
                         }
                     });
                 }
