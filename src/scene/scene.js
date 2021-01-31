@@ -1034,7 +1034,7 @@ export default class Scene {
 
         // Convert raw data into blob URL
         if (source.data && typeof source.data === 'object') {
-            source.url = URLs.createObjectURL(new Blob([JSON.stringify(source.data)]));
+            source.url = URLs.createObjectURL(new Blob([JSON.stringify(source.data)], { type: 'application/json' }));
             delete source.data;
         }
 
