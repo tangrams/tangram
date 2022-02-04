@@ -4,6 +4,7 @@ import Utils from '../utils/utils';
 import {compileFunctionStrings, functionStringCache, clearFunctionStringCache} from '../utils/functions';
 import debugSettings, {mergeDebugSettings} from '../utils/debug_settings';
 import log from '../utils/log';
+import mergeObjects from '../utils/merge';
 import WorkerBroker from '../utils/worker_broker'; // jshint ignore:line
 import Tile from '../tile/tile';
 import Geo from '../utils/geo';
@@ -106,7 +107,7 @@ const SceneWorker = Object.assign(self, {
     createDataSources (config) {
         // Save and compare previous sources
         this.last_config_sources = this.config_sources || {};
-        this.config_sources = config.sources;
+        this.config_sources = mergeObjects({}, config.sources); // deep copy the serialized config for the later existence comparison
         let last_sources = this.sources;
         let changed = [];
 
