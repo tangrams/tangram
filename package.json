@@ -94,7 +94,7 @@
     "gl-mat4": "1.1.4",
     "gl-shader-errors": "1.0.3",
     "js-yaml": "tangrams/js-yaml#read-only",
-    "jszip": "3.1.5",
+    "jszip": "3.7.0",
     "pbf": "3.1.0",
     "topojson-client": "tangrams/topojson-client#read-only"
   },
