@@ -96,6 +96,7 @@
     "js-yaml": "tangrams/js-yaml#read-only",
     "jszip": "3.1.5",
     "pbf": "3.1.0",
+    "quickselect": "3.0.0",
     "topojson-client": "tangrams/topojson-client#read-only"
   },
   "devDependencies": {

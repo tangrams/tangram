@@ -4,6 +4,7 @@ import Vector from '../utils/vector';
 import { default_uvs, outsideTile } from './common';
 
 import earcut from 'earcut';
+import quickselect from 'quickselect';
 
 const up_vec3 = [0, 0, 1];
 
@@ -34,10 +35,18 @@ export function buildPolygons (
 
     for (let p = 0; p < num_polygons; p++) {
 
-        let polygon = polygons[p],
-            element_offset = vertex_data.vertex_count,
-            indices = triangulatePolygon(earcut.flatten(polygon)),
-            num_indices = indices.length;
+        const max_rings = 500;
+        let polygon = polygons[p];
+
+        if (polygon.length > max_rings) {
+            polygon = [...polygon]; // copy to avoid modifying original
+            quickselect(polygon, max_rings, 1, polygon.length - 1, (a, b) => b.area - a.area);
+            polygon = polygon.slice(0, max_rings);
+        }
+
+        const indices = triangulatePolygon(earcut.flatten(polygon));
+        const num_indices = indices.length;
+        const element_offset = vertex_data.vertex_count;
 
         // The vertices and vertex-elements must not be added if earcut returns no indices:
         if (num_indices) {
