@@ -5,9 +5,9 @@ import log from './log';
 import Thread from './thread';
 import WorkerBroker from './worker_broker';
 
-export default Utils;
-
 const Utils = {};
+
+export default Utils;
 
 WorkerBroker.addTarget('Utils', Utils);
 
