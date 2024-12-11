@@ -11,8 +11,7 @@ export default function(context) {
         '@babel/preset-env', {
           targets,
           bugfixes: true,
-          useBuiltIns: ESM ? false : 'usage',
-          corejs: '3.39.0',
+          // debug: true, // uncomment for debugging build issues
           exclude: [
             // we don't want these because we're using fast-async instead
             'transform-async-to-generator',
