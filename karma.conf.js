@@ -1,20 +1,18 @@
-/*jshint node: true*/
+import babel from '@rollup/plugin-babel';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+import globals from 'rollup-plugin-node-globals';
+import builtins from 'rollup-plugin-node-builtins';
+import json from '@rollup/plugin-json';
+import { importAsString } from 'rollup-plugin-string-import';
 
-var babel = require('rollup-plugin-babel');
-var resolve = require('rollup-plugin-node-resolve');
-var commonjs = require('rollup-plugin-commonjs');
-var globals = require('rollup-plugin-node-globals');
-var builtins = require('rollup-plugin-node-builtins');
-var json = require('rollup-plugin-json');
-var string = require('rollup-plugin-string');
-
-module.exports = function (config) {
+export default {
 
     config.set({
         basePath: '',
         frameworks: ['mocha', 'sinon'],
         files: [
-            'https://unpkg.com/leaflet@1.3.4/dist/leaflet.js',
+            'https://unpkg.com/leaflet@1.3.4/dist/leaflet.js', // TODO: update leaflet version
             {
                 pattern : 'test/fixtures/*',
                 watched : false,
@@ -48,24 +46,18 @@ module.exports = function (config) {
                     browser: true,
                     preferBuiltins: false
                 }),
-                commonjs({
-                    // There hints are required for importing jszip
-                    // See https://rollupjs.org/guide/en#error-name-is-not-exported-by-module-
-                    namedExports: {
-                        'node_modules/process/browser.js': ['nextTick'],
-                        'node_modules/events/events.js': ['EventEmitter']
-                    }
-                }),
+                commonjs(),
 
                 json({
                     exclude: ['node_modules/**', 'src/**'] // import JSON files
                 }),
-                string({
+                importAsString({
                     include: ['**/*.glsl'] // inline shader files
                 }),
 
                 babel({
-                    exclude: ['node_modules/**', '*.json']
+                    exclude: ['node_modules/**', '*.json'],
+                    babelHelpers: "runtime"
                 }),
 
                 // These are needed for jszip node-environment compatibility,
@@ -95,5 +87,4 @@ module.exports = function (config) {
 
     });
 
-
-};
+}

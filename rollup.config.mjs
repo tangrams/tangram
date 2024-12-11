@@ -41,14 +41,6 @@ const config = [{
         commonjs({
             // Avoids Webpack minification errors
             ignoreGlobal: true,
-            // There hints are required for importing jszip
-            // See https://rollupjs.org/guide/en#error-name-is-not-exported-by-module-
-            // namedExports: {
-            //     // 'node_modules/process/browser.js': ['nextTick'],
-            //     // 'node_modules/events/events.js': ['EventEmitter'],
-            //     'node_modules/csscolorparser/.js': ['parseCSSColor'],
-            //     'node_modules/gl-shader-errors/index.js': ['parseShaderErrors']
-            // }
         }),
         json(), // load JSON files
         importAsString({
@@ -57,7 +49,7 @@ const config = [{
 
         babel({
             exclude: 'node_modules/**',
-            babelHelpers: "runtime" // runtime
+            babelHelpers: "runtime"
         }),
 
         // These are needed for jszip node-environment compatibility,
