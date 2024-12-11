@@ -1,4 +1,4 @@
-module.exports = function(context) {
+export default function(context) {
   const ESM = (process.env.ESM !== 'false'); // default to ESM on
   const cache = context.cache(() => ESM);
   const targets = ESM ?
@@ -11,9 +11,7 @@ module.exports = function(context) {
         '@babel/preset-env', {
           targets,
           bugfixes: true,
-          loose: true,
-          debug: true,
-          useBuiltIns: ESM ? false : 'usage',
+          // debug: true, // uncomment for debugging build issues
           exclude: [
             // we don't want these because we're using fast-async instead
             'transform-async-to-generator',
@@ -24,9 +22,10 @@ module.exports = function(context) {
       ],
     ],
     plugins: [
+      '@babel/plugin-transform-runtime',
       ESM ? false : ['module:fast-async', {
         spec: true // spec setting sticks to pure promises
-      }]
+      },]
     ].filter(x => x)
   };
-};
+}

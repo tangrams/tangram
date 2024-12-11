@@ -4,8 +4,6 @@ const rights = ['right', 'top-right', 'bottom-right'];
 const tops = ['top', 'top-left', 'top-right'];
 const bottoms = ['bottom', 'bottom-left', 'bottom-right'];
 
-export default PointAnchor;
-
 const PointAnchor = {
 
     computeOffset (offset, size, anchor, buffer = null) {
@@ -80,3 +78,5 @@ const PointAnchor = {
     zero_buffer: [0, 0, 0, 0]
 
 };
+
+export default PointAnchor;

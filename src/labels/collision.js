@@ -3,8 +3,6 @@ import RepeatGroup from './repeat_group';
 import CollisionGrid from './collision_grid';
 import log from '../utils/log';
 
-export default Collision;
-
 const Collision = {
 
     tiles: {},
@@ -243,3 +241,5 @@ const Collision = {
     }
 
 };
+
+export default Collision;

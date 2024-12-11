@@ -1,8 +1,6 @@
 import Utils from '../../utils/utils';
 import StyleParser from '../style_parser';
 
-export default TextSettings;
-
 const TextSettings = {
 
     // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
@@ -150,3 +148,5 @@ const TextSettings = {
     }
 
 };
+
+export default TextSettings;
