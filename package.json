@@ -130,5 +130,8 @@
     "rollup-plugin-sourcemaps2": "^0.4.2",
     "rollup-plugin-string-import": "^1.2.5",
     "sinon": "^19.0.2"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.6.1"
   }
 }
